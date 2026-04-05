@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using NXProject.ViewModels;
 
@@ -34,11 +35,14 @@ namespace NXProject.Controls
 
         /// <summary>Disparado quando as linhas reais do DataGrid mudam de posição.</summary>
         public event Action<IReadOnlyList<double>>? RowTopsMeasured;
+        public event Action<TaskViewModel, TaskViewModel, bool>? TaskMoveRequested;
 
         private bool _headerMeasured;
         private ScrollViewer? _scrollViewer;
         private bool _suppressScrollNotification;
         private string? _lastRowLayoutSignature;
+        private Point _dragStartPoint;
+        private TaskViewModel? _dragSourceTask;
 
         public TaskGridControl()
         {
@@ -128,6 +132,58 @@ namespace NXProject.Controls
             });
         }
 
+        private void OnTaskGridPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(TaskGrid);
+            _dragSourceTask = FindTaskViewModel(e.OriginalSource as DependencyObject);
+        }
+
+        private void OnTaskGridPreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || _dragSourceTask == null)
+                return;
+
+            var currentPosition = e.GetPosition(TaskGrid);
+            if (Math.Abs(currentPosition.X - _dragStartPoint.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(currentPosition.Y - _dragStartPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            var dragTask = _dragSourceTask;
+            _dragSourceTask = null;
+            DragDrop.DoDragDrop(TaskGrid, new DataObject(typeof(TaskViewModel), dragTask), DragDropEffects.Move);
+        }
+
+        private void OnTaskGridDragOver(object sender, DragEventArgs e)
+        {
+            var sourceTask = e.Data.GetData(typeof(TaskViewModel)) as TaskViewModel;
+            var targetTask = FindTaskViewModel(e.OriginalSource as DependencyObject);
+            e.Effects = sourceTask != null && targetTask != null && sourceTask != targetTask
+                ? DragDropEffects.Move
+                : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void OnTaskGridDrop(object sender, DragEventArgs e)
+        {
+            var sourceTask = e.Data.GetData(typeof(TaskViewModel)) as TaskViewModel;
+            var targetTask = FindTaskViewModel(e.OriginalSource as DependencyObject);
+            if (sourceTask == null || targetTask == null || sourceTask == targetTask)
+                return;
+
+            var row = FindParent<DataGridRow>(e.OriginalSource as DependencyObject);
+            var insertAfter = false;
+            if (row != null)
+            {
+                var rowPosition = e.GetPosition(row);
+                insertAfter = rowPosition.Y > row.ActualHeight / 2;
+            }
+
+            TaskMoveRequested?.Invoke(sourceTask, targetTask, insertAfter);
+            e.Handled = true;
+        }
+
         private static T? FindChild<T>(DependencyObject root) where T : DependencyObject
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
@@ -137,6 +193,25 @@ namespace NXProject.Controls
                 var found = FindChild<T>(child);
                 if (found != null) return found;
             }
+            return null;
+        }
+
+        private static TaskViewModel? FindTaskViewModel(DependencyObject? source)
+        {
+            return FindParent<DataGridRow>(source)?.Item as TaskViewModel;
+        }
+
+        private static T? FindParent<T>(DependencyObject? source) where T : DependencyObject
+        {
+            var current = source;
+            while (current != null)
+            {
+                if (current is T match)
+                    return match;
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
             return null;
         }
     }

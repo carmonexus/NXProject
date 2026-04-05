@@ -46,12 +46,17 @@ namespace NXProject.ViewModels
 
         private void RebuildFlatTasks()
         {
+            var selectedModel = SelectedTask?.Model;
             FlatTasks.Clear();
             foreach (var task in Project.Tasks)
                 AddFlatRecursive(task, 0);
             RecalcSprints();
             RebuildSprintGroups();
             RebuildResourceGroups();
+
+            SelectedTask = selectedModel == null
+                ? null
+                : FlatTasks.FirstOrDefault(vm => vm.Model == selectedModel);
         }
 
         private bool _rebuildPending = false;
@@ -95,6 +100,15 @@ namespace NXProject.ViewModels
                 var dayOffset = (vm.Start - projectStart).TotalDays;
                 vm.SprintNumber = dayOffset < 0 ? 0 : (int)(dayOffset / sprintDays) + 1;
             }
+        }
+
+        partial void OnSelectedTaskChanged(TaskViewModel? oldValue, TaskViewModel? newValue)
+        {
+            if (oldValue != null)
+                oldValue.IsSelected = false;
+
+            if (newValue != null)
+                newValue.IsSelected = true;
         }
 
         // ── Comandos ─────────────────────────────────────────────────────────
@@ -499,6 +513,60 @@ namespace NXProject.ViewModels
             RebuildFlatTasks();
         }
 
+        [RelayCommand]
+        private void MoveTaskUp(TaskViewModel? taskVm)
+        {
+            var task = (taskVm ?? SelectedTask)?.Model;
+            if (task == null)
+                return;
+
+            if (MoveTaskByOffset(task, -1))
+                StatusMessage = "Tarefa movida para cima";
+        }
+
+        [RelayCommand]
+        private void MoveTaskDown(TaskViewModel? taskVm)
+        {
+            var task = (taskVm ?? SelectedTask)?.Model;
+            if (task == null)
+                return;
+
+            if (MoveTaskByOffset(task, 1))
+                StatusMessage = "Tarefa movida para baixo";
+        }
+
+        public bool MoveTaskByDrop(TaskViewModel sourceVm, TaskViewModel targetVm, bool insertAfter)
+        {
+            if (sourceVm.Model == targetVm.Model)
+                return false;
+
+            var sourceCollection = GetTaskCollection(sourceVm.Model);
+            var targetCollection = GetTaskCollection(targetVm.Model);
+            if (!ReferenceEquals(sourceCollection, targetCollection))
+            {
+                StatusMessage = "O arrasto so pode reordenar tarefas dentro do mesmo nivel.";
+                return false;
+            }
+
+            var currentIndex = sourceCollection.IndexOf(sourceVm.Model);
+            var targetIndex = targetCollection.IndexOf(targetVm.Model);
+            if (currentIndex < 0 || targetIndex < 0)
+                return false;
+
+            if (insertAfter)
+                targetIndex++;
+
+            if (targetIndex > currentIndex)
+                targetIndex--;
+
+            if (targetIndex == currentIndex)
+                return false;
+
+            MoveTask(sourceCollection, currentIndex, targetIndex);
+            StatusMessage = "Tarefa reordenada";
+            return true;
+        }
+
         [RelayCommand] private void Undo() { StatusMessage = "Desfazer (em desenvolvimento)"; }
         [RelayCommand] private void Redo() { StatusMessage = "Refazer (em desenvolvimento)"; }
         [RelayCommand] private void ShowGantt() { SelectedViewIndex = 0; }
@@ -588,6 +656,39 @@ namespace NXProject.ViewModels
             foreach (var child in task.Children)
                 foreach (var ft in FlattenTask(child))
                     yield return ft;
+        }
+
+        private bool MoveTaskByOffset(ProjectTask task, int offset)
+        {
+            var collection = GetTaskCollection(task);
+            var currentIndex = collection.IndexOf(task);
+            if (currentIndex < 0)
+                return false;
+
+            var targetIndex = currentIndex + offset;
+            if (targetIndex < 0 || targetIndex >= collection.Count)
+                return false;
+
+            MoveTask(collection, currentIndex, targetIndex);
+            return true;
+        }
+
+        private void MoveTask(ObservableCollection<ProjectTask> collection, int currentIndex, int targetIndex)
+        {
+            if (currentIndex == targetIndex)
+                return;
+
+            var task = collection[currentIndex];
+            collection.RemoveAt(currentIndex);
+            collection.Insert(targetIndex, task);
+
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+        }
+
+        private ObservableCollection<ProjectTask> GetTaskCollection(ProjectTask task)
+        {
+            return task.Parent?.Children ?? Project.Tasks;
         }
     }
 }

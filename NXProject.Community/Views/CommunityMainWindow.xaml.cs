@@ -46,6 +46,11 @@ namespace NXProject.Views
 
             TaskGridCtrl.HeaderHeightMeasured += h => GanttCtrl.SetHeaderHeight(h);
             TaskGridCtrl.RowTopsMeasured += tops => GanttCtrl.SetRowTops(tops);
+            TaskGridCtrl.TaskMoveRequested += (sourceTask, targetTask, insertAfter) =>
+            {
+                if (vm.MoveTaskByDrop(sourceTask, targetTask, insertAfter))
+                    GanttCtrl.ForceRender();
+            };
 
             vm.PropertyChanged += (_, args) =>
             {

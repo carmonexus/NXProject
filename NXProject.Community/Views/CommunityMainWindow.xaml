@@ -42,6 +42,13 @@
                 <MenuItem Header="Adicionar _Subtarefa" Command="{Binding AddSubtaskCommand}"/>
                 <MenuItem Header="E_xcluir Tarefa" Command="{Binding DeleteTaskCommand}"/>
                 <Separator/>
+                <MenuItem Header="Mover Tarefa para _Cima"
+                          Command="{Binding MoveTaskUpCommand}"
+                          CommandParameter="{Binding SelectedTask}"/>
+                <MenuItem Header="Mover Tarefa para _Baixo"
+                          Command="{Binding MoveTaskDownCommand}"
+                          CommandParameter="{Binding SelectedTask}"/>
+                <Separator/>
                 <MenuItem Header="Recuar Tarefa" Command="{Binding IndentTaskCommand}"/>
                 <MenuItem Header="Avançar Tarefa" Command="{Binding OutdentTaskCommand}"/>
             </MenuItem>
@@ -76,6 +83,18 @@
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding DeleteTaskCommand}" ToolTip="Excluir Tarefa">
                 <TextBlock Text="🗑" FontSize="14"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}"
+                    Command="{Binding MoveTaskUpCommand}"
+                    CommandParameter="{Binding SelectedTask}"
+                    ToolTip="Mover tarefa para cima">
+                <TextBlock Text="↑" FontSize="14" FontWeight="Bold"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}"
+                    Command="{Binding MoveTaskDownCommand}"
+                    CommandParameter="{Binding SelectedTask}"
+                    ToolTip="Mover tarefa para baixo">
+                <TextBlock Text="↓" FontSize="14" FontWeight="Bold"/>
             </Button>
             <Separator/>
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnAiAssistantClick" ToolTip="Assistente IA">

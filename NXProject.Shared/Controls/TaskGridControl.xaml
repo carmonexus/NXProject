@@ -7,6 +7,7 @@
               ItemsSource="{Binding Tasks, RelativeSource={RelativeSource AncestorType=UserControl}}"
               SelectedItem="{Binding SelectedTask, Mode=TwoWay}"
               AutoGenerateColumns="False"
+              AllowDrop="True"
               CanUserAddRows="False"
               CanUserDeleteRows="False"
               ScrollViewer.CanContentScroll="False"
@@ -14,7 +15,11 @@
               Background="White"
               BorderThickness="0"
               RowHeight="22"
-              ColumnHeaderHeight="40">
+              ColumnHeaderHeight="40"
+              PreviewMouseLeftButtonDown="OnTaskGridPreviewMouseLeftButtonDown"
+              PreviewMouseMove="OnTaskGridPreviewMouseMove"
+              DragOver="OnTaskGridDragOver"
+              Drop="OnTaskGridDrop">
 
         <DataGrid.Columns>
 
