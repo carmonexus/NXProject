@@ -45,6 +45,7 @@ A edicao Community possui licenca propria exibida na primeira execucao do aplica
 Resumo atual:
 
 - gratuita para empresas com ate 20 funcionarios
+- para empresas com ate 20 funcionarios, serao aceitos donativos
 - empresas com mais de 20 funcionarios devem solicitar licenca por e-mail ate o prazo orcamentario ou, no maximo, durante o primeiro ano de uso
-- custo padrao atual de `USD 1`, com variacao possivel conforme contratacao de suporte
-- sem suporte, o valor permanece em `USD 1`
+- para empresas acima de 20 funcionarios, o valor padrao atual e de `USD 1` por usuario por ano
+- esse valor pode variar conforme a contratacao de suporte

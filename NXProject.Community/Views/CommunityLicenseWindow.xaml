@@ -50,11 +50,15 @@ Esta edicao Community e gratuita para empresas com ate 20 funcionarios, conforme
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+Para empresas com ate 20 funcionarios, serao aceitos donativos.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
 Empresas com mais de 20 funcionarios deverao solicitar licenca pelo e-mail comercial.nexus.xdata@gamail.com ate o respectivo prazo orcamentario ou, no maximo, durante o primeiro ano de uso.
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-O custo padrao da licenca, ate o presente momento, sera de USD 1, podendo variar conforme a contratacao de suporte. Sem suporte, o uso permanecera no valor de USD 1.
+Para empresas com mais de 20 funcionarios, o valor padrao atual da licenca Community e de USD 1 por usuario por ano, podendo variar conforme a contratacao de suporte.
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
