@@ -46,7 +46,15 @@
                                Margin="0,0,0,8"/>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Esta edicao Community pode ser usada gratuitamente conforme os termos desta licenca.
+Esta edicao Community e gratuita para empresas com ate 20 funcionarios, conforme os termos desta licenca.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+Empresas com mais de 20 funcionarios deverao solicitar licenca pelo e-mail comercial.nexus.xdata@gamail.com ate o respectivo prazo orcamentario ou, no maximo, durante o primeiro ano de uso.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+O custo padrao da licenca, ate o presente momento, sera de USD 1, podendo variar conforme a contratacao de suporte. Sem suporte, o uso permanecera no valor de USD 1.
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
@@ -70,7 +78,7 @@ A Nexus XData Tecnologia Ltda podera alterar, limitar, evoluir ou descontinuar a
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Quem desejar contratar suporte ou migrar para a versao paga podera entrar em contato pelo e-mail comercial.nexus.xdata@gamail.com.
+Quem desejar contratar suporte, solicitar a licenca aplicavel ou migrar para a versao paga podera entrar em contato pelo e-mail comercial.nexus.xdata@gamail.com.
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" FontStyle="Italic" Foreground="#555">
