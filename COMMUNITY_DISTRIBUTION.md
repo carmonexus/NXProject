@@ -4,7 +4,7 @@
 
 - `NXProject.Shared`
 - `NXProject.Community`
-- scripts da Community, como `build-community.ps1`, `run-community.ps1` e `publish-community.ps1`
+- scripts da Community, como `build-community.ps1`, `run-community.ps1` e `release-community.ps1`
 
 ## O que manter fechado
 
@@ -14,7 +14,7 @@
 ## Como gerar o pacote para usuario final
 
 1. Execute:
-   `.\publish-community.ps1`
+   `.\release-community.ps1`
 2. O pacote sera gerado em:
    `dist\community\NXProject.Community-Release.zip`
 

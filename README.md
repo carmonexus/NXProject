@@ -7,7 +7,7 @@ Edicao comunitaria do NXProject para gerenciamento de tarefas, grafico Gantt e i
 - `NXProject.Shared`: modelos, servicos e UI compartilhada da edicao publica
 - `NXProject.Community`: aplicativo desktop Community
 - `NXProject.Community.sln`: solution publica da Community
-- `build-community.ps1`, `run-community.ps1`, `publish-community.ps1`: scripts de build, execucao e empacotamento
+- `build-community.ps1`, `run-community.ps1`, `release-community.ps1`: scripts de build, execucao e empacotamento
 
 ## Download rapido
 
@@ -32,7 +32,7 @@ Se o Windows ainda nao tiver esse runtime, instale primeiro e depois execute `NX
 ## Como gerar o zip de distribuicao
 
 ```powershell
-.\publish-community.ps1 -Configuration Release
+.\release-community.ps1 -Configuration Release
 ```
 
 ## Licenca e contato
