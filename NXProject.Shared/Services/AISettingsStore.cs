@@ -18,15 +18,10 @@ namespace NXProject.Services
             public int TimeoutSeconds { get; set; } = 120;
         }
 
-        private static readonly string SettingsDirectory =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NXProject.Community");
-
-        private static readonly string SettingsFile =
-            Path.Combine(SettingsDirectory, "ai-settings.json");
-
-        public static AISettings Load()
+        public static AISettings Load(string storageKey = "NXProject.Community")
         {
-            if (!File.Exists(SettingsFile))
+            var settingsFile = GetSettingsFile(storageKey);
+            if (!File.Exists(settingsFile))
             {
                 return new AISettings
                 {
@@ -39,7 +34,7 @@ namespace NXProject.Services
 
             try
             {
-                var json = File.ReadAllText(SettingsFile);
+                var json = File.ReadAllText(settingsFile);
                 var stored = JsonSerializer.Deserialize<StoredAISettings>(json);
                 if (stored == null)
                     throw new InvalidOperationException("Configuracao de IA invalida.");
@@ -76,9 +71,11 @@ namespace NXProject.Services
             }
         }
 
-        public static void Save(AISettings settings)
+        public static void Save(AISettings settings, string storageKey = "NXProject.Community")
         {
-            Directory.CreateDirectory(SettingsDirectory);
+            var settingsDirectory = GetSettingsDirectory(storageKey);
+            var settingsFile = GetSettingsFile(storageKey);
+            Directory.CreateDirectory(settingsDirectory);
             var sanitizedApiKey = SanitizeSecret(settings.ApiKey);
             var payload = new StoredAISettings
             {
@@ -90,7 +87,19 @@ namespace NXProject.Services
             };
 
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(SettingsFile, json);
+            File.WriteAllText(settingsFile, json);
+        }
+
+        private static string GetSettingsDirectory(string storageKey)
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                string.IsNullOrWhiteSpace(storageKey) ? "NXProject.Community" : storageKey.Trim());
+        }
+
+        private static string GetSettingsFile(string storageKey)
+        {
+            return Path.Combine(GetSettingsDirectory(storageKey), "ai-settings.json");
         }
 
         public static string SanitizeSecret(string? value)

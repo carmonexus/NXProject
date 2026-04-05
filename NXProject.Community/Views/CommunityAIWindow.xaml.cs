@@ -14,6 +14,7 @@ namespace NXProject.Views
     {
         private const string OpenAIApiKeyGuideUrl = "https://openrouter.ai/docs/api-keys";
         private const int DefaultTimeoutSeconds = 120;
+        private const string SettingsStorageKey = "NXProject.Community";
 
         private readonly MainViewModel _viewModel;
         private AIAssistantResponse? _lastResponse;
@@ -36,7 +37,7 @@ namespace NXProject.Views
 
         private void LoadSettings()
         {
-            var settings = AISettingsStore.Load();
+            var settings = AISettingsStore.Load(SettingsStorageKey);
             ApiKeyPasswordBox.Password = settings.ApiKey;
             EndpointTextBox.Text = settings.Endpoint;
             ModelTextBox.Text = settings.Model;
@@ -72,7 +73,7 @@ namespace NXProject.Views
             }
 
             var settings = BuildSettings();
-            AISettingsStore.Save(settings);
+            AISettingsStore.Save(settings, SettingsStorageKey);
 
             try
             {

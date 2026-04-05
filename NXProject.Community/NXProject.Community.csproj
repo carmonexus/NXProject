@@ -60,6 +60,9 @@
     <Compile Include="..\NXProject.Shared\ViewModels\MainViewModel.cs">
       <Link>ViewModels\MainViewModel.cs</Link>
     </Compile>
+    <Compile Include="..\NXProject.Shared\ViewModels\MainViewModel.AI.cs">
+      <Link>ViewModels\MainViewModel.AI.cs</Link>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>
