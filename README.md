@@ -69,6 +69,12 @@ Se preferir executar diretamente em modo de desenvolvimento, use:
 .\release-community.ps1 -Configuration Release
 ```
 
+## Observacao sobre build local
+
+O aviso `NU1900` do NuGet era um caso conhecido neste ambiente quando a checagem online de vulnerabilidades nao conseguia acessar `https://api.nuget.org/v3/index.json`.
+
+Como isso nao indicava vulnerabilidade confirmada no projeto e apenas falha de consulta online, ele foi suprimido nos arquivos de projeto para nao poluir o build local.
+
 ## Licenca e contato
 
 - Empresa: Nexus XData Tecnologia Ltda

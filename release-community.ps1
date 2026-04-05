@@ -10,6 +10,7 @@ $DistDir = Join-Path $SolutionDir "dist\community"
 $StageDir = Join-Path $DistDir "NXProject.Community"
 $ZipPath = Join-Path $DistDir "NXProject.Community-$Configuration.zip"
 $ReadmePath = Join-Path $StageDir "README-INSTALACAO.txt"
+$SharedDllLockPattern = "because it is being used by another process"
 
 function Write-Step($msg) {
     Write-Host ""
@@ -24,14 +25,47 @@ function Stop-NXProjectCommunityProcess {
     $processes | Stop-Process -Force
 }
 
+function Invoke-DotnetCommandWithRetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ActionLabel,
+
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Command
+    )
+
+    $attempt = 1
+    while ($attempt -le 2) {
+        $output = & $Command 2>&1
+        $exitCode = $LASTEXITCODE
+        if ($output) {
+            $output | ForEach-Object { Write-Host $_ }
+        }
+
+        if ($exitCode -eq 0) {
+            return
+        }
+
+        $combinedOutput = ($output | Out-String)
+        $hasDllLock = $combinedOutput -match [regex]::Escape($SharedDllLockPattern)
+        if (-not $hasDllLock -or $attempt -eq 2) {
+            Write-Host ""
+            Write-Host "$ActionLabel falhou." -ForegroundColor Red
+            exit 1
+        }
+
+        Write-Step "Detectado bloqueio temporario de DLL do .NET. Reiniciando build server e tentando novamente..."
+        dotnet build-server shutdown | Out-Host
+        Start-Sleep -Seconds 1
+        $attempt++
+    }
+}
+
 Stop-NXProjectCommunityProcess
 
 Write-Step "Compilando NXProject Community ($Configuration)..."
-dotnet build $ProjectFile -c $Configuration --nologo
-if ($LASTEXITCODE -ne 0) {
-    Write-Host ""
-    Write-Host "Falha na compilacao." -ForegroundColor Red
-    exit 1
+Invoke-DotnetCommandWithRetry -ActionLabel "A compilacao" -Command {
+    dotnet build $ProjectFile -c $Configuration --nologo
 }
 
 Write-Step "Preparando pasta de distribuicao..."
