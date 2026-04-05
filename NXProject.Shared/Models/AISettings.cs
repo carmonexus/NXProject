@@ -6,6 +6,7 @@
         public string ApiKey { get; set; } = string.Empty;
         public string Endpoint { get; set; } = string.Empty;
         public string Model { get; set; } = string.Empty;
+        public int TimeoutSeconds { get; set; } = 120;
     }
 
     public enum AIProvider
@@ -13,6 +14,7 @@
         None,
         Claude,         // Anthropic Claude
         OpenAI,         // OpenAI / Codex
+        OpenRouter,     // OpenRouter OpenAI-compatible API
         GitHubCopilot   // Azure OpenAI via Copilot
     }
 
@@ -22,6 +24,7 @@
         {
             AIProvider.Claude => "https://api.anthropic.com/v1/messages",
             AIProvider.OpenAI => "https://api.openai.com/v1/chat/completions",
+            AIProvider.OpenRouter => "https://openrouter.ai/api/v1/chat/completions",
             AIProvider.GitHubCopilot => "https://api.githubcopilot.com/chat/completions",
             _ => string.Empty
         };
@@ -30,6 +33,7 @@
         {
             AIProvider.Claude => "claude-sonnet-4-6",
             AIProvider.OpenAI => "gpt-4o",
+            AIProvider.OpenRouter => "openrouter/free",
             AIProvider.GitHubCopilot => "gpt-4o",
             _ => string.Empty
         };

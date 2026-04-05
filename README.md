@@ -80,6 +80,8 @@ Resumo atual:
 
 - gratuita para empresas com ate 20 funcionarios
 - para empresas com ate 20 funcionarios, serao aceitos donativos
+- instituicoes de educacao possuem licenca 100% gratuita, com pedido de registro por e-mail apenas para catalogo e citacao do uso da ferramenta quando aplicavel
 - empresas com mais de 20 funcionarios devem solicitar licenca por e-mail ate o prazo orcamentario ou, no maximo, durante o primeiro ano de uso
 - para empresas acima de 20 funcionarios, o valor padrao atual e de `USD 1` por usuario por ano
 - esse valor pode variar conforme a contratacao de suporte
+- a versao comercial podera incluir integracoes com OpenAI, Claude AI e outras plataformas de inteligencia artificial

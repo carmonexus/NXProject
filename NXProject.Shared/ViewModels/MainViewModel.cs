@@ -104,8 +104,41 @@ namespace NXProject.ViewModels
         {
             Project = new Project { Name = "Novo Projeto", StartDate = DateTime.Today };
             _nextId = 1;
+            _collapsedTaskIds.Clear();
+            SelectedTask = null;
             FlatTasks.Clear();
             StatusMessage = "Novo projeto criado";
+        }
+
+        [RelayCommand]
+        private void ClearProject()
+        {
+            if (Project.Tasks.Count == 0 && Project.Resources.Count == 0)
+            {
+                StatusMessage = "O projeto ja esta limpo";
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                "Deseja remover todas as tarefas e recursos do projeto atual?",
+                "Limpar projeto",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirm != MessageBoxResult.Yes)
+            {
+                StatusMessage = "Limpeza do projeto cancelada";
+                return;
+            }
+
+            Project.Tasks.Clear();
+            Project.Resources.Clear();
+            Project.IsDirty = true;
+            _nextId = 1;
+            _collapsedTaskIds.Clear();
+            SelectedTask = null;
+            RebuildFlatTasks();
+            StatusMessage = "Projeto limpo";
         }
 
         [RelayCommand]

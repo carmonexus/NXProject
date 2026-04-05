@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.CommunityAboutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Sobre o NXProject Community"
+        Title="Sobre o NXProject Community 1.0.0"
         Width="580"
         Height="360"
         WindowStartupLocation="CenterOwner"
@@ -22,11 +22,36 @@
                            Foreground="#2B579A"
                            Margin="0,0,0,10"/>
 
+                <TextBlock Text="Versao 1.0.0"
+                           FontSize="13"
+                           Foreground="#666"
+                           Margin="0,0,0,12"/>
+
                 <TextBlock Text="Edicao comunitaria do NXProject para gerenciamento de tarefas, Gantt e importacao/exportacao."
                            FontSize="13"
                            Foreground="#444"
                            Margin="0,0,0,16"
                            TextWrapping="Wrap"/>
+
+                <Border Background="#FFF7E8"
+                        BorderBrush="#E8D39A"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12"
+                        Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="Como funciona o versionamento"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6"/>
+                        <TextBlock Text="O formato usado e versao.release.bugs."
+                                   TextWrapping="Wrap"
+                                   Foreground="#444"/>
+                        <TextBlock Text="Exemplo: 1.0.0 = versao principal 1, release 0 e correcao de bugs 0."
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap"
+                                   Foreground="#444"/>
+                    </StackPanel>
+                </Border>
 
                 <Border Background="#F5F7FA"
                         BorderBrush="#D9E1EA"

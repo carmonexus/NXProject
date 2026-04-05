@@ -54,6 +54,10 @@ Para empresas com ate 20 funcionarios, serao aceitos donativos.
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+Instituicoes de educacao possuem licenca 100% gratuita, mas devem solicitar registro pelo e-mail comercial.nexus.xdata@gamail.com apenas para catalogo e citar o uso da ferramenta quando aplicavel.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
 Empresas com mais de 20 funcionarios deverao solicitar licenca pelo e-mail comercial.nexus.xdata@gamail.com ate o respectivo prazo orcamentario ou, no maximo, durante o primeiro ano de uso.
                     </TextBlock>
 
@@ -71,6 +75,10 @@ Ao redistribuir, publicar ou referenciar esta edicao, deve ser mantido o credito
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
 Recursos pagos, suporte oficial, impressao, PDF, calendario e demais modulos comerciais podem existir apenas na versao proprietaria, a criterio da empresa.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+A versao comercial podera incluir integracoes com OpenAI, Claude AI e outras plataformas de inteligencia artificial, conforme disponibilidade e contratacao.
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">

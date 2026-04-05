@@ -15,6 +15,7 @@ namespace NXProject.Views
             Path.Combine(LicenseAcceptanceDirectory, "license.accepted");
 
         private bool _licenseAccepted;
+        private bool _allowClose;
 
         public CommunityMainWindow()
         {
@@ -89,11 +90,12 @@ namespace NXProject.Views
             };
 
             Loaded += OnCommunityWindowLoaded;
+            Closing += OnCommunityWindowClosing;
         }
 
         private void OnExitClick(object sender, RoutedEventArgs e)
         {
-            Application.Current.Shutdown();
+            Close();
         }
 
         private void OnAboutClick(object sender, RoutedEventArgs e)
@@ -108,6 +110,18 @@ namespace NXProject.Views
         private void OnLicenseClick(object sender, RoutedEventArgs e)
         {
             ShowLicenseDialog(requireAcceptance: false);
+        }
+
+        private void OnAiAssistantClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainViewModel vm)
+                return;
+
+            var aiWindow = new CommunityAIWindow(vm)
+            {
+                Owner = this
+            };
+            aiWindow.ShowDialog();
         }
 
         private void OnTaskPropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -167,6 +181,42 @@ namespace NXProject.Views
         {
             Directory.CreateDirectory(LicenseAcceptanceDirectory);
             File.WriteAllText(LicenseAcceptanceFile, "accepted");
+        }
+
+        private void OnCommunityWindowClosing(object? sender, CancelEventArgs e)
+        {
+            if (_allowClose)
+                return;
+
+            if (DataContext is not MainViewModel vm)
+                return;
+
+            if (!vm.Project.IsDirty)
+                return;
+
+            var decision = MessageBox.Show(
+                "O projeto possui alteracoes nao salvas. Deseja salvar antes de fechar?",
+                "Salvar projeto",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning);
+
+            if (decision == MessageBoxResult.Cancel)
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            if (decision == MessageBoxResult.Yes)
+            {
+                vm.SaveProjectCommand.Execute(null);
+                if (vm.Project.IsDirty)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+            }
+
+            _allowClose = true;
         }
     }
 }
