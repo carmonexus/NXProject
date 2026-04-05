@@ -2,6 +2,8 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
+using NXProject.Services;
 using NXProject.ViewModels;
 
 namespace NXProject.Views
@@ -16,10 +18,12 @@ namespace NXProject.Views
 
         private bool _licenseAccepted;
         private bool _allowClose;
+        private bool _aiOpenedOnFirstAccess;
 
         public CommunityMainWindow()
         {
             InitializeComponent();
+            StatusLogoImage.Source = ProtectedLogoProvider.GetLogoImage();
             var vm = new MainViewModel();
             DataContext = vm;
             var syncingVerticalScroll = false;
@@ -147,12 +151,18 @@ namespace NXProject.Views
             if (HasAcceptedLicense())
             {
                 _licenseAccepted = true;
+                OpenAiAssistantOnFirstAccess();
                 return;
             }
 
             _licenseAccepted = ShowLicenseDialog(requireAcceptance: true);
             if (!_licenseAccepted)
+            {
                 Close();
+                return;
+            }
+
+            OpenAiAssistantOnFirstAccess();
         }
 
         private bool ShowLicenseDialog(bool requireAcceptance)
@@ -217,6 +227,25 @@ namespace NXProject.Views
             }
 
             _allowClose = true;
+        }
+
+        private void OpenAiAssistantOnFirstAccess()
+        {
+            if (_aiOpenedOnFirstAccess || DataContext is not MainViewModel vm)
+                return;
+
+            _aiOpenedOnFirstAccess = true;
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+            {
+                if (!IsLoaded || !IsVisible)
+                    return;
+
+                var aiWindow = new CommunityAIWindow(vm)
+                {
+                    Owner = this
+                };
+                aiWindow.ShowDialog();
+            }));
         }
     }
 }

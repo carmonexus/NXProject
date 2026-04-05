@@ -16,27 +16,28 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
-                      CanContentScroll="True">
-            <StackPanel>
-                <StackPanel Margin="0,0,0,14">
-                    <TextBlock Text="Assistente IA para tarefas de projeto"
-                               FontSize="24"
-                               FontWeight="SemiBold"
-                               Foreground="#2B579A"/>
-                    <TextBlock Margin="0,8,0,0"
-                               TextWrapping="Wrap"
-                               Foreground="#444"
-                               Text="Use um token de IA para pedir ajuda na criacao de tarefas, cronograma e distribuicao de atividades. Esta tela vem configurada por padrao para OpenRouter Free. Pedidos com dados pessoais, LGPD ou fora do contexto de projeto sao bloqueados."/>
-                    <TextBlock Margin="0,8,0,0"
-                               TextWrapping="Wrap"
-                               Foreground="#555"
-                               Text="O token informado sera gravado somente neste computador e armazenado localmente em formato criptografado para uso desta integracao direta com a API."/>
-                </StackPanel>
+        <Grid Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-                <TabControl Margin="0,0,0,14">
+            <StackPanel Margin="0,0,0,14">
+                <TextBlock Text="Assistente IA para tarefas de projeto"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           Foreground="#2B579A"/>
+                <TextBlock Margin="0,8,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="#444"
+                           Text="Use um token de IA para pedir ajuda na criacao de tarefas, cronograma e distribuicao de atividades. Esta tela vem configurada por padrao para OpenRouter Free. Pedidos com dados pessoais, LGPD ou fora do contexto de projeto sao bloqueados."/>
+                <TextBlock Margin="0,8,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="#555"
+                           Text="O token informado sera gravado somente neste computador e armazenado localmente em formato criptografado para uso desta integracao direta com a API."/>
+            </StackPanel>
+
+            <TabControl Grid.Row="1" Margin="0,0,0,14">
                     <TabItem Header="Assistente">
                         <Grid Margin="10">
                             <Grid.RowDefinitions>
@@ -45,8 +46,6 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="140"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="260"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Text="Pedido para a IA"
@@ -75,19 +74,29 @@
                                        Margin="0,14,0,8"
                                        TextWrapping="Wrap"
                                        Foreground="#555"
-                                       Text="Revise as atividades abaixo. Ao clicar em 'Aplicar ao projeto', elas serao incluidas no Gantt e esta janela sera fechada."/>
+                                       Text="Revise o retorno textual nesta aba. As atividades em formato tabular ficam na aba 'Tarefas sugeridas'. Ao clicar em 'Aplicar ao projeto', elas serao incluidas no Gantt e esta janela sera fechada."/>
+                        </Grid>
+                    </TabItem>
 
-                            <TextBlock Grid.Row="5"
-                                       Text="Tarefas sugeridas"
+                    <TabItem Header="Tarefas sugeridas">
+                        <Grid Margin="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Lista tabular de atividades sugeridas"
                                        FontSize="15"
                                        FontWeight="SemiBold"
                                        Margin="0,0,0,8"/>
                             <DataGrid x:Name="TasksDataGrid"
-                                      Grid.Row="6"
+                                      Grid.Row="1"
                                       AutoGenerateColumns="False"
                                       IsReadOnly="True"
                                       CanUserAddRows="False"
                                       HeadersVisibility="Column"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                       BorderBrush="#D9E1EA"
                                       BorderThickness="1">
                                 <DataGrid.Columns>
@@ -102,6 +111,9 @@
                     </TabItem>
 
                     <TabItem Header="Configuracao">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      CanContentScroll="True">
                         <Grid Margin="10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -177,10 +189,10 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
+                        </ScrollViewer>
                     </TabItem>
                 </TabControl>
-            </StackPanel>
-        </ScrollViewer>
+        </Grid>
 
         <DockPanel Grid.Row="1" Margin="0,16,0,0" LastChildFill="False">
             <StackPanel DockPanel.Dock="Left" Width="340">

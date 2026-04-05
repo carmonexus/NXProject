@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -828,9 +829,42 @@ namespace NXProject.Controls
 
         private void EndDrag()
         {
+            if (_dragState != null)
+            {
+                var dayDelta = (_dragState.Task.Start - _dragState.OriginalStart).Days;
+                if (dayDelta != 0)
+                    MoveDependentTasks(_dragState.Task, dayDelta);
+            }
+
             _dragState = null;
             if (Mouse.Captured == GanttCanvas)
                 Mouse.Capture(null);
+        }
+
+        private void MoveDependentTasks(TaskViewModel predecessor, int dayDelta)
+        {
+            if (Tasks == null || Tasks.Count == 0 || dayDelta == 0)
+                return;
+
+            var tasksById = Tasks.ToDictionary(task => task.Id);
+            var movedTaskIds = new HashSet<int> { predecessor.Id };
+            ShiftSuccessorsRecursive(predecessor.Id, dayDelta, tasksById, movedTaskIds);
+        }
+
+        private void ShiftSuccessorsRecursive(
+            int predecessorId,
+            int dayDelta,
+            IReadOnlyDictionary<int, TaskViewModel> tasksById,
+            ISet<int> movedTaskIds)
+        {
+            foreach (var successor in tasksById.Values.Where(task => task.Model.PredecessorIds.Contains(predecessorId)))
+            {
+                if (!movedTaskIds.Add(successor.Id))
+                    continue;
+
+                successor.ShiftSchedule(dayDelta);
+                ShiftSuccessorsRecursive(successor.Id, dayDelta, tasksById, movedTaskIds);
+            }
         }
 
         private void SubscribeTaskEvents(ObservableCollection<TaskViewModel> tasks)

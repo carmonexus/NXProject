@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Windows;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -11,6 +12,7 @@ namespace NXProject.Views
         public CommunityAboutWindow()
         {
             InitializeComponent();
+            CompanyLogoImage.Source = ProtectedLogoProvider.GetLogoImage();
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e)

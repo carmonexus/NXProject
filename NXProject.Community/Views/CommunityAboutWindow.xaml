@@ -16,16 +16,24 @@
             </Grid.RowDefinitions>
 
             <StackPanel>
-                <TextBlock Text="NXProject Community"
-                           FontSize="24"
-                           FontWeight="SemiBold"
-                           Foreground="#2B579A"
-                           Margin="0,0,0,10"/>
+                <DockPanel Margin="0,0,0,12" LastChildFill="True">
+                    <Image x:Name="CompanyLogoImage"
+                           Width="150"
+                           Height="56"
+                           Stretch="Uniform"
+                           Margin="0,0,16,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="NXProject Community"
+                                   FontSize="24"
+                                   FontWeight="SemiBold"
+                                   Foreground="#2B579A"/>
 
-                <TextBlock Text="Versao 1.0.0"
-                           FontSize="13"
-                           Foreground="#666"
-                           Margin="0,0,0,12"/>
+                        <TextBlock Text="Versao 1.0.0"
+                                   FontSize="13"
+                                   Foreground="#666"
+                                   Margin="0,6,0,0"/>
+                    </StackPanel>
+                </DockPanel>
 
                 <TextBlock Text="Edicao comunitaria do NXProject para gerenciamento de tarefas, Gantt e importacao/exportacao."
                            FontSize="13"

@@ -50,6 +50,7 @@ namespace NXProject.ViewModels
                 OnPropertyChanged(nameof(Finish));
                 OnPropertyChanged(nameof(DurationDays));
                 OnPropertyChanged(nameof(DisplayAsMilestone));
+                RecalcAncestorSummaries();
             }
         }
 
@@ -73,6 +74,7 @@ namespace NXProject.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(DurationDays));
                 OnPropertyChanged(nameof(DisplayAsMilestone));
+                RecalcAncestorSummaries();
             }
         }
 
@@ -87,6 +89,7 @@ namespace NXProject.ViewModels
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(Finish));
                     OnPropertyChanged(nameof(DisplayAsMilestone));
+                    RecalcAncestorSummaries();
                 }
             }
         }
@@ -150,6 +153,30 @@ namespace NXProject.ViewModels
         {
             get => _task.Notes;
             set { _task.Notes = value; OnPropertyChanged(); }
+        }
+
+        public void ShiftSchedule(int dayDelta)
+        {
+            if (dayDelta == 0)
+                return;
+
+            _task.Start = _task.Start.AddDays(dayDelta);
+            _task.Finish = _task.Finish.AddDays(dayDelta);
+            OnPropertyChanged(nameof(Start));
+            OnPropertyChanged(nameof(Finish));
+            OnPropertyChanged(nameof(DurationDays));
+            OnPropertyChanged(nameof(DisplayAsMilestone));
+            RecalcAncestorSummaries();
+        }
+
+        private void RecalcAncestorSummaries()
+        {
+            var current = _task.Parent;
+            while (current != null)
+            {
+                current.RecalcSummary();
+                current = current.Parent;
+            }
         }
     }
 }

@@ -69,4 +69,12 @@
     <Resource Include="Assets\icon.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\logo-nexus-xdata.enc" />
+  </ItemGroup>
+
+  <Target Name="VerifyProtectedCommunityLogo" BeforeTargets="BeforeBuild">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;$hash = (Get-FileHash -LiteralPath '$(MSBuildProjectDirectory)\Assets\logo-nexus-xdata.enc' -Algorithm SHA256).Hash.ToLowerInvariant(); if ($hash -ne 'c4a70120a719abd854914400c4ff81a709b3bab51e318de1d3bf1b0228a1c0db') { Write-Error 'O logo protegido da Community foi alterado e falhou na validacao de hash.'; exit 1 }&quot;" />
+  </Target>
+
 </Project>
