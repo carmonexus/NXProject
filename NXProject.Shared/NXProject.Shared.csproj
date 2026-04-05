@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>NXProject.Shared</AssemblyName>
+    <RootNamespace>NXProject</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Controls\**\*.cs" />
+    <Compile Remove="ViewModels\**\*.cs" />
+    <None Remove="Themes\**\*.xaml" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,42 @@
+NXProject License 1.0
+
+Copyright (c) Nexus XData Tecnologia Ltda
+Contato: comercial.nexus.xdata@gmail.com
+
+Esta licença é baseada nas licenças MIT e BSD, com cláusula adicional de atribuição à empresa criadora.
+
+1. Permissão de uso
+
+É permitido a qualquer pessoa usar, copiar, estudar, modificar e distribuir este software, inclusive para uso comercial, desde que sejam respeitadas as condições abaixo.
+
+2. Atribuição obrigatória
+
+Toda cópia, redistribuição, publicação, fork ou versão modificada deste software deve manter, de forma visível e legível:
+
+- o nome da empresa criadora: Nexus XData Tecnologia Ltda;
+- a informação de que o software original foi criado pela Nexus XData Tecnologia Ltda;
+- este aviso de licença.
+
+3. Suporte e contribuições financeiras
+
+O uso desta licença não cria obrigação de suporte, manutenção, correção ou evolução do software.
+
+Quem desejar contratar suporte, solicitar melhorias ou realizar donativo para evolução do produto poderá entrar em contato pelo e-mail:
+
+comercial.nexus.xdata@gmail.com
+
+4. Ausência de garantia
+
+ESTE SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA", SEM GARANTIAS DE QUALQUER TIPO, EXPRESSAS OU IMPLÍCITAS, INCLUINDO, SEM LIMITAÇÃO, GARANTIAS DE COMERCIALIZAÇÃO, ADEQUAÇÃO A UMA FINALIDADE ESPECÍFICA E NÃO VIOLAÇÃO.
+
+5. Limitação de responsabilidade
+
+EM NENHUMA HIPÓTESE A NEXUS XDATA TECNOLOGIA LTDA SERÁ RESPONSÁVEL POR QUAISQUER DANOS, PREJUÍZOS, PERDAS, LUCROS CESSANTES, FALHAS, INTERRUPÇÕES OU CONSEQUÊNCIAS DECORRENTES DO USO, DA IMPOSSIBILIDADE DE USO, DA MODIFICAÇÃO OU DA DISTRIBUIÇÃO DESTE SOFTWARE.
+
+6. Descontinuação
+
+A Nexus XData Tecnologia Ltda poderá, a qualquer tempo e a seu exclusivo critério, alterar a estratégia do produto, interromper seu desenvolvimento, suspender sua distribuição ou descontinuá-lo, sem obrigação de continuidade, atualização ou aviso prévio.
+
+7. Aceitação
+
+Ao usar, copiar, modificar ou distribuir este software, o usuário declara estar de acordo com os termos desta licença.

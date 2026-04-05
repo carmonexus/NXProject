@@ -1,0 +1,110 @@
+<Window x:Class="NXProject.Views.CommunityMainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:NXProject.Controls"
+        Title="NXProject Community" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Window.InputBindings>
+        <KeyBinding Key="N" Modifiers="Ctrl" Command="{Binding NewProjectCommand}"/>
+        <KeyBinding Key="O" Modifiers="Ctrl" Command="{Binding OpenProjectCommand}"/>
+        <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding SaveProjectCommand}"/>
+    </Window.InputBindings>
+
+    <DockPanel>
+        <Menu DockPanel.Dock="Top" Background="{StaticResource SurfaceBrush}">
+            <MenuItem Header="_Arquivo">
+                <MenuItem Header="_Novo Projeto" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N"/>
+                <MenuItem Header="_Abrir..." Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O"/>
+                <Separator/>
+                <MenuItem Header="_Salvar" Command="{Binding SaveProjectCommand}" InputGestureText="Ctrl+S"/>
+                <MenuItem Header="Salvar _Como..." Command="{Binding SaveAsProjectCommand}"/>
+                <Separator/>
+                <MenuItem Header="_Importar">
+                    <MenuItem Header="OpenProj (.pod)..." Command="{Binding ImportOpenProjCommand}"/>
+                    <MenuItem Header="MS Project XML..." Command="{Binding ImportMspdiCommand}"/>
+                    <MenuItem Header="Excel XML..." Command="{Binding ImportExcelCommand}"/>
+                </MenuItem>
+                <MenuItem Header="_Exportar">
+                    <MenuItem Header="OpenProj (.pod)..." Command="{Binding ExportOpenProjCommand}"/>
+                    <MenuItem Header="MS Project XML..." Command="{Binding ExportMspdiCommand}"/>
+                    <MenuItem Header="Excel XML..." Command="{Binding ExportExcelCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="CSV..." Command="{Binding ExportCsvCommand}"/>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="Sa_ir" Click="OnExitClick"/>
+            </MenuItem>
+            <MenuItem Header="_Editar">
+                <MenuItem Header="Adicionar _Tarefa" Command="{Binding AddTaskCommand}"/>
+                <MenuItem Header="Adicionar _Subtarefa" Command="{Binding AddSubtaskCommand}"/>
+                <MenuItem Header="E_xcluir Tarefa" Command="{Binding DeleteTaskCommand}"/>
+                <Separator/>
+                <MenuItem Header="Recuar Tarefa" Command="{Binding IndentTaskCommand}"/>
+                <MenuItem Header="Avançar Tarefa" Command="{Binding OutdentTaskCommand}"/>
+            </MenuItem>
+            <MenuItem Header="_Exibir">
+                <MenuItem Header="G_antt" Command="{Binding ShowGanttCommand}"/>
+            </MenuItem>
+            <MenuItem Header="A_juda">
+                <MenuItem Header="_Licença Community..." Click="OnLicenseClick"/>
+                <MenuItem Header="_Sobre..." Click="OnAboutClick"/>
+            </MenuItem>
+        </Menu>
+
+        <ToolBar DockPanel.Dock="Top" Background="{StaticResource SurfaceBrush}" Padding="4,2">
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding NewProjectCommand}" ToolTip="Novo Projeto">
+                <TextBlock Text="📄" FontSize="14"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding OpenProjectCommand}" ToolTip="Abrir">
+                <TextBlock Text="📂" FontSize="14"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding SaveProjectCommand}" ToolTip="Salvar">
+                <TextBlock Text="💾" FontSize="14"/>
+            </Button>
+            <Separator/>
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding AddTaskCommand}" ToolTip="Adicionar Tarefa">
+                <TextBlock Text="➕" FontSize="14"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding DeleteTaskCommand}" ToolTip="Excluir Tarefa">
+                <TextBlock Text="🗑" FontSize="14"/>
+            </Button>
+            <Separator/>
+            <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="4,0,4,0" FontSize="11"/>
+            <ComboBox ItemsSource="{Binding ZoomLevels}" SelectedItem="{Binding SelectedZoom}"
+                      Width="80" VerticalAlignment="Center"/>
+        </ToolBar>
+
+        <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource PrimaryBrush}" Foreground="White" Height="22">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" FontSize="11"/>
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="420" MinWidth="200"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*" MinWidth="200"/>
+            </Grid.ColumnDefinitions>
+
+            <controls:TaskGridControl x:Name="TaskGridCtrl"
+                                      Grid.Column="0"
+                                      DataContext="{Binding}"
+                                      Tasks="{Binding FlatTasks}"/>
+
+            <GridSplitter Grid.Column="1" Width="5"
+                          HorizontalAlignment="Stretch"
+                          Background="{StaticResource BorderBrush}"/>
+
+            <controls:GanttControl x:Name="GanttCtrl"
+                                   Grid.Column="2"
+                                   DataContext="{Binding}"
+                                   Tasks="{Binding FlatTasks}"
+                                   SelectedTask="{Binding SelectedTask, Mode=TwoWay}"
+                                   ProjectStart="{Binding Project.StartDate}"
+                                   ZoomLevel="{Binding SelectedZoom}"/>
+        </Grid>
+    </DockPanel>
+</Window>

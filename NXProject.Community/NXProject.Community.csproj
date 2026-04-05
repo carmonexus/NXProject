@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>NXProject.Community</AssemblyName>
+    <RootNamespace>NXProject</RootNamespace>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <DefineConstants>$(DefineConstants);COMMUNITY</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NXProject.Shared\NXProject.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Include="..\NXProject.Shared\Controls\GanttControl.xaml">
+      <Link>Controls\GanttControl.xaml</Link>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\NXProject.Shared\Controls\TaskGridControl.xaml">
+      <Link>Controls\TaskGridControl.xaml</Link>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\NXProject.Shared\Themes\DefaultTheme.xaml">
+      <Link>Themes\DefaultTheme.xaml</Link>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\NXProject.Shared\Controls\GanttControl.xaml.cs">
+      <Link>Controls\GanttControl.xaml.cs</Link>
+      <DependentUpon>GanttControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="..\NXProject.Shared\Controls\TaskGridControl.xaml.cs">
+      <Link>Controls\TaskGridControl.xaml.cs</Link>
+      <DependentUpon>TaskGridControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="..\NXProject.Shared\Controls\GanttTaskElements.cs">
+      <Link>Controls\GanttTaskElements.cs</Link>
+    </Compile>
+    <Compile Include="..\NXProject.Shared\ViewModels\TaskViewModel.cs">
+      <Link>ViewModels\TaskViewModel.cs</Link>
+    </Compile>
+    <Compile Include="..\NXProject.Shared\ViewModels\GroupViewModels.cs">
+      <Link>ViewModels\GroupViewModels.cs</Link>
+    </Compile>
+    <Compile Include="..\NXProject.Shared\ViewModels\MainViewModel.cs">
+      <Link>ViewModels\MainViewModel.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\icon.ico" />
+  </ItemGroup>
+
+</Project>

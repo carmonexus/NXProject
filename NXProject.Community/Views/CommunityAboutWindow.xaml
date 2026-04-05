@@ -1,0 +1,72 @@
+<Window x:Class="NXProject.Views.CommunityAboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sobre o NXProject Community"
+        Width="580"
+        Height="360"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="White">
+
+    <Border Padding="24">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="NXProject Community"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           Foreground="#2B579A"
+                           Margin="0,0,0,10"/>
+
+                <TextBlock Text="Edicao comunitaria do NXProject para gerenciamento de tarefas, Gantt e importacao/exportacao."
+                           FontSize="13"
+                           Foreground="#444"
+                           Margin="0,0,0,16"
+                           TextWrapping="Wrap"/>
+
+                <Border Background="#F5F7FA"
+                        BorderBrush="#D9E1EA"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="14">
+                    <StackPanel>
+                        <TextBlock Text="Empresa"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="Nexus XData Tecnologia Ltda"
+                                   Margin="0,2,0,10"/>
+
+                        <TextBlock Text="Direitos da Community"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="Uso sujeito a licenca propria da edicao Community. Recursos pagos e proprietarios nao fazem parte desta edicao."
+                                   Margin="0,2,0,10"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBlock Text="Contato"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="E-mail: comercial.nexus.xdata@gamail.com"
+                                   Margin="0,2,0,4"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock>
+                            <Hyperlink Click="OnEmailClick">comercial.nexus.xdata@gamail.com</Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,16,0,0">
+                <Button Content="Fechar"
+                        Width="90"
+                        Height="30"
+                        IsDefault="True"
+                        Click="OnCloseClick"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,99 @@
+<Window x:Class="NXProject.Views.CommunityLicenseWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Licenca de Uso - Community"
+        Width="700"
+        Height="540"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanMinimize"
+        Background="White">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="0,0,0,16">
+            <TextBlock Text="Licenca de Uso do NXProject Community"
+                       FontSize="24"
+                       FontWeight="SemiBold"
+                       Foreground="#2B579A"/>
+            <TextBlock Text="Esta edicao Community possui licenca e direitos proprios, diferentes da versao paga do NXProject."
+                       Margin="0,8,0,0"
+                       TextWrapping="Wrap"
+                       Foreground="#444"/>
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                BorderBrush="#D9E1EA"
+                BorderThickness="1"
+                CornerRadius="8"
+                Background="#F8FAFC"
+                Padding="14">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="Empresa: Nexus XData Tecnologia Ltda"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,10"/>
+                    <TextBlock Text="Contato: comercial.nexus.xdata@gamail.com"
+                               Margin="0,0,0,16"/>
+
+                    <TextBlock Text="Resumo da licenca Community"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+Esta edicao Community pode ser usada gratuitamente conforme os termos desta licenca.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+O codigo, os direitos e os recursos desta edicao Community nao se confundem com a versao comercial/proprietaria do NXProject.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+Ao redistribuir, publicar ou referenciar esta edicao, deve ser mantido o credito a Nexus XData Tecnologia Ltda.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+Recursos pagos, suporte oficial, impressao, PDF, calendario e demais modulos comerciais podem existir apenas na versao proprietaria, a criterio da empresa.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+Esta edicao e fornecida no estado em que se encontra, sem garantias, sem obrigacao de suporte e sem responsabilidade por defeitos, falhas ou prejuizos decorrentes do uso.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+A Nexus XData Tecnologia Ltda podera alterar, limitar, evoluir ou descontinuar a edicao Community e seus recursos a qualquer tempo.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+Quem desejar contratar suporte ou migrar para a versao paga podera entrar em contato pelo e-mail comercial.nexus.xdata@gamail.com.
+                    </TextBlock>
+
+                    <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" FontStyle="Italic" Foreground="#555">
+Ao clicar em "Aceitar e continuar", voce declara ciencia e concordancia com os termos desta licenca Community.
+                    </TextBlock>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Content="Sair"
+                    Width="100"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="OnDeclineClick"/>
+            <Button Content="Aceitar e continuar"
+                    Width="160"
+                    Height="32"
+                    IsDefault="True"
+                    Click="OnAcceptClick"/>
+        </StackPanel>
+    </Grid>
+</Window>

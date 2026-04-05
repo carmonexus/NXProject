@@ -1,0 +1,205 @@
+﻿<UserControl x:Class="NXProject.Controls.TaskGridControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:NXProject.ViewModels">
+
+    <DataGrid x:Name="TaskGrid"
+              ItemsSource="{Binding Tasks, RelativeSource={RelativeSource AncestorType=UserControl}}"
+              SelectedItem="{Binding SelectedTask, Mode=TwoWay}"
+              AutoGenerateColumns="False"
+              CanUserAddRows="False"
+              CanUserDeleteRows="False"
+              ScrollViewer.CanContentScroll="False"
+              SelectionUnit="FullRow"
+              Background="White"
+              BorderThickness="0"
+              RowHeight="22"
+              ColumnHeaderHeight="40">
+
+        <DataGrid.Columns>
+
+            <!-- ID -->
+            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="35" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="TextAlignment" Value="Center"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+
+            <!-- Nome (com indentação) -->
+            <DataGridTemplateColumn Header="Nome da Tarefa" Width="*" MinWidth="120">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate DataType="{x:Type vm:TaskViewModel}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{Binding Indent}"/>
+                                <ColumnDefinition Width="14"/><!-- botão expand -->
+                                <ColumnDefinition Width="Auto"/><!-- ícone tipo -->
+                                <ColumnDefinition Width="*"/><!-- nome -->
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Botão expand/collapse — só visível em tarefas-sumário -->
+                            <ToggleButton Grid.Column="1"
+                                          IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Center"
+                                          Width="14" Height="14"
+                                          Padding="0" BorderThickness="0"
+                                          Background="Transparent"
+                                          Cursor="Hand"
+                                          Focusable="False">
+                                <ToggleButton.Style>
+                                    <Style TargetType="ToggleButton">
+                                        <Setter Property="Visibility" Value="Hidden"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <TextBlock x:Name="Arrow"
+                                                               Text="▶"
+                                                               FontSize="9"
+                                                               Foreground="#2B579A"
+                                                               VerticalAlignment="Center"
+                                                               HorizontalAlignment="Center"/>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsChecked" Value="True">
+                                                            <Setter TargetName="Arrow" Property="Text" Value="▼"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSummary}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ToggleButton.Style>
+                            </ToggleButton>
+
+                            <!-- Ícone: milestone ou summary -->
+                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="0,0,3,0"
+                                       FontSize="10">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value=""/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DisplayAsMilestone}" Value="True">
+                                                <Setter Property="Text" Value="♦"/>
+                                                <Setter Property="Foreground" Value="Goldenrod"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <!-- Nome -->
+                            <TextBlock Grid.Column="3" Text="{Binding Name}" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSummary}" Value="True">
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                    <DataTemplate DataType="{x:Type vm:TaskViewModel}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{Binding Indent}"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                     BorderThickness="0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
+            </DataGridTemplateColumn>
+
+            <!-- Duração -->
+            <DataGridTextColumn Header="Dur.(d)" Binding="{Binding DurationDays}" Width="55">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="TextAlignment" Value="Center"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+
+            <!-- Início -->
+            <DataGridTextColumn Header="Início" Binding="{Binding Start, StringFormat=d}" Width="100">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                        <Setter Property="Margin" Value="3,0"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+
+            <!-- Fim -->
+            <DataGridTextColumn Header="Fim" Binding="{Binding Finish, StringFormat=d}" Width="100">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                        <Setter Property="Margin" Value="3,0"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+
+            <!-- % Completo -->
+            <DataGridTemplateColumn Header="% Compl." Width="70">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate DataType="{x:Type vm:TaskViewModel}">
+                        <Grid Margin="2,1">
+                            <ProgressBar Value="{Binding PercentComplete}" Maximum="100" Height="12"
+                                         Background="#E0E0E0" Foreground="#217346"/>
+                            <TextBlock Text="{Binding PercentComplete, StringFormat={}{0:0}%}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       FontSize="9" Foreground="Black"/>
+                        </Grid>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+
+            <!-- Predecessoras -->
+            <DataGridTextColumn Header="Pred." Binding="{Binding PredecessorsText}" Width="55">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                        <Setter Property="Margin" Value="3,0"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+
+            <!-- Recursos -->
+            <DataGridTextColumn Header="Recursos" Binding="{Binding ResourcesText, Mode=OneWay}" Width="100" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                        <Setter Property="Margin" Value="3,0"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+
+            <!-- Sprint -->
+            <DataGridTextColumn Header="Sprint" Binding="{Binding SprintNumber}" Width="45" IsReadOnly="True">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="TextAlignment" Value="Center"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+
+        </DataGrid.Columns>
+
+    </DataGrid>
+</UserControl>

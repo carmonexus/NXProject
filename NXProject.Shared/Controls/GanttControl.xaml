@@ -1,0 +1,32 @@
+﻿<UserControl x:Class="NXProject.Controls.GanttControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="White">
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition x:Name="HeaderRow" Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabeçalho de datas (altura sincronizada com o header do DataGrid) -->
+        <Canvas x:Name="HeaderCanvas" Grid.Row="0" Background="#E8E8E8" ClipToBounds="True"/>
+
+        <!-- Scroll horizontal compartilhado; vertical sincronizado com o DataGrid -->
+        <ScrollViewer Grid.Row="1" x:Name="GanttScroll"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      CanContentScroll="False"
+                      ScrollChanged="OnScrollChanged">
+            <Canvas x:Name="GanttCanvas"
+                    ClipToBounds="True"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Left"
+                    MouseDown="OnCanvasMouseDown"
+                    MouseMove="OnCanvasMouseMove"
+                    MouseUp="OnCanvasMouseUp"
+                    MouseLeave="OnCanvasMouseLeave"/>
+        </ScrollViewer>
+
+    </Grid>
+</UserControl>
