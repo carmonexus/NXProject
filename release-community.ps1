@@ -51,10 +51,21 @@ Como executar:
 
 Requisito:
 - Microsoft .NET Desktop Runtime 10.0 para Windows
+- Download oficial do runtime e SDK: https://dotnet.microsoft.com/en-us/download/dotnet/10.0
+- Download do VS Code: https://code.visualstudio.com/download
 
 Se o aplicativo nao abrir por falta do .NET:
 1. Instale o runtime ".NET Desktop Runtime 10.0 (x64)".
 2. Depois execute novamente o NXProject.Community.exe.
+
+Se voce preferir compilar no VS Code em vez de usar o .zip:
+1. Instale o ".NET 10 SDK".
+2. Instale o VS Code em https://code.visualstudio.com/download
+3. Abra a pasta do repositorio no VS Code.
+4. Abra o terminal integrado.
+5. Execute .\setup-community-vscode.ps1
+6. Execute .\build-community.ps1 -Configuration Release
+7. O executavel sera gerado em NXProject.Community\bin\Release\net10.0-windows\NXProject.Community.exe
 
 Sugestao para distribuicao:
 - Publique este .zip junto com uma pagina de download e um link para instalacao do .NET Desktop Runtime.
