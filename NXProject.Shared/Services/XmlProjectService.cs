@@ -12,12 +12,15 @@ namespace NXProject.Services
     public static class XmlProjectService
     {
         private static readonly XNamespace NS = "http://schemas.microsoft.com/project";
+        private static readonly XNamespace EXT = "urn:nxproject:extensions:v1";
 
         public static void Save(Project project, string filePath)
         {
+            var sprintProfile = project.GetSprintSettingsProfile();
             var doc = new XDocument(
                 new XDeclaration("1.0", "utf-8", "yes"),
                 new XElement(NS + "Project",
+                    new XAttribute(XNamespace.Xmlns + "nx", EXT),
                     new XElement(NS + "Name", project.Name),
                     new XElement(NS + "Author", project.Author ?? ""),
                     new XElement(NS + "StartDate", project.StartDate.ToString("yyyy-MM-ddTHH:mm:ss")),
@@ -27,11 +30,26 @@ namespace NXProject.Services
                     new XElement(NS + "LowDaysPerSfp", project.LowDaysPerSfp),
                     new XElement(NS + "MediumDaysPerSfp", project.MediumDaysPerSfp),
                     new XElement(NS + "HighDaysPerSfp", project.HighDaysPerSfp),
+                    SaveSprintSettingsMetadata(sprintProfile),
                     SaveResources(project.Resources),
                     SaveTasks(project.Tasks)
                 )
             );
             doc.Save(filePath);
+        }
+
+        private static XElement SaveSprintSettingsMetadata(SprintSettingsProfile profile)
+        {
+            return new XElement(EXT + "NXProjectMetadata",
+                new XElement(EXT + "SprintSettings",
+                    new XElement(EXT + "SprintDurationDays", profile.SprintDurationDays),
+                    new XElement(EXT + "FirstSprintNumber", profile.FirstSprintNumber),
+                    new XElement(EXT + "SprintNumberingMode", profile.SprintNumberingMode),
+                    new XElement(EXT + "LowDaysPerSfp", profile.LowDaysPerSfp),
+                    new XElement(EXT + "MediumDaysPerSfp", profile.MediumDaysPerSfp),
+                    new XElement(EXT + "HighDaysPerSfp", profile.HighDaysPerSfp)
+                )
+            );
         }
 
         private static XElement SaveResources(ObservableCollection<Resource> resources)
@@ -123,6 +141,10 @@ namespace NXProject.Services
                 FilePath = filePath
             };
 
+            var extendedSprintSettings = LoadSprintSettingsMetadata(root);
+            if (extendedSprintSettings != null)
+                project.ApplySprintSettingsProfile(extendedSprintSettings);
+
             var resEl = root.Element(NS + "Resources");
             if (resEl != null)
                 foreach (var r in resEl.Elements(NS + "Resource"))
@@ -134,6 +156,24 @@ namespace NXProject.Services
                     project.Tasks.Add(LoadTask(t, null));
 
             return project;
+        }
+
+        private static SprintSettingsProfile? LoadSprintSettingsMetadata(XElement root)
+        {
+            var metadata = root.Element(EXT + "NXProjectMetadata");
+            var sprintSettings = metadata?.Element(EXT + "SprintSettings");
+            if (sprintSettings == null)
+                return null;
+
+            return new SprintSettingsProfile
+            {
+                SprintDurationDays = int.TryParse(sprintSettings.Element(EXT + "SprintDurationDays")?.Value, out var durationDays) ? durationDays : 14,
+                FirstSprintNumber = int.TryParse(sprintSettings.Element(EXT + "FirstSprintNumber")?.Value, out var firstSprintNumber) ? firstSprintNumber : 1,
+                SprintNumberingMode = sprintSettings.Element(EXT + "SprintNumberingMode")?.Value ?? "Sequencial",
+                LowDaysPerSfp = double.TryParse(sprintSettings.Element(EXT + "LowDaysPerSfp")?.Value, out var lowDays) ? lowDays : 1.0,
+                MediumDaysPerSfp = double.TryParse(sprintSettings.Element(EXT + "MediumDaysPerSfp")?.Value, out var mediumDays) ? mediumDays : 1.0,
+                HighDaysPerSfp = double.TryParse(sprintSettings.Element(EXT + "HighDaysPerSfp")?.Value, out var highDays) ? highDays : 1.0
+            };
         }
 
         private static Resource LoadResource(XElement el) => new()

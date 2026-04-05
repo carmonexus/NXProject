@@ -13,6 +13,9 @@ namespace NXProject.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
+        private readonly string _sprintSettingsStorageKey;
+        private bool _isApplyingProjectSprintSettings;
+
         [ObservableProperty] private Project _project = new();
         [ObservableProperty] private string _statusMessage = "Pronto";
         [ObservableProperty] private int _selectedViewIndex = 0;
@@ -49,8 +52,12 @@ namespace NXProject.ViewModels
 
         private int _nextId = 1;
 
-        public MainViewModel()
+        public MainViewModel(string sprintSettingsStorageKey = "NXProject.Community")
         {
+            _sprintSettingsStorageKey = string.IsNullOrWhiteSpace(sprintSettingsStorageKey)
+                ? "NXProject.Community"
+                : sprintSettingsStorageKey.Trim();
+
             // Projeto de exemplo
             NewProject();
         }
@@ -122,6 +129,9 @@ namespace NXProject.ViewModels
             }
 
             Project.SprintDurationDays = normalizedValue;
+            if (_isApplyingProjectSprintSettings)
+                return;
+
             Project.IsDirty = true;
             RebuildFlatTasks();
         }
@@ -136,6 +146,9 @@ namespace NXProject.ViewModels
             }
 
             Project.FirstSprintNumber = normalizedValue;
+            if (_isApplyingProjectSprintSettings)
+                return;
+
             Project.IsDirty = true;
             RebuildFlatTasks();
         }
@@ -150,6 +163,9 @@ namespace NXProject.ViewModels
             }
 
             Project.SprintNumberingMode = normalizedValue;
+            if (_isApplyingProjectSprintSettings)
+                return;
+
             Project.IsDirty = true;
             RebuildFlatTasks();
         }
@@ -164,6 +180,9 @@ namespace NXProject.ViewModels
             }
 
             Project.LowDaysPerSfp = normalizedValue;
+            if (_isApplyingProjectSprintSettings)
+                return;
+
             Project.IsDirty = true;
             RebuildFlatTasks();
         }
@@ -178,6 +197,9 @@ namespace NXProject.ViewModels
             }
 
             Project.MediumDaysPerSfp = normalizedValue;
+            if (_isApplyingProjectSprintSettings)
+                return;
+
             Project.IsDirty = true;
             RebuildFlatTasks();
         }
@@ -192,6 +214,9 @@ namespace NXProject.ViewModels
             }
 
             Project.HighDaysPerSfp = normalizedValue;
+            if (_isApplyingProjectSprintSettings)
+                return;
+
             Project.IsDirty = true;
             RebuildFlatTasks();
         }
@@ -210,13 +235,10 @@ namespace NXProject.ViewModels
         [RelayCommand]
         private void NewProject()
         {
-            Project = new Project { Name = "Novo Projeto", StartDate = DateTime.Today };
-            SprintDurationDays = Project.SprintDurationDays;
-            FirstSprintNumber = Project.FirstSprintNumber;
-            SprintNumberingMode = Project.SprintNumberingMode;
-            LowDaysPerSfp = Project.LowDaysPerSfp;
-            MediumDaysPerSfp = Project.MediumDaysPerSfp;
-            HighDaysPerSfp = Project.HighDaysPerSfp;
+            var project = new Project { Name = "Novo Projeto", StartDate = DateTime.Today };
+            project.ApplySprintSettingsProfile(SprintSettingsStore.Load(_sprintSettingsStorageKey));
+            Project = project;
+            ApplyProjectSprintSettingsToViewModel(project);
             _nextId = 1;
             _collapsedTaskIds.Clear();
             SelectedTask = null;
@@ -269,12 +291,7 @@ namespace NXProject.ViewModels
                 {
                     var project = XmlProjectService.Load(dlg.FileName);
                     Project = project;
-                    SprintDurationDays = project.SprintDurationDays;
-                    FirstSprintNumber = project.FirstSprintNumber;
-                    SprintNumberingMode = project.SprintNumberingMode;
-                    LowDaysPerSfp = project.LowDaysPerSfp;
-                    MediumDaysPerSfp = project.MediumDaysPerSfp;
-                    HighDaysPerSfp = project.HighDaysPerSfp;
+                    ApplyProjectSprintSettingsToViewModel(project);
                     _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
                     RebuildFlatTasks();
                     StatusMessage = $"Projeto aberto: {dlg.FileName}";
@@ -299,12 +316,7 @@ namespace NXProject.ViewModels
             {
                 var project = OpenProjImportService.Import(dlg.FileName);
                 Project = project;
-                SprintDurationDays = project.SprintDurationDays;
-                FirstSprintNumber = project.FirstSprintNumber;
-                SprintNumberingMode = project.SprintNumberingMode;
-                LowDaysPerSfp = project.LowDaysPerSfp;
-                MediumDaysPerSfp = project.MediumDaysPerSfp;
-                HighDaysPerSfp = project.HighDaysPerSfp;
+                ApplyProjectSprintSettingsToViewModel(project);
                 _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
                 RebuildFlatTasks();
                 StatusMessage = $"OpenProj importado: {dlg.FileName}";
@@ -328,12 +340,7 @@ namespace NXProject.ViewModels
             {
                 var project = MspdiImportService.Import(dlg.FileName);
                 Project = project;
-                SprintDurationDays = project.SprintDurationDays;
-                FirstSprintNumber = project.FirstSprintNumber;
-                SprintNumberingMode = project.SprintNumberingMode;
-                LowDaysPerSfp = project.LowDaysPerSfp;
-                MediumDaysPerSfp = project.MediumDaysPerSfp;
-                HighDaysPerSfp = project.HighDaysPerSfp;
+                ApplyProjectSprintSettingsToViewModel(project);
                 _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
                 RebuildFlatTasks();
                 StatusMessage = $"MS Project importado: {dlg.FileName}";
@@ -357,12 +364,7 @@ namespace NXProject.ViewModels
             {
                 var project = ExcelXmlService.Import(dlg.FileName);
                 Project = project;
-                SprintDurationDays = project.SprintDurationDays;
-                FirstSprintNumber = project.FirstSprintNumber;
-                SprintNumberingMode = project.SprintNumberingMode;
-                LowDaysPerSfp = project.LowDaysPerSfp;
-                MediumDaysPerSfp = project.MediumDaysPerSfp;
-                HighDaysPerSfp = project.HighDaysPerSfp;
+                ApplyProjectSprintSettingsToViewModel(project);
                 _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
                 RebuildFlatTasks();
                 StatusMessage = $"Excel importado: {dlg.FileName}";
@@ -495,6 +497,20 @@ namespace NXProject.ViewModels
             catch (Exception ex)
             {
                 MessageBox.Show($"Erro ao exportar Excel:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        [RelayCommand]
+        private void SaveSprintSettingsAsDefault()
+        {
+            try
+            {
+                SprintSettingsStore.Save(Project.GetSprintSettingsProfile(), _sprintSettingsStorageKey);
+                StatusMessage = "Configuracao de sprint gravada para novos projetos";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro ao salvar configuracao padrao de sprint:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -814,6 +830,24 @@ namespace NXProject.ViewModels
             foreach (var child in task.Children)
                 foreach (var ft in FlattenTask(child))
                     yield return ft;
+        }
+
+        private void ApplyProjectSprintSettingsToViewModel(Project project)
+        {
+            _isApplyingProjectSprintSettings = true;
+            try
+            {
+                SprintDurationDays = project.SprintDurationDays;
+                FirstSprintNumber = project.FirstSprintNumber;
+                SprintNumberingMode = project.SprintNumberingMode;
+                LowDaysPerSfp = project.LowDaysPerSfp;
+                MediumDaysPerSfp = project.MediumDaysPerSfp;
+                HighDaysPerSfp = project.HighDaysPerSfp;
+            }
+            finally
+            {
+                _isApplyingProjectSprintSettings = false;
+            }
         }
 
         private bool MoveTaskByOffset(ProjectTask task, int offset)

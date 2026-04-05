@@ -62,7 +62,7 @@ Empresas com mais de 20 funcionarios deverao solicitar licenca pelo e-mail comer
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Para empresas com mais de 20 funcionarios, o valor padrao atual da licenca Community e de USD 1 por usuario por ano, podendo variar conforme a contratacao de suporte.
+Para empresas com mais de 20 funcionarios, o valor padrao atual da licenca Community e de USD 10 por usuario por ano, podendo variar conforme a contratacao de suporte.
                     </TextBlock>
 
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">

@@ -24,7 +24,7 @@ namespace NXProject.Views
         {
             InitializeComponent();
             StatusLogoImage.Source = ProtectedLogoProvider.GetLogoImage();
-            var vm = new MainViewModel();
+            var vm = new MainViewModel("NXProject.Community");
             DataContext = vm;
             var syncingVerticalScroll = false;
 

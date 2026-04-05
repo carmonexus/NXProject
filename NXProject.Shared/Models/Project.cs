@@ -3,6 +3,16 @@ using System.Collections.ObjectModel;
 
 namespace NXProject.Models
 {
+    public class SprintSettingsProfile
+    {
+        public int SprintDurationDays { get; set; } = 14;
+        public int FirstSprintNumber { get; set; } = 1;
+        public string SprintNumberingMode { get; set; } = "Sequencial";
+        public double LowDaysPerSfp { get; set; } = 1.0;
+        public double MediumDaysPerSfp { get; set; } = 1.0;
+        public double HighDaysPerSfp { get; set; } = 1.0;
+    }
+
     public class Project
     {
         public string Name { get; set; } = "Novo Projeto";
@@ -35,5 +45,33 @@ namespace NXProject.Models
         public string? FilePath { get; set; }
 
         public bool IsDirty { get; set; } = false;
+
+        public SprintSettingsProfile GetSprintSettingsProfile()
+        {
+            return new SprintSettingsProfile
+            {
+                SprintDurationDays = SprintDurationDays,
+                FirstSprintNumber = FirstSprintNumber,
+                SprintNumberingMode = SprintNumberingMode,
+                LowDaysPerSfp = LowDaysPerSfp,
+                MediumDaysPerSfp = MediumDaysPerSfp,
+                HighDaysPerSfp = HighDaysPerSfp
+            };
+        }
+
+        public void ApplySprintSettingsProfile(SprintSettingsProfile? profile)
+        {
+            if (profile == null)
+                return;
+
+            SprintDurationDays = Math.Max(1, profile.SprintDurationDays);
+            FirstSprintNumber = Math.Max(1, profile.FirstSprintNumber);
+            SprintNumberingMode = string.IsNullOrWhiteSpace(profile.SprintNumberingMode)
+                ? "Sequencial"
+                : profile.SprintNumberingMode.Trim();
+            LowDaysPerSfp = Math.Max(0, profile.LowDaysPerSfp);
+            MediumDaysPerSfp = Math.Max(0, profile.MediumDaysPerSfp);
+            HighDaysPerSfp = Math.Max(0, profile.HighDaysPerSfp);
+        }
     }
 }
