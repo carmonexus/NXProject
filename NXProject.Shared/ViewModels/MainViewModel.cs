@@ -18,10 +18,21 @@ namespace NXProject.ViewModels
         [ObservableProperty] private int _selectedViewIndex = 0;
         [ObservableProperty] private string _selectedZoom = "Semana";
         [ObservableProperty] private TaskViewModel? _selectedTask;
+        [ObservableProperty] private int _sprintDurationDays = 14;
+        [ObservableProperty] private int _firstSprintNumber = 1;
+        [ObservableProperty] private string _sprintNumberingMode = "Sequencial";
+        [ObservableProperty] private double _lowDaysPerSfp = 1.0;
+        [ObservableProperty] private double _mediumDaysPerSfp = 1.0;
+        [ObservableProperty] private double _highDaysPerSfp = 1.0;
 
         public ObservableCollection<string> ZoomLevels { get; } = new()
         {
             "Dia", "Semana", "Mês", "Trimestre"
+        };
+
+        public ObservableCollection<string> SprintNumberingModes { get; } = new()
+        {
+            "Sequencial", "Par", "Impar"
         };
 
         // Lista plana de tarefas para o DataGrid (com hierarquia via indentação)
@@ -63,7 +74,7 @@ namespace NXProject.ViewModels
 
         private void AddFlatRecursive(ProjectTask task, int depth)
         {
-            var vm = new TaskViewModel(task, depth);
+            var vm = new TaskViewModel(task, depth, LowDaysPerSfp, MediumDaysPerSfp, HighDaysPerSfp);
             vm.IsSelected = SelectedTask?.Model == task;
             vm.IsExpanded = !_collapsedTaskIds.Contains(task.Id);
 
@@ -92,14 +103,97 @@ namespace NXProject.ViewModels
 
         private void RecalcSprints()
         {
-            var sprintDays = Project.SprintDurationDays;
             var projectStart = Project.StartDate;
 
             foreach (var vm in FlatTasks)
             {
-                var dayOffset = (vm.Start - projectStart).TotalDays;
-                vm.SprintNumber = dayOffset < 0 ? 0 : (int)(dayOffset / sprintDays) + 1;
+                var sprintIndex = GetSprintIndex(vm.Start, projectStart);
+                vm.SprintNumber = sprintIndex < 0 ? 0 : GetSprintNumberFromIndex(sprintIndex);
             }
+        }
+
+        partial void OnSprintDurationDaysChanged(int value)
+        {
+            var normalizedValue = Math.Max(1, value);
+            if (value != normalizedValue)
+            {
+                SprintDurationDays = normalizedValue;
+                return;
+            }
+
+            Project.SprintDurationDays = normalizedValue;
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+        }
+
+        partial void OnFirstSprintNumberChanged(int value)
+        {
+            var normalizedValue = Math.Max(1, value);
+            if (value != normalizedValue)
+            {
+                FirstSprintNumber = normalizedValue;
+                return;
+            }
+
+            Project.FirstSprintNumber = normalizedValue;
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+        }
+
+        partial void OnSprintNumberingModeChanged(string value)
+        {
+            var normalizedValue = SprintNumberingModes.Contains(value) ? value : "Sequencial";
+            if (!string.Equals(value, normalizedValue, StringComparison.Ordinal))
+            {
+                SprintNumberingMode = normalizedValue;
+                return;
+            }
+
+            Project.SprintNumberingMode = normalizedValue;
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+        }
+
+        partial void OnLowDaysPerSfpChanged(double value)
+        {
+            var normalizedValue = value < 0 ? 0 : value;
+            if (Math.Abs(value - normalizedValue) > double.Epsilon)
+            {
+                LowDaysPerSfp = normalizedValue;
+                return;
+            }
+
+            Project.LowDaysPerSfp = normalizedValue;
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+        }
+
+        partial void OnMediumDaysPerSfpChanged(double value)
+        {
+            var normalizedValue = value < 0 ? 0 : value;
+            if (Math.Abs(value - normalizedValue) > double.Epsilon)
+            {
+                MediumDaysPerSfp = normalizedValue;
+                return;
+            }
+
+            Project.MediumDaysPerSfp = normalizedValue;
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+        }
+
+        partial void OnHighDaysPerSfpChanged(double value)
+        {
+            var normalizedValue = value < 0 ? 0 : value;
+            if (Math.Abs(value - normalizedValue) > double.Epsilon)
+            {
+                HighDaysPerSfp = normalizedValue;
+                return;
+            }
+
+            Project.HighDaysPerSfp = normalizedValue;
+            Project.IsDirty = true;
+            RebuildFlatTasks();
         }
 
         partial void OnSelectedTaskChanged(TaskViewModel? oldValue, TaskViewModel? newValue)
@@ -117,6 +211,12 @@ namespace NXProject.ViewModels
         private void NewProject()
         {
             Project = new Project { Name = "Novo Projeto", StartDate = DateTime.Today };
+            SprintDurationDays = Project.SprintDurationDays;
+            FirstSprintNumber = Project.FirstSprintNumber;
+            SprintNumberingMode = Project.SprintNumberingMode;
+            LowDaysPerSfp = Project.LowDaysPerSfp;
+            MediumDaysPerSfp = Project.MediumDaysPerSfp;
+            HighDaysPerSfp = Project.HighDaysPerSfp;
             _nextId = 1;
             _collapsedTaskIds.Clear();
             SelectedTask = null;
@@ -169,6 +269,12 @@ namespace NXProject.ViewModels
                 {
                     var project = XmlProjectService.Load(dlg.FileName);
                     Project = project;
+                    SprintDurationDays = project.SprintDurationDays;
+                    FirstSprintNumber = project.FirstSprintNumber;
+                    SprintNumberingMode = project.SprintNumberingMode;
+                    LowDaysPerSfp = project.LowDaysPerSfp;
+                    MediumDaysPerSfp = project.MediumDaysPerSfp;
+                    HighDaysPerSfp = project.HighDaysPerSfp;
                     _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
                     RebuildFlatTasks();
                     StatusMessage = $"Projeto aberto: {dlg.FileName}";
@@ -193,6 +299,12 @@ namespace NXProject.ViewModels
             {
                 var project = OpenProjImportService.Import(dlg.FileName);
                 Project = project;
+                SprintDurationDays = project.SprintDurationDays;
+                FirstSprintNumber = project.FirstSprintNumber;
+                SprintNumberingMode = project.SprintNumberingMode;
+                LowDaysPerSfp = project.LowDaysPerSfp;
+                MediumDaysPerSfp = project.MediumDaysPerSfp;
+                HighDaysPerSfp = project.HighDaysPerSfp;
                 _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
                 RebuildFlatTasks();
                 StatusMessage = $"OpenProj importado: {dlg.FileName}";
@@ -216,6 +328,12 @@ namespace NXProject.ViewModels
             {
                 var project = MspdiImportService.Import(dlg.FileName);
                 Project = project;
+                SprintDurationDays = project.SprintDurationDays;
+                FirstSprintNumber = project.FirstSprintNumber;
+                SprintNumberingMode = project.SprintNumberingMode;
+                LowDaysPerSfp = project.LowDaysPerSfp;
+                MediumDaysPerSfp = project.MediumDaysPerSfp;
+                HighDaysPerSfp = project.HighDaysPerSfp;
                 _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
                 RebuildFlatTasks();
                 StatusMessage = $"MS Project importado: {dlg.FileName}";
@@ -239,6 +357,12 @@ namespace NXProject.ViewModels
             {
                 var project = ExcelXmlService.Import(dlg.FileName);
                 Project = project;
+                SprintDurationDays = project.SprintDurationDays;
+                FirstSprintNumber = project.FirstSprintNumber;
+                SprintNumberingMode = project.SprintNumberingMode;
+                LowDaysPerSfp = project.LowDaysPerSfp;
+                MediumDaysPerSfp = project.MediumDaysPerSfp;
+                HighDaysPerSfp = project.HighDaysPerSfp;
                 _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
                 RebuildFlatTasks();
                 StatusMessage = $"Excel importado: {dlg.FileName}";
@@ -567,6 +691,34 @@ namespace NXProject.ViewModels
             return true;
         }
 
+        [RelayCommand]
+        private void LinkTasksSequentially()
+        {
+            var orderedTasks = AllTasks()
+                .Where(task => !task.IsSummary)
+                .ToList();
+
+            if (orderedTasks.Count < 2)
+            {
+                StatusMessage = "Adicione pelo menos duas atividades para encadear.";
+                return;
+            }
+
+            ProjectTask? previousTask = null;
+            foreach (var task in orderedTasks)
+            {
+                task.PredecessorIds.Clear();
+                if (previousTask != null)
+                    task.PredecessorIds.Add(previousTask.Id);
+
+                previousTask = task;
+            }
+
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+            StatusMessage = "Atividades encadeadas em sequência.";
+        }
+
         [RelayCommand] private void Undo() { StatusMessage = "Desfazer (em desenvolvimento)"; }
         [RelayCommand] private void Redo() { StatusMessage = "Refazer (em desenvolvimento)"; }
         [RelayCommand] private void ShowGantt() { SelectedViewIndex = 0; }
@@ -576,7 +728,7 @@ namespace NXProject.ViewModels
         [RelayCommand] private void ShowPert() { SelectedViewIndex = 3; }
         [RelayCommand] private void ProjectInfo() { StatusMessage = "Informações do projeto (em desenvolvimento)"; }
         [RelayCommand] private void EditCalendar() { StatusMessage = "Editor de calendário (em desenvolvimento)"; }
-        [RelayCommand] private void SprintSettings() { StatusMessage = "Configurações de sprint (em desenvolvimento)"; }
+        [RelayCommand] private void SprintSettings() { StatusMessage = "Abra Configurações de Sprint pelo menu Projeto."; }
         [RelayCommand] private void ManageResources() { StatusMessage = "Gerenciar recursos (em desenvolvimento)"; }
         [RelayCommand] private void ReportTasks() { StatusMessage = "Relatório de tarefas (em desenvolvimento)"; }
         [RelayCommand] private void ReportResources() { StatusMessage = "Relatório de recursos (em desenvolvimento)"; }
@@ -591,17 +743,23 @@ namespace NXProject.ViewModels
             var bySprint = new Dictionary<int, List<TaskViewModel>>();
             foreach (var vm in FlatTasks)
             {
-                if (!bySprint.ContainsKey(vm.SprintNumber))
-                    bySprint[vm.SprintNumber] = new();
-                bySprint[vm.SprintNumber].Add(vm);
+                var sprintIndex = GetSprintIndex(vm.Start, Project.StartDate);
+                if (sprintIndex < 0)
+                    continue;
+
+                if (!bySprint.ContainsKey(sprintIndex))
+                    bySprint[sprintIndex] = new();
+                bySprint[sprintIndex].Add(vm);
             }
             foreach (var kv in bySprint.OrderBy(x => x.Key))
             {
-                var sprintStart = Project.StartDate.AddDays((kv.Key - 1) * Project.SprintDurationDays);
-                var sprintEnd = sprintStart.AddDays(Project.SprintDurationDays - 1);
+                var sprintIndex = kv.Key;
+                var sprintStart = Project.StartDate.AddDays(sprintIndex * Math.Max(1, SprintDurationDays));
+                var sprintEnd = sprintStart.AddDays(Math.Max(1, SprintDurationDays) - 1);
+                var sprintNumber = GetSprintNumberFromIndex(sprintIndex);
                 SprintGroups.Add(new SprintGroup
                 {
-                    Header = $"Sprint {kv.Key}  ({sprintStart:dd/MM/yy} – {sprintEnd:dd/MM/yy})",
+                    Header = $"Sprint {sprintNumber}  ({sprintStart:dd/MM/yy} – {sprintEnd:dd/MM/yy})",
                     Tasks = new ObservableCollection<TaskViewModel>(kv.Value)
                 });
             }
@@ -635,7 +793,7 @@ namespace NXProject.ViewModels
                 // Verifica sobrealocação (total de horas estimadas > capacidade total)
                 var totalHours = group.Tasks.Sum(t => t.EstimatedHours);
                 var sprintCount = group.Tasks.Select(t => t.SprintNumber).Distinct().Count();
-                var capacityHours = sprintCount * Project.SprintDurationDays * resource.MaxUnitsPerDay;
+                var capacityHours = sprintCount * Math.Max(1, SprintDurationDays) * resource.MaxUnitsPerDay;
                 group.IsOverAllocated = totalHours > capacityHours;
 
                 ResourceAllocationGroups.Add(group);
@@ -689,6 +847,34 @@ namespace NXProject.ViewModels
         private ObservableCollection<ProjectTask> GetTaskCollection(ProjectTask task)
         {
             return task.Parent?.Children ?? Project.Tasks;
+        }
+
+        private int GetSprintIndex(DateTime taskStart, DateTime projectStart)
+        {
+            var sprintDays = Math.Max(1, SprintDurationDays);
+            var dayOffset = (taskStart - projectStart).TotalDays;
+            return dayOffset < 0 ? -1 : (int)(dayOffset / sprintDays);
+        }
+
+        private int GetSprintNumberFromIndex(int sprintIndex)
+        {
+            var firstSprint = Math.Max(1, FirstSprintNumber);
+            return SprintNumberingMode switch
+            {
+                "Par" => NormalizeParity(firstSprint, even: true) + (sprintIndex * 2),
+                "Impar" => NormalizeParity(firstSprint, even: false) + (sprintIndex * 2),
+                _ => firstSprint + sprintIndex
+            };
+        }
+
+        private static int NormalizeParity(int value, bool even)
+        {
+            var normalized = Math.Max(1, value);
+            var isEven = normalized % 2 == 0;
+            if (even == isEven)
+                return normalized;
+
+            return normalized + 1;
         }
     }
 }

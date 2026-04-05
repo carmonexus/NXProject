@@ -130,7 +130,68 @@
             </DataGridTemplateColumn>
 
             <!-- Duração -->
-            <DataGridTextColumn Header="Dur.(d)" Binding="{Binding DurationDays}" Width="55">
+            <DataGridTemplateColumn Header="Dur.(d)" Width="55">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate DataType="{x:Type vm:TaskViewModel}">
+                        <Border Padding="2,0"
+                                CornerRadius="2"
+                                Background="Transparent">
+                            <TextBlock Text="{Binding DurationDays}"
+                                       TextAlignment="Center"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding UsesSfpEstimate}" Value="True">
+                                                <Setter Property="Foreground" Value="#6E6E6E"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding UsesSfpEstimate}" Value="True">
+                                            <Setter Property="Background" Value="#F1F1F1"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+                <DataGridTemplateColumn.CellEditingTemplate>
+                    <DataTemplate DataType="{x:Type vm:TaskViewModel}">
+                        <TextBox Text="{Binding DurationDays, UpdateSourceTrigger=PropertyChanged}"
+                                 BorderThickness="0"
+                                 TextAlignment="Center"
+                                 VerticalContentAlignment="Center"
+                                 IsReadOnly="{Binding UsesSfpEstimate}">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox">
+                                    <Setter Property="Background" Value="White"/>
+                                    <Setter Property="IsHitTestVisible" Value="True"/>
+                                    <Setter Property="IsTabStop" Value="True"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding UsesSfpEstimate}" Value="True">
+                                            <Setter Property="Background" Value="#F1F1F1"/>
+                                            <Setter Property="Foreground" Value="#6E6E6E"/>
+                                            <Setter Property="IsHitTestVisible" Value="False"/>
+                                            <Setter Property="IsTabStop" Value="False"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellEditingTemplate>
+            </DataGridTemplateColumn>
+
+            <!-- SFP -->
+            <DataGridTextColumn Header="SFP" Binding="{Binding SfpPoints}" Width="55">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="TextAlignment" Value="Center"/>

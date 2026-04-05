@@ -22,6 +22,11 @@ namespace NXProject.Services
                     new XElement(NS + "Author", project.Author ?? ""),
                     new XElement(NS + "StartDate", project.StartDate.ToString("yyyy-MM-ddTHH:mm:ss")),
                     new XElement(NS + "SprintDurationDays", project.SprintDurationDays),
+                    new XElement(NS + "FirstSprintNumber", project.FirstSprintNumber),
+                    new XElement(NS + "SprintNumberingMode", project.SprintNumberingMode),
+                    new XElement(NS + "LowDaysPerSfp", project.LowDaysPerSfp),
+                    new XElement(NS + "MediumDaysPerSfp", project.MediumDaysPerSfp),
+                    new XElement(NS + "HighDaysPerSfp", project.HighDaysPerSfp),
                     SaveResources(project.Resources),
                     SaveTasks(project.Tasks)
                 )
@@ -68,6 +73,7 @@ namespace NXProject.Services
                 new XElement(NS + "PercentComplete", task.PercentComplete),
                 new XElement(NS + "SprintNumber", task.SprintNumber),
                 new XElement(NS + "Notes", task.Notes ?? ""),
+                new XElement(NS + "SfpPoints", task.SfpPoints ?? 0),
                 new XElement(NS + "EstimatedHours", task.EstimatedHours ?? 0)
             );
 
@@ -109,6 +115,11 @@ namespace NXProject.Services
                 Author = root.Element(NS + "Author")?.Value,
                 StartDate = ParseDate(root.Element(NS + "StartDate")?.Value) ?? DateTime.Today,
                 SprintDurationDays = int.TryParse(root.Element(NS + "SprintDurationDays")?.Value, out var sd) ? sd : 14,
+                FirstSprintNumber = int.TryParse(root.Element(NS + "FirstSprintNumber")?.Value, out var fsn) ? fsn : 1,
+                SprintNumberingMode = root.Element(NS + "SprintNumberingMode")?.Value ?? "Sequencial",
+                LowDaysPerSfp = double.TryParse(root.Element(NS + "LowDaysPerSfp")?.Value, out var ldps) ? ldps : 1.0,
+                MediumDaysPerSfp = double.TryParse(root.Element(NS + "MediumDaysPerSfp")?.Value, out var mdps) ? mdps : 1.0,
+                HighDaysPerSfp = double.TryParse(root.Element(NS + "HighDaysPerSfp")?.Value, out var hdps) ? hdps : 1.0,
                 FilePath = filePath
             };
 
@@ -150,6 +161,7 @@ namespace NXProject.Services
                 PercentComplete = double.TryParse(el.Element(NS + "PercentComplete")?.Value, out var pc) ? pc : 0,
                 SprintNumber = int.TryParse(el.Element(NS + "SprintNumber")?.Value, out var sn) ? sn : 0,
                 Notes = el.Element(NS + "Notes")?.Value,
+                SfpPoints = double.TryParse(el.Element(NS + "SfpPoints")?.Value, out var sfp) ? sfp : null,
                 EstimatedHours = double.TryParse(el.Element(NS + "EstimatedHours")?.Value, out var eh) ? eh : null,
                 Parent = parent
             };

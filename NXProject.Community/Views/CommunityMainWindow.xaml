@@ -41,6 +41,7 @@
                 <MenuItem Header="Adicionar _Tarefa" Command="{Binding AddTaskCommand}"/>
                 <MenuItem Header="Adicionar _Subtarefa" Command="{Binding AddSubtaskCommand}"/>
                 <MenuItem Header="E_xcluir Tarefa" Command="{Binding DeleteTaskCommand}"/>
+                <MenuItem Header="Encadear _Atividades" Command="{Binding LinkTasksSequentiallyCommand}"/>
                 <Separator/>
                 <MenuItem Header="Mover Tarefa para _Cima"
                           Command="{Binding MoveTaskUpCommand}"
@@ -54,6 +55,7 @@
             </MenuItem>
             <MenuItem Header="_Exibir">
                 <MenuItem Header="G_antt" Command="{Binding ShowGanttCommand}"/>
+                <MenuItem Header="_Sprint..." Click="OnSprintSettingsClick"/>
             </MenuItem>
             <MenuItem Header="_IA">
                 <MenuItem Header="Assistente de _Tarefas..." Click="OnAiAssistantClick"/>
@@ -83,6 +85,9 @@
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding DeleteTaskCommand}" ToolTip="Excluir Tarefa">
                 <TextBlock Text="🗑" FontSize="14"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding LinkTasksSequentiallyCommand}" ToolTip="Encadear atividades">
+                <TextBlock Text="⛓" FontSize="14"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}"
                     Command="{Binding MoveTaskUpCommand}"
@@ -140,7 +145,10 @@
                                    Tasks="{Binding FlatTasks}"
                                    SelectedTask="{Binding SelectedTask, Mode=TwoWay}"
                                    ProjectStart="{Binding Project.StartDate}"
-                                   ZoomLevel="{Binding SelectedZoom}"/>
+                                   ZoomLevel="{Binding SelectedZoom}"
+                                   FirstSprintNumber="{Binding FirstSprintNumber}"
+                                   SprintNumberingMode="{Binding SprintNumberingMode}"
+                                   SprintDurationDays="{Binding SprintDurationDays}"/>
         </Grid>
     </DockPanel>
 </Window>

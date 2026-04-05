@@ -7,6 +7,7 @@
     <Color x:Key="BackgroundColor">#F0F0F0</Color>
     <Color x:Key="SurfaceColor">#FFFFFF</Color>
     <Color x:Key="BorderColor">#CCCCCC</Color>
+    <Color x:Key="SecondaryTextColor">#666666</Color>
     <Color x:Key="CriticalPathColor">#CC0000</Color>
     <Color x:Key="GanttBarColor">#4472C4</Color>
     <Color x:Key="MilestoneColor">#FFD700</Color>
@@ -17,6 +18,7 @@
     <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
     <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="{StaticResource SecondaryTextColor}"/>
     <SolidColorBrush x:Key="CriticalPathBrush" Color="{StaticResource CriticalPathColor}"/>
     <SolidColorBrush x:Key="GanttBarBrush" Color="{StaticResource GanttBarColor}"/>
     <SolidColorBrush x:Key="MilestoneBrush" Color="{StaticResource MilestoneColor}"/>

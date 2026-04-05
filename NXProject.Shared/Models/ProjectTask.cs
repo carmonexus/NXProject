@@ -21,6 +21,8 @@ namespace NXProject.Models
 
         public double? EstimatedHours { get; set; }
 
+        public double? SfpPoints { get; set; }
+
         // Recursos alocados nesta tarefa
         public List<TaskResource> Resources { get; set; } = new();
 

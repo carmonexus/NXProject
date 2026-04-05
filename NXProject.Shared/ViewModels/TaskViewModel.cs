@@ -9,11 +9,25 @@ namespace NXProject.ViewModels
     public partial class TaskViewModel : ObservableObject
     {
         private readonly ProjectTask _task;
+        private readonly double _lowDaysPerSfp;
+        private readonly double _mediumDaysPerSfp;
+        private readonly double _highDaysPerSfp;
 
-        public TaskViewModel(ProjectTask task, int depth = 0)
+        public TaskViewModel(
+            ProjectTask task,
+            int depth = 0,
+            double lowDaysPerSfp = 1.0,
+            double mediumDaysPerSfp = 1.0,
+            double highDaysPerSfp = 1.0)
         {
             _task = task;
             Depth = depth;
+            _lowDaysPerSfp = Math.Max(0, lowDaysPerSfp);
+            _mediumDaysPerSfp = Math.Max(0, mediumDaysPerSfp);
+            _highDaysPerSfp = Math.Max(0, highDaysPerSfp);
+
+            if (UsesSfpEstimate)
+                ApplySfpDuration();
         }
 
         public ProjectTask Model => _task;
@@ -83,6 +97,9 @@ namespace NXProject.ViewModels
             get => (int)(_task.Finish - _task.Start).TotalDays;
             set
             {
+                if (UsesSfpEstimate)
+                    return;
+
                 if (value >= 0)
                 {
                     _task.Finish = _task.Start.AddDays(value);
@@ -93,6 +110,25 @@ namespace NXProject.ViewModels
                 }
             }
         }
+
+        public double? SfpPoints
+        {
+            get => _task.SfpPoints;
+            set
+            {
+                _task.SfpPoints = value.HasValue && value.Value > 0 ? value.Value : null;
+                if (UsesSfpEstimate)
+                    ApplySfpDuration();
+
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(UsesSfpEstimate));
+                OnPropertyChanged(nameof(DurationDays));
+                OnPropertyChanged(nameof(Finish));
+                OnPropertyChanged(nameof(DisplayAsMilestone));
+            }
+        }
+
+        public bool UsesSfpEstimate => (SfpPoints ?? 0) > 0;
 
         public double PercentComplete
         {
@@ -177,6 +213,22 @@ namespace NXProject.ViewModels
                 current.RecalcSummary();
                 current = current.Parent;
             }
+        }
+
+        private void ApplySfpDuration()
+        {
+            if (!UsesSfpEstimate)
+                return;
+
+            var sfpPoints = SfpPoints ?? 0;
+            var daysPerSfp = sfpPoints <= 3
+                ? _lowDaysPerSfp
+                : sfpPoints < 6
+                    ? _mediumDaysPerSfp
+                    : _highDaysPerSfp;
+            var calculatedDuration = Math.Max(1, (int)Math.Ceiling(sfpPoints * daysPerSfp));
+            _task.Finish = _task.Start.AddDays(calculatedDuration);
+            RecalcAncestorSummaries();
         }
     }
 }

@@ -28,6 +28,18 @@ namespace NXProject.Controls
             DependencyProperty.Register(nameof(ZoomLevel), typeof(string),
                 typeof(GanttControl), new PropertyMetadata("Semana", OnLayoutChanged));
 
+        public static readonly DependencyProperty SprintDurationDaysProperty =
+            DependencyProperty.Register(nameof(SprintDurationDays), typeof(int),
+                typeof(GanttControl), new PropertyMetadata(14, OnLayoutChanged));
+
+        public static readonly DependencyProperty FirstSprintNumberProperty =
+            DependencyProperty.Register(nameof(FirstSprintNumber), typeof(int),
+                typeof(GanttControl), new PropertyMetadata(1, OnLayoutChanged));
+
+        public static readonly DependencyProperty SprintNumberingModeProperty =
+            DependencyProperty.Register(nameof(SprintNumberingMode), typeof(string),
+                typeof(GanttControl), new PropertyMetadata("Sequencial", OnLayoutChanged));
+
         public static readonly DependencyProperty HeaderHeightProperty =
             DependencyProperty.Register(nameof(HeaderHeight), typeof(double),
                 typeof(GanttControl), new PropertyMetadata(40.0, OnLayoutChanged));
@@ -78,6 +90,24 @@ namespace NXProject.Controls
         {
             get => (string)GetValue(ZoomLevelProperty);
             set => SetValue(ZoomLevelProperty, value);
+        }
+
+        public int SprintDurationDays
+        {
+            get => (int)GetValue(SprintDurationDaysProperty);
+            set => SetValue(SprintDurationDaysProperty, value);
+        }
+
+        public int FirstSprintNumber
+        {
+            get => (int)GetValue(FirstSprintNumberProperty);
+            set => SetValue(FirstSprintNumberProperty, value);
+        }
+
+        public string SprintNumberingMode
+        {
+            get => (string)GetValue(SprintNumberingModeProperty);
+            set => SetValue(SprintNumberingModeProperty, value);
         }
 
         public TaskViewModel? SelectedTask
@@ -314,6 +344,73 @@ namespace NXProject.Controls
         {
             HeaderCanvas.Children.Clear();
             var totalDays = 365;
+            var topBandHeight = Math.Max(18, HeaderHeight * 0.48);
+            var sprintBandTop = topBandHeight;
+            var sprintBandHeight = Math.Max(14, HeaderHeight - sprintBandTop);
+            var sprintDays = Math.Max(1, SprintDurationDays);
+            var firstSprint = Math.Max(1, FirstSprintNumber);
+
+            HeaderCanvas.Children.Add(new Rectangle
+            {
+                Width = Math.Max(ActualWidth, LeftPadding + totalDays * DayWidth),
+                Height = topBandHeight,
+                Fill = new SolidColorBrush(Color.FromRgb(232, 232, 232))
+            });
+
+            HeaderCanvas.Children.Add(new Rectangle
+            {
+                Width = Math.Max(ActualWidth, LeftPadding + totalDays * DayWidth),
+                Height = sprintBandHeight,
+                Fill = new SolidColorBrush(Color.FromRgb(220, 228, 240))
+            });
+
+            HeaderCanvas.Children.Add(new Line
+            {
+                X1 = 0,
+                Y1 = sprintBandTop,
+                X2 = Math.Max(ActualWidth, LeftPadding + totalDays * DayWidth),
+                Y2 = sprintBandTop,
+                Stroke = new SolidColorBrush(Color.FromRgb(190, 200, 215)),
+                StrokeThickness = 1
+            });
+
+            for (int sprintOffset = 0; sprintOffset < totalDays; sprintOffset += sprintDays)
+            {
+                var sprintStart = ProjectStart.AddDays(sprintOffset);
+                var sprintIndex = sprintOffset / sprintDays;
+                var sprintNumber = GetSprintNumberFromIndex(sprintIndex, firstSprint);
+                var x = LeftPadding + (sprintOffset * DayWidth) - scrollOffset;
+                var sprintWidth = sprintDays * DayWidth;
+                if (x + sprintWidth < -80 || x > ActualWidth + 80)
+                    continue;
+
+                var background = new Rectangle
+                {
+                    Width = sprintWidth,
+                    Height = sprintBandHeight,
+                    Fill = new SolidColorBrush(sprintNumber % 2 == 0
+                        ? Color.FromRgb(210, 221, 236)
+                        : Color.FromRgb(222, 231, 243)),
+                    Stroke = new SolidColorBrush(Color.FromRgb(180, 194, 214)),
+                    StrokeThickness = 1
+                };
+                Canvas.SetLeft(background, x);
+                Canvas.SetTop(background, sprintBandTop);
+                HeaderCanvas.Children.Add(background);
+
+                var sprintLabel = new TextBlock
+                {
+                    Text = $"Sprint {sprintNumber}",
+                    FontSize = 10,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(43, 87, 154)),
+                    Width = Math.Max(40, sprintWidth - 6),
+                    TextAlignment = TextAlignment.Center
+                };
+                Canvas.SetLeft(sprintLabel, x + 3);
+                Canvas.SetTop(sprintLabel, sprintBandTop + Math.Max(0, (sprintBandHeight - 14) / 2));
+                HeaderCanvas.Children.Add(sprintLabel);
+            }
 
             for (int d = 0; d < totalDays; d++)
             {
@@ -360,6 +457,16 @@ namespace NXProject.Controls
                     StrokeThickness = 1
                 });
             }
+
+            HeaderCanvas.Children.Add(new Line
+            {
+                X1 = 0,
+                Y1 = HeaderHeight - 1,
+                X2 = Math.Max(ActualWidth, LeftPadding + totalDays * DayWidth),
+                Y2 = HeaderHeight - 1,
+                Stroke = Brushes.LightGray,
+                StrokeThickness = 1
+            });
         }
 
         private void RenderGrid(int totalDays, double canvasWidth)
@@ -694,6 +801,9 @@ namespace NXProject.Controls
             if (!string.IsNullOrWhiteSpace(task.ResourcesText))
                 content.Children.Add(CreateHintLine("Recursos", task.ResourcesText));
 
+            if (task.SfpPoints.HasValue && task.SfpPoints.Value > 0)
+                content.Children.Add(CreateHintLine("SFP", task.SfpPoints.Value.ToString("0.##", CultureInfo.CurrentCulture)));
+
             return new ToolTip
             {
                 Content = content,
@@ -877,6 +987,26 @@ namespace NXProject.Controls
         {
             foreach (var task in tasks)
                 task.PropertyChanged -= OnTaskPropertyChanged;
+        }
+
+        private int GetSprintNumberFromIndex(int sprintIndex, int firstSprint)
+        {
+            return SprintNumberingMode switch
+            {
+                "Par" => NormalizeParity(firstSprint, even: true) + (sprintIndex * 2),
+                "Impar" => NormalizeParity(firstSprint, even: false) + (sprintIndex * 2),
+                _ => firstSprint + sprintIndex
+            };
+        }
+
+        private static int NormalizeParity(int value, bool even)
+        {
+            var normalized = Math.Max(1, value);
+            var isEven = normalized % 2 == 0;
+            if (isEven == even)
+                return normalized;
+
+            return normalized + 1;
         }
 
         private sealed record TaskLayout(TaskViewModel Task, double StartX, double EndX, double CenterY);

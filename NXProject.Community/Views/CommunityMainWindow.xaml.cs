@@ -133,6 +133,28 @@ namespace NXProject.Views
             aiWindow.ShowDialog();
         }
 
+        private void OnSprintSettingsClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainViewModel vm)
+                return;
+
+            var window = new Window
+            {
+                Title = "Configurações de Sprint",
+                Owner = this,
+                Width = 760,
+                Height = 520,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Background = (System.Windows.Media.Brush)FindResource("BackgroundBrush"),
+                Content = new Controls.SprintSettingsControl
+                {
+                    DataContext = vm
+                }
+            };
+
+            window.ShowDialog();
+        }
+
         private void OnTaskPropertyChanged(object? sender, PropertyChangedEventArgs args)
         {
             if (args.PropertyName == nameof(TaskViewModel.PredecessorsText))

@@ -34,6 +34,10 @@
       <Link>Controls\TaskGridControl.xaml</Link>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="..\NXProject.Shared\Controls\SprintSettingsControl.xaml">
+      <Link>Controls\SprintSettingsControl.xaml</Link>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="..\NXProject.Shared\Themes\DefaultTheme.xaml">
       <Link>Themes\DefaultTheme.xaml</Link>
       <Generator>MSBuild:Compile</Generator>
@@ -48,6 +52,10 @@
     <Compile Include="..\NXProject.Shared\Controls\TaskGridControl.xaml.cs">
       <Link>Controls\TaskGridControl.xaml.cs</Link>
       <DependentUpon>TaskGridControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="..\NXProject.Shared\Controls\SprintSettingsControl.xaml.cs">
+      <Link>Controls\SprintSettingsControl.xaml.cs</Link>
+      <DependentUpon>SprintSettingsControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="..\NXProject.Shared\Controls\GanttTaskElements.cs">
       <Link>Controls\GanttTaskElements.cs</Link>
