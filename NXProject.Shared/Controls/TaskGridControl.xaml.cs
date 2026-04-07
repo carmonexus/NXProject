@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using NXProject.ViewModels;
 
 namespace NXProject.Controls
@@ -87,6 +88,65 @@ namespace NXProject.Controls
             _suppressScrollNotification = false;
         }
 
+        public void SetPresentationMode(bool expanded)
+        {
+            IdColumn.Width = new DataGridLength(expanded ? 48 : 35);
+            NameColumn.MinWidth = expanded ? 240 : 120;
+            NameColumn.Width = expanded
+                ? new DataGridLength(2.2, DataGridLengthUnitType.Star)
+                : new DataGridLength(1, DataGridLengthUnitType.Star);
+            DurationColumn.Width = new DataGridLength(expanded ? 72 : 55);
+            SfpColumn.Width = new DataGridLength(expanded ? 68 : 55);
+            StartColumn.Width = new DataGridLength(expanded ? 118 : 100);
+            FinishColumn.Width = new DataGridLength(expanded ? 118 : 100);
+            PercentColumn.Width = new DataGridLength(expanded ? 84 : 70);
+            PredecessorColumn.Width = new DataGridLength(expanded ? 72 : 55);
+            ResourcesColumn.Width = new DataGridLength(expanded ? 140 : 100);
+            SprintColumn.Width = new DataGridLength(expanded ? 58 : 45);
+        }
+
+        public void FocusSelectedTask()
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+            {
+                if (TaskGrid.Items.Count == 0)
+                    return;
+
+                var item = TaskGrid.SelectedItem ?? TaskGrid.Items[0];
+                if (item == null) return;
+
+                TaskGrid.SelectedItem = item;
+                TaskGrid.ScrollIntoView(item);
+                TaskGrid.CurrentCell = new DataGridCellInfo(item, NameColumn);
+
+                TaskGrid.UpdateLayout();
+
+                var row = TaskGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
+                if (row != null)
+                {
+                    var cell = FindCell(row, NameColumn);
+                    if (cell != null)
+                    {
+                        cell.Focus();
+                        Keyboard.Focus(cell);
+                        return;
+                    }
+                }
+
+                TaskGrid.Focus();
+                Keyboard.Focus(TaskGrid);
+            }));
+        }
+
+        private static DataGridCell? FindCell(DataGridRow row, DataGridColumn column)
+        {
+            var presenter = FindChild<DataGridCellsPresenter>(row);
+            if (presenter == null) return null;
+
+            var index = column.DisplayIndex;
+            return presenter.ItemContainerGenerator.ContainerFromIndex(index) as DataGridCell;
+        }
+
         private void PublishRowTops(double headerHeight)
         {
             var itemCount = TaskGrid.Items.Count;
@@ -134,6 +194,12 @@ namespace NXProject.Controls
 
         private void OnTaskGridPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (FindParent<ToggleButton>(e.OriginalSource as DependencyObject) != null)
+            {
+                _dragSourceTask = null;
+                return;
+            }
+
             _dragStartPoint = e.GetPosition(TaskGrid);
             _dragSourceTask = FindTaskViewModel(e.OriginalSource as DependencyObject);
         }
@@ -182,6 +248,17 @@ namespace NXProject.Controls
 
             TaskMoveRequested?.Invoke(sourceTask, targetTask, insertAfter);
             e.Handled = true;
+        }
+
+        private void OnHierarchyTogglePreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragSourceTask = null;
+
+            if (sender is ToggleButton { DataContext: TaskViewModel task })
+            {
+                task.IsExpanded = !task.IsExpanded;
+                e.Handled = true;
+            }
         }
 
         private static T? FindChild<T>(DependencyObject root) where T : DependencyObject

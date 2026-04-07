@@ -19,7 +19,7 @@ namespace NXProject.ViewModels
         [ObservableProperty] private Project _project = new();
         [ObservableProperty] private string _statusMessage = "Pronto";
         [ObservableProperty] private int _selectedViewIndex = 0;
-        [ObservableProperty] private string _selectedZoom = "Semana";
+        [ObservableProperty] private string _selectedZoom = "Mês";
         [ObservableProperty] private TaskViewModel? _selectedTask;
         [ObservableProperty] private int _sprintDurationDays = 14;
         [ObservableProperty] private int _firstSprintNumber = 1;
@@ -549,6 +549,9 @@ namespace NXProject.ViewModels
         {
             var start = SelectedTask?.Start
                 ?? AllTasks().Select(t => t.Start).DefaultIfEmpty(Project.StartDate).Min();
+            var previousTask = SelectedTask?.Model.Parent == null
+                ? Project.Tasks.LastOrDefault()
+                : null;
             var task = new ProjectTask
             {
                 Id = _nextId++,
@@ -556,10 +559,16 @@ namespace NXProject.ViewModels
                 Start = start,
                 Finish = start.AddDays(1)
             };
+
+            if (previousTask != null)
+                task.PredecessorIds.Add(previousTask.Id);
+
             Project.Tasks.Add(task);
             Project.IsDirty = true;
             RebuildFlatTasks();
-            StatusMessage = "Tarefa adicionada";
+            StatusMessage = previousTask != null
+                ? "Tarefa adicionada com predecessora da tarefa anterior."
+                : "Tarefa adicionada";
         }
 
         [RelayCommand]
@@ -568,6 +577,7 @@ namespace NXProject.ViewModels
             if (SelectedTask == null) { StatusMessage = "Selecione uma tarefa pai primeiro"; return; }
 
             var parent = SelectedTask.Model;
+            var previousSibling = parent.Children.LastOrDefault();
             var task = new ProjectTask
             {
                 Id = _nextId++,
@@ -577,20 +587,32 @@ namespace NXProject.ViewModels
                 Level = parent.Level + 1,
                 Parent = parent
             };
+
+            if (previousSibling != null)
+                task.PredecessorIds.Add(previousSibling.Id);
+
             parent.Children.Add(task);
             parent.IsSummary = true;
             parent.RecalcSummary();
             Project.IsDirty = true;
             RebuildFlatTasks();
-            StatusMessage = "Subtarefa adicionada";
+            StatusMessage = previousSibling != null
+                ? "Subtarefa adicionada com predecessora da subtarefa anterior."
+                : "Subtarefa adicionada";
         }
 
         [RelayCommand]
         private void DeleteTask()
         {
-            if (SelectedTask == null) return;
+            if (SelectedTask == null)
+            {
+                StatusMessage = "Selecione uma tarefa para excluir.";
+                return;
+            }
 
             var task = SelectedTask.Model;
+            var removedTasks = FlattenTask(task).ToList();
+
             if (task.Parent != null)
             {
                 task.Parent.Children.Remove(task);
@@ -602,55 +624,92 @@ namespace NXProject.ViewModels
                 Project.Tasks.Remove(task);
             }
 
+            foreach (var removedTask in removedTasks)
+                _collapsedTaskIds.Remove(removedTask.Id);
+
             Project.IsDirty = true;
             RebuildFlatTasks();
-            StatusMessage = "Tarefa excluída";
+            StatusMessage = removedTasks.Count > 1
+                ? "Tarefa e subtarefas excluidas."
+                : "Tarefa excluida.";
         }
 
         [RelayCommand]
         private void IndentTask()
         {
-            if (SelectedTask == null) return;
+            if (SelectedTask == null)
+            {
+                StatusMessage = "Selecione uma tarefa para alterar a hierarquia.";
+                return;
+            }
+
             var task = SelectedTask.Model;
             var allFlat = AllTasks().ToList();
             var idx = allFlat.IndexOf(task);
-            if (idx <= 0) return;
+            if (idx <= 0)
+            {
+                StatusMessage = "A primeira tarefa nao pode virar subtarefa.";
+                return;
+            }
 
-            var newParent = allFlat[idx - 1];
+            var targetParentLevel = task.Level;
+            var newParent = FindPreviousTaskAtLevel(allFlat, idx - 1, targetParentLevel);
+            if (newParent == null)
+            {
+                StatusMessage = "Nao existe tarefa anterior no nivel necessario para identar mais um nivel.";
+                return;
+            }
 
-            // Remove do pai atual ou da raiz
-            if (task.Parent != null) task.Parent.Children.Remove(task);
-            else Project.Tasks.Remove(task);
+            var oldParent = task.Parent;
+            RemoveTaskFromCurrentCollection(task);
 
             task.Parent = newParent;
-            task.Level = newParent.Level + 1;
             newParent.Children.Add(task);
             newParent.IsSummary = true;
-            newParent.RecalcSummary();
+            UpdateTaskLevelRecursive(task, newParent.Level + 1);
+            RecalcSummaryChain(oldParent);
+            RecalcSummaryChain(newParent);
             Project.IsDirty = true;
             RebuildFlatTasks();
+            StatusMessage = "Tarefa identada um nivel.";
         }
 
         [RelayCommand]
         private void OutdentTask()
         {
-            if (SelectedTask == null) return;
+            if (SelectedTask == null)
+            {
+                StatusMessage = "Selecione uma tarefa para alterar a hierarquia.";
+                return;
+            }
+
             var task = SelectedTask.Model;
-            if (task.Parent == null) return;
+            if (task.Parent == null)
+            {
+                StatusMessage = "A tarefa ja esta no nivel raiz.";
+                return;
+            }
 
             var oldParent = task.Parent;
             oldParent.Children.Remove(task);
-            if (oldParent.Children.Count == 0) oldParent.IsSummary = false;
+            if (oldParent.Children.Count == 0)
+                oldParent.IsSummary = false;
 
             var grandParent = oldParent.Parent;
             task.Parent = grandParent;
-            task.Level = grandParent != null ? grandParent.Level + 1 : 0;
+            UpdateTaskLevelRecursive(task, grandParent != null ? grandParent.Level + 1 : 0);
 
-            if (grandParent != null) grandParent.Children.Add(task);
-            else Project.Tasks.Add(task);
+            var targetCollection = grandParent?.Children ?? Project.Tasks;
+            var insertAfterIndex = targetCollection.IndexOf(oldParent);
+            if (insertAfterIndex < 0)
+                insertAfterIndex = targetCollection.Count - 1;
+            targetCollection.Insert(insertAfterIndex + 1, task);
 
+            RecalcSummaryChain(oldParent);
+            RecalcSummaryChain(grandParent);
             Project.IsDirty = true;
             RebuildFlatTasks();
+            StatusMessage = "Tarefa promovida um nivel.";
         }
 
         [RelayCommand]
@@ -681,15 +740,21 @@ namespace NXProject.ViewModels
                 return false;
 
             var sourceCollection = GetTaskCollection(sourceVm.Model);
-            var targetCollection = GetTaskCollection(targetVm.Model);
-            if (!ReferenceEquals(sourceCollection, targetCollection))
+            if (IsTaskInSubtree(sourceVm.Model, targetVm.Model))
+            {
+                StatusMessage = "Nao e possivel mover uma tarefa para dentro da propria hierarquia.";
+                return false;
+            }
+
+            var targetTask = FindTaskInCollectionHierarchy(targetVm.Model, sourceCollection);
+            if (targetTask == null)
             {
                 StatusMessage = "O arrasto so pode reordenar tarefas dentro do mesmo nivel.";
                 return false;
             }
 
             var currentIndex = sourceCollection.IndexOf(sourceVm.Model);
-            var targetIndex = targetCollection.IndexOf(targetVm.Model);
+            var targetIndex = sourceCollection.IndexOf(targetTask);
             if (currentIndex < 0 || targetIndex < 0)
                 return false;
 
@@ -881,6 +946,84 @@ namespace NXProject.ViewModels
         private ObservableCollection<ProjectTask> GetTaskCollection(ProjectTask task)
         {
             return task.Parent?.Children ?? Project.Tasks;
+        }
+
+        private static ProjectTask? FindTaskInCollectionHierarchy(
+            ProjectTask task,
+            ObservableCollection<ProjectTask> targetCollection)
+        {
+            var current = task;
+            while (current != null)
+            {
+                if (ReferenceEquals(current.Parent?.Children ?? targetCollection, targetCollection) &&
+                    targetCollection.Contains(current))
+                {
+                    return current;
+                }
+
+                current = current.Parent;
+            }
+
+            return null;
+        }
+
+        private static bool IsTaskInSubtree(ProjectTask root, ProjectTask candidate)
+        {
+            var current = candidate.Parent;
+            while (current != null)
+            {
+                if (current == root)
+                    return true;
+
+                current = current.Parent;
+            }
+
+            return false;
+        }
+
+        private static ProjectTask? FindPreviousTaskAtLevel(IReadOnlyList<ProjectTask> tasks, int startIndex, int targetLevel)
+        {
+            for (var index = startIndex; index >= 0; index--)
+            {
+                var candidate = tasks[index];
+                if (candidate.Level == targetLevel)
+                    return candidate;
+            }
+
+            return null;
+        }
+
+        private void RemoveTaskFromCurrentCollection(ProjectTask task)
+        {
+            if (task.Parent != null)
+            {
+                task.Parent.Children.Remove(task);
+                if (task.Parent.Children.Count == 0)
+                    task.Parent.IsSummary = false;
+                return;
+            }
+
+            Project.Tasks.Remove(task);
+        }
+
+        private static void UpdateTaskLevelRecursive(ProjectTask task, int level)
+        {
+            task.Level = level;
+            foreach (var child in task.Children)
+            {
+                child.Parent = task;
+                UpdateTaskLevelRecursive(child, level + 1);
+            }
+        }
+
+        private static void RecalcSummaryChain(ProjectTask? task)
+        {
+            var current = task;
+            while (current != null)
+            {
+                current.RecalcSummary();
+                current = current.Parent;
+            }
         }
 
         private int GetSprintIndex(DateTime taskStart, DateTime projectStart)

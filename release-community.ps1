@@ -106,7 +106,7 @@ Sugestao para distribuicao:
 
 Contato:
 - Nexus XData Tecnologia Ltda
-- comercial.nexus.xdata@gamail.com
+- comercial.nexus.xdata@gmail.com
 "@ | Set-Content -Path $ReadmePath -Encoding UTF8
 
 Write-Step "Gerando arquivo ZIP..."

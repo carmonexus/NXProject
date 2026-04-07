@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using NXProject.Services;
 using NXProject.ViewModels;
@@ -16,9 +17,13 @@ namespace NXProject.Views
         private static readonly string LicenseAcceptanceFile =
             Path.Combine(LicenseAcceptanceDirectory, "license.accepted");
 
+        private static readonly string AiLastOpenedFile =
+            Path.Combine(LicenseAcceptanceDirectory, "ai.last-opened.txt");
+
         private bool _licenseAccepted;
         private bool _allowClose;
         private bool _aiOpenedOnFirstAccess;
+        private bool _expandedLayout;
 
         public CommunityMainWindow()
         {
@@ -56,6 +61,10 @@ namespace NXProject.Views
             {
                 if (args.PropertyName == nameof(MainViewModel.SelectedTask))
                     GanttCtrl.SelectedTask = vm.SelectedTask;
+
+                if (args.PropertyName == nameof(MainViewModel.SelectedZoom))
+                    Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
+                        () => GanttCtrl.ScrollToProjectStart());
             };
 
             GanttCtrl.TaskClicked += task =>
@@ -88,6 +97,7 @@ namespace NXProject.Views
                     args.Action == NotifyCollectionChangedAction.Reset)
                 {
                     GanttCtrl.ForceRender();
+                    TaskGridCtrl.FocusSelectedTask();
                 }
             };
 
@@ -100,6 +110,7 @@ namespace NXProject.Views
 
             Loaded += OnCommunityWindowLoaded;
             Closing += OnCommunityWindowClosing;
+            ApplyLayoutMode(expanded: false);
         }
 
         private void OnExitClick(object sender, RoutedEventArgs e)
@@ -153,6 +164,16 @@ namespace NXProject.Views
             };
 
             window.ShowDialog();
+        }
+
+        private void OnToolbarButtonClick(object sender, RoutedEventArgs e)
+        {
+            TaskGridCtrl.FocusSelectedTask();
+        }
+
+        private void OnLayoutToggleClick(object sender, RoutedEventArgs e)
+        {
+            ApplyLayoutMode(!_expandedLayout);
         }
 
         private void OnTaskPropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -261,6 +282,9 @@ namespace NXProject.Views
             if (_aiOpenedOnFirstAccess || DataContext is not MainViewModel vm)
                 return;
 
+            if (WasAiAutoOpenedToday())
+                return;
+
             _aiOpenedOnFirstAccess = true;
             Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
             {
@@ -272,6 +296,48 @@ namespace NXProject.Views
                     Owner = this
                 };
                 aiWindow.ShowDialog();
+                PersistAiLastOpenedDate();
+            }));
+        }
+
+        private static bool WasAiAutoOpenedToday()
+        {
+            if (!File.Exists(AiLastOpenedFile))
+                return false;
+
+            var content = File.ReadAllText(AiLastOpenedFile).Trim();
+            return DateOnly.TryParse(content, out var lastOpenedDate) &&
+                   lastOpenedDate == DateOnly.FromDateTime(DateTime.Today);
+        }
+
+        private static void PersistAiLastOpenedDate()
+        {
+            Directory.CreateDirectory(LicenseAcceptanceDirectory);
+            File.WriteAllText(
+                AiLastOpenedFile,
+                DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"));
+        }
+
+        private void ApplyLayoutMode(bool expanded)
+        {
+            _expandedLayout = expanded;
+
+            TaskPaneColumn.Width = expanded
+                ? new GridLength(620)
+                : new GridLength(420);
+            GanttPaneColumn.Width = expanded
+                ? new GridLength(1, GridUnitType.Star)
+                : new GridLength(1, GridUnitType.Star);
+
+            TaskGridCtrl.SetPresentationMode(expanded);
+            LayoutToggleText.Text = expanded ? "⤡" : "⤢";
+            LayoutToggleButton.ToolTip = expanded
+                ? "Voltar para a visualização compacta"
+                : "Abrir a tabela com colunas mais legíveis";
+
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                GanttCtrl.ForceRender();
             }));
         }
     }

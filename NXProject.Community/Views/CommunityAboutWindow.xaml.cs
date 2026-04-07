@@ -7,7 +7,7 @@ namespace NXProject.Views
 {
     public partial class CommunityAboutWindow : Window
     {
-        private const string ContactEmail = "comercial.nexus.xdata@gamail.com";
+        private const string ContactEmail = "comercial.nexus.xdata@gmail.com";
 
         public CommunityAboutWindow()
         {

@@ -118,11 +118,11 @@ namespace NXProject.Controls
 
         private double DayWidth => ZoomLevel switch
         {
-            "Dia" => 30,
-            "Semana" => 8,
-            "Mês" => 3,
-            "Trimestre" => 1.2,
-            _ => 8
+            "Dia" => 48,
+            "Semana" => 18,
+            "Mês" => 6,
+            "Trimestre" => 2.4,
+            _ => 18
         };
 
         public void SetHeaderHeight(double height)

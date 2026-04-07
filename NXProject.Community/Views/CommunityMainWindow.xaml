@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:NXProject.Controls"
-        Title="NXProject Community 1.0.0" Height="700" Width="1200"
+        Title="NXProject Community 1.0.1" Height="700" Width="1200"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BackgroundBrush}">
 
@@ -50,8 +50,8 @@
                           Command="{Binding MoveTaskDownCommand}"
                           CommandParameter="{Binding SelectedTask}"/>
                 <Separator/>
-                <MenuItem Header="Recuar Tarefa" Command="{Binding IndentTaskCommand}"/>
-                <MenuItem Header="Avançar Tarefa" Command="{Binding OutdentTaskCommand}"/>
+                <MenuItem Header="Criar _Subtarefa" Command="{Binding IndentTaskCommand}"/>
+                <MenuItem Header="_Promover Tarefa" Command="{Binding OutdentTaskCommand}"/>
             </MenuItem>
             <MenuItem Header="_Exibir">
                 <MenuItem Header="G_antt" Command="{Binding ShowGanttCommand}"/>
@@ -61,49 +61,67 @@
                 <MenuItem Header="Assistente de _Tarefas..." Click="OnAiAssistantClick"/>
             </MenuItem>
             <MenuItem Header="A_juda">
-                <MenuItem Header="_Licença Community..." Click="OnLicenseClick"/>
+                <MenuItem Header="_Licen&#231;a Community..." Click="OnLicenseClick"/>
                 <MenuItem Header="_Sobre..." Click="OnAboutClick"/>
             </MenuItem>
         </Menu>
 
-        <ToolBar DockPanel.Dock="Top" Background="{StaticResource SurfaceBrush}" Padding="4,2">
+        <ToolBar DockPanel.Dock="Top" Background="{StaticResource SurfaceBrush}" Padding="4,2"
+                 FocusManager.IsFocusScope="False"
+                 Button.Click="OnToolbarButtonClick">
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding NewProjectCommand}" ToolTip="Novo Projeto">
-                <TextBlock Text="📄" FontSize="14"/>
+                <TextBlock Text="&#x1F4C4;" FontSize="14"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding ClearProjectCommand}" ToolTip="Limpar Projeto">
                 <TextBlock Text="Limpar" FontSize="11" FontWeight="SemiBold"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding OpenProjectCommand}" ToolTip="Abrir">
-                <TextBlock Text="📂" FontSize="14"/>
+                <TextBlock Text="&#x1F4C2;" FontSize="14"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding SaveProjectCommand}" ToolTip="Salvar">
-                <TextBlock Text="💾" FontSize="14"/>
+                <TextBlock Text="&#x1F4BE;" FontSize="14"/>
             </Button>
             <Separator/>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding AddTaskCommand}" ToolTip="Adicionar Tarefa">
-                <TextBlock Text="➕" FontSize="14"/>
+                <TextBlock Text="+" FontSize="16" FontWeight="Bold"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding AddSubtaskCommand}" ToolTip="Adicionar subtarefa">
+                <TextBlock Text="+&gt;" FontSize="12" FontWeight="Bold"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding DeleteTaskCommand}" ToolTip="Excluir Tarefa">
-                <TextBlock Text="🗑" FontSize="14"/>
+                <TextBlock Text="&#x1F5D1;" FontSize="14"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding LinkTasksSequentiallyCommand}" ToolTip="Encadear atividades">
-                <TextBlock Text="⛓" FontSize="14"/>
+                <TextBlock Text="&#x26D3;" FontSize="14"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding IndentTaskCommand}" ToolTip="Criar subtarefa da tarefa selecionada">
+                <TextBlock Text="&gt;" FontSize="16" FontWeight="Bold"/>
+            </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding OutdentTaskCommand}" ToolTip="Promover tarefa para o n&#237;vel superior">
+                <TextBlock Text="&lt;" FontSize="16" FontWeight="Bold"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}"
                     Command="{Binding MoveTaskUpCommand}"
                     CommandParameter="{Binding SelectedTask}"
                     ToolTip="Mover tarefa para cima">
-                <TextBlock Text="↑" FontSize="14" FontWeight="Bold"/>
+                <TextBlock Text="&#x2191;" FontSize="14" FontWeight="Bold"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}"
                     Command="{Binding MoveTaskDownCommand}"
                     CommandParameter="{Binding SelectedTask}"
                     ToolTip="Mover tarefa para baixo">
-                <TextBlock Text="↓" FontSize="14" FontWeight="Bold"/>
+                <TextBlock Text="&#x2193;" FontSize="14" FontWeight="Bold"/>
             </Button>
             <Separator/>
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnAiAssistantClick" ToolTip="Assistente IA">
                 <TextBlock Text="IA" FontSize="12" FontWeight="SemiBold"/>
+            </Button>
+            <Separator/>
+            <Button x:Name="LayoutToggleButton"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="OnLayoutToggleClick"
+                    ToolTip="Expandir ou encolher a área da tabela e do gráfico">
+                <TextBlock x:Name="LayoutToggleText" Text="⤢" FontSize="14" FontWeight="SemiBold"/>
             </Button>
             <Separator/>
             <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="4,0,4,0" FontSize="11"/>
@@ -125,9 +143,9 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="420" MinWidth="200"/>
+                <ColumnDefinition x:Name="TaskPaneColumn" Width="420" MinWidth="200"/>
                 <ColumnDefinition Width="5"/>
-                <ColumnDefinition Width="*" MinWidth="200"/>
+                <ColumnDefinition x:Name="GanttPaneColumn" Width="*" MinWidth="200"/>
             </Grid.ColumnDefinitions>
 
             <controls:TaskGridControl x:Name="TaskGridCtrl"

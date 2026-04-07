@@ -24,7 +24,7 @@
         <DataGrid.Columns>
 
             <!-- ID -->
-            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="35" IsReadOnly="True">
+            <DataGridTextColumn x:Name="IdColumn" Header="ID" Binding="{Binding Id}" Width="35" IsReadOnly="True">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="TextAlignment" Value="Center"/>
@@ -34,7 +34,7 @@
             </DataGridTextColumn>
 
             <!-- Nome (com indentação) -->
-            <DataGridTemplateColumn Header="Nome da Tarefa" Width="*" MinWidth="120">
+            <DataGridTemplateColumn x:Name="NameColumn" Header="Nome da Tarefa" Width="*" MinWidth="120">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate DataType="{x:Type vm:TaskViewModel}">
                         <Grid>
@@ -48,6 +48,7 @@
                             <!-- Botão expand/collapse — só visível em tarefas-sumário -->
                             <ToggleButton Grid.Column="1"
                                           IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                          PreviewMouseLeftButtonDown="OnHierarchyTogglePreviewMouseLeftButtonDown"
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Center"
                                           Width="14" Height="14"
@@ -130,7 +131,7 @@
             </DataGridTemplateColumn>
 
             <!-- Duração -->
-            <DataGridTemplateColumn Header="Dur.(d)" Width="55">
+            <DataGridTemplateColumn x:Name="DurationColumn" Header="Dur.(d)" Width="55">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate DataType="{x:Type vm:TaskViewModel}">
                         <Border Padding="2,0"
@@ -191,7 +192,7 @@
             </DataGridTemplateColumn>
 
             <!-- SFP -->
-            <DataGridTextColumn Header="SFP" Binding="{Binding SfpPoints}" Width="55">
+            <DataGridTextColumn x:Name="SfpColumn" Header="SFP" Binding="{Binding SfpPoints}" Width="55">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="TextAlignment" Value="Center"/>
@@ -201,7 +202,7 @@
             </DataGridTextColumn>
 
             <!-- Início -->
-            <DataGridTextColumn Header="Início" Binding="{Binding Start, StringFormat=d}" Width="100">
+            <DataGridTextColumn x:Name="StartColumn" Header="Início" Binding="{Binding Start, StringFormat=d}" Width="100">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -211,7 +212,7 @@
             </DataGridTextColumn>
 
             <!-- Fim -->
-            <DataGridTextColumn Header="Fim" Binding="{Binding Finish, StringFormat=d}" Width="100">
+            <DataGridTextColumn x:Name="FinishColumn" Header="Fim" Binding="{Binding Finish, StringFormat=d}" Width="100">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -221,7 +222,7 @@
             </DataGridTextColumn>
 
             <!-- % Completo -->
-            <DataGridTemplateColumn Header="% Compl." Width="70">
+            <DataGridTemplateColumn x:Name="PercentColumn" Header="% Compl." Width="70">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate DataType="{x:Type vm:TaskViewModel}">
                         <Grid Margin="2,1">
@@ -236,7 +237,7 @@
             </DataGridTemplateColumn>
 
             <!-- Predecessoras -->
-            <DataGridTextColumn Header="Pred." Binding="{Binding PredecessorsText}" Width="55">
+            <DataGridTextColumn x:Name="PredecessorColumn" Header="Pred." Binding="{Binding PredecessorsText}" Width="55">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -246,7 +247,7 @@
             </DataGridTextColumn>
 
             <!-- Recursos -->
-            <DataGridTextColumn Header="Recursos" Binding="{Binding ResourcesText, Mode=OneWay}" Width="100" IsReadOnly="True">
+            <DataGridTextColumn x:Name="ResourcesColumn" Header="Recursos" Binding="{Binding ResourcesText, Mode=OneWay}" Width="100" IsReadOnly="True">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -256,7 +257,7 @@
             </DataGridTextColumn>
 
             <!-- Sprint -->
-            <DataGridTextColumn Header="Sprint" Binding="{Binding SprintNumber}" Width="45" IsReadOnly="True">
+            <DataGridTextColumn x:Name="SprintColumn" Header="Sprint" Binding="{Binding SprintNumber}" Width="45" IsReadOnly="True">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="TextAlignment" Value="Center"/>

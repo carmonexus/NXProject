@@ -1,6 +1,14 @@
-# NXProject Community
+# NXProject Community 1.0.1
 
 Edicao comunitaria do NXProject para gerenciamento de tarefas, grafico Gantt e importacao/exportacao de projetos.
+
+## Capturas de tela
+
+As imagens abaixo ficam versionadas no repositorio para visualizacao direta no GitHub:
+
+![Tela principal do NXProject Community](ScreenShot/Tela01.png)
+![Tela com hierarquia e Gantt](ScreenShot/Tela02.png)
+![Tela de configuracao e acompanhamento](ScreenShot/Tela03.png)
 
 ## Conteudo deste repositorio
 
@@ -78,7 +86,7 @@ Como isso nao indicava vulnerabilidade confirmada no projeto e apenas falha de c
 ## Licenca e contato
 
 - Empresa: Nexus XData Tecnologia Ltda
-- Contato: `comercial.nexus.xdata@gamail.com`
+- Contato: `comercial.nexus.xdata@gmail.com`
 
 A edicao Community possui licenca propria exibida na primeira execucao do aplicativo.
 
