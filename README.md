@@ -22,6 +22,7 @@ As imagens abaixo ficam versionadas no repositorio para visualizacao direta no G
 O pacote compilado para usuario final esta em:
 
 - `dist/community/NXProject.Community-Release.zip`
+- [Baixar NXProject Community 1.0.1 (.zip)](dist/community/NXProject.Community-Release.zip)
 
 Se preferir baixar os componentes oficiais:
 
