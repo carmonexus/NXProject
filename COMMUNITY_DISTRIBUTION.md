@@ -24,6 +24,10 @@
 - dependencias da build
 - `README-INSTALACAO.txt`
 
+## Aviso sobre o pacote
+
+O `.zip` de distribuicao foi gerado em ambiente com antivirus McAfee. Se houver qualquer duvida sobre o executavel distribuido, ele pode ser gerado novamente com base no codigo-fonte publico deste repositorio.
+
 ## Requisito para o usuario final
 
 O usuario deve instalar o `Microsoft .NET Desktop Runtime 10.0 (x64)` antes de abrir o aplicativo, caso a maquina ainda nao tenha esse runtime.

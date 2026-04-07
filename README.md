@@ -24,6 +24,8 @@ O pacote compilado para usuario final esta em:
 - `dist/community/NXProject.Community-Release.zip`
 - [Baixar NXProject Community 1.0.1 (.zip)](dist/community/NXProject.Community-Release.zip)
 
+O `.zip` de distribuicao foi gerado em ambiente com antivirus McAfee. Se houver qualquer duvida sobre o binario, o executavel pode ser gerado novamente a partir deste codigo-fonte seguindo as instrucoes de compilacao abaixo.
+
 Se preferir baixar os componentes oficiais:
 
 - Runtime para executar no Windows: https://dotnet.microsoft.com/en-us/download/dotnet/10.0
