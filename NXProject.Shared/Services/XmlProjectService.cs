@@ -43,6 +43,8 @@ namespace NXProject.Services
                     new XElement(EXT + "DiagramLevelWidths",    project.DiagramLevelWidths    ?? ""),
                     new XElement(EXT + "DiagramExpandedLevels", project.DiagramExpandedLevels ?? ""),
                     new XElement(EXT + "ShowCriticalPath",      project.ShowCriticalPath),
+                    new XElement(EXT + "CriticalPathRiskSlackDays", project.CriticalPathRiskSlackDays),
+                    new XElement(EXT + "CriticalPathCriticalSlackDays", project.CriticalPathCriticalSlackDays),
                     new XElement(EXT + "HierarchyLevelColors",
                         project.HierarchyLevelColors.Select((c, i) =>
                             new XElement(EXT + "Color", new XAttribute("depth", i), c))),
@@ -67,7 +69,9 @@ namespace NXProject.Services
                     new XElement(EXT + "SprintNumberingMode", profile.SprintNumberingMode),
                     new XElement(EXT + "LowDaysPerSfp", profile.LowDaysPerSfp),
                     new XElement(EXT + "MediumDaysPerSfp", profile.MediumDaysPerSfp),
-                    new XElement(EXT + "HighDaysPerSfp", profile.HighDaysPerSfp)
+                    new XElement(EXT + "HighDaysPerSfp", profile.HighDaysPerSfp),
+                    new XElement(EXT + "CriticalPathRiskSlackDays", profile.CriticalPathRiskSlackDays),
+                    new XElement(EXT + "CriticalPathCriticalSlackDays", profile.CriticalPathCriticalSlackDays)
                 )
             );
         }
@@ -262,8 +266,12 @@ namespace NXProject.Services
                 DiagramLevelWidths    = root.Element(EXT + "DiagramLevelWidths")?.Value    ?? "",
                 DiagramExpandedLevels = root.Element(EXT + "DiagramExpandedLevels")?.Value ?? "",
                 ShowCriticalPath      = bool.TryParse(root.Element(EXT + "ShowCriticalPath")?.Value, out var scp) && scp,
+                CriticalPathRiskSlackDays = Math.Max(0.0, ParseDouble(root.Element(EXT + "CriticalPathRiskSlackDays")?.Value) ?? 2.0),
+                CriticalPathCriticalSlackDays = Math.Max(0.0, ParseDouble(root.Element(EXT + "CriticalPathCriticalSlackDays")?.Value) ?? 1.0),
                 FilePath = filePath
             };
+            if (project.CriticalPathRiskSlackDays < project.CriticalPathCriticalSlackDays)
+                project.CriticalPathRiskSlackDays = project.CriticalPathCriticalSlackDays;
 
             var colorsEl = root.Element(EXT + "HierarchyLevelColors");
             if (colorsEl != null)
@@ -334,7 +342,9 @@ namespace NXProject.Services
                 SprintNumberingMode = sprintSettings.Element(EXT + "SprintNumberingMode")?.Value ?? "Sequencial",
                 LowDaysPerSfp = ParseDouble(sprintSettings.Element(EXT + "LowDaysPerSfp")?.Value) ?? 1.0,
                 MediumDaysPerSfp = ParseDouble(sprintSettings.Element(EXT + "MediumDaysPerSfp")?.Value) ?? 1.0,
-                HighDaysPerSfp = ParseDouble(sprintSettings.Element(EXT + "HighDaysPerSfp")?.Value) ?? 1.0
+                HighDaysPerSfp = ParseDouble(sprintSettings.Element(EXT + "HighDaysPerSfp")?.Value) ?? 1.0,
+                CriticalPathRiskSlackDays = ParseDouble(sprintSettings.Element(EXT + "CriticalPathRiskSlackDays")?.Value) ?? 2.0,
+                CriticalPathCriticalSlackDays = ParseDouble(sprintSettings.Element(EXT + "CriticalPathCriticalSlackDays")?.Value) ?? 1.0
             };
         }
 

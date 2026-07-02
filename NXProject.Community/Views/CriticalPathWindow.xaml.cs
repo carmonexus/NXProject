@@ -20,22 +20,34 @@ namespace NXProject.Views
             public string  ESText     { get; init; } = "";
             public string  EFText     { get; init; } = "";
             public string  DurText    { get; init; } = "";
-            public string  FloatText  { get; init; } = "";
+            public string  FloatDaysText { get; init; } = "";
+            public string  StatusText { get; init; } = "";
             public string  PredText   { get; init; } = "";
             public bool    IsCritical { get; init; }
-            public Brush   FloatColor { get; init; } = Brushes.Black;
-            public FontWeight FloatWeight { get; init; } = FontWeights.Normal;
+            public bool    IsRisk     { get; init; }
+            public Brush   StatusColor { get; init; } = Brushes.Black;
+            public FontWeight StatusWeight { get; init; } = FontWeights.Normal;
         }
 
         private readonly List<CpRow> _allRows = new();
         private readonly ICollectionView _view;
+        private readonly Action? _configureSlack;
 
-        public CriticalPathWindow(IEnumerable<ProjectTask> allTasks)
+        public CriticalPathWindow(
+            IEnumerable<ProjectTask> allTasks,
+            double riskSlackDays = 2.0,
+            double criticalSlackDays = 1.0,
+            Action? configureSlack = null)
         {
             InitializeComponent();
+            _configureSlack = configureSlack;
 
             var entries = CriticalPathService.Compute(allTasks);
             var taskById = allTasks.ToDictionary(t => t.Id);
+            riskSlackDays = Math.Max(0.0, riskSlackDays);
+            criticalSlackDays = Math.Max(0.0, criticalSlackDays);
+            if (riskSlackDays < criticalSlackDays)
+                riskSlackDays = criticalSlackDays;
 
             foreach (var e in entries)
             {
@@ -48,7 +60,8 @@ namespace NXProject.Views
                         : id.ToString())
                     .ToList();
 
-                bool critical = e.TotalFloat < 0.5;
+                bool critical = e.TotalFloat < criticalSlackDays;
+                bool risk = !critical && riskSlackDays > 0.0 && e.TotalFloat <= riskSlackDays;
 
                 _allRows.Add(new CpRow
                 {
@@ -58,18 +71,25 @@ namespace NXProject.Views
                     ESText     = e.ES.ToString("dd/MM/yy"),
                     EFText     = e.EF.ToString("dd/MM/yy"),
                     DurText    = $"{dur:0}d",
-                    FloatText  = critical ? "Crítica" : $"{e.TotalFloat:0.#}d",
+                    FloatDaysText = $"{e.TotalFloat:0.#}d",
+                    StatusText = critical ? "Crítica" : risk ? "Em risco" : "Normal",
                     PredText   = predNames.Count > 0 ? string.Join(", ", predNames) : "—",
                     IsCritical = critical,
-                    FloatColor = critical
+                    IsRisk     = risk,
+                    StatusColor = critical
                         ? new SolidColorBrush(Color.FromRgb(192, 57, 43))
+                        : risk
+                        ? new SolidColorBrush(Color.FromRgb(180, 110, 0))
                         : new SolidColorBrush(Color.FromRgb(39, 174, 96)),
-                    FloatWeight = critical ? FontWeights.Bold : FontWeights.Normal
+                    StatusWeight = critical || risk ? FontWeights.Bold : FontWeights.Normal
                 });
             }
 
             int critCount = _allRows.Count(r => r.IsCritical);
-            SubtitleText.Text = $"{_allRows.Count} atividades analisadas — {critCount} críticas";
+            int riskCount = _allRows.Count(r => r.IsRisk);
+            SubtitleText.Text = riskSlackDays > 0.0
+                ? $"{_allRows.Count} atividades analisadas — {critCount} críticas, {riskCount} em risco ({criticalSlackDays:0.#}d/{riskSlackDays:0.#}d)"
+                : $"{_allRows.Count} atividades analisadas — {critCount} críticas";
 
             _view = CollectionViewSource.GetDefaultView(_allRows);
             _view.Filter = FilterRow;
@@ -98,6 +118,12 @@ namespace NXProject.Views
         {
             int visible = _allRows.Count(r => FilterRow(r));
             CountText.Text = $"{visible} exibidas";
+        }
+
+        private void OnConfigureSlackClick(object sender, RoutedEventArgs e)
+        {
+            Close();
+            _configureSlack?.Invoke();
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e) => Close();

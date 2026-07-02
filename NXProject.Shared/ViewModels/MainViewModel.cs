@@ -91,6 +91,8 @@ namespace NXProject.ViewModels
         }
         [ObservableProperty] private double _mediumDaysPerSfp = 1.0;
         [ObservableProperty] private double _highDaysPerSfp = 1.0;
+        [ObservableProperty] private double _criticalPathRiskSlackDays = 2.0;
+        [ObservableProperty] private double _criticalPathCriticalSlackDays = 1.0;
         [ObservableProperty] private bool _showOriginalHoursColumn = false;
         [ObservableProperty] private string _hiddenColumns = "";
         [ObservableProperty] private string _hiddenColumnsExpanded = "";
@@ -589,6 +591,42 @@ namespace NXProject.ViewModels
 
             Project.IsDirty = true;
             RebuildFlatTasks();
+        }
+
+        partial void OnCriticalPathRiskSlackDaysChanged(double value)
+        {
+            var normalizedValue = value < 0 ? 0 : Math.Round(value, 1);
+            normalizedValue = Math.Max(normalizedValue, CriticalPathCriticalSlackDays);
+            if (Math.Abs(value - normalizedValue) > double.Epsilon)
+            {
+                CriticalPathRiskSlackDays = normalizedValue;
+                return;
+            }
+
+            Project.CriticalPathRiskSlackDays = normalizedValue;
+            if (_isApplyingProjectSprintSettings)
+                return;
+
+            Project.IsDirty = true;
+        }
+
+        partial void OnCriticalPathCriticalSlackDaysChanged(double value)
+        {
+            var normalizedValue = value < 0 ? 0 : Math.Round(value, 1);
+            if (Math.Abs(value - normalizedValue) > double.Epsilon)
+            {
+                CriticalPathCriticalSlackDays = normalizedValue;
+                return;
+            }
+
+            Project.CriticalPathCriticalSlackDays = normalizedValue;
+            if (CriticalPathRiskSlackDays < normalizedValue)
+                CriticalPathRiskSlackDays = normalizedValue;
+
+            if (_isApplyingProjectSprintSettings)
+                return;
+
+            Project.IsDirty = true;
         }
 
         partial void OnShowOriginalHoursColumnChanged(bool value)
@@ -2141,6 +2179,8 @@ namespace NXProject.ViewModels
                 LowDaysPerSfp = project.LowDaysPerSfp;
                 MediumDaysPerSfp = project.MediumDaysPerSfp;
                 HighDaysPerSfp = project.HighDaysPerSfp;
+                CriticalPathCriticalSlackDays = project.CriticalPathCriticalSlackDays;
+                CriticalPathRiskSlackDays = project.CriticalPathRiskSlackDays;
                 ShowOriginalHoursColumn = project.ShowOriginalHoursColumn;
                 HiddenColumns = project.HiddenColumns ?? "";
                 HiddenColumnsExpanded = project.HiddenColumnsExpanded ?? "";

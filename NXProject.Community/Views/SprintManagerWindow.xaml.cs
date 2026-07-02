@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -26,6 +27,8 @@ namespace NXProject.Views
             FirstSprintBox.Text = vm.FirstSprintNumber.ToString();
             SprintDaysBox.Text = vm.SprintDurationDays.ToString();
             NumberingCombo.SelectedItem = vm.SprintNumberingMode;
+            RiskSlackBox.Text = vm.CriticalPathRiskSlackDays.ToString("0.#", CultureInfo.CurrentCulture);
+            CriticalSlackBox.Text = vm.CriticalPathCriticalSlackDays.ToString("0.#", CultureInfo.CurrentCulture);
 
             SprintGrid.ItemsSource = Rows;
             RebuildRows();
@@ -56,8 +59,22 @@ namespace NXProject.Views
                 _vm.SprintDurationDays = days;
             if (NumberingCombo.SelectedItem is string mode)
                 _vm.SprintNumberingMode = mode;
+            if (TryParseDays(RiskSlackBox.Text, out var riskSlackDays))
+                _vm.CriticalPathRiskSlackDays = riskSlackDays;
+            if (TryParseDays(CriticalSlackBox.Text, out var criticalSlackDays))
+                _vm.CriticalPathCriticalSlackDays = criticalSlackDays;
+
+            RiskSlackBox.Text = _vm.CriticalPathRiskSlackDays.ToString("0.#", CultureInfo.CurrentCulture);
+            CriticalSlackBox.Text = _vm.CriticalPathCriticalSlackDays.ToString("0.#", CultureInfo.CurrentCulture);
 
             ShowStatus("Configurações aplicadas.");
+        }
+
+        private static bool TryParseDays(string? text, out double value)
+        {
+            var normalized = (text ?? string.Empty).Trim();
+            return double.TryParse(normalized, NumberStyles.Number, CultureInfo.CurrentCulture, out value)
+                || double.TryParse(normalized.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out value);
         }
 
         // ── Incluir sprint ────────────────────────────────────────────────────

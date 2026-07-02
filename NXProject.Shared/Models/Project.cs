@@ -20,6 +20,8 @@ namespace NXProject.Models
         public double LowDaysPerSfp { get; set; } = 1.0;
         public double MediumDaysPerSfp { get; set; } = 1.0;
         public double HighDaysPerSfp { get; set; } = 1.0;
+        public double CriticalPathRiskSlackDays { get; set; } = 2.0;
+        public double CriticalPathCriticalSlackDays { get; set; } = 1.0;
     }
 
     public class Project
@@ -96,6 +98,10 @@ namespace NXProject.Models
         // Caminho Crítico: exibe borda vermelha nas tarefas críticas no Gantt
         public bool ShowCriticalPath { get; set; } = false;
 
+        // Folga negociada (em dias) para sinalizar tarefas entrando no caminho crítico.
+        public double CriticalPathRiskSlackDays { get; set; } = 2.0;
+        public double CriticalPathCriticalSlackDays { get; set; } = 1.0;
+
         public bool IsDirty { get; set; } = false;
 
         public SprintSettingsProfile GetSprintSettingsProfile()
@@ -107,7 +113,9 @@ namespace NXProject.Models
                 SprintNumberingMode = SprintNumberingMode,
                 LowDaysPerSfp = LowDaysPerSfp,
                 MediumDaysPerSfp = MediumDaysPerSfp,
-                HighDaysPerSfp = HighDaysPerSfp
+                HighDaysPerSfp = HighDaysPerSfp,
+                CriticalPathRiskSlackDays = CriticalPathRiskSlackDays,
+                CriticalPathCriticalSlackDays = CriticalPathCriticalSlackDays
             };
         }
 
@@ -124,6 +132,10 @@ namespace NXProject.Models
             LowDaysPerSfp = Math.Max(0, profile.LowDaysPerSfp);
             MediumDaysPerSfp = Math.Max(0, profile.MediumDaysPerSfp);
             HighDaysPerSfp = Math.Max(0, profile.HighDaysPerSfp);
+            CriticalPathCriticalSlackDays = Math.Max(0, profile.CriticalPathCriticalSlackDays);
+            CriticalPathRiskSlackDays = Math.Max(
+                CriticalPathCriticalSlackDays,
+                Math.Max(0, profile.CriticalPathRiskSlackDays));
         }
     }
 }

@@ -31,11 +31,17 @@
                 <TextBox x:Name="FilterBox" Width="200" Height="26" Padding="6,2"
                          TextChanged="OnFilterChanged" FontSize="12"/>
                 <Separator Margin="12,0"/>
-                <CheckBox x:Name="OnlyCriticalCheck" Content="Só críticas (folga = 0)"
+                <CheckBox x:Name="OnlyCriticalCheck" Content="Só críticas"
                           IsChecked="True" VerticalAlignment="Center" FontSize="12"
                           Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
                 <Separator Margin="12,0"/>
                 <TextBlock x:Name="CountText" VerticalAlignment="Center" FontSize="11" Foreground="#555"/>
+                <Separator Margin="12,0"/>
+                <Button Content="Configurar folga..."
+                        Height="26"
+                        Padding="10,0"
+                        FontSize="12"
+                        Click="OnConfigureSlackClick"/>
             </StackPanel>
         </Border>
 
@@ -54,12 +60,19 @@
                 <DataGridTextColumn Header="Início"  Binding="{Binding ESText}"  Width="88"/>
                 <DataGridTextColumn Header="Fim"     Binding="{Binding EFText}"  Width="88"/>
                 <DataGridTextColumn Header="Duração" Binding="{Binding DurText}" Width="80"/>
-                <DataGridTemplateColumn Header="Folga" Width="80">
+                <DataGridTextColumn Header="Folga (d)" Binding="{Binding FloatDaysText}" Width="80">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTemplateColumn Header="Situação" Width="90">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding FloatText}"
-                                       Foreground="{Binding FloatColor}"
-                                       FontWeight="{Binding FloatWeight}"
+                            <TextBlock Text="{Binding StatusText}"
+                                       Foreground="{Binding StatusColor}"
+                                       FontWeight="{Binding StatusWeight}"
                                        HorizontalAlignment="Center"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
@@ -72,6 +85,9 @@
                         <DataTrigger Binding="{Binding IsCritical}" Value="True">
                             <Setter Property="BorderBrush" Value="#C0392B"/>
                             <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsRisk}" Value="True">
+                            <Setter Property="Background" Value="#FFF7D6"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
