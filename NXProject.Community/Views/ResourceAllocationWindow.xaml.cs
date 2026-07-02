@@ -142,11 +142,11 @@ namespace NXProject.Views
             foreach (var _ in sprints)
                 AllocationGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) });
 
-            AllocationGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(34) });
+            AllocationGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(46) });
             AddCell("Recurso", 0, 0, true);
             AddCell("Liberação", 0, 1, true);
             for (int i = 0; i < sprints.Count; i++)
-                AddCell(sprints[i].Header, 0, i + 2, true);
+                AddSprintHeaderCell(sprints[i], 0, i + 2);
 
             var resources = _vm.Project.Resources.OrderBy(r => r.Name).ToList();
             for (int row = 0; row < resources.Count; row++)
@@ -204,6 +204,40 @@ namespace NXProject.Views
                 }
             };
 
+            Grid.SetRow(border, row);
+            Grid.SetColumn(border, col);
+            AllocationGrid.Children.Add(border);
+        }
+
+        private void AddSprintHeaderCell(SprintColumn sprint, int row, int col)
+        {
+            var hasDates = sprint.Start != default && sprint.End != default;
+            var content = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            content.Children.Add(new TextBlock
+            {
+                Text = sprint.Header,
+                FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(4, 0, 4, 0)
+            });
+            if (hasDates)
+                content.Children.Add(new TextBlock
+                {
+                    Text = $"{sprint.Start:dd/MM} – {sprint.End:dd/MM}",
+                    FontSize = 10,
+                    Foreground = new SolidColorBrush(Color.FromRgb(90, 90, 90)),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(4, 0, 4, 0)
+                });
+
+            var border = new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(219, 225, 234)),
+                BorderThickness = new Thickness(0, 0, 1, 1),
+                Background = new SolidColorBrush(Color.FromRgb(235, 239, 246)),
+                Child = content
+            };
             Grid.SetRow(border, row);
             Grid.SetColumn(border, col);
             AllocationGrid.Children.Add(border);
@@ -362,6 +396,20 @@ namespace NXProject.Views
                 if (assignment == null)
                     continue;
                 SelectedDetails.Add(new AllocationDetailRow(this, task, assignment, resource, sprint));
+            }
+
+            // Total da coluna H. Sprint
+            var total = SelectedDetails.Sum(r =>
+                double.TryParse(r.SprintHours, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.CurrentCulture, out var h) ? h : 0);
+            if (SelectedDetails.Count > 0)
+            {
+                DetailsTotalText.Text = $"Total {sprint.Header}: {total:0.##} h";
+                DetailsTotalText.Visibility = System.Windows.Visibility.Visible;
+            }
+            else
+            {
+                DetailsTotalText.Visibility = System.Windows.Visibility.Collapsed;
             }
         }
 
