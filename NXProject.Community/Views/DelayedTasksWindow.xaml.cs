@@ -427,23 +427,38 @@ namespace NXProject.Views
             var totalDurationHours = leafTasks.Sum(t => GetTotalHours(t.Model));
             if (totalDurationHours < 0.01) totalDurationHours = totalOriginalHours;
 
+            var hasDates = sprints.Any(s => s.Start != DateTime.MinValue);
+
             var points = new List<SprintPoint>();
             double cumPlanned  = 0;
             double cumProgress = 0;
 
             foreach (var sprint in sprints)
             {
-                var inSprint = leafTasks.Where(t => GetTaskSprint(t) == sprint.Number).ToList();
+                double planned;
+                double progress;
+
+                if (hasDates)
+                {
+                    // Distribui horas proporcionalmente conforme sobreposição de datas.
+                    planned  = leafTasks.Sum(t => HoursInSprint(t.Model, GetOriginalHours(t.Model), sprint));
+                    progress = leafTasks.Sum(t => HoursInSprint(t.Model, GetTotalHours(t.Model),    sprint));
+                }
+                else
+                {
+                    var inSprint = leafTasks.Where(t => GetTaskSprint(t) == sprint.Number).ToList();
+                    planned  = inSprint.Sum(t => GetOriginalHours(t.Model));
+                    progress = inSprint.Sum(t => GetTotalHours(t.Model));
+                }
 
                 // Linha azul: HH Original acumulado (baseline planejado).
-                cumPlanned += inSprint.Sum(t => GetOriginalHours(t.Model)) / totalOriginalHours * 100.0;
+                cumPlanned += planned / totalOriginalHours * 100.0;
 
                 var isFuture  = sprint.Number > currentSprintNumber;
                 var isCurrent = sprint.Number == currentSprintNumber;
 
                 // Linha laranja: HH Duração acumulado por sprint.
-                // HH Duração = HH Atual + HH Restante.
-                cumProgress += inSprint.Sum(t => GetTotalHours(t.Model)) / totalDurationHours * 100.0;
+                cumProgress += progress / totalDurationHours * 100.0;
 
                 points.Add(new SprintPoint(
                     sprint.Number, sprint.Label,
@@ -456,6 +471,22 @@ namespace NXProject.Views
                 points.Insert(0, new SprintPoint(points[0].SprintNumber - 1, "", 0, 0, false, false));
 
             return points;
+        }
+
+        private static double HoursInSprint(ProjectTask task, double totalHours, SprintInfo sprint)
+        {
+            if (totalHours <= 0 || sprint.Start == DateTime.MinValue) return totalHours;
+            var taskStart  = task.Start.Date;
+            var taskFinish = task.Finish.Date;
+            var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinish);
+            if (taskWorkingHours <= 0) return totalHours;
+
+            var overlapStart = taskStart  > sprint.Start ? taskStart  : sprint.Start;
+            var overlapEnd   = taskFinish < sprint.End   ? taskFinish : sprint.End;
+            if (overlapEnd < overlapStart) return 0;
+
+            var overlapHours = ProjectCalendarService.CountWorkingHours(overlapStart, overlapEnd);
+            return totalHours * (overlapHours / taskWorkingHours);
         }
 
         private static int DetermineCurrentSprint(List<SprintInfo> sprints, DateTime today)
