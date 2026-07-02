@@ -77,7 +77,7 @@ namespace NXProject.Views
                 .Where(t => string.Equals(t.TfsType, "Epic", StringComparison.OrdinalIgnoreCase) && t.TfsId is > 0)
                 .ToList();
 
-            EpicFilterBox.ItemsSource = new[] { "(Todos)" }.Concat(_epicTaskList.Select(e => e.Name ?? "")).ToList();
+            EpicFilterBox.ItemsSource = new[] { "(Todos)" }.Concat(_epicTaskList.Select(TaskLabel)).ToList();
             EpicFilterBox.SelectedIndex = 0;
 
             FeatureFilterBox.ItemsSource = new[] { "(Todas)" };
@@ -90,6 +90,14 @@ namespace NXProject.Views
 
             BuscarButton.IsEnabled = false;
             StatusText.Text = "Selecione Epic → Feature → Story e clique em 🔍 Buscar Tasks.";
+        }
+
+        private static string TaskLabel(ProjectTask t) => $"{t.Name ?? ""} ({(int)Math.Round(t.PercentComplete)}%)";
+        private static string StripLabel(string? label)
+        {
+            if (string.IsNullOrEmpty(label)) return "";
+            var idx = label.LastIndexOf(" (");
+            return idx > 0 ? label[..idx] : label;
         }
 
         private static IEnumerable<ProjectTask> FlattenAll(System.Collections.ObjectModel.ObservableCollection<ProjectTask> tasks)
@@ -263,14 +271,14 @@ namespace NXProject.Views
             if (!_cascadeMode) { _view?.Refresh(); RefreshRowNumbers(); UpdateTotals(); return; }
 
             var epicName = EpicFilterBox.SelectedItem as string;
-            var selectedEpic = epicName != "(Todos)" ? _epicTaskList.FirstOrDefault(ep => ep.Name == epicName) : null;
+            var selectedEpic = epicName != "(Todos)" ? _epicTaskList.FirstOrDefault(ep => ep.Name == StripLabel(epicName)) : null;
 
             _featureTaskList = FlattenAll(_project.Tasks)
                 .Where(t => string.Equals(t.TfsType, "Feature", StringComparison.OrdinalIgnoreCase) && t.TfsId is > 0)
                 .Where(t => selectedEpic == null || IsDescendantOf(t, selectedEpic) || ReferenceEquals(t.Parent, selectedEpic))
                 .ToList();
 
-            FeatureFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(_featureTaskList.Select(f => f.Name ?? "")).ToList();
+            FeatureFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(_featureTaskList.Select(TaskLabel)).ToList();
             FeatureFilterBox.SelectedIndex = 0;
             FeatureFilterBox.IsEnabled = true;
 
@@ -299,9 +307,9 @@ namespace NXProject.Views
 
             // Modo cascata: popula Story combo a partir da Feature selecionada
             var featureName = FeatureFilterBox.SelectedItem as string;
-            var selectedFeature = featureName != "(Todas)" ? _featureTaskList.FirstOrDefault(f => f.Name == featureName) : null;
+            var selectedFeature = featureName != "(Todas)" ? _featureTaskList.FirstOrDefault(f => f.Name == StripLabel(featureName)) : null;
             var epicName = EpicFilterBox.SelectedItem as string;
-            var selectedEpic = epicName != "(Todos)" ? _epicTaskList.FirstOrDefault(ep => ep.Name == epicName) : null;
+            var selectedEpic = epicName != "(Todos)" ? _epicTaskList.FirstOrDefault(ep => ep.Name == StripLabel(epicName)) : null;
 
             _storyTaskList = FlattenAll(_project.Tasks)
                 .Where(t => (TfsImportService.IsStoryTypePublic(t.TfsType) ||
@@ -314,7 +322,7 @@ namespace NXProject.Views
                 })
                 .ToList();
 
-            StoryFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(_storyTaskList.Select(s => s.Name ?? "")).ToList();
+            StoryFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(_storyTaskList.Select(TaskLabel)).ToList();
             StoryFilterBox.SelectedIndex = 0;
             StoryFilterBox.IsEnabled = true;
             BuscarButton.IsEnabled = true;
@@ -330,7 +338,7 @@ namespace NXProject.Views
             var epicName    = EpicFilterBox.SelectedItem as string;
 
             if (storyName != null && storyName != "(Todas)")
-                _stories = [.. _storyTaskList.Where(s => s.Name == storyName)];
+                _stories = [.. _storyTaskList.Where(s => s.Name == StripLabel(storyName))];
             else if (featureName != null && featureName != "(Todas)")
                 _stories = _storyTaskList;
             else if (epicName != null && epicName != "(Todos)")
