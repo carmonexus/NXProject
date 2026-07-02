@@ -2618,8 +2618,10 @@ namespace NXProject.Views
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 var resPart  = resources.Count > 0 ? $"  · {string.Join(", ", resources)}" : "";
+                var pct      = (int)Math.Round(vm.Model.PercentComplete);
+                var pctPart  = $"  {pct}%";
 
-                DisplayLabel = $"{typeTag}{idPart}{vm.Name}{resPart}";
+                DisplayLabel = $"{typeTag}{idPart}{vm.Name}{resPart}{pctPart}";
             }
             public NXProject.ViewModels.TaskViewModel Task { get; }
             public string DisplayLabel { get; }
