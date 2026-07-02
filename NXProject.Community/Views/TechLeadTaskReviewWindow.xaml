@@ -89,17 +89,18 @@
                     Background="#2B579A" Foreground="White"
                     Visibility="Collapsed"/>
             <TextBlock Text="Status:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-            <ComboBox x:Name="StateFilterBox" Width="120" FontSize="12" Margin="0,0,12,0"
+            <ComboBox x:Name="StateFilterBox" Width="100" FontSize="12" Margin="0,0,8,0"
                       SelectionChanged="OnStateFilterChanged"/>
             <Button Content="🔄 Recarregar" Click="OnReloadClick"
                     Padding="8,3" FontSize="12" Margin="0,0,16,0"/>
+            <Separator Width="1" Height="20" Background="#CCC" Margin="0,0,16,0" VerticalAlignment="Center"/>
             <CheckBox x:Name="FilterEmAndamentoBox" Content="Em andamento"
-                      VerticalAlignment="Center" FontSize="12" Margin="0,0,10,0"
-                      ToolTip="Exibe apenas Stories/Tasks com % de conclusão > 0 e &lt; 100"
+                      VerticalAlignment="Center" FontSize="12" Margin="0,0,12,0"
+                      ToolTip="Exibe apenas Tasks com % de conclusão > 0 e &lt; 100"
                       Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
             <CheckBox x:Name="FilterNaoIniciadaBox" Content="Não iniciada"
-                      VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0"
-                      ToolTip="Exibe apenas Stories/Tasks com % de conclusão = 0"
+                      VerticalAlignment="Center" FontSize="12"
+                      ToolTip="Exibe apenas Tasks com % de conclusão = 0"
                       Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
         </WrapPanel>
 
