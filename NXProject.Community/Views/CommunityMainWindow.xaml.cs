@@ -2608,9 +2608,18 @@ namespace NXProject.Views
             public TaskSearchItem(NXProject.ViewModels.TaskViewModel vm)
             {
                 Task = vm;
-                DisplayLabel = string.IsNullOrEmpty(vm.DisplayId)
-                    ? vm.Name
-                    : $"[{vm.DisplayId}]  {vm.Name}";
+
+                var type     = vm.Model.TfsType?.Trim() ?? "";
+                var typeTag  = string.IsNullOrEmpty(type) ? "" : $"[{type}] ";
+                var idPart   = string.IsNullOrEmpty(vm.DisplayId) ? "" : $"#{vm.DisplayId}  ";
+                var resources = vm.Model.Resources
+                    .Where(r => r.Resource != null)
+                    .Select(r => r.Resource!.DisplayName)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                var resPart  = resources.Count > 0 ? $"  · {string.Join(", ", resources)}" : "";
+
+                DisplayLabel = $"{typeTag}{idPart}{vm.Name}{resPart}";
             }
             public NXProject.ViewModels.TaskViewModel Task { get; }
             public string DisplayLabel { get; }
