@@ -266,22 +266,24 @@ namespace NXProject.Views
             ),
             (
                 "Datas da Atividade",
-                "As datas de uma atividade são calculadas a partir do Início, da duração em horas, do calendário de trabalho, do percentual de conclusão e das regras de cascata. Em linha com o objetivo de transparência da Nexus Xdata, esta seção explicita as regras usadas pelo cronograma.",
+                "As datas de uma atividade são calculadas a partir do Início, das horas reais de trabalho, do calendário, da % de alocação do recurso, do percentual de conclusão e das regras de cascata. Em linha com o objetivo de transparência da Nexus Xdata, esta seção explicita as regras usadas pelo cronograma.",
                 new()
                 {
-                    ("Início, duração e fim",
+                    ("Início, horas e fim",
                      "• Início é a data em que a atividade começa no cronograma.\n" +
-                     "• Dur.(h) é a duração total de trabalho: HH Atual + HH Restante.\n" +
-                     "• Dur.(h), HH Atual e HH Restante são horas de trabalho, não dias de calendário.\n" +
-                     "• Fim é calculado por Início + horas de trabalho, respeitando dias úteis, feriados, horas úteis por dia e % de alocação do recurso.\n" +
+                     "• Dur.(h), HH Atual e HH Restante são HH reais de esforço, não prazo de calendário.\n" +
+                     "• Dur.(h) é o esforço total da atividade: HH Atual + HH Restante.\n" +
+                     "• A % de alocação não reduz nem aumenta esses HH; ela só converte o esforço em duração de calendário.\n" +
+                     "• Fim é calculado por Início + HH reais convertidos pela % de alocação, respeitando dias úteis, feriados e horas úteis por dia.\n" +
+                     "• Exemplo: 40h com 50% de alocação continuam sendo 40h de esforço, mas ocupam cerca de 80h de calendário.\n" +
                      "• A data mostrada na coluna Fim é a data de término visível para o usuário; internamente o cálculo usa o limite final do período de trabalho."),
                     ("% Compl., HH Atual e HH Restante",
                      "• HH Atual é o trabalho já realizado; HH Restante é o trabalho ainda necessário.\n" +
-                     "• Dur.(h) é o total de esforço da atividade: HH Atual + HH Restante.\n" +
+                     "• Dur.(h) é o total de esforço real da atividade: HH Atual + HH Restante.\n" +
                      "• Quando o % Compl. é alterado, o NXProject mantém a Dur.(h) e reparte esse total: HH Atual = Dur.(h) × % Compl.; HH Restante = Dur.(h) - HH Atual.\n" +
                      "• Exemplo: atividade de 8h com 25% concluído fica com HH Atual = 2h e HH Restante = 6h.\n" +
-                     "• Com % Compl. = 0, HH Atual fica 0 e HH Restante volta para a duração/original. Com % Compl. = 100, HH Atual recebe o total e HH Restante fica 0.\n" +
-                     "• Se uma atividade importada ou aberta de arquivo vier com HH Atual/HH Restante vazios, mas tiver duração e % Compl. menor que 100%, o NXProject preenche esses campos pela mesma regra.\n" +
+                     "• Com % Compl. = 0, HH Atual fica 0 e HH Restante volta para o esforço original. Com % Compl. = 100, HH Atual recebe o total e HH Restante fica 0.\n" +
+                     "• Se uma atividade importada ou aberta de arquivo vier com HH Atual/HH Restante vazios, mas tiver esforço e % Compl. menor que 100%, o NXProject preenche esses campos pela mesma regra.\n" +
                      "• % de alocação não reduz o HH da atividade; ela muda o prazo no calendário. Exemplo: 8h restantes com 10% de alocação em calendário de 8h/dia continuam sendo 8h de trabalho, mas ocupam cerca de 10 dias úteis."),
                     ("Início fixado",
                      "• Ao digitar uma data no campo Início, o Início fica fixado e aparece com o ícone de fixação.\n" +
@@ -299,9 +301,9 @@ namespace NXProject.Views
                      "• Pressione Escape para cancelar sem alterar a data."),
                     ("Fim fixado",
                      "• Ao editar a coluna Fim ou arrastar a borda direita da barra no Gantt com o botão direito, o Fim fica fixado.\n" +
-                     "• Com Fim fixado, alterações de duração ou percentual não recalculam automaticamente a data Fim.\n" +
-                     "• Use a fixação de Fim para registrar uma data negociada que pode ser diferente da duração calculada por horas e alocação.\n" +
-                     "• Se houver diferença entre duração negociada e duração calculada, o Gantt pode indicar conflito visual."),
+                     "• Com Fim fixado, alterações de HH, % de conclusão ou % de alocação não recalculam automaticamente a data Fim.\n" +
+                     "• Use a fixação de Fim para registrar uma data negociada que pode ser diferente do fim calculado por HH real e alocação.\n" +
+                     "• Se houver diferença entre prazo negociado e prazo calculado, o Gantt pode indicar conflito visual."),
                     ("Percentual 0%",
                      "• Ao voltar % Compl. para 0%, o NXProject considera que nenhum trabalho foi realizado.\n" +
                      "• HH Atual fica igual a 0.\n" +
@@ -310,9 +312,9 @@ namespace NXProject.Views
                      "• A cascata pode reposicionar atividades seguintes do mesmo recurso, mas não deve usar Features ou agrupadores como referência de fila."),
                     ("Percentual 100%",
                      "• Ao marcar % Compl. como 100%, o NXProject considera a atividade encerrada.\n" +
-                     "• HH Atual recebe a duração total da atividade.\n" +
+                     "• HH Atual recebe o esforço total da atividade.\n" +
                      "• HH Restante fica igual a 0.\n" +
-                     "• O Fim calculado é Início + duração total. Se esse Fim cair no futuro, o Fim é limitado a hoje, pois não é possível encerrar uma atividade no futuro.\n" +
+                     "• O Fim calculado é Início + esforço total convertido pela % de alocação. Se esse Fim cair no futuro, o Fim é limitado a hoje, pois não é possível encerrar uma atividade no futuro.\n" +
                      "• Exceção: se o Início estiver fixado em uma data futura, o Fim fica igual ao Início fixado."),
                     ("Cascata por predecessoras e recurso",
                      "• Predecessoras explícitas movem a atividade para o próximo dia útil após o fim visível da predecessora.\n" +
@@ -392,7 +394,7 @@ namespace NXProject.Views
                      "• Stories por Recurso — detalhamento de cada story por recurso e mês.\n" +
                      "• Rateio — % que cada projeto representa do total de horas do recurso naquele mês.\n\n" +
                      "Critério de cálculo das horas por mês:\n" +
-                     "As horas de cada atividade são distribuídas proporcionalmente entre os meses cobertos pela sua duração. Se uma story vai de 10/jan a 20/fev (42 dias), 22 dias ficam em janeiro e 20 dias em fevereiro; as horas são distribuídas nessa proporção (22/42 em jan, 20/42 em fev).\n\n" +
+                     "As horas de cada atividade são distribuídas proporcionalmente entre os meses cobertos pela faixa Início → Fim da atividade, não pela sprint. Se uma story vai de 10/jan a 20/fev (42 dias), 22 dias ficam em janeiro e 20 dias em fevereiro; as horas são distribuídas nessa proporção (22/42 em jan, 20/42 em fev).\n\n" +
                      "O valor de horas mostrado em cada célula é HH Atual (já trabalhado) + HH Restante (previsto). Na aba Horas por Projeto, use o checkbox 'Apenas HH atual (alocado)' para ver somente as horas já executadas, excluindo a estimativa futura."),
                     ("Filtro por recurso",
                      "O botão 👤 na toolbar permite filtrar o Gantt e a grade para mostrar somente as atividades de uma pessoa específica — útil em reuniões individuais de acompanhamento.")
@@ -411,7 +413,7 @@ namespace NXProject.Views
                      "• Rateio — mostra o % que cada projeto representa do total de horas do recurso naquele mês.\n" +
                      "• Interno — visão separada dos recursos internos, quando houver."),
                     ("Critério de horas por mês",
-                     "As horas de cada atividade são distribuídas proporcionalmente entre os meses cobertos pela sua duração.\n\n" +
+                     "As horas de cada atividade são distribuídas proporcionalmente entre os meses cobertos pela faixa Início → Fim da atividade. A sprint não concentra as horas no mês dela; ela apenas identifica a iteração.\n\n" +
                      "Exemplo: uma story de 10/jan a 20/fev tem 22 dias em janeiro e 20 dias em fevereiro; se a story tem 42 horas no total, 22h ficam em janeiro e 20h em fevereiro (proporção 22/42 e 20/42).\n\n" +
                      "O valor exibido no modo normal é HH Atual + HH Restante (duração total prevista). O checkbox 'Apenas HH atual (alocado)' aparece somente na aba Horas por Projeto e mostra apenas as horas já realizadas nessa aba."),
                     ("HH Atual e HH Restante por mês",

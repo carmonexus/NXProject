@@ -40,11 +40,12 @@
                     <TextBlock Text="1. Duracao (Dur.(h))"
                                FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,0,0,8"/>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-A coluna Dur.(h) trabalha em horas com uma casa decimal. Digite 8 para 8 horas, 16.5 para 16 horas e 30 minutos.
+A coluna Dur.(h) trabalha em HH reais de esforco, nao em prazo de calendario. Digite 8 para 8 horas, 16.5 para 16 horas e 30 minutos.
                     </TextBlock>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Para converter dias uteis em horas, use o sufixo d: 2d vira 2 dias uteis."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Alterar Dur.(h) recalcula a data Fim mantendo a data Inicio."/>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Alterar Dur.(h) recalcula a data Fim mantendo a data Inicio e aplicando a % de alocacao do recurso."/>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Quando HH Atual > 0, a duracao exibida e HH Atual + HH Restante."/>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- A % de alocacao nao muda o HH: 40h continuam sendo 40h. Ela muda quantos dias de calendario essas horas ocupam."/>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- A edicao de duracao fica bloqueada quando a atividade esta 100% concluida."/>
 
                     <!-- 2. HH Atual e HH Restante -->
@@ -74,7 +75,7 @@ Ao digitar o percentual de conclusao, o NXProject recalcula HH Atual e HH Restan
                     <TextBlock Text="4. Datas Inicio e Fim"
                                FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-A data Fim e calculada automaticamente: Inicio + Dur.(h), respeitando o calendario (fins de semana e feriados sao pulados).
+A data Fim e calculada automaticamente: Inicio + HH reais convertidos pela % de alocacao, respeitando o calendario (fins de semana e feriados sao pulados).
                     </TextBlock>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Alterar a data Fim muda a duracao; o sistema pede confirmacao antes de aceitar."/>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Digitar 0 no campo Inicio remove a fixacao e reposiciona pela sprint ou predecessora."/>
