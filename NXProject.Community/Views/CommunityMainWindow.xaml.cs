@@ -811,9 +811,11 @@ namespace NXProject.Views
             };
             bool confirmed = false;
             var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(24, 20, 24, 20) };
+            var taskName = task.Name ?? string.Empty;
+            var tfsIdText = task.TfsId?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
             var titulo = canDeleteInDevOps
-                ? LanguageService.Str("Delete_DevOpsTitle", task.TfsId)
-                : LanguageService.Str("Delete_LocalTitle", task.Name);
+                ? LanguageService.Str("Delete_DevOpsTitle", tfsIdText)
+                : LanguageService.Str("Delete_LocalTitle", taskName);
             panel.Children.Add(new System.Windows.Controls.TextBlock
             {
                 Text = titulo,
@@ -822,7 +824,7 @@ namespace NXProject.Views
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8)
             });
             var detalhe = canDeleteInDevOps
-                ? LanguageService.Str("Delete_DevOpsDetail", task.Name)
+                ? LanguageService.Str("Delete_DevOpsDetail", taskName)
                 : LanguageService.Str("Delete_LocalDetail");
             panel.Children.Add(new System.Windows.Controls.TextBlock
             {

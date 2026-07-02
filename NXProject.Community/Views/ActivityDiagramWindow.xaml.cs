@@ -16,9 +16,9 @@ namespace NXProject.Views
     {
         // ── Layout constants ────────────────────────────────────────────────
         private const double NodeH      = 44;
-        private const double HGap       = 40;   // horizontal gap between columns
-        private const double VGap       = 16;   // vertical gap between nodes
-        private const double ColPadding = 20;   // padding inside a column group
+        private const double LevelVGap  = 48;   // vertical gap between levels (top-down)
+        private const double SiblingGap = 20;   // horizontal gap between siblings (top-down)
+        private const double ColPadding = 24;   // canvas padding
         private const double HandleW    = 8;    // resize handle width
 
         // Per-level widths (resizable by the user)
@@ -86,8 +86,6 @@ namespace NXProject.Views
         private List<DiagramNode> _diagramRoots = new();
         private List<LevelItem>   _levelItems   = new();
         private double            _zoom         = 1.0;
-        private Point             _panStart;
-        private bool              _panning;
 
         // Colors per level
         private static readonly Color[] LevelColors =
@@ -233,13 +231,16 @@ namespace NXProject.Views
         {
             DiagramCanvas.Children.Clear();
 
-            // Layout: columns = hierarchy levels, rows = nodes within parent
+            // Top-down layout: levels are rows, siblings spread horizontally
             double canvasW = 0, canvasH = 0;
             var allNodes   = new List<DiagramNode>();
-            LayoutColumn(_diagramRoots, 0, ColPadding, ColPadding, ref canvasW, ref canvasH, allNodes);
+            LayoutTopDown(_diagramRoots, ColPadding, ColPadding, ref canvasW, ref canvasH, allNodes);
 
             DiagramCanvas.Width  = canvasW + ColPadding;
             DiagramCanvas.Height = canvasH + ColPadding;
+
+            // Draw hierarchy lines (parent → children) below arrows
+            DrawHierarchyLines(_diagramRoots);
 
             // Draw dependency arrows (same level only)
             DrawArrows(allNodes);
@@ -249,48 +250,49 @@ namespace NXProject.Views
                 DrawNode(n);
         }
 
-        // Returns the bottom Y reached by this column group
-        private double LayoutColumn(
-            List<DiagramNode> nodes, int depth,
-            double x, double startY,
+        // Top-down layout: returns next available X after placing all nodes (includes trailing SiblingGap).
+        private double LayoutTopDown(
+            List<DiagramNode> nodes,
+            double startX, double y,
             ref double maxW, ref double maxH,
             List<DiagramNode> allNodes)
         {
-            double y = startY;
+            double x = startX;
 
             foreach (var node in nodes)
             {
-                node.X = x;
-                node.Y = y;
+                double nw = NodeW(node.Level);
                 allNodes.Add(node);
 
-                double nw = NodeW(node.Level);
                 if (node.IsExpanded && node.Children.Count > 0)
                 {
-                    // Children go to the right in a new column
-                    double childX    = x + nw + HGap;
-                    double childStartY = y;
-                    double childEndY   = LayoutColumn(
-                        node.Children, depth + 1,
-                        childX, childStartY,
+                    double childStartX = x;
+                    double childY      = y + NodeH + LevelVGap;
+                    double childEndX   = LayoutTopDown(
+                        node.Children, childStartX, childY,
                         ref maxW, ref maxH, allNodes);
 
-                    // Center the parent vertically relative to its children
-                    double groupH = childEndY - childStartY;
-                    node.Y = childStartY + (groupH - NodeH) / 2.0;
+                    // Span of children (remove trailing gap)
+                    double childSpan = childEndX - SiblingGap - childStartX;
 
-                    y = childEndY + VGap;
+                    // Center parent horizontally over its children
+                    node.X = childStartX + Math.Max(0, childSpan - nw) / 2.0;
+                    node.Y = y;
+
+                    x = Math.Max(childEndX, node.X + nw + SiblingGap);
                 }
                 else
                 {
-                    y += NodeH + VGap;
+                    node.X = x;
+                    node.Y = y;
+                    x += nw + SiblingGap;
                 }
 
                 maxW = Math.Max(maxW, node.X + nw);
                 maxH = Math.Max(maxH, node.Y + NodeH);
             }
 
-            return y;
+            return x;
         }
 
         // ── Draw node ────────────────────────────────────────────────────────
@@ -489,6 +491,62 @@ namespace NXProject.Views
             return result;
         }
 
+        // ── Hierarchy lines (parent → children) ─────────────────────────────
+
+        private void DrawHierarchyLines(List<DiagramNode> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                if (!node.IsExpanded || node.Children.Count == 0) continue;
+
+                var brush = new SolidColorBrush(Color.FromArgb(120, 80, 80, 80));
+                double parentCenterX = node.X + NodeW(node.Level) / 2.0;
+                double parentBottomY = node.Y + NodeH;
+
+                // Mid-Y between parent bottom and first child top
+                double firstChildTopY = node.Children[0].Y;
+                double midY = parentBottomY + (firstChildTopY - parentBottomY) / 2.0;
+
+                // Vertical line: parent bottom → midY
+                AddLine(parentCenterX, parentBottomY, parentCenterX, midY, brush);
+
+                if (node.Children.Count == 1)
+                {
+                    // Single child: straight line midY → child top-center
+                    double childCX = node.Children[0].X + NodeW(node.Children[0].Level) / 2.0;
+                    AddLine(parentCenterX, midY, childCX, midY, brush);
+                    AddLine(childCX, midY, childCX, node.Children[0].Y, brush);
+                }
+                else
+                {
+                    // Horizontal bus at midY spanning all children
+                    double leftX  = node.Children.Min(c => c.X + NodeW(c.Level) / 2.0);
+                    double rightX = node.Children.Max(c => c.X + NodeW(c.Level) / 2.0);
+                    AddLine(leftX, midY, rightX, midY, brush);
+
+                    // Vertical drop from bus to each child top-center
+                    foreach (var child in node.Children)
+                    {
+                        double childCX = child.X + NodeW(child.Level) / 2.0;
+                        AddLine(childCX, midY, childCX, child.Y, brush);
+                    }
+                }
+
+                // Recurse
+                DrawHierarchyLines(node.Children);
+            }
+        }
+
+        private void AddLine(double x1, double y1, double x2, double y2, Brush brush)
+        {
+            DiagramCanvas.Children.Add(new Line
+            {
+                X1 = x1, Y1 = y1, X2 = x2, Y2 = y2,
+                Stroke = brush,
+                StrokeThickness = 1.5
+            });
+        }
+
         // ── Draw arrows ──────────────────────────────────────────────────────
 
         private void DrawArrows(List<DiagramNode> allNodes)
@@ -514,21 +572,21 @@ namespace NXProject.Views
 
         private void DrawArrow(DiagramNode from, DiagramNode to, Brush brush)
         {
-            // from right-center → to left-center (same column → vertical; different column → horizontal)
+            // Top-down layout: same row (same Y) → horizontal arrow; different Y → vertical arrow
             double x1, y1, x2, y2;
 
-            bool sameColumn = Math.Abs(from.X - to.X) < 1;
-            if (sameColumn)
-            {
-                // Vertical arrow: bottom-center → top-center
-                x1 = from.X + NodeW(from.Level) / 2; y1 = from.Y + NodeH;
-                x2 = to.X   + NodeW(to.Level)   / 2; y2 = to.Y;
-            }
-            else
+            bool sameRow = Math.Abs(from.Y - to.Y) < 1;
+            if (sameRow)
             {
                 // Horizontal arrow: right-center → left-center
                 x1 = from.X + NodeW(from.Level); y1 = from.Y + NodeH / 2;
                 x2 = to.X;                        y2 = to.Y   + NodeH / 2;
+            }
+            else
+            {
+                // Vertical arrow: bottom-center → top-center
+                x1 = from.X + NodeW(from.Level) / 2; y1 = from.Y + NodeH;
+                x2 = to.X   + NodeW(to.Level)   / 2; y2 = to.Y;
             }
 
             var line = new Line
@@ -540,8 +598,8 @@ namespace NXProject.Views
             };
             DiagramCanvas.Children.Add(line);
 
-            // Arrowhead
-            DrawArrowhead(x2, y2, sameColumn ? 90 : 0, brush);
+            // Arrowhead: horizontal → angle 0 (pointing right), vertical → angle 90 (pointing down)
+            DrawArrowhead(x2, y2, sameRow ? 0 : 90, brush);
         }
 
         private void DrawArrowhead(double tipX, double tipY, double angleDeg, Brush brush)
