@@ -474,6 +474,88 @@ namespace NXProject.Services
                 ? await LoadWorkItemsAsync(orgBase, auth, existingIds, requested, cancellationToken, expandRelations: true)
                 : new Dictionary<int, WorkItem>();
 
+            // Pré-etapa: qualquer atividade interna (I:) que já tenha tipo DevOps precisa
+            // virar TfsId antes de sincronizarmos links de predecessora de outras atividades.
+            foreach (var task in tasks)
+            {
+                if (IsNoDevOpsType(task.TfsType)
+                    || task.HasTfsLink)
+                    continue;
+
+                var desiredParent = ResolveDesiredParent(task, options.RootWorkItemId);
+                if (desiredParent <= 0)
+                    continue;
+
+                var createType = task.TfsType;
+                if (string.IsNullOrWhiteSpace(createType))
+                {
+                    createType = task.Parent?.TfsType switch
+                    {
+                        "Epic"    => "Feature",
+                        "Feature" => "User Story",
+                        _         => "User Story"
+                    };
+                    task.TfsType = createType;
+                }
+
+                var existingChild = await FindExistingChildByTitleAndTypeAsync(
+                    orgBase,
+                    options.TeamProject,
+                    auth,
+                    desiredParent,
+                    createType,
+                    task.Name,
+                    cancellationToken);
+
+                if (existingChild != null)
+                {
+                    task.TfsId = existingChild.Id;
+                    task.TfsParentId = desiredParent;
+                    task.IsPendingTfsCreate = false;
+                    current[existingChild.Id] = existingChild;
+                    report.LogSuccess($"{createType} - #{existingChild.Id} ({task.Name}): já existia no DevOps; vínculo recuperado pelo nome no mesmo pai.");
+                    continue;
+                }
+
+                var createHoursRef  = ResolveForType(task.TfsType, c => c.EffortField,        hoursRef);
+                var createStartRef  = ResolveForType(task.TfsType, c => c.StartField,         startRef);
+                var createFinishRef = ResolveForType(task.TfsType, c => c.FinishField,        finishRef);
+                var createPercAloc  = ResolveForType(task.TfsType, c => c.PercAlocField,      percAlocRef);
+
+                options.TypeFieldMappings.TryGetValue(task.TfsType ?? "", out var cfgForClass);
+                if (cfgForClass == null) options.TypeFieldMappings.TryGetValue("*", out cfgForClass);
+                var classFields = cfgForClass?.CustomDevopsFields ?? [];
+                if (classFields.Count == 0
+                    && string.Equals(task.TfsType, "Feature", StringComparison.OrdinalIgnoreCase))
+                {
+                    classFields = [new ClassificationFieldDef { Field = "Custom.Type", FieldType = "Picklist" }];
+                    if (string.IsNullOrWhiteSpace(task.TfsClassification))
+                        task.TfsClassification = "Feature";
+                }
+
+                var createOps = BuildCreateOps(
+                    task,
+                    desiredParent,
+                    orgBase,
+                    createHoursRef,
+                    createStartRef,
+                    createFinishRef,
+                    tasksById,
+                    syncPredecessorLinks: false,
+                    percAlocRef: createPercAloc,
+                    originalHoursRef: originalHoursRef,
+                    remainingHoursRef: remainingHoursRef,
+                    realizedHoursRef: realizedHoursRef,
+                    extraFields: options.ExtraCreateFields,
+                    classificationFields: classFields);
+                var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
+                task.TfsId = newId;
+                task.TfsParentId = desiredParent;
+                task.IsPendingTfsCreate = false;
+                report.Created++;
+                report.LogSuccess($"{createType} - #{newId} ({task.Name}): criado.");
+            }
+
             foreach (var task in tasks)
             {
                 // Declarados antes do try para ficarem acessíveis no catch (retry sem predecessoras).
@@ -483,7 +565,7 @@ namespace NXProject.Services
                 try
                 {
                     // Tarefas marcadas como "No DevOps" ou com TfsId negativo nunca são enviadas ao TFS.
-                    if (string.Equals(task.TfsType?.Trim(), "No DevOps", StringComparison.OrdinalIgnoreCase)
+                    if (IsNoDevOpsType(task.TfsType)
                         || task.TfsId < 0)
                         continue;
 
@@ -538,13 +620,40 @@ namespace NXProject.Services
                             if (string.IsNullOrWhiteSpace(task.TfsClassification))
                                 task.TfsClassification = "Feature";
                         }
-                        var createOps = BuildCreateOps(task, desiredParent, orgBase, createHoursRef, createStartRef, createFinishRef, tasksById, options.SyncPredecessorLinks, createPercAloc, originalHoursRef, remainingHoursRef, realizedHoursRef, options.ExtraCreateFields, classFields);
-                        var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
-                        task.TfsId = newId;
-                        task.TfsParentId = desiredParent;
-                        report.Created++;
-                        report.LogSuccess($"{createType} - #{newId} ({task.Name}): criado.");
-                        continue;
+                        // Atividade exibida como I: ainda não tem vínculo real com DevOps.
+                        // Antes de criar, tenta recuperar um filho já existente no mesmo pai,
+                        // com o mesmo tipo e nome, e reaproveitar o ID do DevOps.
+                        var shouldRecoverInternalLink = !task.HasTfsLink;
+                        var existingChild = shouldRecoverInternalLink
+                            ? await FindExistingChildByTitleAndTypeAsync(
+                                orgBase,
+                                options.TeamProject,
+                                auth,
+                                desiredParent,
+                                createType,
+                                task.Name,
+                                cancellationToken)
+                            : null;
+
+                        if (existingChild != null)
+                        {
+                            task.TfsId = existingChild.Id;
+                            task.TfsParentId = desiredParent;
+                            task.IsPendingTfsCreate = false;
+                            current[existingChild.Id] = existingChild;
+                            report.LogSuccess($"{createType} - #{existingChild.Id} ({task.Name}): já existia no DevOps; vínculo recuperado pelo nome no mesmo pai.");
+                        }
+                        else
+                        {
+                            var createOps = BuildCreateOps(task, desiredParent, orgBase, createHoursRef, createStartRef, createFinishRef, tasksById, options.SyncPredecessorLinks, createPercAloc, originalHoursRef, remainingHoursRef, realizedHoursRef, options.ExtraCreateFields, classFields);
+                            var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
+                            task.TfsId = newId;
+                            task.TfsParentId = desiredParent;
+                            task.IsPendingTfsCreate = false;
+                            report.Created++;
+                            report.LogSuccess($"{createType} - #{newId} ({task.Name}): criado.");
+                            continue;
+                        }
                     }
 
                     // ATUALIZAR item existente.
@@ -785,6 +894,17 @@ namespace NXProject.Services
                         }
                     } // end !isTask
 
+                    if (isTask && IsDevOpsMilestoneType(task.TfsType))
+                    {
+                        var currentTags = wi.Tags ?? string.Empty;
+                        if (!HasTag(currentTags, "MARCO-PROJECT"))
+                        {
+                            var newTags = AddTag(currentTags, "MARCO-PROJECT");
+                            ops.Add(PatchAdd("/fields/System.Tags", newTags));
+                            changes.Add("tag: +MARCO-PROJECT");
+                        }
+                    }
+
                     // ── Campos de horas para Story/Feature/Epic ────────────────────────────
                     if (!isTask)
                     {
@@ -846,9 +966,10 @@ namespace NXProject.Services
                             }
                         }
 
-                        // Priority (Microsoft.VSTS.Common.Priority).
+                        // Priority (Microsoft.VSTS.Common.Priority). DevOps aceita apenas 1–4.
                         var currentPriority = ReadDouble(wi, "Microsoft.VSTS.Common.Priority");
-                        int desiredPriority = task.Priority is > 0 ? task.Priority.Value : 5;
+                        int rawPriority = task.Priority is > 0 ? task.Priority.Value : 2;
+                        int desiredPriority = Math.Clamp(rawPriority, 1, 4);
                         if (currentPriority == null || (int)currentPriority.Value != desiredPriority)
                         {
                             ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Priority", desiredPriority));
@@ -1151,10 +1272,10 @@ namespace NXProject.Services
             {
                 // Inclui se: tem TfsId (mesmo = 0 = "a criar"), ou se o pai tem vínculo,
                 // ou se algum descendente tem TfsId (para garantir que o pai seja criado primeiro).
-                bool isNoDevOps = string.Equals(t.TfsType?.Trim(), "No DevOps", StringComparison.OrdinalIgnoreCase)
+                bool isNoDevOps = IsNoDevOpsType(t.TfsType)
                                   || t.TfsId < 0;
                 bool hasLinkedDescendant = !isNoDevOps && HasLinkedDescendant(t.Children);
-                var include = (!isNoDevOps && t.TfsId.HasValue) || parentIsLinked || hasLinkedDescendant;
+                var include = (!isNoDevOps && (t.TfsId.HasValue || t.IsPendingTfsCreate)) || parentIsLinked || hasLinkedDescendant;
                 if (include)
                     acc.Add(t);
                 CollectLinkedTasks(t.Children, acc, include || (t.TfsId is > 0));
@@ -1165,7 +1286,7 @@ namespace NXProject.Services
         {
             foreach (var t in tasks)
             {
-                if (t.TfsId.HasValue && !string.Equals(t.TfsType?.Trim(), "No DevOps", StringComparison.OrdinalIgnoreCase))
+                if ((t.TfsId.HasValue || t.IsPendingTfsCreate) && !IsNoDevOpsType(t.TfsType))
                     return true;
                 if (HasLinkedDescendant(t.Children)) return true;
             }
@@ -1288,8 +1409,29 @@ namespace NXProject.Services
         private static bool IsStoryTask(ProjectTask task) =>
             IsStoryType(task.TfsType);
 
+        private static bool IsNoDevOpsType(string? type)
+        {
+            var normalized = (type ?? string.Empty)
+                .Trim()
+                .Replace(" ", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace("_", string.Empty);
+            return string.Equals(normalized, "NoDevOps", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsDevOpsMilestoneType(string? type)
+        {
+            var normalized = (type ?? string.Empty)
+                .Trim()
+                .Replace(" ", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace("_", string.Empty);
+            return string.Equals(normalized, "MarcoDevops", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsTaskType(string? type) =>
-            string.Equals(type, "Task", StringComparison.OrdinalIgnoreCase);
+            string.Equals(type, "Task", StringComparison.OrdinalIgnoreCase) ||
+            IsDevOpsMilestoneType(type);
 
         private static bool IsEpicOrFeatureType(string? type) =>
             string.Equals(type, "Epic", StringComparison.OrdinalIgnoreCase) ||
@@ -1510,7 +1652,9 @@ namespace NXProject.Services
                 var taskHours = task.EstimatedHours ?? task.CurrentHours;
                 if (taskHours.HasValue)
                     ops.Add(PatchAdd("/fields/Microsoft.VSTS.Scheduling.OriginalEstimate", taskHours.Value));
-                ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Priority", 5));
+                ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Priority", 2));
+                if (IsDevOpsMilestoneType(task.TfsType))
+                    ops.Add(PatchAdd("/fields/System.Tags", AddTag(task.Tags, "MARCO-PROJECT")));
             }
 
             // HH Restante e HH Atual: apenas para Story/Feature/Epic.
@@ -1545,7 +1689,49 @@ namespace NXProject.Services
 
         // Mapeia o tipo do NXProject para o nome do work item type no DevOps.
         private static string MapWorkItemType(string type) =>
-            string.Equals(type, "Story", StringComparison.OrdinalIgnoreCase) ? "User Story" : type;
+            string.Equals(type, "Story", StringComparison.OrdinalIgnoreCase) ? "User Story" :
+            IsDevOpsMilestoneType(type) ? "Task" :
+            type;
+
+        private static async Task<WorkItem?> FindExistingChildByTitleAndTypeAsync(
+            string orgBase,
+            string project,
+            AuthenticationHeaderValue auth,
+            int parentId,
+            string type,
+            string? title,
+            CancellationToken ct)
+        {
+            if (parentId <= 0 || string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(title))
+                return null;
+
+            var edges = await LoadDirectHierarchyEdgesAsync(orgBase, project, auth, parentId, ct);
+            var childIds = edges
+                .Where(e => e.parent == parentId)
+                .Select(e => e.child)
+                .Distinct()
+                .ToList();
+            if (childIds.Count == 0)
+                return null;
+
+            var items = await LoadWorkItemsAsync(
+                orgBase,
+                auth,
+                childIds,
+                ["System.Id", "System.Title", "System.WorkItemType", "System.State"],
+                ct,
+                expandRelations: true);
+
+            var mappedType = MapWorkItemType(type);
+            var normalizedTitle = NormalizeTitleForMatch(title);
+
+            return items.Values.FirstOrDefault(item =>
+                string.Equals(MapWorkItemType(item.WorkItemType), mappedType, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(NormalizeTitleForMatch(item.Title), normalizedTitle, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string NormalizeTitleForMatch(string? value) =>
+            Regex.Replace((value ?? string.Empty).Trim(), @"\s+", " ");
 
         private static async Task<int> CreateWorkItemAsync(
             string orgBase, AuthenticationHeaderValue auth, string project, string type,
@@ -1588,6 +1774,14 @@ namespace NXProject.Services
         /// <summary>Normaliza tags para o formato aceito pelo DevOps ("tag1; tag2").</summary>
         private static string NormalizeTagsForWrite(string? tags) =>
             string.Join("; ", SplitTags(tags));
+
+        private static string AddTag(string? tags, string tag)
+        {
+            var parts = SplitTags(tags).ToList();
+            if (!parts.Any(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase)))
+                parts.Add(tag);
+            return string.Join("; ", parts);
+        }
 
         public static bool IsClosedStateName(string? state) => IsClosedState(state);
 
@@ -2357,6 +2551,12 @@ namespace NXProject.Services
 
         public static bool IsStoryTypePublic(string? type) => IsStoryType(type);
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
+        public static List<object> BuildCreateOpsForTests(
+            ProjectTask task,
+            int parentId,
+            Dictionary<int, ProjectTask> tasksById,
+            bool syncPredecessorLinks = true) =>
+            BuildCreateOps(task, parentId, "https://dev.azure.com/test", null, null, null, tasksById, syncPredecessorLinks);
 
         /// <summary>
         /// Busca os HH das Tasks filhas usando o campo padrão Microsoft.VSTS.Scheduling.OriginalEstimate.
