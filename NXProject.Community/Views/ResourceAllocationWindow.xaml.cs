@@ -441,14 +441,16 @@ namespace NXProject.Views
         private static double ProportionalHours(Models.ProjectTask task, double totalHours, SprintColumn sprint)
         {
             if (totalHours <= 0) return 0;
-            var taskStart  = task.Start.Date;
-            var taskFinish = task.Finish.Date;
-            var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinish);
-            if (taskWorkingHours <= 0) return totalHours; // atividade de um dia: tudo na sprint
+            var taskStart      = task.Start.Date;
+            var taskFinishEx   = task.Finish.Date.AddDays(1); // fim exclusivo
+            var sprintEndEx    = sprint.End.Date.AddDays(1);  // fim exclusivo
 
-            var overlapStart = taskStart  > sprint.Start ? taskStart  : sprint.Start;
-            var overlapEnd   = taskFinish < sprint.End   ? taskFinish : sprint.End;
-            if (overlapEnd < overlapStart) return 0;
+            var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinishEx);
+            if (taskWorkingHours <= 0) return totalHours;
+
+            var overlapStart = taskStart     > sprint.Start ? taskStart    : sprint.Start;
+            var overlapEnd   = taskFinishEx  < sprintEndEx  ? taskFinishEx : sprintEndEx;
+            if (overlapEnd <= overlapStart) return 0;
 
             var overlapHours = ProjectCalendarService.CountWorkingHours(overlapStart, overlapEnd);
             return totalHours * (overlapHours / taskWorkingHours);

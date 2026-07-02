@@ -476,14 +476,16 @@ namespace NXProject.Views
         private static double HoursInSprint(ProjectTask task, double totalHours, SprintInfo sprint)
         {
             if (totalHours <= 0 || sprint.Start == DateTime.MinValue) return totalHours;
-            var taskStart  = task.Start.Date;
-            var taskFinish = task.Finish.Date;
-            var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinish);
+            var taskStart    = task.Start.Date;
+            var taskFinishEx = task.Finish.Date.AddDays(1); // fim exclusivo
+            var sprintEndEx  = sprint.End.Date.AddDays(1);  // fim exclusivo
+
+            var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinishEx);
             if (taskWorkingHours <= 0) return totalHours;
 
-            var overlapStart = taskStart  > sprint.Start ? taskStart  : sprint.Start;
-            var overlapEnd   = taskFinish < sprint.End   ? taskFinish : sprint.End;
-            if (overlapEnd < overlapStart) return 0;
+            var overlapStart = taskStart    > sprint.Start ? taskStart    : sprint.Start;
+            var overlapEnd   = taskFinishEx < sprintEndEx  ? taskFinishEx : sprintEndEx;
+            if (overlapEnd <= overlapStart) return 0;
 
             var overlapHours = ProjectCalendarService.CountWorkingHours(overlapStart, overlapEnd);
             return totalHours * (overlapHours / taskWorkingHours);
