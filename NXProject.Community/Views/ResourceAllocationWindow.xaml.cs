@@ -352,7 +352,9 @@ namespace NXProject.Views
                 DetailsGrid.Columns[6].Header = sprint.Header;
             SelectedDetails.Clear();
 
-            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && BelongsToSprint(t, sprint)))
+            var hasDates = sprint.Start != default && sprint.End != default;
+            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) &&
+                (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint))))
             {
                 var assignment = task.Model.Resources.FirstOrDefault(r => r.ResourceId == resource.Id);
                 if (assignment == null)
@@ -399,21 +401,27 @@ namespace NXProject.Views
 
         private double GetAllocatedHours(Resource resource, SprintColumn sprint)
         {
+            var hasDates = sprint.Start != default && sprint.End != default;
             return _vm.FlatTasks
-                .Where(t => IsLeafTask(t) && OverlapsWithSprint(t, sprint))
+                .Where(t => IsLeafTask(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
                 .SelectMany(t => t.Model.Resources.Where(r => r.ResourceId == resource.Id)
-                    .Select(r => ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint)))
+                    .Select(r => hasDates
+                        ? ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint)
+                        : TaskScheduleService.GetAssignmentHours(t.Model, r)))
                 .Sum();
         }
 
         private double? GetAverageAllocationPercent(Resource resource, SprintColumn sprint)
         {
+            var hasDates = sprint.Start != default && sprint.End != default;
             var assignments = _vm.FlatTasks
-                .Where(t => IsLeafTask(t) && OverlapsWithSprint(t, sprint))
+                .Where(t => IsLeafTask(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
                 .SelectMany(t => t.Model.Resources.Where(r => r.ResourceId == resource.Id)
                     .Select(r => new
                     {
-                        Hours = ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint),
+                        Hours = hasDates
+                            ? ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint)
+                            : TaskScheduleService.GetAssignmentHours(t.Model, r),
                         Percent = TaskScheduleService.NormalizeAllocationPercent(r.AllocationPercent)
                     }))
                 .Where(a => a.Hours > 0)
