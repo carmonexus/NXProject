@@ -968,7 +968,7 @@ namespace NXProject.Services
 
                         // Priority (Microsoft.VSTS.Common.Priority). DevOps aceita apenas 1–4.
                         var currentPriority = ReadDouble(wi, "Microsoft.VSTS.Common.Priority");
-                        int rawPriority = task.Priority is > 0 ? task.Priority.Value : 2;
+                        int rawPriority = task.Priority is > 0 ? task.Priority.Value : 4;
                         int desiredPriority = Math.Clamp(rawPriority, 1, 4);
                         if (currentPriority == null || (int)currentPriority.Value != desiredPriority)
                         {
@@ -1652,7 +1652,7 @@ namespace NXProject.Services
                 var taskHours = task.EstimatedHours ?? task.CurrentHours;
                 if (taskHours.HasValue)
                     ops.Add(PatchAdd("/fields/Microsoft.VSTS.Scheduling.OriginalEstimate", taskHours.Value));
-                ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Priority", 2));
+                ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Priority", 4));
                 if (IsDevOpsMilestoneType(task.TfsType))
                     ops.Add(PatchAdd("/fields/System.Tags", AddTag(task.Tags, "MARCO-PROJECT")));
             }
