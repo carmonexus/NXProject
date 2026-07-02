@@ -1391,6 +1391,7 @@ namespace NXProject.Services
                             if (fields.TryGetProperty("System.Title", out var t)) wi.Title = t.GetString() ?? "";
                             if (fields.TryGetProperty("System.WorkItemType", out var wt)) wi.WorkItemType = wt.GetString() ?? "";
                             if (fields.TryGetProperty("System.State", out var st)) wi.State = st.GetString() ?? "";
+                            if (fields.TryGetProperty("System.Tags", out var tg)) wi.Tags = tg.GetString() ?? "";
                             if (wi.Id == 0) continue;
                             result[wi.Id] = wi;
                         }
