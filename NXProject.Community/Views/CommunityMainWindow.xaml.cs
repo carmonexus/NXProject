@@ -220,6 +220,15 @@ namespace NXProject.Views
 
             Loaded += OnCommunityWindowLoaded;
             Closing += OnCommunityWindowClosing;
+            PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.F &&
+                    (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)
+                {
+                    OpenSearchPopup();
+                    e.Handled = true;
+                }
+            };
             ApplyLayoutMode(expanded: false);
         }
 
@@ -2590,6 +2599,137 @@ namespace NXProject.Views
             {
                 GanttCtrl.ForceRender();
             }));
+        }
+
+        // ── Busca de atividade ────────────────────────────────────────────────
+
+        private sealed class TaskSearchItem
+        {
+            public TaskSearchItem(NXProject.ViewModels.TaskViewModel vm)
+            {
+                Task = vm;
+                DisplayLabel = string.IsNullOrEmpty(vm.DisplayId)
+                    ? vm.Name
+                    : $"[{vm.DisplayId}]  {vm.Name}";
+            }
+            public NXProject.ViewModels.TaskViewModel Task { get; }
+            public string DisplayLabel { get; }
+        }
+
+        private void OnSearchTaskClick(object sender, RoutedEventArgs e) => OpenSearchPopup();
+
+        private void OpenSearchPopup()
+        {
+            if (DataContext is not MainViewModel vm) return;
+
+            var popup = new Window
+            {
+                Title                 = "Buscar atividade",
+                Width                 = 540,
+                Height                = 400,
+                MinWidth              = 380,
+                MinHeight             = 260,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner                 = this,
+                Background            = System.Windows.Media.Brushes.White,
+                ResizeMode            = ResizeMode.CanResize,
+                ShowInTaskbar         = false
+            };
+
+            var root = new Grid { Margin = new Thickness(10) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var searchBox = new TextBox
+            {
+                Height          = 30,
+                FontSize        = 13,
+                Padding         = new Thickness(6, 4, 6, 4),
+                Margin          = new Thickness(0, 0, 0, 6),
+                BorderBrush     = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(43, 87, 154)),
+                BorderThickness = new Thickness(1.5)
+            };
+            Grid.SetRow(searchBox, 0);
+            root.Children.Add(searchBox);
+
+            var listBox = new ListBox
+            {
+                FontSize           = 12,
+                BorderThickness    = new Thickness(1),
+                BorderBrush        = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(210, 218, 230)),
+                DisplayMemberPath  = nameof(TaskSearchItem.DisplayLabel)
+            };
+            Grid.SetRow(listBox, 1);
+            root.Children.Add(listBox);
+
+            var countLabel = new TextBlock
+            {
+                FontSize   = 11,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(100, 100, 100)),
+                Margin     = new Thickness(0, 4, 0, 0)
+            };
+            Grid.SetRow(countLabel, 2);
+            root.Children.Add(countLabel);
+
+            void Refresh(string text)
+            {
+                var terms = text.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var results = vm.FlatTasks
+                    .Where(t =>
+                    {
+                        if (terms.Length == 0) return true;
+                        var haystack = $"{t.DisplayId} {t.Name}";
+                        return terms.All(term => haystack.Contains(term, StringComparison.OrdinalIgnoreCase));
+                    })
+                    .Take(200)
+                    .Select(t => new TaskSearchItem(t))
+                    .ToList();
+                listBox.ItemsSource = results;
+                countLabel.Text = results.Count == 0 && terms.Length > 0
+                    ? "Nenhuma atividade encontrada."
+                    : $"{results.Count} atividade(s)";
+            }
+
+            void SelectAndClose(TaskSearchItem? item)
+            {
+                if (item == null) return;
+                popup.Close();
+                vm.SelectedTask = item.Task;
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+                    () => TaskGridCtrl.ScrollToSelected());
+            }
+
+            Refresh("");
+            searchBox.TextChanged   += (_, _) => Refresh(searchBox.Text);
+            listBox.MouseDoubleClick += (_, _) => SelectAndClose(listBox.SelectedItem as TaskSearchItem);
+            listBox.KeyDown += (_, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Enter)
+                    SelectAndClose(listBox.SelectedItem as TaskSearchItem);
+            };
+            searchBox.KeyDown += (_, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Enter)
+                    SelectAndClose(listBox.SelectedItem as TaskSearchItem
+                                   ?? listBox.Items.OfType<TaskSearchItem>().FirstOrDefault());
+                else if (e.Key == System.Windows.Input.Key.Down)
+                {
+                    listBox.Focus();
+                    if (listBox.Items.Count > 0)
+                    {
+                        listBox.SelectedIndex = 0;
+                        (listBox.ItemContainerGenerator.ContainerFromIndex(0) as ListBoxItem)?.Focus();
+                    }
+                    e.Handled = true;
+                }
+                else if (e.Key == System.Windows.Input.Key.Escape)
+                    popup.Close();
+            };
+
+            popup.Content = root;
+            popup.Loaded  += (_, _) => searchBox.Focus();
+            popup.ShowDialog();
         }
     }
 }

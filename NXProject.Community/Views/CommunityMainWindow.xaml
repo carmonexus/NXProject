@@ -273,6 +273,22 @@
                     ToolTip="{DynamicResource Toolbar_Layout}">
                 <TextBlock x:Name="LayoutToggleText" Text="⤢" FontSize="14" FontWeight="SemiBold"/>
             </Button>
+            <!-- Busca de atividade -->
+            <Button x:Name="SearchTaskButton"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="OnSearchTaskClick"
+                    ToolTip="Buscar atividade no cronograma (Ctrl+F)"
+                    Padding="4,2">
+                <Viewbox Width="18" Height="18" Stretch="Uniform">
+                    <Canvas Width="24" Height="24">
+                        <Ellipse Canvas.Left="2" Canvas.Top="2" Width="14" Height="14"
+                                 Stroke="#2B579A" StrokeThickness="2.5" Fill="Transparent"/>
+                        <Line X1="14" Y1="14" X2="22" Y2="22"
+                              Stroke="#2B579A" StrokeThickness="2.5"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
             <Separator/>
             <Button x:Name="ResourceFilterButton"
                     Style="{StaticResource ToolbarButtonStyle}"
