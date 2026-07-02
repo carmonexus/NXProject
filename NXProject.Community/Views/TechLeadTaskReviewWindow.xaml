@@ -232,6 +232,18 @@
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
+                <!-- % Conclusão (somente leitura) -->
+                <DataGridTextColumn Header="% Conc." Width="58"
+                    Binding="{Binding PercentComplete, StringFormat={}{0:0.#}%}" IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,4,0"/>
+                            <Setter Property="Foreground" Value="#444"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
                 <!-- Prioridade (editável) -->
                 <DataGridTextColumn Header="Pri" Width="45"
                     Binding="{Binding Priority, UpdateSourceTrigger=LostFocus}">
