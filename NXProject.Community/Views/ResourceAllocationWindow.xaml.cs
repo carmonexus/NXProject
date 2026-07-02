@@ -347,19 +347,33 @@ namespace NXProject.Views
             _selectedResource = resource;
             _selectedSprint = sprint;
             DetailsTitle.Text = $"{resource.DisplayName} - {sprint.Header}";
-            // Atualiza header da coluna de horas proporcionais
-            if (DetailsGrid.Columns.Count > 6)
-                DetailsGrid.Columns[6].Header = sprint.Header;
+            if (DetailsGrid.Columns.Count > 7)
+                DetailsGrid.Columns[7].Header = sprint.Header;
             SelectedDetails.Clear();
 
             var hasDates = sprint.Start != default && sprint.End != default;
-            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) &&
-                (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint))))
+            var leafTasks = _vm.FlatTasks.Where(IsLeafTask).ToList();
+            var overlapping = hasDates
+                ? leafTasks.Where(t => OverlapsWithSprint(t, sprint) || BelongsToSprint(t, sprint)).ToList()
+                : leafTasks.Where(t => BelongsToSprint(t, sprint)).ToList();
+
+            var log = new System.Text.StringBuilder();
+            log.AppendLine($"Resource: {resource.DisplayName} (Id={resource.Id})");
+            log.AppendLine($"Sprint: {sprint.Header} Start={sprint.Start:dd/MM/yy} End={sprint.End:dd/MM/yy} hasDates={hasDates}");
+            log.AppendLine($"Leaf tasks: {leafTasks.Count}, Overlapping: {overlapping.Count}");
+            foreach (var t in overlapping.Take(10))
+            {
+                var asgn = t.Model.Resources.FirstOrDefault(r => r.ResourceId == resource.Id);
+                log.AppendLine($"  {t.Model.Name} Start={t.Model.Start:dd/MM/yy} Finish={t.Model.Finish:dd/MM/yy} asgn={(asgn != null ? "YES" : "NO")}");
+            }
+            var diagPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "nxproject_diag.txt");
+            System.IO.File.WriteAllText(diagPath, log.ToString());
+
+            foreach (var task in overlapping)
             {
                 var assignment = task.Model.Resources.FirstOrDefault(r => r.ResourceId == resource.Id);
                 if (assignment == null)
                     continue;
-
                 SelectedDetails.Add(new AllocationDetailRow(this, task, assignment, resource, sprint));
             }
         }
