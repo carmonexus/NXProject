@@ -2634,9 +2634,9 @@ namespace NXProject.Views
             var popup = new Window
             {
                 Title                 = "Buscar atividade",
-                Width                 = 540,
+                Width                 = 700,
                 Height                = 400,
-                MinWidth              = 380,
+                MinWidth              = 540,
                 MinHeight             = 260,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner                 = this,
