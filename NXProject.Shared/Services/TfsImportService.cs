@@ -1419,6 +1419,11 @@ namespace NXProject.Services
             return string.Equals(normalized, "NoDevOps", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static string ResolveImportType(string? workItemType, string? tags) =>
+            string.Equals(workItemType, "Task", StringComparison.OrdinalIgnoreCase) && HasTag(tags, "MARCO-PROJECT")
+                ? "Marco-DevOps"
+                : workItemType ?? "";
+
         private static bool IsDevOpsMilestoneType(string? type)
         {
             var normalized = (type ?? string.Empty)
@@ -1905,7 +1910,7 @@ namespace NXProject.Services
                 PercentComplete = StateToPercent(item.State),
                 TfsId = item.Id,
                 TfsParentId = ctx.GetParent(item.Id),
-                TfsType = item.WorkItemType,
+                TfsType = ResolveImportType(item.WorkItemType, item.Tags),
                 TfsState = item.State,
                 Description = item.Description,
                 Tags = item.Tags,
@@ -2064,7 +2069,7 @@ namespace NXProject.Services
                 PercentComplete = percentComplete,
                 TfsId = item.Id,
                 TfsParentId = ctx.GetParent(item.Id),
-                TfsType = item.WorkItemType,
+                TfsType = ResolveImportType(item.WorkItemType, item.Tags),
                 TfsState = effectiveState,
                 Description = item.Description,
                 Tags = item.Tags,
