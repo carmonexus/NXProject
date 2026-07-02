@@ -417,6 +417,20 @@ namespace NXProject.Services
                 return globalRef;
             }
 
+            // Atualiza datas de início/fim das sprints a partir do DevOps.
+            var allSprints = await LoadIterationsAsync(orgBase, options.TeamProject, auth, cancellationToken);
+            foreach (var s in allSprints)
+            {
+                if (string.IsNullOrEmpty(s.Path)) continue;
+                var existing = project.Sprints.FirstOrDefault(ps =>
+                    string.Equals(ps.Path, s.Path, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.Start = s.Start;
+                    existing.End   = s.End;
+                }
+            }
+
             // Recalcula a ordem (StackRank) conforme a árvore do NXProject.
             ApplyDesiredStackRanks(project.Tasks);
 
