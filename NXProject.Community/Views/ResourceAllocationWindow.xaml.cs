@@ -349,7 +349,7 @@ namespace NXProject.Views
             DetailsTitle.Text = $"{resource.DisplayName} - {sprint.Header}";
             SelectedDetails.Clear();
 
-            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && BelongsToSprint(t, sprint)))
+            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && OverlapsWithSprint(t, sprint)))
             {
                 var assignment = task.Model.Resources.FirstOrDefault(r => r.ResourceId == resource.Id);
                 if (assignment == null)
@@ -397,22 +397,23 @@ namespace NXProject.Views
         private double GetAllocatedHours(Resource resource, SprintColumn sprint)
         {
             return _vm.FlatTasks
-                .Where(t => IsLeafTask(t) && BelongsToSprint(t, sprint))
+                .Where(t => IsLeafTask(t) && OverlapsWithSprint(t, sprint))
                 .SelectMany(t => t.Model.Resources.Where(r => r.ResourceId == resource.Id)
-                    .Select(r => TaskScheduleService.GetAssignmentHours(t.Model, r)))
+                    .Select(r => ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint)))
                 .Sum();
         }
 
         private double? GetAverageAllocationPercent(Resource resource, SprintColumn sprint)
         {
             var assignments = _vm.FlatTasks
-                .Where(t => IsLeafTask(t) && BelongsToSprint(t, sprint))
+                .Where(t => IsLeafTask(t) && OverlapsWithSprint(t, sprint))
                 .SelectMany(t => t.Model.Resources.Where(r => r.ResourceId == resource.Id)
                     .Select(r => new
                     {
-                        Hours = TaskScheduleService.GetAssignmentHours(t.Model, r),
+                        Hours = ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint),
                         Percent = TaskScheduleService.NormalizeAllocationPercent(r.AllocationPercent)
                     }))
+                .Where(a => a.Hours > 0)
                 .ToList();
 
             if (assignments.Count == 0)
@@ -424,6 +425,23 @@ namespace NXProject.Views
                 : assignments.Average(a => a.Percent);
         }
 
+        // Fracção das horas da atividade que cai dentro da janela da sprint.
+        private static double ProportionalHours(Models.ProjectTask task, double totalHours, SprintColumn sprint)
+        {
+            if (totalHours <= 0) return 0;
+            var taskStart  = task.Start.Date;
+            var taskFinish = task.Finish.Date;
+            var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinish);
+            if (taskWorkingHours <= 0) return totalHours; // atividade de um dia: tudo na sprint
+
+            var overlapStart = taskStart  > sprint.Start ? taskStart  : sprint.Start;
+            var overlapEnd   = taskFinish < sprint.End   ? taskFinish : sprint.End;
+            if (overlapEnd < overlapStart) return 0;
+
+            var overlapHours = ProjectCalendarService.CountWorkingHours(overlapStart, overlapEnd);
+            return totalHours * (overlapHours / taskWorkingHours);
+        }
+
         private double GetSprintCapacityHours(Resource resource, SprintColumn sprint, double? allocationPercent)
         {
             var fullCapacityHours = sprint.CapacityHours > 0
@@ -433,12 +451,11 @@ namespace NXProject.Views
             return fullCapacityHours * (allocationPercent ?? 100.0) / 100.0;
         }
 
-        private bool BelongsToSprint(TaskViewModel task, SprintColumn sprint)
+        private static bool OverlapsWithSprint(TaskViewModel task, SprintColumn sprint)
         {
-            if (sprint.Path != null)
-                return string.Equals(task.Model.TfsIterationPath, sprint.Path, StringComparison.OrdinalIgnoreCase);
-
-            return task.SprintNumber == sprint.Number;
+            var s = task.Model.Start.Date;
+            var f = task.Model.Finish.Date;
+            return s <= sprint.End && f >= sprint.Start;
         }
 
         private static bool IsLeafTask(TaskViewModel task) =>
@@ -450,36 +467,45 @@ namespace NXProject.Views
             {
                 foreach (var sprint in _vm.Project.Sprints.OrderBy(s => s.Number).ThenBy(s => s.Start))
                 {
-                    var capacityHours = sprint.End > sprint.Start
-                        ? ProjectCalendarService.CountWorkingHours(sprint.Start, sprint.End)
-                        : Math.Max(1, _vm.Project.SprintDurationDays) * ProjectCalendarService.WorkingHoursPerDay;
+                    var sprintStart = sprint.Start;
+                    var sprintEnd   = sprint.End > sprint.Start ? sprint.End : sprint.Start.AddDays(_vm.Project.SprintDurationDays);
+                    var capacityHours = ProjectCalendarService.CountWorkingHours(sprintStart, sprintEnd);
                     yield return new SprintColumn(
                         sprint.Number,
                         sprint.Path,
                         string.IsNullOrWhiteSpace(sprint.Name) ? $"Sprint {sprint.Number}" : sprint.Name,
-                        capacityHours);
+                        capacityHours,
+                        sprintStart,
+                        sprintEnd);
                 }
                 yield break;
             }
 
+            // Sprints sem datas: estima pela data de início do projeto + duração por sprint.
+            var projectStart = _vm.Project.StartDate == default ? DateTime.Today : _vm.Project.StartDate;
+            var durationDays = Math.Max(1, _vm.Project.SprintDurationDays);
             foreach (var number in _vm.FlatTasks
                          .Where(t => t.SprintNumber > 0)
                          .Select(t => t.SprintNumber)
                          .Distinct()
                          .OrderBy(n => n))
             {
+                var sprintStart = projectStart.AddDays((number - 1) * durationDays);
+                var sprintEnd   = sprintStart.AddDays(durationDays);
                 yield return new SprintColumn(
                     number,
                     null,
                     $"Sprint {number}",
-                    Math.Max(1, _vm.Project.SprintDurationDays) * ProjectCalendarService.WorkingHoursPerDay);
+                    durationDays * ProjectCalendarService.WorkingHoursPerDay,
+                    sprintStart,
+                    sprintEnd);
             }
         }
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-        private sealed record SprintColumn(int Number, string? Path, string Header, double CapacityHours);
+        private sealed record SprintColumn(int Number, string? Path, string Header, double CapacityHours, DateTime Start, DateTime End);
 
         private void OnDetailsResourceComboDropDownClosed(object? sender, EventArgs e)
         {
