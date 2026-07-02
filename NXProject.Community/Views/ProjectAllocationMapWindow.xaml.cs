@@ -666,9 +666,9 @@ namespace NXProject.Views
             var win = new Window
             {
                 Title                 = $"{resName}  ·  {monthStart:MMM/yyyy}  ·  {proj.Name}",
-                Width                 = 840,
+                Width                 = 920,
                 Height                = 440,
-                MinWidth              = 560,
+                MinWidth              = 600,
                 MinHeight             = 300,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner                 = this,
@@ -679,6 +679,7 @@ namespace NXProject.Views
             var grid = new Grid { Margin = new Thickness(12) };
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             // Título
             var header = new TextBlock
@@ -702,9 +703,10 @@ namespace NXProject.Views
 
             // Cabeçalho da tabela
             panel.Children.Add(MakeStoryRow(
-                "Story / Tarefa", "HH Total", "% Concl.", "Início", "Fim", "DevOps",
+                "Story / Tarefa", "HH Total", "HH Mês", "% Concl.", "Início", "Fim", "DevOps",
                 isHeader: true, devOpsUrl: null));
 
+            double totalMonthHours = 0;
             if (stories.Count == 0)
             {
                 panel.Children.Add(new TextBlock
@@ -717,17 +719,29 @@ namespace NXProject.Views
             }
             else
             {
+                bool onlyCurrentHours = OnlyCurrentHours;
                 foreach (var task in stories.OrderBy(t => t.Start))
                 {
                     double totalH = (task.CurrentHours ?? 0) + (task.EstimatedHours ?? 0);
                     string hh    = totalH > 0.01 ? $"{totalH:0.#}h" : "–";
+
+                    double monthH = 0;
+                    foreach (var tr in task.Resources)
+                    {
+                        if (!string.Equals(tr.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        monthH += ComputeHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours);
+                    }
+                    totalMonthHours += monthH;
+                    string hhMes = monthH > 0.01 ? $"{monthH:0.#}h" : "–";
+
                     string pct   = $"{(int)Math.Round(task.PercentComplete)}%";
                     string start = task.Start.ToString("dd/MM/yy");
                     string fin   = task.Finish.ToString("dd/MM/yy");
                     string? url  = task.TfsId.HasValue && !string.IsNullOrWhiteSpace(orgUrl)
                         ? $"{orgUrl}/{Uri.EscapeDataString(tp)}/_workitems/edit/{task.TfsId.Value}"
                         : null;
-                    panel.Children.Add(MakeStoryRow(task.Name, hh, pct, start, fin, url != null ? "↗" : "", isHeader: false, devOpsUrl: url));
+                    panel.Children.Add(MakeStoryRow(task.Name, hh, hhMes, pct, start, fin, url != null ? "↗" : "", isHeader: false, devOpsUrl: url));
                 }
             }
 
@@ -735,11 +749,31 @@ namespace NXProject.Views
             Grid.SetRow(sv, 1);
             grid.Children.Add(sv);
 
+            // Rodapé com total HH Mês
+            var footer = new Border
+            {
+                Background      = new SolidColorBrush(Color.FromRgb(235, 240, 252)),
+                BorderBrush     = new SolidColorBrush(Color.FromRgb(180, 200, 230)),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Padding         = new Thickness(6, 4, 6, 4),
+                Margin          = new Thickness(0, 2, 0, 0)
+            };
+            footer.Child = new TextBlock
+            {
+                Text       = $"Total HH Mês:  {(totalMonthHours > 0.01 ? $"{totalMonthHours:0.#}h" : "–")}",
+                FontSize   = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(20, 60, 140)),
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            Grid.SetRow(footer, 2);
+            grid.Children.Add(footer);
+
             win.Content = grid;
             win.ShowDialog();
         }
 
-        private static UIElement MakeStoryRow(string name, string hh, string pct, string start, string fin,
+        private static UIElement MakeStoryRow(string name, string hh, string hhMes, string pct, string start, string fin,
             string devOps, bool isHeader, string? devOpsUrl)
         {
             var bg = isHeader
@@ -767,8 +801,9 @@ namespace NXProject.Views
             };
 
             sp.Children.Add(Cell(name, 320));
-            sp.Children.Add(Cell(hh,  72, HorizontalAlignment.Right));
-            sp.Children.Add(Cell(pct, 64, HorizontalAlignment.Right));
+            sp.Children.Add(Cell(hh,    72, HorizontalAlignment.Right));
+            sp.Children.Add(Cell(hhMes, 72, HorizontalAlignment.Right));
+            sp.Children.Add(Cell(pct,   64, HorizontalAlignment.Right));
             sp.Children.Add(Cell(start, 76));
             sp.Children.Add(Cell(fin, 76));
 
