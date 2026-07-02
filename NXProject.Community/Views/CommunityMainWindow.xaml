@@ -474,15 +474,15 @@
         <!-- Barra de nome do projeto DevOps (visível somente quando há vínculo) -->
         <Border x:Name="DevOpsProjectBanner"
                 DockPanel.Dock="Top"
-                Background="#E3EDF8" BorderBrush="#9BBAD8" BorderThickness="0,0,0,1"
+                Background="#DDE8F8" BorderBrush="#5B8EC4" BorderThickness="0,0,0,2"
                 Padding="14,5"
                 Visibility="Collapsed">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="🔗 Projeto DevOps: " FontSize="12" Foreground="#1A3E6E" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                <TextBlock x:Name="DevOpsProjectNameLabel" FontSize="12" Foreground="#1A3E6E" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                <TextBlock x:Name="DevOpsProjectIdLabel" FontSize="11" Foreground="#3A5A82" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                <TextBlock x:Name="DevOpsEpicHoursLabel" FontSize="11" Foreground="#1F3D5A" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0"/>
-                <TextBlock x:Name="DevOpsPercentLabel" FontSize="12" Foreground="#1A3E6E" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                <TextBlock Text="🔗 Projeto DevOps: " FontSize="12" Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock x:Name="DevOpsProjectNameLabel" FontSize="12" Foreground="#0D47A1" FontWeight="Bold" VerticalAlignment="Center"/>
+                <TextBlock x:Name="DevOpsProjectIdLabel" FontSize="11" Foreground="#1976D2" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                <TextBlock x:Name="DevOpsEpicHoursLabel" FontSize="11" Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                <TextBlock x:Name="DevOpsPercentLabel" FontSize="12" Foreground="#0D47A1" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
             </StackPanel>
         </Border>
 
