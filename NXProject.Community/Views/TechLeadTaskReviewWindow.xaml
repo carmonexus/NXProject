@@ -92,7 +92,15 @@
             <ComboBox x:Name="StateFilterBox" Width="120" FontSize="12" Margin="0,0,12,0"
                       SelectionChanged="OnStateFilterChanged"/>
             <Button Content="🔄 Recarregar" Click="OnReloadClick"
-                    Padding="8,3" FontSize="12" Margin="0,0,8,0"/>
+                    Padding="8,3" FontSize="12" Margin="0,0,16,0"/>
+            <CheckBox x:Name="FilterEmAndamentoBox" Content="Em andamento"
+                      VerticalAlignment="Center" FontSize="12" Margin="0,0,10,0"
+                      ToolTip="Exibe apenas Stories/Tasks com % de conclusão > 0 e &lt; 100"
+                      Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
+            <CheckBox x:Name="FilterNaoIniciadaBox" Content="Não iniciada"
+                      VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0"
+                      ToolTip="Exibe apenas Stories/Tasks com % de conclusão = 0"
+                      Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
         </WrapPanel>
 
         <!-- Grid de Tasks editável -->

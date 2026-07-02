@@ -222,8 +222,23 @@ namespace NXProject.Views
                 if (!string.IsNullOrEmpty(featureFilter) && featureFilter != "(Todas)" && r.FeatureName != featureFilter) return false;
                 if (!string.IsNullOrEmpty(storyFilter)   && storyFilter   != "(Todas)" && r.StoryName   != storyFilter)  return false;
             }
+            bool emAndamento  = FilterEmAndamentoBox?.IsChecked == true;
+            bool naoIniciada  = FilterNaoIniciadaBox?.IsChecked == true;
+            if (emAndamento || naoIniciada)
+            {
+                bool matchEmAndamento = r.PercentComplete > 0 && r.PercentComplete < 100;
+                bool matchNaoIniciada = r.PercentComplete <= 0;
+                if (emAndamento && naoIniciada)
+                {
+                    if (!matchEmAndamento && !matchNaoIniciada) return false;
+                }
+                else if (emAndamento && !matchEmAndamento) return false;
+                else if (naoIniciada && !matchNaoIniciada) return false;
+            }
             return true;
         }
+
+        private void OnProgressFilterChanged(object sender, RoutedEventArgs e) { _view?.Refresh(); RefreshRowNumbers(); UpdateTotals(); }
 
         private void UpdateTotals()
         {

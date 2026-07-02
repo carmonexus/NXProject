@@ -1,9 +1,11 @@
 ﻿<UserControl x:Class="NXProject.Controls.TaskGridControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:NXProject.Controls">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:PercentToBadgeBrushConverter x:Key="PercentToBadgeBrush"/>
     </UserControl.Resources>
 
     <Grid>
@@ -569,14 +571,59 @@
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Grid Margin="2,1">
+                            <!-- Barra para tasks folha -->
                             <ProgressBar Value="{Binding PercentComplete}" Maximum="100" Height="12"
-                                         Background="#C9D8E8" Foreground="#217346"/>
+                                         Background="#C9D8E8" Foreground="#217346">
+                                <ProgressBar.Style>
+                                    <Style TargetType="ProgressBar">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSummary}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ProgressBar.Style>
+                            </ProgressBar>
+                            <!-- Texto % para tasks folha -->
                             <TextBlock Text="{Binding PercentComplete, StringFormat={}{0:0.#}%}"
                                        HorizontalAlignment="{Binding PercentCompleteTextAlignment}"
                                        Margin="{Binding PercentCompleteTextMargin}"
                                        VerticalAlignment="Center"
                                        FontSize="9" FontWeight="SemiBold"
-                                       Foreground="{Binding PercentCompleteTextBrush}"/>
+                                       Foreground="{Binding PercentCompleteTextBrush}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSummary}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <!-- Badge % para summaries (Epic/Feature/Story) -->
+                            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    CornerRadius="3" Padding="5,1">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSummary}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Border.Background>
+                                    <Binding Path="PercentComplete" Converter="{StaticResource PercentToBadgeBrush}"/>
+                                </Border.Background>
+                                <TextBlock Text="{Binding PercentComplete, StringFormat={}{0:0.#}%}"
+                                           FontSize="10" FontWeight="Bold"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"/>
+                            </Border>
                         </Grid>
                     </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
