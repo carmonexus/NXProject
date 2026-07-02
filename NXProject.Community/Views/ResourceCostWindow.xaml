@@ -40,7 +40,10 @@
                             <CheckBox x:Name="OnlyWithCostBox" Content="Apenas com custo"
                                       FontSize="11" IsChecked="True"
                                       Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
-                            <Button Content="📊 Exportar para Excel" Height="24" Margin="0,6,0,0"
+                            <Button Content="📂 Abrir arquivo de custo" Height="24" Margin="0,6,0,0"
+                                    FontSize="11" Click="OnOpenCostFileClick"
+                                    ToolTip="Carrega um arquivo .nxcost para simular custos diferentes"/>
+                            <Button Content="📊 Exportar para Excel" Height="24" Margin="0,4,0,0"
                                     FontSize="11" Click="OnExportExcelClick"/>
                         </StackPanel>
                     </Border>

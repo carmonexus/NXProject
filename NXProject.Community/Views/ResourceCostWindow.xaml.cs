@@ -38,14 +38,18 @@ namespace NXProject.Views
             public decimal[] OpexByMonth  { get; init; } = [];
         }
 
-        private List<FeatureRow>        _rows     = [];
-        private List<DateTime>          _months   = [];
-        private List<ResourceCostLine>  _allLines = [];
+        private List<FeatureRow>        _rows      = [];
+        private List<DateTime>          _months    = [];
+        private List<ResourceCostLine>  _allLines  = [];
+        private IEnumerable<ProjectTask> _allTasks = [];
+        private List<Resource>           _resources = [];
 
         public ResourceCostWindow(IEnumerable<ProjectTask> allTasks, IEnumerable<Resource> resources)
         {
             InitializeComponent();
-            _allLines = ResourceCostService.Compute(allTasks, resources);
+            _allTasks  = allTasks;
+            _resources = resources.ToList();
+            _allLines  = ResourceCostService.Compute(_allTasks, _resources);
             _months = _allLines
                 .Select(l => new DateTime(l.Year, l.Month, 1))
                 .Distinct().OrderBy(d => d).ToList();
@@ -430,6 +434,68 @@ namespace NXProject.Views
 
         private void OnLeftScrollChanged(object sender, ScrollChangedEventArgs e)
             => MainScroll.ScrollToVerticalOffset(e.VerticalOffset);
+
+        private void OnOpenCostFileClick(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenFileDialog
+            {
+                Title            = "Abrir arquivo de custo por recurso",
+                Filter           = ResourceCostConfigService.FileFilter,
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var password = PromptPassword();
+            if (password == null) return;
+
+            try
+            {
+                int updated = ResourceCostConfigService.Load(dlg.FileName, _resources, password);
+                _allLines = ResourceCostService.Compute(_allTasks, _resources);
+                _months   = _allLines.Select(l => new DateTime(l.Year, l.Month, 1)).Distinct().OrderBy(d => d).ToList();
+                _rows     = BuildFeatureRows(_allLines);
+                BuildGrid();
+                MessageBox.Show($"Arquivo carregado. {updated} recurso(s) atualizado(s).",
+                    "Custo carregado", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                MessageBox.Show("Senha incorreta ou arquivo corrompido.", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro ao carregar arquivo:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private string? PromptPassword()
+        {
+            var win = new Window
+            {
+                Title                 = "Senha do arquivo de custo",
+                Width                 = 340,
+                Height                = 148,
+                ResizeMode            = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner                 = this,
+                Background            = System.Windows.Media.Brushes.White
+            };
+            var root = new StackPanel { Margin = new Thickness(16) };
+            root.Children.Add(new TextBlock { Text = "Digite a senha para descriptografar o arquivo:", Margin = new Thickness(0, 0, 0, 8) });
+            var pb = new PasswordBox { Height = 28, Margin = new Thickness(0, 0, 0, 12) };
+            root.Children.Add(pb);
+            var btns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            var ok     = new Button { Content = "OK",       Width = 80, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+            var cancel = new Button { Content = "Cancelar", Width = 80, IsCancel  = true };
+            ok.Click     += (_, _) => { win.DialogResult = true;  win.Close(); };
+            cancel.Click += (_, _) => { win.DialogResult = false; win.Close(); };
+            btns.Children.Add(ok);
+            btns.Children.Add(cancel);
+            root.Children.Add(btns);
+            win.Content = root;
+            pb.Focus();
+            return win.ShowDialog() == true ? pb.Password : null;
+        }
 
         private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 
