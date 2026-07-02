@@ -352,7 +352,7 @@ namespace NXProject.Views
                 DetailsGrid.Columns[6].Header = sprint.Header;
             SelectedDetails.Clear();
 
-            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && OverlapsWithSprint(t, sprint)))
+            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && BelongsToSprint(t, sprint)))
             {
                 var assignment = task.Model.Resources.FirstOrDefault(r => r.ResourceId == resource.Id);
                 if (assignment == null)
@@ -459,6 +459,13 @@ namespace NXProject.Views
             var s = task.Model.Start.Date;
             var f = task.Model.Finish.Date;
             return s <= sprint.End && f >= sprint.Start;
+        }
+
+        private static bool BelongsToSprint(TaskViewModel task, SprintColumn sprint)
+        {
+            if (sprint.Path != null)
+                return string.Equals(task.Model.TfsIterationPath, sprint.Path, StringComparison.OrdinalIgnoreCase);
+            return task.SprintNumber == sprint.Number;
         }
 
         private static bool IsLeafTask(TaskViewModel task) =>
