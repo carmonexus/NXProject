@@ -168,6 +168,7 @@ namespace NXProject.ViewModels
         {
             NormalizeNoDevOpsType(Project.Tasks);
             SyncOriginalHoursWhenZeroPercent(Project.Tasks);
+            RecalculateLeafFinishesFromAssignments(Project.Tasks);
             RecalcTaskDatesFromPriority(Project.Tasks);
             foreach (var root in Project.Tasks)
                 root.RecalcSummary();
@@ -183,6 +184,23 @@ namespace NXProject.ViewModels
             SelectedTask = selectedModel == null
                 ? null
                 : FlatTasks.FirstOrDefault(vm => vm.Model == selectedModel);
+        }
+
+        private static void RecalculateLeafFinishesFromAssignments(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var task in tasks)
+            {
+                if (task.Children.Count > 0)
+                {
+                    RecalculateLeafFinishesFromAssignments(task.Children);
+                    continue;
+                }
+
+                if (task.IsSummary || task.IsMilestone || task.FinishFixed)
+                    continue;
+
+                task.Finish = TaskScheduleService.CalculateFinishFromAssignments(task, task.Start);
+            }
         }
 
         public void ApplyHierarchyColors()
@@ -438,14 +456,14 @@ namespace NXProject.ViewModels
                     task.Start = sprint.Start;
                     task.Finish = task.IsMilestone
                         ? sprint.Start
-                        : ProjectCalendarService.AddWorkingHours(sprint.Start, Math.Max(0.0, vm.DurationHours));
+                        : TaskScheduleService.CalculateFinishFromAssignments(task, sprint.Start);
                 }
                 else
                 {
                     // Apenas garante que o Fim não caia antes do Início ao trocar de sprint.
                     task.Finish = task.IsMilestone
                         ? task.Start
-                        : ProjectCalendarService.AddWorkingHours(task.Start, Math.Max(0.0, vm.DurationHours));
+                        : TaskScheduleService.CalculateFinishFromAssignments(task, task.Start);
                 }
                 RecalcSummaryChain(task.Parent);
             }
@@ -1034,9 +1052,8 @@ namespace NXProject.ViewModels
                     var newStart   = ProjectCalendarService.AddWorkingDays(prevFinish, 1);
                     if (changed.Model.Start.Date != newStart.Date)
                     {
-                        var dur = changed.DurationHours;
                         changed.Model.Start  = newStart;
-                        changed.Model.Finish = ProjectCalendarService.AddWorkingHours(newStart, dur);
+                        changed.Model.Finish = TaskScheduleService.CalculateFinishFromAssignments(changed.Model, newStart);
                         changed.NotifyDatesChanged();
                     }
                     break;
@@ -1091,9 +1108,8 @@ namespace NXProject.ViewModels
                 }
 
                 var oldFinish = sibling.Model.Finish;
-                var durationHours = sibling.DurationHours;
                 sibling.Model.Start = nextStart;
-                sibling.Model.Finish = ProjectCalendarService.AddWorkingHours(nextStart, durationHours);
+                sibling.Model.Finish = TaskScheduleService.CalculateFinishFromAssignments(sibling.Model, nextStart);
 
                 sibling.NotifyDatesChanged();
 
@@ -1145,9 +1161,8 @@ namespace NXProject.ViewModels
                             var nextStart = ProjectCalendarService.AddWorkingDays(lastFinish.Value, 1);
                             if (changed.Model.Start.Date != nextStart.Date)
                             {
-                                var durationHours = changed.DurationHours;
                                 changed.Model.Start  = nextStart;
-                                changed.Model.Finish = ProjectCalendarService.AddWorkingHours(nextStart, durationHours);
+                                changed.Model.Finish = TaskScheduleService.CalculateFinishFromAssignments(changed.Model, nextStart);
                                 changed.NotifyDatesChanged();
                             }
                         }
@@ -1215,9 +1230,8 @@ namespace NXProject.ViewModels
                 var nextStart = ProjectCalendarService.AddWorkingDays(lastFinishBefore.Value, 1);
                 if (moved.Model.Start.Date != nextStart.Date)
                 {
-                    var durationHours = moved.DurationHours;
                     moved.Model.Start  = nextStart;
-                    moved.Model.Finish = ProjectCalendarService.AddWorkingHours(nextStart, durationHours);
+                    moved.Model.Finish = TaskScheduleService.CalculateFinishFromAssignments(moved.Model, nextStart);
                     moved.NotifyDatesChanged();
                 }
             }
@@ -1312,13 +1326,13 @@ namespace NXProject.ViewModels
 
             foreach (var task in AllTasks().Where(t => !t.IsSummary))
             {
-                if (!durationByTaskId.TryGetValue(task.Id, out var duration))
+                if (!durationByTaskId.ContainsKey(task.Id))
                     continue;
 
                 if (!task.FinishFixed)
                     task.Finish = task.IsMilestone
                         ? task.Start
-                        : ProjectCalendarService.AddWorkingHours(task.Start, duration);
+                        : TaskScheduleService.CalculateFinishFromAssignments(task, task.Start);
             }
 
             foreach (var root in Project.Tasks)
@@ -1920,11 +1934,8 @@ namespace NXProject.ViewModels
                     var start = ProjectCalendarService.AddWorkingDays(
                         ProjectCalendarService.GetInclusiveFinishDate(previousTask.Start, previousTask.Finish),
                         1);
-                    var durationHours = TaskScheduleService.GetEffectiveDurationHours(task);
                     task.Start = start;
-                    task.Finish = durationHours <= 0
-                        ? start
-                        : ProjectCalendarService.AddWorkingHours(start, durationHours);
+                    task.Finish = TaskScheduleService.CalculateFinishFromAssignments(task, start);
                     task.StartFixed = false;
                 }
 
@@ -2287,14 +2298,21 @@ namespace NXProject.ViewModels
                     // Se a soma das Tasks superar a duração da story, expande a story
                     double totalTaskHours = taskChildren.Sum(EffDur);
                     if (totalTaskHours > storyHours + 0.01)
-                        t.Finish = Services.ProjectCalendarService.AddWorkingHours(t.Start, totalTaskHours);
+                    {
+                        var storyDuration = Services.TaskScheduleService
+                            .ConvertWorkHoursToCalendarDurationHours(t, totalTaskHours);
+                        t.Finish = Services.ProjectCalendarService.AddWorkingHours(t.Start, storyDuration);
+                    }
 
                     // Calcula datas sequenciais por ordem de prioridade
                     var cursor = t.Start;
                     foreach (var tc in taskChildren)
                     {
+                        var taskHours = EffDur(tc);
+                        var taskDuration = Services.TaskScheduleService
+                            .ConvertWorkHoursToCalendarDurationHours(tc, taskHours);
                         tc.Start = cursor;
-                        tc.Finish = Services.ProjectCalendarService.AddWorkingHours(cursor, EffDur(tc));
+                        tc.Finish = Services.ProjectCalendarService.AddWorkingHours(cursor, taskDuration);
                         cursor = tc.Finish;
                     }
                 }

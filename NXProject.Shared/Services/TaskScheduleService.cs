@@ -186,6 +186,47 @@ namespace NXProject.Services
             return task.CurrentHours.Value;
         }
 
+        public static double GetEffectiveTotalDurationHours(ProjectTask task)
+        {
+            if (task.IsMilestone)
+                return 0.0;
+
+            // HH Atual e HH Restante permanecem como esforco real. A alocacao
+            // so converte esse esforco para duracao de calendario ao calcular o fim.
+            var remainingDuration = GetEffectiveDurationHours(task);
+            var currentDuration = GetEffectiveCurrentDurationHours(task);
+            return currentDuration > 0
+                ? currentDuration + remainingDuration
+                : remainingDuration;
+        }
+
+        public static double ConvertWorkHoursToCalendarDurationHours(ProjectTask task, double workHours)
+        {
+            if (task.IsMilestone || workHours <= 0)
+                return 0.0;
+
+            var combinedFactor = task.Resources.Count == 0
+                ? 1.0
+                : task.Resources
+                    .Select(r => NormalizeAllocationPercent(r.AllocationPercent) / 100.0
+                                 * NormalizeAvailabilityFactor(r.Resource))
+                    .DefaultIfEmpty(1.0)
+                    .Sum();
+
+            return workHours / Math.Max(0.01, combinedFactor);
+        }
+
+        public static DateTime CalculateFinishFromAssignments(ProjectTask task, DateTime start)
+        {
+            if (task.IsMilestone)
+                return start;
+
+            var durationHours = GetEffectiveTotalDurationHours(task);
+            return durationHours <= 0
+                ? start
+                : ProjectCalendarService.AddWorkingHours(start, durationHours);
+        }
+
         public static void SyncTaskEstimatedHoursFromAssignments(ProjectTask task)
         {
             var total = task.Resources
@@ -205,10 +246,7 @@ namespace NXProject.Services
 
             SyncTaskEstimatedHoursFromAssignments(task);
 
-            var durationHours = GetEffectiveDurationHours(task);
-            task.Finish = durationHours <= 0
-                ? task.Start
-                : ProjectCalendarService.AddWorkingHours(task.Start, durationHours);
+            task.Finish = CalculateFinishFromAssignments(task, task.Start);
         }
     }
 }

@@ -382,9 +382,9 @@ namespace NXProject.ViewModels
                 {
                     _task.StartFixed = false;
                     var newStart = GetSprintStart?.Invoke() ?? _task.Start;
-                    var durationHours = DurationHours;
                     _task.Start = newStart;
-                    _task.Finish = ProjectCalendarService.AddWorkingHours(newStart, durationHours);
+                    if (!_task.FinishFixed)
+                        _task.Finish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, newStart);
                     OnPropertyChanged(nameof(Start));
                     OnPropertyChanged(nameof(Finish));
                     OnPropertyChanged(nameof(StartFixed));
@@ -406,10 +406,9 @@ namespace NXProject.ViewModels
             get => _task.Start;
             set
             {
-                var durationHours = DurationHours;
                 _task.Start = value;
                 if (!_task.FinishFixed)
-                    _task.Finish = ProjectCalendarService.AddWorkingHours(value, durationHours);
+                    _task.Finish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, value);
                 _task.StartFixed = true;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(Finish));
@@ -661,9 +660,9 @@ namespace NXProject.ViewModels
                 // Depois do início, o Start não pode mais ser movido pela cascata.
                 if (wasZero && normalized > 0 && _task.Start.Date > DateTime.Today)
                 {
-                    var durationH = ProjectCalendarService.CountWorkingHours(_task.Start, _task.Finish);
                     _task.Start = DateTime.Today;
-                    _task.Finish = ProjectCalendarService.AddWorkingHours(DateTime.Today, durationH);
+                    if (!_task.FinishFixed)
+                        _task.Finish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, DateTime.Today);
                     OnPropertyChanged(nameof(Start));
                     OnPropertyChanged(nameof(StartDisplay));
                 }
@@ -727,7 +726,7 @@ namespace NXProject.ViewModels
                 {
                     if (!_task.FinishFixed && totalH > 0)
                     {
-                        var calculatedFinish = ProjectCalendarService.AddWorkingHours(_task.Start, totalH);
+                        var calculatedFinish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, _task.Start);
                         _task.Finish = _task.StartFixed && _task.Start.Date > DateTime.Today
                             ? _task.Start.Date
                             : calculatedFinish.Date > DateTime.Today
@@ -748,7 +747,7 @@ namespace NXProject.ViewModels
                     var restoreH = (_task.CurrentHours ?? 0) + (_task.EstimatedHours ?? 0);
                     if (restoreH > 0)
                     {
-                        _task.Finish = ProjectCalendarService.AddWorkingHours(_task.Start, restoreH);
+                        _task.Finish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, _task.Start);
                         OnPropertyChanged(nameof(Finish));
                         OnPropertyChanged(nameof(FinishDisplay));
                         OnPropertyChanged(nameof(DurationDays));
@@ -1115,10 +1114,9 @@ namespace NXProject.ViewModels
                     var newStart = GetSprintStart?.Invoke() ?? _task.Start;
                     if (newStart != _task.Start)
                     {
-                        var durationHours = DurationHours;
                         _task.Start = newStart;
                         if (!_task.FinishFixed)
-                            _task.Finish = ProjectCalendarService.AddWorkingHours(newStart, durationHours);
+                            _task.Finish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, newStart);
                         OnPropertyChanged(nameof(Start));
                         OnPropertyChanged(nameof(Finish));
                         OnPropertyChanged(nameof(StartDisplay));
@@ -1169,9 +1167,8 @@ namespace NXProject.ViewModels
                 return;
             }
 
-            var durationHours = DurationHours;
             _task.Start = nextStart;
-            _task.Finish = ProjectCalendarService.AddWorkingHours(nextStart, durationHours);
+            _task.Finish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, nextStart);
             // Não marca StartFixed: o início é calculado pela predecessora, não fixo pelo usuário.
 
             OnPropertyChanged(nameof(Start));
