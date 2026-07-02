@@ -483,12 +483,7 @@ namespace NXProject.ViewModels
                         // Aplica o fator de alocação: HH trabalho ÷ alloc% = tempo calendário.
                         var effectiveH = Services.TaskScheduleService.GetEffectiveDurationHours(_task);
                         if (_task.CurrentHours is > 0)
-                        {
-                            var allocFactor = _task.Resources.Count > 0
-                                ? Services.TaskScheduleService.NormalizeAllocationPercent(_task.Resources[0].AllocationPercent) / 100.0
-                                : 1.0;
-                            effectiveH += _task.CurrentHours.Value / Math.Max(0.01, allocFactor);
-                        }
+                            effectiveH += Services.TaskScheduleService.GetEffectiveCurrentDurationHours(_task);
                         var totalH = _task.CurrentHours is > 0 ? _task.CurrentHours.Value + remaining : remaining;
                         _task.Finish = ProjectCalendarService.AddWorkingHours(_task.Start, effectiveH > 0 ? effectiveH : totalH);
                     }
@@ -622,7 +617,7 @@ namespace NXProject.ViewModels
                     var inclusive = ProjectCalendarService.GetInclusiveFinishDate(_task.Start, _task.Finish);
                     if (parsed.Date != inclusive.Date)
                     {
-                        _task.Finish = parsed;
+                        _task.Finish = parsed.Date.AddDays(1);
                         _task.FinishFixed = true;
                         OnPropertyChanged(nameof(Finish));
                         OnPropertyChanged(nameof(FinishFixed));
@@ -717,8 +712,9 @@ namespace NXProject.ViewModels
                        ?? ProjectCalendarService.CountWorkingHours(_task.Start, _task.Finish));
                 if (totalH > 0)
                 {
-                    var newCurrentH   = Math.Round(normalized / 100.0 * totalH, 2);
-                    var newRemainingH = Math.Round(Math.Max(0, totalH - newCurrentH), 2);
+                    var split = ScheduleHoursService.SplitByPercentComplete(totalH, normalized);
+                    var newCurrentH = Math.Round(split.CurrentHours, 2);
+                    var newRemainingH = Math.Round(split.RemainingHours, 2);
                     _task.CurrentHours   = newCurrentH > 0 ? newCurrentH : null;
                     _task.EstimatedHours = newRemainingH > 0 ? newRemainingH : 0;
                     SyncAssignmentEstimatedHours(_task.EstimatedHours ?? 0);
@@ -814,8 +810,21 @@ namespace NXProject.ViewModels
 
         public string CurrentHoursDisplay =>
             _task.CurrentHours.HasValue ? _task.CurrentHours.Value.ToString("0.#") : "";
-        public string EstimatedHoursDisplay =>
-            _task.EstimatedHours is > 0 ? _task.EstimatedHours.Value.ToString("0.#") : "";
+        public string EstimatedHoursDisplay
+        {
+            get
+            {
+                if (_task.EstimatedHours is > 0) return _task.EstimatedHours.Value.ToString("0.#");
+                // Se não há HH Atual nem HH Restante mas há estimativa original, deriva pelo %C.
+                if (!_task.IsSummary && !(_task.CurrentHours is > 0) && _task.OriginalEstimatedHours is > 0)
+                {
+                    var orig = _task.OriginalEstimatedHours.Value;
+                    var remaining = Math.Max(0, orig - Math.Round(orig * (_task.PercentComplete / 100.0), 4));
+                    if (remaining > 0) return remaining.ToString("0.#");
+                }
+                return "";
+            }
+        }
 
         public void RefreshDerivedDisplayProperties()
         {
@@ -1249,12 +1258,7 @@ namespace NXProject.ViewModels
             // é CurrentHours / alloc%. A duração total (Start → Finish) é a soma dos dois.
             var effectiveHours = Services.TaskScheduleService.GetEffectiveDurationHours(_task);
             if (_task.CurrentHours is > 0)
-            {
-                var allocFactor = _task.Resources.Count > 0
-                    ? Services.TaskScheduleService.NormalizeAllocationPercent(_task.Resources[0].AllocationPercent) / 100.0
-                    : 1.0;
-                effectiveHours += _task.CurrentHours.Value / Math.Max(0.01, allocFactor);
-            }
+                effectiveHours += Services.TaskScheduleService.GetEffectiveCurrentDurationHours(_task);
             if (effectiveHours > 0)
                 _task.Finish = Services.ProjectCalendarService.AddWorkingHours(_task.Start, effectiveHours);
 

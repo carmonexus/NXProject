@@ -13,13 +13,90 @@ namespace NXProject.Services
                 : allocationPercent;
 
         public static double GetAssignmentHours(ProjectTask task, TaskResource assignment)
+            => GetAssignmentRemainingHours(task, assignment);
+
+        public static double GetAssignmentRemainingHours(ProjectTask task, TaskResource assignment)
         {
-            if (assignment.EstimatedHours.HasValue && assignment.EstimatedHours.Value > 0)
-                return assignment.EstimatedHours.Value;
+            if (task.PercentComplete >= 100)
+                return 0;
+
+            if (assignment.EstimatedHours.HasValue)
+                return Math.Max(0, assignment.EstimatedHours.Value);
+
+            if (task.EstimatedHours.HasValue)
+            {
+                if (task.EstimatedHours.Value <= 0)
+                    return 0;
+
+                if (task.Resources.Count <= 1)
+                    return task.EstimatedHours.Value;
+
+                var weights = task.Resources
+                    .Select(r => new
+                    {
+                        Assignment = r,
+                        Weight = NormalizeAllocationPercent(r.AllocationPercent)
+                    })
+                    .ToList();
+                var totalWeight = weights.Sum(x => x.Weight);
+                if (totalWeight > 0)
+                {
+                    var ownWeight = weights.FirstOrDefault(x => ReferenceEquals(x.Assignment, assignment))?.Weight ?? 0;
+                    return task.EstimatedHours.Value * ownWeight / totalWeight;
+                }
+
+                return task.EstimatedHours.Value / task.Resources.Count;
+            }
+
+            if (task.CurrentHours is > 0)
+                return 0;
 
             var allocationFactor = NormalizeAllocationPercent(assignment.AllocationPercent) / 100.0;
             return Math.Max(0.0, task.DurationHours) * allocationFactor;
         }
+
+        public static double GetAssignmentCurrentHours(ProjectTask task, TaskResource assignment)
+        {
+            var current = task.CurrentHours ?? 0;
+            if (current <= 0)
+                return 0;
+
+            if (task.Resources.Count <= 1)
+                return current;
+
+            var remainingByAssignment = task.Resources
+                .Select(r => new
+                {
+                    Assignment = r,
+                    Hours = Math.Max(0, GetAssignmentRemainingHours(task, r))
+                })
+                .ToList();
+            var totalRemaining = remainingByAssignment.Sum(x => x.Hours);
+            if (totalRemaining > 0)
+            {
+                var ownRemaining = remainingByAssignment.FirstOrDefault(x => ReferenceEquals(x.Assignment, assignment))?.Hours ?? 0;
+                return current * ownRemaining / totalRemaining;
+            }
+
+            var allocationWeights = task.Resources
+                .Select(r => new
+                {
+                    Assignment = r,
+                    Weight = Math.Max(0, NormalizeAllocationPercent(r.AllocationPercent))
+                })
+                .ToList();
+            var totalWeight = allocationWeights.Sum(x => x.Weight);
+            if (totalWeight > 0)
+            {
+                var ownWeight = allocationWeights.FirstOrDefault(x => ReferenceEquals(x.Assignment, assignment))?.Weight ?? 0;
+                return current * ownWeight / totalWeight;
+            }
+
+            return current / task.Resources.Count;
+        }
+
+        public static double GetAssignmentTotalHours(ProjectTask task, TaskResource assignment) =>
+            GetAssignmentCurrentHours(task, assignment) + GetAssignmentRemainingHours(task, assignment);
 
         public static double? GetTaskEstimatedHours(ProjectTask task)
         {
@@ -83,6 +160,30 @@ namespace NXProject.Services
             }
 
             return Math.Max(0.0, task.DurationHours);
+        }
+
+        public static double GetEffectiveCurrentDurationHours(ProjectTask task)
+        {
+            if (task.IsMilestone || task.CurrentHours is not > 0)
+                return 0.0;
+
+            var durations = new List<double>();
+            foreach (var assignment in task.Resources)
+            {
+                var currentHours = GetAssignmentCurrentHours(task, assignment);
+                if (currentHours <= 0)
+                    continue;
+
+                var allocationFactor = NormalizeAllocationPercent(assignment.AllocationPercent) / 100.0;
+                var availabilityFactor = NormalizeAvailabilityFactor(assignment.Resource);
+                var combined = Math.Max(0.01, allocationFactor * availabilityFactor);
+                durations.Add(currentHours / combined);
+            }
+
+            if (durations.Count > 0)
+                return durations.Max();
+
+            return task.CurrentHours.Value;
         }
 
         public static void SyncTaskEstimatedHoursFromAssignments(ProjectTask task)

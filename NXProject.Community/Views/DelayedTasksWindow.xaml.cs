@@ -341,17 +341,12 @@ namespace NXProject.Views
                 return;
             }
 
-            // Considera somente o nível "story": o menor Depth entre todas as tasks folha.
-            // Quando stories têm sub-tasks importadas do TFS, sub-tasks ficam em Depth maior
-            // e são excluídas — a story (Depth menor) é a unidade de progresso.
-            var allLeaves = _vm.FlatTasks.Where(t => t.Model.Children.Count == 0).ToList();
-            var storyDepth = allLeaves.Count > 0 ? allLeaves.Min(t => t.Depth) : 0;
-            var leafTasks = allLeaves.Where(t => t.Depth == storyDepth).ToList();
+            var curveTasks = GetCurveTasks();
 
             // Usa apenas tasks que têm sprint atribuída para o denominador e cálculo da curva,
             // evitando que tasks sem sprint inflacionem os percentuais.
             var sprintNumbers = new HashSet<int>(sprints.Select(s => s.Number));
-            var tasksWithSprint = leafTasks.Where(t => sprintNumbers.Contains(GetTaskSprint(t))).ToList();
+            var tasksWithSprint = curveTasks.Where(t => sprintNumbers.Contains(GetTaskSprint(t))).ToList();
 
             var totalOriginalHours = tasksWithSprint.Sum(t => GetOriginalHours(t.Model));
             if (totalOriginalHours < 0.01)
@@ -418,6 +413,19 @@ namespace NXProject.Views
                     ? task.EstimatedHours.Value
                     : TaskScheduleService.GetEffectiveDurationHours(task);
 
+        private List<TaskViewModel> GetCurveTasks()
+        {
+            var storyTasks = _vm.FlatTasks
+                .Where(t => TfsImportService.IsStoryTypePublic(t.Model.TfsType))
+                .ToList();
+            if (storyTasks.Count > 0)
+                return storyTasks;
+
+            var leaves = _vm.FlatTasks.Where(t => t.Model.Children.Count == 0).ToList();
+            var storyDepth = leaves.Count > 0 ? leaves.Min(t => t.Depth) : 0;
+            return leaves.Where(t => t.Depth == storyDepth).ToList();
+        }
+
         private List<SprintPoint> BuildCurvePoints(
             List<SprintInfo> sprints, List<TaskViewModel> leafTasks,
             double totalOriginalHours, int currentSprintNumber)
@@ -477,7 +485,7 @@ namespace NXProject.Views
         {
             if (totalHours <= 0 || sprint.Start == DateTime.MinValue) return totalHours;
             var taskStart    = task.Start.Date;
-            var taskFinishEx = task.Finish.Date.AddDays(1); // fim exclusivo
+            var taskFinishEx = task.Finish.Date;            // ProjectTask.Finish ja é fim exclusivo
             var sprintEndEx  = sprint.End.Date.AddDays(1);  // fim exclusivo
 
             var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinishEx);

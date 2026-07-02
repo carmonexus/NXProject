@@ -54,18 +54,30 @@ Write-Host "==> Verificando certificado nos stores confiaveis..." -ForegroundCol
 try {
     $stores = @("Root", "TrustedPublisher")
     foreach ($storeName in $stores) {
-        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($storeName, "CurrentUser")
-        $store.Open("ReadWrite")
-        $alreadyThere = $store.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
-        if (-not $alreadyThere) {
-            Write-Host "   Adicionando ao store $storeName..." -ForegroundColor Cyan
-            $store.Add($cert)
+        $store = $null
+        try {
+            $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($storeName, "CurrentUser")
+            $store.Open("ReadWrite")
+            $alreadyThere = $store.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
+            if (-not $alreadyThere) {
+                Write-Host "   Adicionando ao store CurrentUser\$storeName..." -ForegroundColor Cyan
+                $store.Add($cert)
+            }
+        } catch {
+            Write-Host "   Erro ao acessar CurrentUser\${storeName}: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "A pasta do projeto esta acessivel; a falha ocorreu no repositorio de certificados do Windows." -ForegroundColor Yellow
+            Write-Host "Para o Windows confiar na assinatura, o certificado precisa estar em CurrentUser\Root e CurrentUser\TrustedPublisher." -ForegroundColor Yellow
+            Write-Host "Se o Windows bloquear esse store, tente recriar o certificado ou execute uma vez em PowerShell elevado:" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "  powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -RecreateCertificate" -ForegroundColor Cyan
+            throw
+        } finally {
+            if ($store) { $store.Close() }
         }
-        $store.Close()
     }
     Write-Host "   Certificado confiavel." -ForegroundColor Green
 } catch {
-    Write-Host "   Erro ao instalar: $_" -ForegroundColor Red
     exit 1
 }
 

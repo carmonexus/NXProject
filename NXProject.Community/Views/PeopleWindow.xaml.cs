@@ -533,6 +533,7 @@ namespace NXProject.Views
             _editingRow.CostTypeLabel = isMonthly ? "Monthly" : "Hourly";
             PeopleGrid.Items.Refresh();
             CostAppliedText.Visibility = Visibility.Visible;
+            MarkDirty("Configuração de custo aplicada.");
         }
     }
 

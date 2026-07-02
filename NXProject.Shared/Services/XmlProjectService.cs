@@ -387,6 +387,8 @@ namespace NXProject.Services
                 Parent = parent
             };
 
+            ScheduleHoursService.ApplyMissingProgressHours(task);
+
             // Predecessoras
             var predsEl = el.Element(NS + "PredecessorLinks");
             if (predsEl != null)

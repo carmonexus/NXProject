@@ -1766,12 +1766,15 @@ namespace NXProject.Services
         private static ProjectTask BuildStory(BuildContext ctx, WorkItem item, int level)
         {
             // HH Restante tem prioridade; fallback para HoursRef (campo de esforço geral).
-            var hours = (ctx.RemainingHoursRef != null ? ReadDouble(item, ctx.RemainingHoursRef) : null)
-                        ?? ReadDouble(item, ctx.HoursRef);
+            var remainingHours = ctx.RemainingHoursRef != null ? ReadDouble(item, ctx.RemainingHoursRef) : null;
+            var effortHours = ReadDouble(item, ctx.HoursRef);
+            var hours = remainingHours ?? effortHours;
             var explicitStart = ReadDate(item, ctx.StartRef);
             var explicitFinish = ReadDate(item, ctx.FinishRef);
             // HH Atual lido diretamente para usar no cálculo de duração total.
             var currentHoursRaw = ctx.CurrentHoursRef != null && ReadDouble(item, ctx.CurrentHoursRef) is { } rh2 && rh2 > 0 ? rh2 : (double?)null;
+            var percAlocRaw = ctx.PercAlocRef != null ? ReadDouble(item, ctx.PercAlocRef) : null;
+            var allocationFactor = (percAlocRaw is > 0 and <= 100 ? percAlocRaw.Value : 100.0) / 100.0;
 
             // HH ausente/vazia -> 1 dia util. Milestone real exige duração total 0:
             // HH Atual + HH Restante == 0. Uma atividade concluída costuma ter
@@ -1881,6 +1884,16 @@ namespace NXProject.Services
                     + (string.IsNullOrWhiteSpace(item.Assignee) ? "" : $" · {item.Assignee}")
             };
 
+            if (!(remainingHours is > 0))
+            {
+                var plannedHours =
+                    task.OriginalEstimatedHours is > 0 ? task.OriginalEstimatedHours.Value :
+                    effortHours is > 0 ? effortHours.Value :
+                    totalDurationHours > 0 ? totalDurationHours :
+                    ProjectCalendarService.CountWorkingHours(task.Start, task.Finish);
+                ScheduleHoursService.ApplyMissingProgressHours(task, plannedHours);
+            }
+
             // Lê valores dos campos Custom DevOps mapeados para este tipo
             if (ctx.CustomDevopsFieldsByType.TryGetValue(item.WorkItemType ?? "", out var customFields)
                 || ctx.CustomDevopsFieldsByType.TryGetValue("*", out customFields))
@@ -1898,7 +1911,7 @@ namespace NXProject.Services
                 }
             }
 
-            AssignResource(ctx, task, item, hours);
+            AssignResource(ctx, task, item, task.EstimatedHours);
 
             // Recalcula o fim considerando o % de alocação do recurso (apenas quando não fixado).
             // AssignResource é chamado depois do cálculo inicial do finish, então precisamos corrigir.
@@ -1909,7 +1922,8 @@ namespace NXProject.Services
                 task.Resources.Any(r => Math.Abs(r.AllocationPercent - 100.0) > 0.01))
             {
                 var effectiveDuration = TaskScheduleService.GetEffectiveDurationHours(task);
-                var totalEffective    = effectiveDuration + (task.CurrentHours ?? 0);
+                var currentEffective  = (task.CurrentHours ?? 0) / Math.Max(0.01, allocationFactor);
+                var totalEffective    = effectiveDuration + currentEffective;
                 if (totalEffective > 0)
                 {
                     var calcFinish = ProjectCalendarService.AddWorkingHours(task.Start, totalEffective);

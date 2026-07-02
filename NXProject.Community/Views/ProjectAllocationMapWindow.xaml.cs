@@ -157,23 +157,40 @@ namespace NXProject.Views
 
         private bool OnlyCurrentHours => OnlyCurrentHoursBox?.IsChecked == true;
 
-        private static double GetHoursForMode(ProjectTask task, TaskResource tr, bool onlyCurrentHours)
+        private static double GetRemainingHours(ProjectTask task, TaskResource tr) =>
+            NXProject.Services.TaskScheduleService.GetAssignmentRemainingHours(task, tr);
+
+        private static double GetCurrentHoursForAssignment(ProjectTask task, TaskResource tr) =>
+            NXProject.Services.TaskScheduleService.GetAssignmentCurrentHours(task, tr);
+
+        private static double AllocateHoursInPeriod(double hours, DateTime start, DateTime end, DateTime monthStart, DateTime monthEnd)
         {
-            if (!onlyCurrentHours)
-                return NXProject.Services.TaskScheduleService.GetAssignmentHours(task, tr);
+            if (hours <= 0) return 0;
+            var tStart = start.Date;
+            var tEnd = end.Date;
+            if (tEnd < monthStart || tStart > monthEnd) return 0;
 
-            var current = task.CurrentHours ?? 0;
-            if (current > 0)
-                return current;
+            if (tStart >= tEnd)
+                return monthStart <= tStart && tStart <= monthEnd ? hours : 0;
 
-            // Task em aberto sem HH lançado: usa estimado mas só até o mês atual
-            bool isOpen = string.IsNullOrWhiteSpace(task.TfsState) ||
-                          !task.TfsState.Equals("Closed",   StringComparison.OrdinalIgnoreCase) &&
-                          !task.TfsState.Equals("Done",     StringComparison.OrdinalIgnoreCase) &&
-                          !task.TfsState.Equals("Resolved", StringComparison.OrdinalIgnoreCase);
-            return isOpen
-                ? NXProject.Services.TaskScheduleService.GetAssignmentHours(task, tr)
-                : 0;
+            var overlapStart = tStart < monthStart ? monthStart : tStart;
+            var overlapEnd = tEnd > monthEnd ? monthEnd : tEnd;
+            double overlapDays = Math.Max(0, (overlapEnd - overlapStart).TotalDays + 1);
+            double totalDays = Math.Max(1, (tEnd - tStart).TotalDays + 1);
+            return hours * (overlapDays / totalDays);
+        }
+
+        private static DateTime GetCurrentHoursEnd(ProjectTask task)
+        {
+            if (task.PercentComplete >= 100)
+                return task.Finish.Date;
+
+            var today = DateTime.Today;
+            if (today < task.Start.Date)
+                return task.Start.Date;
+            if (today > task.Finish.Date)
+                return task.Finish.Date;
+            return today;
         }
 
         private static double ComputeHours(Project project, string resourceName,
@@ -188,28 +205,7 @@ namespace NXProject.Views
                     if (!string.Equals(tr.Resource?.Name, resourceName, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    double hours = GetHoursForMode(task, tr, onlyCurrentHours);
-                    if (hours <= 0) continue;
-
-                    var tStart = task.Start.Date;
-                    // Para tasks em aberto sem HH lançado, limita distribuição até o mês atual
-                    var tEnd = (onlyCurrentHours && (task.CurrentHours ?? 0) == 0)
-                        ? new DateTime(DateTime.Today.Year, DateTime.Today.Month,
-                              DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month))
-                        : task.Finish.Date;
-                    if (tEnd < monthStart || tStart > monthEnd) continue;
-
-                    if (tStart >= tEnd)
-                    {
-                        total += hours;
-                        continue;
-                    }
-
-                    var overlapStart   = tStart < monthStart ? monthStart : tStart;
-                    var overlapEnd     = tEnd   > monthEnd   ? monthEnd   : tEnd;
-                    double overlapDays = Math.Max(0, (overlapEnd - overlapStart).TotalDays + 1);
-                    double totalDays   = Math.Max(1, (tEnd - tStart).TotalDays + 1);
-                    total += hours * (overlapDays / totalDays);
+                    total += ComputeHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours);
                 }
             }
             return total;
@@ -871,7 +867,7 @@ namespace NXProject.Views
                     {
                         var ms = months[mi];
                         var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                        mh[mi] = ComputeHours(proj.Data, res, ms, me, OnlyCurrentHours);
+                        mh[mi] = ComputeHours(proj.Data, res, ms, me, onlyCurrentHours: false);
                     }
                     d[res] = mh;
                 }
@@ -1246,7 +1242,7 @@ namespace NXProject.Views
                     {
                         var mStart = months[mi];
                         var mEnd   = new DateTime(mStart.Year, mStart.Month, DateTime.DaysInMonth(mStart.Year, mStart.Month));
-                        matrix[pi][mi] = ComputeHours(_projects[pi].Data, res, mStart, mEnd, OnlyCurrentHours);
+                        matrix[pi][mi] = ComputeHours(_projects[pi].Data, res, mStart, mEnd, onlyCurrentHours: false);
                     }
                 }
                 data[res] = matrix;
@@ -1507,7 +1503,7 @@ namespace NXProject.Views
                         {
                             var ms = months[mi];
                             var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                            double h = ComputeHoursForTask(task, tr, ms, me, OnlyCurrentHours);
+                            double h = ComputeHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
                             mh[mi] = h;
                             if (h > 0.01) any = true;
                         }
@@ -1611,11 +1607,12 @@ namespace NXProject.Views
                 foreach (var projGroup in byProj)
                 {
                     var projEntries = projGroup.ToList();
-                    bool projIsOpex = projEntries[0].Proj.IsOpexForTask(projEntries[0].Task);
-                    var projByMonth = new double[months.Count];
+                    var projCapexByMonth = new double[months.Count];
+                    var projOpexByMonth  = new double[months.Count];
                     foreach (var e in projEntries)
                         for (int mi = 0; mi < months.Count; mi++)
-                            projByMonth[mi] += e.MonthHours[mi];
+                            if (e.Proj.IsOpexForTask(e.Task)) projOpexByMonth[mi]  += e.MonthHours[mi];
+                            else                              projCapexByMonth[mi] += e.MonthHours[mi];
 
                     bool projFirst = true;
                     foreach (var (proj, task, mh) in projEntries.OrderBy(e => e.Task.Start))
@@ -1753,10 +1750,10 @@ namespace NXProject.Views
                     double ptotal = 0;
                     foreach (var mi in visMi)
                     {
-                        double h = projByMonth[mi];
+                        double pC = projCapexByMonth[mi];
+                        double pO = projOpexByMonth[mi];
+                        double h = pC + pO;
                         ptotal += h;
-                        double pC = !projIsOpex ? h : 0;
-                        double pO = projIsOpex  ? h : 0;
                         projDataTotal.Children.Add(SrMakeCell(pC > 0.01 ? $"{pC:0.#}h" : "–",
                             SrCapexMonW, pC > 0.01 ? Color.FromRgb(120, 60, 10) : Color.FromRgb(180, 180, 180),
                             Color.FromRgb(252, 242, 230), bold: true));
@@ -1764,13 +1761,15 @@ namespace NXProject.Views
                             SrOpexMonW, pO > 0.01 ? Color.FromRgb(20, 90, 20) : Color.FromRgb(180, 180, 180),
                             Color.FromRgb(232, 248, 232), bold: true));
                     }
+                    double pCapexTotal = visMi.Sum(mi => projCapexByMonth[mi]);
+                    double pOpexTotal  = visMi.Sum(mi => projOpexByMonth[mi]);
                     projDataTotal.Children.Add(SrMakeCell(ptotal > 0.01 ? $"{ptotal:0.#}h" : "–",
                         SrTotalW, Color.FromRgb(20, 40, 100), Color.FromRgb(205, 218, 245), bold: true));
-                    projDataTotal.Children.Add(SrMakeCell(!projIsOpex && ptotal > 0.01 ? $"{ptotal:0.#}h" : "–",
-                        SrCapexW, !projIsOpex && ptotal > 0.01 ? Color.FromRgb(120, 60, 10) : Color.FromRgb(180, 180, 180),
+                    projDataTotal.Children.Add(SrMakeCell(pCapexTotal > 0.01 ? $"{pCapexTotal:0.#}h" : "–",
+                        SrCapexW, pCapexTotal > 0.01 ? Color.FromRgb(120, 60, 10) : Color.FromRgb(180, 180, 180),
                         Color.FromRgb(252, 242, 230), bold: true));
-                    projDataTotal.Children.Add(SrMakeCell(projIsOpex && ptotal > 0.01 ? $"{ptotal:0.#}h" : "–",
-                        SrOpexW, projIsOpex && ptotal > 0.01 ? Color.FromRgb(20, 90, 20) : Color.FromRgb(180, 180, 180),
+                    projDataTotal.Children.Add(SrMakeCell(pOpexTotal > 0.01 ? $"{pOpexTotal:0.#}h" : "–",
+                        SrOpexW, pOpexTotal > 0.01 ? Color.FromRgb(20, 90, 20) : Color.FromRgb(180, 180, 180),
                         Color.FromRgb(232, 248, 232), bold: true));
                     SrDataPanel.Items.Add(projDataTotal);
                 }
@@ -1800,8 +1799,8 @@ namespace NXProject.Views
                 });
                 SrLeftPanel.Items.Add(leftResTotal);
 
-                double resCapex = entries.Where(e => !e.Proj.IsOpex).Sum(e => e.MonthHours.Sum());
-                double resOpex  = entries.Where(e =>  e.Proj.IsOpex).Sum(e => e.MonthHours.Sum());
+                double resCapex = visMi.Sum(mi => resCapexByMonth[mi]);
+                double resOpex  = visMi.Sum(mi => resOpexByMonth[mi]);
                 grandCapex += resCapex;
                 grandOpex  += resOpex;
 
@@ -2064,23 +2063,21 @@ namespace NXProject.Views
         private static double ComputeHoursForTask(ProjectTask task, TaskResource tr,
             DateTime monthStart, DateTime monthEnd, bool onlyCurrentHours = false)
         {
-            double hours = GetHoursForMode(task, tr, onlyCurrentHours);
-            if (hours <= 0) return 0;
+            var currentHours = GetCurrentHoursForAssignment(task, tr);
+            var currentEnd = GetCurrentHoursEnd(task);
+            var currentInMonth = AllocateHoursInPeriod(currentHours, task.Start, currentEnd, monthStart, monthEnd);
+            if (onlyCurrentHours)
+                return currentInMonth;
 
-            var tStart = task.Start.Date;
-            var tEnd = (onlyCurrentHours && (task.CurrentHours ?? 0) == 0)
-                ? new DateTime(DateTime.Today.Year, DateTime.Today.Month,
-                      DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month))
-                : task.Finish.Date;
-            if (tEnd < monthStart || tStart > monthEnd) return 0;
+            var remainingHours = GetRemainingHours(task, tr);
+            var remainingStart = currentHours > 0 && task.PercentComplete < 100 && currentEnd > task.Start.Date
+                ? currentEnd.AddDays(1)
+                : task.Start.Date;
+            if (remainingStart > task.Finish.Date)
+                return currentInMonth;
 
-            if (tStart >= tEnd) return hours;
-
-            var overlapStart = tStart < monthStart ? monthStart : tStart;
-            var overlapEnd   = tEnd   > monthEnd   ? monthEnd   : tEnd;
-            double overlapDays = Math.Max(0, (overlapEnd - overlapStart).TotalDays + 1);
-            double totalDays   = Math.Max(1, (tEnd - tStart).TotalDays + 1);
-            return hours * (overlapDays / totalDays);
+            var remainingInMonth = AllocateHoursInPeriod(remainingHours, remainingStart, task.Finish, monthStart, monthEnd);
+            return currentInMonth + remainingInMonth;
         }
 
         private static Border SrMakeCell(string text, double width, Color fg, Color bg, bool bold, double height = SrRowH)
@@ -2477,7 +2474,7 @@ namespace NXProject.Views
                         {
                             var ms = months[mi];
                             var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                            double h = ComputeHoursForTask(task, tr, ms, me, OnlyCurrentHours);
+                            double h = ComputeHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
                             mh[mi] = h;
                             if (h > 0.01) any = true;
                         }
@@ -2556,6 +2553,8 @@ namespace NXProject.Views
             // ── Larguras das colunas ──
             tableChildren.Add(new XElement(ns + "Column", new XAttribute(ss + "Width", "120")));
             tableChildren.Add(new XElement(ns + "Column", new XAttribute(ss + "Width", "150")));
+            tableChildren.Add(new XElement(ns + "Column", new XAttribute(ss + "Width", "150")));
+            tableChildren.Add(new XElement(ns + "Column", new XAttribute(ss + "Width", "150")));
             tableChildren.Add(new XElement(ns + "Column", new XAttribute(ss + "Width", "200")));
             foreach (var _ in visMi)
             {
@@ -2585,6 +2584,8 @@ namespace NXProject.Views
             hdrRow2.Add(ExStCell(ns, "", "H0"));
             hdrRow2.Add(ExStCell(ns, "", "H0"));
             hdrRow2.Add(ExStCell(ns, "", "H0"));
+            hdrRow2.Add(ExStCell(ns, "", "H0"));
+            hdrRow2.Add(ExStCell(ns, "", "H0"));
             foreach (var _ in visMi)
             {
                 hdrRow2.Add(ExStCell(ns, "CAPEX", "HC"));
@@ -2606,18 +2607,19 @@ namespace NXProject.Views
                 var resOpexByMonth  = new double[months.Count];
                 foreach (var e in entries)
                     for (int mi = 0; mi < months.Count; mi++)
-                        if (e.Proj.IsOpex) resOpexByMonth[mi]  += e.MonthHours[mi];
-                        else               resCapexByMonth[mi] += e.MonthHours[mi];
+                        if (e.Proj.IsOpexForTask(e.Task)) resOpexByMonth[mi]  += e.MonthHours[mi];
+                        else                              resCapexByMonth[mi] += e.MonthHours[mi];
 
                 bool resFirst = true;
                 foreach (var projGroup in entries.GroupBy(e => e.Proj.Name, StringComparer.OrdinalIgnoreCase).OrderBy(g => g.Key))
                 {
                     var projEntries = projGroup.ToList();
-                    bool projIsOpex = projEntries[0].Proj.IsOpex;
-                    var projByMonth = new double[months.Count];
+                    var projCapexByMonth = new double[months.Count];
+                    var projOpexByMonth  = new double[months.Count];
                     foreach (var e in projEntries)
                         for (int mi = 0; mi < months.Count; mi++)
-                            projByMonth[mi] += e.MonthHours[mi];
+                            if (e.Proj.IsOpexForTask(e.Task)) projOpexByMonth[mi]  += e.MonthHours[mi];
+                            else                              projCapexByMonth[mi] += e.MonthHours[mi];
 
                     bool projFirst = true;
                     foreach (var (proj, task, mh) in projEntries.OrderBy(e => e.Task.Start))
@@ -2651,22 +2653,25 @@ namespace NXProject.Views
                     }
 
                     // Subtotal do projeto
-                    double ptotal = visMi.Sum(mi => projByMonth[mi]);
+                    double pCapexTotal = visMi.Sum(mi => projCapexByMonth[mi]);
+                    double pOpexTotal  = visMi.Sum(mi => projOpexByMonth[mi]);
+                    double ptotal = pCapexTotal + pOpexTotal;
                     var pRow = new XElement(ns + "Row", new XAttribute(ss + "Height", "18"));
-                    pRow.Add(ExStCell(ns, "", projGroup.Key, "PL"));
+                    pRow.Add(ExStCell(ns, "", "PL"));
                     pRow.Add(ExStCell(ns, projGroup.Key, "PL"));
+                    pRow.Add(ExStCell(ns, "", "PL"));
+                    pRow.Add(ExStCell(ns, "", "PL"));
                     pRow.Add(ExStCell(ns, "Subtotal", "PL"));
                     foreach (var mi in visMi)
                     {
-                        double h = projByMonth[mi];
-                        double pC = !projIsOpex ? h : 0;
-                        double pO =  projIsOpex ? h : 0;
+                        double pC = projCapexByMonth[mi];
+                        double pO = projOpexByMonth[mi];
                         pRow.Add(ExStCell(ns, pC > 0.01 ? (object)Math.Round(pC, 2) : "", "PC"));
                         pRow.Add(ExStCell(ns, pO > 0.01 ? (object)Math.Round(pO, 2) : "", "PO"));
                     }
                     pRow.Add(ExStCell(ns, Math.Round(ptotal, 2), "PT"));
-                    pRow.Add(ExStCell(ns, !projIsOpex && ptotal > 0.01 ? (object)Math.Round(ptotal, 2) : "", "PTC"));
-                    pRow.Add(ExStCell(ns,  projIsOpex && ptotal > 0.01 ? (object)Math.Round(ptotal, 2) : "", "PTO"));
+                    pRow.Add(ExStCell(ns, pCapexTotal > 0.01 ? (object)Math.Round(pCapexTotal, 2) : "", "PTC"));
+                    pRow.Add(ExStCell(ns, pOpexTotal > 0.01 ? (object)Math.Round(pOpexTotal, 2) : "", "PTO"));
                     tableChildren.Add(pRow);
                 }
 
@@ -2681,6 +2686,8 @@ namespace NXProject.Views
                 rRow.Add(ExStCell(ns, resName,  "RL"));
                 rRow.Add(ExStCell(ns, "",       "RL"));
                 rRow.Add(ExStCell(ns, "TOTAL",  "RL"));
+                rRow.Add(ExStCell(ns, "",       "RL"));
+                rRow.Add(ExStCell(ns, "",       "RL"));
                 foreach (var mi in visMi)
                 {
                     rRow.Add(ExStCell(ns, resCapexByMonth[mi] > 0.01 ? (object)Math.Round(resCapexByMonth[mi], 2) : "", "RC"));
@@ -2698,6 +2705,8 @@ namespace NXProject.Views
             double gtotal = grandCapex + grandOpex;
             var gRow = new XElement(ns + "Row", new XAttribute(ss + "Height", "22"));
             gRow.Add(ExStCell(ns, "TOTAL GERAL", "GL"));
+            gRow.Add(ExStCell(ns, "", "GL"));
+            gRow.Add(ExStCell(ns, "", "GL"));
             gRow.Add(ExStCell(ns, "", "GL"));
             gRow.Add(ExStCell(ns, "", "GL"));
             foreach (var mi in visMi)
@@ -2784,7 +2793,8 @@ namespace NXProject.Views
             XNamespace ns = "urn:schemas-microsoft-com:office:spreadsheet";
             XNamespace ss = "urn:schemas-microsoft-com:office:spreadsheet";
 
-            // ── Pré-computa dados (igual ao BuildGrid) ──
+            // ── Pré-computa dados ──
+            bool exportOnlyCurrentHours = onlyTab == 0 && OnlyCurrentHours;
             var projResourceData = new List<(LoadedProject Proj,
                                              List<(string Res, double[] MonthHours)> Rows)>();
             var allResources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -2806,7 +2816,7 @@ namespace NXProject.Views
                     {
                         var ms = months[mi];
                         var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                        mh[mi] = ComputeHours(proj.Data, res, ms, me, OnlyCurrentHours);
+                        mh[mi] = ComputeHours(proj.Data, res, ms, me, exportOnlyCurrentHours);
                     }
                     if (hideZero && mh.Sum() < 0.01) continue;
                     rows.Add((res, mh));

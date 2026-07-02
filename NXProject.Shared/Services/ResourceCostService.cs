@@ -42,7 +42,7 @@ namespace NXProject.Services
                 {
                     if (!resById.TryGetValue(tr.ResourceId, out var res)) continue;
                     if (res.CostType != ResourceCostType.Monthly) continue;
-                    double h = (tr.EstimatedHours ?? task.EstimatedHours ?? 0) + (task.CurrentHours ?? 0);
+                    double h = TaskScheduleService.GetAssignmentTotalHours(task, tr);
                     totalHoursByResource.TryGetValue(tr.ResourceId, out var prev);
                     totalHoursByResource[tr.ResourceId] = prev + h;
                 }
@@ -61,17 +61,17 @@ namespace NXProject.Services
                 {
                     if (!resById.TryGetValue(tr.ResourceId, out var res)) continue;
                     if (res.Kind == ResourceKind.Internal) continue;
-                    // HH total = HH Atual (realizadas) + HH Estimado (restante), igual ao DurationHours
-                    double taskHours = (tr.EstimatedHours ?? task.EstimatedHours ?? 0)
-                                     + (task.CurrentHours ?? 0);
-                    double alloc     = tr.AllocationPercent / 100.0;
+                    double currentHours = TaskScheduleService.GetAssignmentCurrentHours(task, tr);
+                    double remainingHours = TaskScheduleService.GetAssignmentRemainingHours(task, tr);
+                    double assignmentHours = currentHours + remainingHours;
+                    if (assignmentHours <= 0) continue;
 
                     if (res.CostType == ResourceCostType.Hourly)
                     {
                         decimal costPerHour = res.CostPerHour > 0 ? res.CostPerHour : 0;
                         if (costPerHour == 0) continue;
 
-                        foreach (var (year, month, h) in SplitByMonth(task.Start, task.Finish, taskHours * alloc))
+                        foreach (var (year, month, h) in SplitAssignmentHoursByMonth(task, currentHours, remainingHours))
                         {
                             lines.Add(new ResourceCostLine(
                                 epicName, featureName, storyName, res.Name, ResourceCostType.Hourly, isCapex,
@@ -83,14 +83,14 @@ namespace NXProject.Services
                         if (res.MonthlyRate <= 0) continue;
                         if (!totalHoursByResource.TryGetValue(tr.ResourceId, out var totalH) || totalH <= 0) continue;
 
-                        double effectiveHours = taskHours * alloc;
-                        decimal taskCost = res.MonthlyRate * (decimal)(effectiveHours / totalH);
+                        decimal taskCost = res.MonthlyRate * (decimal)(assignmentHours / totalH);
 
-                        foreach (var (year, month, dayFrac) in SplitByDayFraction(task.Start, task.Finish))
+                        foreach (var (year, month, h) in SplitAssignmentHoursByMonth(task, currentHours, remainingHours))
                         {
+                            var hourFrac = assignmentHours > 0 ? h / assignmentHours : 0;
                             lines.Add(new ResourceCostLine(
                                 epicName, featureName, storyName, res.Name, ResourceCostType.Monthly, isCapex,
-                                year, month, effectiveHours * dayFrac, taskCost * (decimal)dayFrac));
+                                year, month, h, taskCost * (decimal)hourFrac));
                         }
                     }
                 }
@@ -102,45 +102,76 @@ namespace NXProject.Services
                 .ToList();
         }
 
-        /// <summary>Divide as horas de uma task proporcionalmente pelos meses que ela abrange.</summary>
-        // Fraciona por dias de calendário (não depende de horas)
-        private static IEnumerable<(int year, int month, double fraction)> SplitByDayFraction(
-            DateTime start, DateTime finish)
+        private static IEnumerable<(int year, int month, double hours)> SplitAssignmentHoursByMonth(
+            ProjectTask task, double currentHours, double remainingHours)
         {
-            if (finish <= start) yield break;
-            double totalDays = (finish - start).TotalDays;
-            var cur = new DateTime(start.Year, start.Month, 1);
-            while (cur <= finish)
+            var start = task.Start.Date;
+            var finish = task.Finish.Date;
+            if (finish < start) yield break;
+
+            var byMonth = new Dictionary<(int Year, int Month), double>();
+
+            void Add(DateTime periodStart, DateTime periodEnd, double hours)
             {
-                var monthEnd     = cur.AddMonths(1);
-                var overlapStart = cur > start ? cur : start;
-                var overlapEnd   = monthEnd < finish ? monthEnd : finish;
-                if (overlapEnd > overlapStart)
-                    yield return (cur.Year, cur.Month, (overlapEnd - overlapStart).TotalDays / totalDays);
-                cur = monthEnd;
+                if (hours <= 0 || periodEnd < periodStart) return;
+
+                var cur = new DateTime(periodStart.Year, periodStart.Month, 1);
+                while (cur <= periodEnd)
+                {
+                    var monthStart = cur;
+                    var monthEnd = cur.AddMonths(1).AddDays(-1);
+                    var h = AllocateHoursInPeriod(hours, periodStart, periodEnd, monthStart, monthEnd);
+                    if (h > 0)
+                    {
+                        var key = (cur.Year, cur.Month);
+                        byMonth.TryGetValue(key, out var prev);
+                        byMonth[key] = prev + h;
+                    }
+                    cur = cur.AddMonths(1);
+                }
             }
+
+            var currentEnd = GetCurrentHoursEnd(task);
+            Add(start, currentEnd, currentHours);
+
+            var remainingStart = currentHours > 0 && task.PercentComplete < 100 && currentEnd > start
+                ? currentEnd.AddDays(1)
+                : start;
+            if (remainingStart <= finish)
+                Add(remainingStart, finish, remainingHours);
+
+            foreach (var item in byMonth.OrderBy(x => x.Key.Year).ThenBy(x => x.Key.Month))
+                yield return (item.Key.Year, item.Key.Month, item.Value);
         }
 
-        private static IEnumerable<(int year, int month, double hours)> SplitByMonth(
-            DateTime start, DateTime finish, double totalHours)
+        private static double AllocateHoursInPeriod(double hours, DateTime start, DateTime end, DateTime monthStart, DateTime monthEnd)
         {
-            if (totalHours <= 0 || finish <= start) yield break;
+            if (hours <= 0) return 0;
+            var tStart = start.Date;
+            var tEnd = end.Date;
+            if (tEnd < monthStart || tStart > monthEnd) return 0;
 
-            double totalDays = (finish - start).TotalDays;
-            var cur = new DateTime(start.Year, start.Month, 1);
+            if (tStart >= tEnd)
+                return monthStart <= tStart && tStart <= monthEnd ? hours : 0;
 
-            while (cur <= finish)
-            {
-                var monthEnd   = cur.AddMonths(1);
-                var overlapStart = cur > start ? cur : start;
-                var overlapEnd   = monthEnd < finish ? monthEnd : finish;
-                if (overlapEnd > overlapStart)
-                {
-                    double fraction = (overlapEnd - overlapStart).TotalDays / totalDays;
-                    yield return (cur.Year, cur.Month, totalHours * fraction);
-                }
-                cur = monthEnd;
-            }
+            var overlapStart = tStart < monthStart ? monthStart : tStart;
+            var overlapEnd = tEnd > monthEnd ? monthEnd : tEnd;
+            double overlapDays = Math.Max(0, (overlapEnd - overlapStart).TotalDays + 1);
+            double totalDays = Math.Max(1, (tEnd - tStart).TotalDays + 1);
+            return hours * (overlapDays / totalDays);
+        }
+
+        private static DateTime GetCurrentHoursEnd(ProjectTask task)
+        {
+            if (task.PercentComplete >= 100)
+                return task.Finish.Date;
+
+            var today = DateTime.Today;
+            if (today < task.Start.Date)
+                return task.Start.Date;
+            if (today > task.Finish.Date)
+                return task.Finish.Date;
+            return today;
         }
 
         private static string FindFeatureName(ProjectTask task)

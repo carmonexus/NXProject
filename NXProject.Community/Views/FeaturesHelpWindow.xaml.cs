@@ -272,8 +272,17 @@ namespace NXProject.Views
                     ("Início, duração e fim",
                      "• Início é a data em que a atividade começa no cronograma.\n" +
                      "• Dur.(h) é a duração total de trabalho: HH Atual + HH Restante.\n" +
-                     "• Fim é calculado por Início + Dur.(h), respeitando dias úteis, feriados e horas úteis por dia.\n" +
+                     "• Dur.(h), HH Atual e HH Restante são horas de trabalho, não dias de calendário.\n" +
+                     "• Fim é calculado por Início + horas de trabalho, respeitando dias úteis, feriados, horas úteis por dia e % de alocação do recurso.\n" +
                      "• A data mostrada na coluna Fim é a data de término visível para o usuário; internamente o cálculo usa o limite final do período de trabalho."),
+                    ("% Compl., HH Atual e HH Restante",
+                     "• HH Atual é o trabalho já realizado; HH Restante é o trabalho ainda necessário.\n" +
+                     "• Dur.(h) é o total de esforço da atividade: HH Atual + HH Restante.\n" +
+                     "• Quando o % Compl. é alterado, o NXProject mantém a Dur.(h) e reparte esse total: HH Atual = Dur.(h) × % Compl.; HH Restante = Dur.(h) - HH Atual.\n" +
+                     "• Exemplo: atividade de 8h com 25% concluído fica com HH Atual = 2h e HH Restante = 6h.\n" +
+                     "• Com % Compl. = 0, HH Atual fica 0 e HH Restante volta para a duração/original. Com % Compl. = 100, HH Atual recebe o total e HH Restante fica 0.\n" +
+                     "• Se uma atividade importada ou aberta de arquivo vier com HH Atual/HH Restante vazios, mas tiver duração e % Compl. menor que 100%, o NXProject preenche esses campos pela mesma regra.\n" +
+                     "• % de alocação não reduz o HH da atividade; ela muda o prazo no calendário. Exemplo: 8h restantes com 10% de alocação em calendário de 8h/dia continuam sendo 8h de trabalho, mas ocupam cerca de 10 dias úteis."),
                     ("Início fixado",
                      "• Ao digitar uma data no campo Início, o Início fica fixado e aparece com o ícone de fixação.\n" +
                      "• Uma atividade com Início fixado não é recuada automaticamente por cascata de recurso ou predecessora virtual.\n" +
@@ -374,7 +383,9 @@ namespace NXProject.Views
                     ("Alocação de recursos",
                      "Exibir → Alocação de Recursos mostra a carga de trabalho por pessoa em cada período (sprint ou semana), permitindo identificar sobrecargas antes que virem problemas.\n" +
                      "• Células vermelhas indicam sobrecarga (mais de 100% da capacidade diária).\n" +
-                     "• Células verdes indicam capacidade disponível.\n\n" +
+                     "• Células verdes indicam capacidade disponível.\n" +
+                     "• A capacidade considera as horas/dia do calendário, as horas/dia configuradas para o recurso e a % de alocação da atividade.\n" +
+                     "• HH Atual e HH Restante continuam sendo horas de trabalho; a % de alocação define em quantos dias essas horas cabem.\n\n" +
                      "O Mapa de Alocação por Projeto (Exibir → Mapa de Alocação) exibe horas por recurso × projeto × mês com as seguintes abas:\n" +
                      "• Horas por Projeto — horas de cada recurso em cada projeto por mês.\n" +
                      "• Distribuição por Pessoa — visão consolidada de todos os projetos por recurso.\n" +
@@ -382,7 +393,7 @@ namespace NXProject.Views
                      "• Rateio — % que cada projeto representa do total de horas do recurso naquele mês.\n\n" +
                      "Critério de cálculo das horas por mês:\n" +
                      "As horas de cada atividade são distribuídas proporcionalmente entre os meses cobertos pela sua duração. Se uma story vai de 10/jan a 20/fev (42 dias), 22 dias ficam em janeiro e 20 dias em fevereiro; as horas são distribuídas nessa proporção (22/42 em jan, 20/42 em fev).\n\n" +
-                     "O valor de horas mostrado em cada célula é HH Atual (já trabalhado) + HH Restante (previsto). Use o checkbox 'Apenas HH atual (alocado)' para ver somente as horas já executadas, excluindo a estimativa futura."),
+                     "O valor de horas mostrado em cada célula é HH Atual (já trabalhado) + HH Restante (previsto). Na aba Horas por Projeto, use o checkbox 'Apenas HH atual (alocado)' para ver somente as horas já executadas, excluindo a estimativa futura."),
                     ("Filtro por recurso",
                      "O botão 👤 na toolbar permite filtrar o Gantt e a grade para mostrar somente as atividades de uma pessoa específica — útil em reuniões individuais de acompanhamento.")
                 },
@@ -397,20 +408,30 @@ namespace NXProject.Views
                      "• Horas por Projeto — horas de cada recurso em cada projeto por mês. Clique em uma célula para ver as stories do recurso naquele mês.\n" +
                      "• Distribuição por Pessoa — visão consolidada de todos os projetos por recurso, com total e percentual de capacidade.\n" +
                      "• Stories por Recurso — detalhamento de cada story com HH Total (Atual + Restante), % de conclusão, início e fim.\n" +
-                     "• Rateio — mostra o % que cada projeto representa do total de horas do recurso naquele mês."),
+                     "• Rateio — mostra o % que cada projeto representa do total de horas do recurso naquele mês.\n" +
+                     "• Interno — visão separada dos recursos internos, quando houver."),
                     ("Critério de horas por mês",
                      "As horas de cada atividade são distribuídas proporcionalmente entre os meses cobertos pela sua duração.\n\n" +
                      "Exemplo: uma story de 10/jan a 20/fev tem 22 dias em janeiro e 20 dias em fevereiro; se a story tem 42 horas no total, 22h ficam em janeiro e 20h em fevereiro (proporção 22/42 e 20/42).\n\n" +
-                     "O valor exibido é HH Atual + HH Restante (duração total prevista). Use o checkbox 'Apenas HH atual (alocado)' para ver somente as horas já realizadas."),
+                     "O valor exibido no modo normal é HH Atual + HH Restante (duração total prevista). O checkbox 'Apenas HH atual (alocado)' aparece somente na aba Horas por Projeto e mostra apenas as horas já realizadas nessa aba."),
+                    ("HH Atual e HH Restante por mês",
+                     "O Mapa de Alocação separa o trabalho já realizado do trabalho restante antes de distribuir as horas no calendário:\n\n" +
+                     "• HH Atual é distribuído do Início até hoje (ou até o Fim, quando a atividade está 100%).\n" +
+                     "• HH Restante é distribuído do ponto seguinte até o Fim da atividade.\n" +
+                     "• O modo normal soma as duas partes: HH Atual + HH Restante.\n" +
+                     "• O checkbox 'Apenas HH atual (alocado)' é um modo de análise da aba Horas por Projeto; Distribuição por Pessoa, Stories por Recurso, Rateio e Interno usam sempre HH Atual + HH Restante.\n" +
+                     "• Quando há mais de um recurso na mesma atividade, o HH Atual é rateado entre os recursos pela proporção do HH Restante de cada assignment; se não houver essa base, usa a proporção da % de alocação.\n\n" +
+                     "Essa regra evita jogar HH já realizado em meses futuros ou HH restante em meses passados."),
                     ("% de capacidade",
-                     "O percentual exibido ao lado das horas (ex: '16h (60%)') é calculado sobre a capacidade mensal do calendário: 8h × dias úteis do mês.\n\n" +
+                     "O percentual exibido ao lado das horas nas abas de capacidade é calculado sobre a capacidade mensal do calendário e do recurso: horas/dia úteis × dias úteis do mês, considerando a configuração da pessoa.\n\n" +
                      "Na aba Rateio, o % representa a fatia daquele projeto no total de horas do recurso no mês — não em relação à capacidade total."),
                     ("% de Alocação e data fim",
                      "Ao clicar no % de alocação de uma atividade, a janela permite:\n" +
                      "• Informar HH/dia para calcular o % (ex: 4h/dia = 50%).\n" +
                      "• Informar a data fim desejada: o NXProject calcula automaticamente o % de alocação necessário para completar as horas totais (HH Atual + HH Restante) até aquela data.\n" +
                      "  Fórmula: % = Horas Totais ÷ Horas úteis(Início → Data Fim) × 100.\n" +
-                     "  Isso permite descobrir por engenharia reversa quanto o recurso precisou se dedicar para entregar em um prazo específico.")
+                     "  Isso permite descobrir por engenharia reversa quanto o recurso precisou se dedicar para entregar em um prazo específico.\n\n" +
+                     "Importante: a % de alocação muda o prazo calculado, não o total de HH da atividade. Uma atividade de 8h continua tendo 8h; com 10% de alocação em calendário de 8h/dia, ela consome cerca de 10 dias úteis.")
                 },
                 "Filtre os projetos com 'Selecionar Projetos' e ajuste o período de análise — as colunas zeradas são ocultadas automaticamente quando 'Ocultar linhas/colunas zeradas' está marcado."
             ),
@@ -647,8 +668,14 @@ namespace NXProject.Views
                 new()
                 {
                     ("O que é o Caminho Crítico",
-                     "O Caminho Crítico é a sequência de atividades com folga zero — ou seja, qualquer atraso nelas atrasa a data de entrega do projeto.\n\n" +
-                     "O NXProject usa o algoritmo CPM (Critical Path Method) com passagem forward/backward para calcular as folgas."),
+                     "O Caminho Crítico é a sequência de atividades que determina a menor data possível de conclusão do projeto.\n\n" +
+                     "Na prática, são atividades com folga zero: se uma delas atrasar, a data final do projeto atrasa junto, a menos que outra atividade seja encurtada ou replanejada.\n\n" +
+                     "O NXProject usa o método CPM (Critical Path Method), calculando datas mais cedo e mais tarde para descobrir a folga de cada atividade."),
+                    ("Como interpretar",
+                     "• Uma atividade crítica não é necessariamente a mais longa nem a mais importante do ponto de vista de negócio.\n" +
+                     "• Ela é crítica porque está numa cadeia sem margem de atraso.\n" +
+                     "• Uma atividade fora do caminho crítico pode atrasar até o limite da sua folga sem mover o prazo final.\n" +
+                     "• Quando você muda duração, predecessoras, recurso ou % de alocação, o caminho crítico pode mudar."),
                     ("Como habilitar",
                      "Gestão → Caminho Crítico (checkbox): liga e desliga o destaque visual.\n" +
                      "Gestão → Caminho Crítico → Ver lista de atividades críticas: abre a janela com a grade completa.\n" +
@@ -704,22 +731,38 @@ namespace NXProject.Views
                 new()
                 {
                     ("Configurar custo na tela Pessoas",
-                     "Gestão → Recursos (Pessoas) → grade de recursos.\n\n" +
+                     "Gestão → Custo — Pessoas abre a tela de Pessoas já com as colunas e o painel de custo habilitados.\n\n" +
                      "Colunas de custo:\n" +
                      "• Custo: 'Hourly' (por hora) ou 'Monthly' (por mês)\n" +
                      "• R$/hora: valor cobrado por hora trabalhada\n" +
-                     "• R$/mês: valor mensal quando o recurso é alocado por mês"),
+                     "• R$/mês: valor mensal quando o recurso tem custo fixo mensal\n\n" +
+                     "Recursos marcados como Internal não entram no custo do projeto."),
+                    ("Base de horas usada no custo",
+                     "O custo usa as horas de trabalho do recurso na atividade: HH Atual + HH Restante.\n" +
+                     "A % de alocação não reduz o custo. Ela muda o prazo/calendário necessário para executar as horas.\n\n" +
+                     "Exemplo: uma atividade de 8h com recurso a 10% continua tendo 8h de custo; a diferença é que ela ocupa mais dias no cronograma."),
                     ("Modelo por hora (Hourly)",
-                     "Custo = HH estimadas da atividade × R$/hora × % de alocação.\n" +
+                     "Custo = horas do recurso na atividade × R$/hora.\n" +
+                     "As horas são distribuídas nos meses conforme o período da atividade e a regra de HH Atual/HH Restante.\n" +
                      "Ideal para freelancers, consultores ou qualquer profissional contratado por demanda."),
                     ("Modelo por mês (Monthly)",
-                     "O valor mensal é distribuído proporcionalmente entre as atividades do recurso naquele mês:\n\n" +
-                     "Custo da atividade no mês = (HH da atividade no mês ÷ total de HH do recurso no mês) × R$/mês\n\n" +
+                     "O valor mensal informado para o recurso é rateado proporcionalmente pelas horas dele no projeto:\n\n" +
+                     "Custo da atividade = (HH do recurso na atividade ÷ total de HH do recurso) × R$/mês\n\n" +
+                     "Depois, esse custo é distribuído entre os meses conforme as horas da atividade em cada mês.\n" +
                      "Ideal para funcionários CLT, estagiários ou qualquer profissional com remuneração fixa mensal."),
-                    ("Janela de custo",
-                     "Gestão → Custo por Recurso: exibe a grade com Feature, Recurso, Mês, HH e Custo calculado.\n" +
-                     "Agrupe por Recurso, Feature ou Mês. Filtre por recurso ou período.\n" +
-                     "O total geral aparece no cabeçalho e no rodapé."),
+                    ("Tela Custo por Recurso",
+                     "Gestão → Custo por Recurso exibe a grade detalhada por Recurso → Épico → Feature.\n\n" +
+                     "A grade mostra, para cada mês:\n" +
+                     "• coluna CAPEX: custo das atividades classificadas como CAPEX\n" +
+                     "• coluna OPEX: custo das atividades classificadas como OPEX\n" +
+                     "• TOTAL, CAPEX tot. e OPEX tot. no fim da linha\n\n" +
+                     "Os totais do recurso e o TOTAL GERAL somam todos os meses visíveis."),
+                    ("CAPEX/OPEX e detalhamento",
+                     "A classificação CAPEX/OPEX vem do Tipo Centro de Custo do Épico quando configurado; quando não há definição específica, usa a regra padrão do projeto.\n\n" +
+                     "Clique em uma célula de custo para abrir o detalhamento. O detalhe mostra as Stories/atividades que formam aquele valor, com HH e custo calculado."),
+                    ("Filtros e exportação",
+                     "Use os filtros da lateral para selecionar recursos, Features ou mostrar apenas linhas com custo.\n" +
+                     "A exportação leva a mesma visão da tela para Excel XML, mantendo os meses, CAPEX/OPEX e totais."),
                     ("Arquivo de custo (.nxcost) — criptografado",
                      "Os dados de custo NÃO são gravados no .nxp para preservar o sigilo salarial.\n\n" +
                      "Na tela Pessoas:\n" +
@@ -909,8 +952,17 @@ namespace NXProject.Views
                     ("Start, duration and finish",
                      "• Start is the date the activity begins in the schedule.\n" +
                      "• Dur.(h) is the total work duration: Current HH + Remaining HH.\n" +
-                     "• Finish is calculated as Start + Dur.(h), respecting working days, holidays and daily hours.\n" +
+                     "• Dur.(h), Current HH and Remaining HH are work hours, not calendar days.\n" +
+                     "• Finish is calculated from Start + work hours, respecting working days, holidays, daily calendar hours and the resource allocation %.\n" +
                      "• The date shown in the Finish column is the visible end date; internally the calculation uses the end of the working period."),
+                    ("% Complete, Current HH and Remaining HH",
+                     "• Current HH is work already done; Remaining HH is work still needed.\n" +
+                     "• Dur.(h) is the activity's total effort: Current HH + Remaining HH.\n" +
+                     "• When % Complete changes, NXProject keeps Dur.(h) and splits that total: Current HH = Dur.(h) × % Complete; Remaining HH = Dur.(h) - Current HH.\n" +
+                     "• Example: an 8h activity at 25% complete has Current HH = 2h and Remaining HH = 6h.\n" +
+                     "• At % Complete = 0, Current HH becomes 0 and Remaining HH reverts to duration/original. At % Complete = 100, Current HH receives the total and Remaining HH becomes 0.\n" +
+                     "• If an imported activity or an opened file has empty Current/Remaining HH but has duration and % Complete below 100%, NXProject fills those fields with the same rule.\n" +
+                     "• Allocation % does not reduce the activity HH; it changes the calendar lead time. Example: 8h remaining at 10% allocation on an 8h/day calendar is still 8h of work, but spans about 10 working days."),
                     ("Fixed start",
                      "• When you type a date in the Start field, the Start is fixed and shown with the pin icon.\n" +
                      "• An activity with a fixed Start is not automatically shifted back by resource or virtual predecessor cascade.\n" +
@@ -1011,7 +1063,9 @@ namespace NXProject.Views
                     ("Resource allocation",
                      "View → Resource Allocation shows the workload per person in each period (sprint or week), allowing you to identify overloads before they become problems.\n" +
                      "• Red cells indicate overload (more than 100% of daily capacity).\n" +
-                     "• Green cells indicate available capacity.\n\n" +
+                     "• Green cells indicate available capacity.\n" +
+                     "• Capacity considers calendar hours/day, the resource's configured hours/day and the activity allocation %.\n" +
+                     "• Current HH and Remaining HH remain work hours; allocation % defines how many days are needed to fit those hours.\n\n" +
                      "The Allocation Map (View → Allocation Map) shows hours per resource × project × month with the following tabs:\n" +
                      "• Hours by Project — hours per resource per project per month.\n" +
                      "• Distribution by Person — consolidated view across all projects per resource.\n" +
@@ -1019,7 +1073,7 @@ namespace NXProject.Views
                      "• Rateio (Apportionment) — % that each project represents of the resource's total hours in that month.\n\n" +
                      "How hours are calculated per month:\n" +
                      "Each activity's hours are distributed proportionally across the months it spans. If a story runs from Jan 10 to Feb 20 (42 days), 22 days fall in January and 20 in February; hours are split in that ratio (22/42 in Jan, 20/42 in Feb).\n\n" +
-                     "The hours shown in each cell are Current HH (already worked) + Remaining HH (forecast). Use the 'Only current HH (allocated)' checkbox to see only hours already executed, excluding the future estimate."),
+                     "The hours shown in each cell are Current HH (already worked) + Remaining HH (forecast). In the Hours by Project tab, use the 'Only current HH (allocated)' checkbox to see only hours already executed, excluding the future estimate."),
                     ("Resource filter",
                      "The 👤 button in the toolbar filters the Gantt and the grid to show only the activities of a specific person — useful in individual status meetings.")
                 },
@@ -1034,20 +1088,30 @@ namespace NXProject.Views
                      "• Hours by Project — hours per resource per project per month. Click a cell to see the stories for that resource in that month.\n" +
                      "• Distribution by Person — consolidated view across all projects per resource, with totals and capacity percentage.\n" +
                      "• Stories by Resource — details each story with Total HH (Current + Remaining), % completion, start and finish.\n" +
-                     "• Rateio (Apportionment) — shows what % each project represents of the resource's total hours in that month."),
+                     "• Rateio (Apportionment) — shows what % each project represents of the resource's total hours in that month.\n" +
+                     "• Internal — separate view for internal resources, when present."),
                     ("Hours per month criterion",
                      "Each activity's hours are distributed proportionally across the months it spans.\n\n" +
                      "Example: a story from Jan 10 to Feb 20 has 22 days in January and 20 days in February; if the story has 42 total hours, 22h go to January and 20h to February (ratios 22/42 and 20/42).\n\n" +
-                     "The value shown is Current HH + Remaining HH (total planned duration). Use the 'Only current HH (allocated)' checkbox to see only realized hours."),
+                     "Normal mode shows Current HH + Remaining HH (total planned duration). The 'Only current HH (allocated)' checkbox appears only in the Hours by Project tab and shows only realized hours in that tab."),
+                    ("Current HH and Remaining HH by month",
+                     "The Allocation Map separates work already done from work still remaining before distributing hours on the calendar:\n\n" +
+                     "• Current HH is distributed from Start to today (or to Finish when the activity is 100%).\n" +
+                     "• Remaining HH is distributed from the next period through the activity Finish.\n" +
+                     "• Normal mode adds both parts: Current HH + Remaining HH.\n" +
+                     "• The 'Only current HH (allocated)' checkbox is an analysis mode for the Hours by Project tab; Distribution by Person, Stories by Resource, Rateio and Internal always use Current HH + Remaining HH.\n" +
+                     "• When multiple resources are assigned to the same activity, Current HH is split by each assignment's Remaining HH proportion; if that base is missing, allocation % is used.\n\n" +
+                     "This prevents work already done from being pushed into future months, and remaining work from being counted in past months."),
                     ("Capacity percentage",
-                     "The percentage shown beside hours (e.g. '16h (60%)') is calculated against the monthly calendar capacity: 8h × working days in the month.\n\n" +
+                     "The percentage shown beside hours in capacity tabs is calculated against the monthly calendar and resource capacity: working hours/day × working days in the month, considering the person's configuration.\n\n" +
                      "In the Rateio tab, the % represents that project's share of the resource's total hours in the month — not relative to full capacity."),
                     ("Allocation % and finish date",
                      "Clicking a task's allocation % opens a dialog that lets you:\n" +
                      "• Enter HH/day to calculate the % (e.g. 4h/day = 50%).\n" +
                      "• Enter a desired finish date: NXProject automatically calculates the allocation % needed to complete the total hours (Current + Remaining) by that date.\n" +
                      "  Formula: % = Total Hours ÷ Working hours(Start → Finish) × 100.\n" +
-                     "  This lets you reverse-engineer how much dedication the resource needs to meet a specific deadline.")
+                     "  This lets you reverse-engineer how much dedication the resource needs to meet a specific deadline.\n\n" +
+                     "Important: allocation % changes the calculated finish date, not the total HH of the activity. An 8h activity still has 8h; at 10% allocation on an 8h/day calendar, it takes about 10 working days.")
                 },
                 "Filter projects with 'Select Projects' and adjust the analysis period — zero columns are automatically hidden when 'Hide zero rows/columns' is checked."
             ),
@@ -1284,8 +1348,14 @@ namespace NXProject.Views
                 new()
                 {
                     ("What is the Critical Path",
-                     "The Critical Path is the sequence of activities with zero float — any delay in them delays the project delivery date.\n\n" +
-                     "NXProject uses the CPM (Critical Path Method) algorithm with forward/backward pass to calculate floats."),
+                     "The Critical Path is the sequence of activities that determines the earliest possible project finish date.\n\n" +
+                     "In practice, these are zero-float activities: if one of them slips, the project finish date slips too, unless another activity is shortened or replanned.\n\n" +
+                     "NXProject uses CPM (Critical Path Method), calculating early and late dates to find each activity's float."),
+                    ("How to interpret it",
+                     "• A critical activity is not necessarily the longest or the most important from a business perspective.\n" +
+                     "• It is critical because it belongs to a chain with no delay margin.\n" +
+                     "• A non-critical activity can slip up to its float limit without moving the final deadline.\n" +
+                     "• When you change duration, predecessors, resource or allocation %, the critical path may change."),
                     ("How to enable",
                      "Management → Critical Path (checkbox): toggles the visual highlight on/off.\n" +
                      "Management → Critical Path → View critical activity list: opens the window with the full grid.\n" +
@@ -1341,22 +1411,38 @@ namespace NXProject.Views
                 new()
                 {
                     ("Configure cost in the People screen",
-                     "Management → Resources (People) → resource grid.\n\n" +
+                     "Management → Cost — People opens the People screen with cost columns and the cost side panel enabled.\n\n" +
                      "Cost columns:\n" +
                      "• Cost: 'Hourly' (per hour) or 'Monthly' (per month)\n" +
                      "• $/hour: rate charged per hour worked\n" +
-                     "• $/month: monthly rate when the resource is allocated by month"),
+                     "• $/month: monthly rate when the resource has a fixed monthly cost\n\n" +
+                     "Resources marked as Internal are excluded from project cost."),
+                    ("Hours used by cost",
+                     "Cost uses the resource work hours on the activity: Current HH + Remaining HH.\n" +
+                     "Allocation % does not reduce cost. It changes the schedule/calendar time required to execute those hours.\n\n" +
+                     "Example: an 8h activity with a resource allocated at 10% still has 8h of cost; it simply spans more calendar days."),
                     ("Hourly model",
-                     "Cost = estimated hours for the activity × $/hour × allocation %.\n" +
+                     "Cost = resource hours on the activity × $/hour.\n" +
+                     "Hours are distributed across months according to the activity period and the Current HH / Remaining HH rule.\n" +
                      "Ideal for freelancers, consultants, or any professional hired on demand."),
                     ("Monthly model",
-                     "The monthly rate is distributed proportionally across the resource's activities in that month:\n\n" +
-                     "Activity cost in month = (activity hours in month ÷ total resource hours in month) × $/month\n\n" +
+                     "The resource monthly rate is allocated proportionally by that resource's hours in the project:\n\n" +
+                     "Activity cost = (resource HH on activity ÷ total resource HH) × $/month\n\n" +
+                     "Then that cost is distributed across months according to the activity hours in each month.\n" +
                      "Ideal for salaried employees, interns, or any professional with fixed monthly compensation."),
-                    ("Cost window",
-                     "Management → Resource Cost: displays the grid with Feature, Resource, Month, Hours and calculated Cost.\n" +
-                     "Group by Resource, Feature or Month. Filter by resource or period.\n" +
-                     "The grand total appears in the header and footer."),
+                    ("Resource Cost screen",
+                     "Management → Resource Cost displays the detailed grid by Resource → Epic → Feature.\n\n" +
+                     "For each month the grid shows:\n" +
+                     "• CAPEX column: cost from CAPEX-classified activities\n" +
+                     "• OPEX column: cost from OPEX-classified activities\n" +
+                     "• TOTAL, CAPEX total and OPEX total at the end of the row\n\n" +
+                     "Resource totals and GRAND TOTAL sum all visible months."),
+                    ("CAPEX/OPEX and drill-down",
+                     "CAPEX/OPEX classification comes from the Epic cost-center type when configured; when there is no specific definition, the project default rule is used.\n\n" +
+                     "Click a cost cell to open the drill-down. The detail shows the Stories/activities behind that value, including HH and calculated cost."),
+                    ("Filters and export",
+                     "Use the side filters to select resources, Features, or show only rows with cost.\n" +
+                     "Export sends the same screen view to Excel XML, preserving months, CAPEX/OPEX and totals."),
                     ("Cost file (.nxcost) — encrypted",
                      "Cost data is NOT stored in the .nxp to preserve salary confidentiality.\n\n" +
                      "In the People screen:\n" +

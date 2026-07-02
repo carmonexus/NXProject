@@ -411,8 +411,7 @@ namespace NXProject.Controls
             var pos = e.GetPosition(GanttCanvas);
             UpdateMagnifier(e, pos);
 
-            var scrollOffset = GanttScroll.HorizontalOffset;
-            var dayIndex = (int)Math.Floor((pos.X + scrollOffset - LeftPadding) / DayWidth);
+            var dayIndex = (int)Math.Floor((pos.X - LeftPadding) / DayWidth);
             if (dayIndex >= 0 && ProjectStart != default)
             {
                 var hoverDate = ProjectStart.AddDays(dayIndex);
@@ -447,7 +446,7 @@ namespace NXProject.Controls
                 }
 
                 // Posiciona o overlay próximo ao cursor, dentro dos limites do cabeçalho
-                double labelX = pos.X + scrollOffset - LeftPadding < 10 ? 4
+                double labelX = pos.X - LeftPadding < 10 ? 4
                               : Math.Min(pos.X - 10, ActualWidth - 140);
                 DateCoordBorder.Margin = new Thickness(labelX, 0, 0, 0);
                 DateCoordBorder.Visibility = Visibility.Visible;
@@ -466,9 +465,9 @@ namespace NXProject.Controls
                 }
 
                 var rPos = e.GetPosition(GanttCanvas);
-                var scrollOff = GanttScroll.HorizontalOffset;
-                var finishDayIndex = (int)Math.Round((rPos.X + scrollOff - LeftPadding) / DayWidth);
-                var newFinish = ProjectStart.AddDays(Math.Max(finishDayIndex, 0));
+                var finishDayIndex = (int)Math.Round((rPos.X - LeftPadding) / DayWidth);
+                var inclusiveFinish = ProjectStart.AddDays(Math.Max(finishDayIndex, 0));
+                var newFinish = inclusiveFinish.Date.AddDays(1);
                 // Finish deve ser pelo menos o dia seguinte ao Start
                 if (newFinish <= _resizeState.Task.Start)
                     newFinish = _resizeState.Task.Start.AddDays(1);

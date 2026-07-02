@@ -387,7 +387,7 @@ namespace NXProject.Views
 
             var hasDates = sprint.Start != default && sprint.End != default;
             var filter = hasDates
-                ? (Func<TaskViewModel, bool>)(t => OverlapsWithSprint(t, sprint) || BelongsToSprint(t, sprint))
+                ? (Func<TaskViewModel, bool>)(t => OverlapsWithSprint(t, sprint))
                 : t => BelongsToSprint(t, sprint);
 
             foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && filter(t)))
