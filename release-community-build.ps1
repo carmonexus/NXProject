@@ -9,6 +9,7 @@ param(
 
 $SolutionDir = $PSScriptRoot
 $ProjectFile = Join-Path $SolutionDir "NXProject.Community\NXProject.Community.csproj"
+$TestProjectFile = Join-Path $SolutionDir "NXTestUnit\NXTestUnit.csproj"
 $OutputDir = Join-Path $SolutionDir "NXProject.Community\bin\$Configuration\net10.0-windows"
 $Exe = Join-Path $OutputDir "NXProject.Community.exe"
 $SharedDllLockPattern = "because it is being used by another process"
@@ -126,6 +127,14 @@ if ($Clean) {
 Write-Step "Restaurando pacotes..."
 Invoke-DotnetCommandWithRetry -ActionLabel "O restore" -Command {
     dotnet restore $ProjectFile --nologo -v q
+}
+Invoke-DotnetCommandWithRetry -ActionLabel "O restore do NXTestUnit" -Command {
+    dotnet restore $TestProjectFile --nologo -v q
+}
+
+Write-Step "Rodando NXTestUnit..."
+Invoke-DotnetCommandWithRetry -ActionLabel "O NXTestUnit" -Command {
+    dotnet run --project $TestProjectFile -c $Configuration --no-restore --nologo
 }
 
 Write-Step "Gerando executavel Community ($Configuration)..."

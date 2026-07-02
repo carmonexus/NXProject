@@ -7,6 +7,7 @@ param(
 
 $SolutionDir = $PSScriptRoot
 $ProjectFile = Join-Path $SolutionDir "NXProject.Community\NXProject.Community.csproj"
+$TestProjectFile = Join-Path $SolutionDir "NXTestUnit\NXTestUnit.csproj"
 $OutputDir = Join-Path $SolutionDir "NXProject.Community\bin\$Configuration\net10.0-windows"
 $DistDir = Join-Path $SolutionDir "dist\community"
 $Runtime = "win-x64"
@@ -64,10 +65,6 @@ function Step-Version([string]$Version, [string]$BumpType) {
 
 $CurrentVersion = Get-ProjectVersion $ProjectFile
 $NewVersion = Step-Version $CurrentVersion $Bump
-
-Write-Host ""
-Write-Host ">> Versao: $CurrentVersion → $NewVersion" -ForegroundColor Yellow
-Set-ProjectVersion $ProjectFile $NewVersion
 
 $ZipPath = Join-Path $DistDir "NXProject.Community-Release.zip"
 
@@ -152,6 +149,19 @@ if ($wpftmp) {
 }
 
 Write-Step "Restaurando pacotes..."
+Invoke-DotnetCommandWithRetry -ActionLabel "O restore do NXTestUnit" -Command {
+    dotnet restore $TestProjectFile --nologo -v q
+}
+
+Write-Step "Rodando NXTestUnit..."
+Invoke-DotnetCommandWithRetry -ActionLabel "O NXTestUnit" -Command {
+    dotnet run --project $TestProjectFile -c $Configuration --no-restore --nologo
+}
+
+Write-Host ""
+Write-Host ">> Versao: $CurrentVersion → $NewVersion" -ForegroundColor Yellow
+Set-ProjectVersion $ProjectFile $NewVersion
+
 # Remove assets.json para forcar restore com RID correto
 $assetsJson = Join-Path $SolutionDir "NXProject.Community\obj\project.assets.json"
 if (Test-Path $assetsJson) { Remove-Item $assetsJson -Force }
