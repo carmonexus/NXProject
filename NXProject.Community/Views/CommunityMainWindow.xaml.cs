@@ -2607,24 +2607,22 @@ namespace NXProject.Views
         {
             public TaskSearchItem(NXProject.ViewModels.TaskViewModel vm)
             {
-                Task = vm;
-
-                var type     = vm.Model.TfsType?.Trim() ?? "";
-                var typeTag  = string.IsNullOrEmpty(type) ? "" : $"[{type}] ";
-                var idPart   = string.IsNullOrEmpty(vm.DisplayId) ? "" : $"#{vm.DisplayId}  ";
-                var resources = vm.Model.Resources
+                Task       = vm;
+                TaskType   = vm.Model.TfsType?.Trim() ?? "";
+                Id         = vm.DisplayId ?? "";
+                Name       = vm.Name;
+                Resources  = string.Join(", ", vm.Model.Resources
                     .Where(r => r.Resource != null)
                     .Select(r => r.Resource!.DisplayName)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                var resPart  = resources.Count > 0 ? $"  · {string.Join(", ", resources)}" : "";
-                var pct      = (int)Math.Round(vm.Model.PercentComplete);
-                var pctPart  = $"  {pct}%";
-
-                DisplayLabel = $"{typeTag}{idPart}{vm.Name}{resPart}{pctPart}";
+                    .Distinct(StringComparer.OrdinalIgnoreCase));
+                Percent    = $"{(int)Math.Round(vm.Model.PercentComplete)}%";
             }
-            public NXProject.ViewModels.TaskViewModel Task { get; }
-            public string DisplayLabel { get; }
+            public NXProject.ViewModels.TaskViewModel Task      { get; }
+            public string TaskType  { get; }
+            public string Id        { get; }
+            public string Name      { get; }
+            public string Resources { get; }
+            public string Percent   { get; }
         }
 
         private void OnSearchTaskClick(object sender, RoutedEventArgs e) => OpenSearchPopup();
@@ -2664,13 +2662,29 @@ namespace NXProject.Views
             Grid.SetRow(searchBox, 0);
             root.Children.Add(searchBox);
 
-            var listBox = new ListBox
+            var listBox = new DataGrid
             {
-                FontSize           = 12,
-                BorderThickness    = new Thickness(1),
-                BorderBrush        = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(210, 218, 230)),
-                DisplayMemberPath  = nameof(TaskSearchItem.DisplayLabel)
+                FontSize                = 12,
+                BorderThickness         = new Thickness(1),
+                BorderBrush             = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(210, 218, 230)),
+                AutoGenerateColumns     = false,
+                CanUserAddRows          = false,
+                CanUserDeleteRows       = false,
+                CanUserReorderColumns   = false,
+                CanUserSortColumns      = false,
+                IsReadOnly              = true,
+                RowHeight               = 26,
+                SelectionMode           = DataGridSelectionMode.Single,
+                SelectionUnit           = DataGridSelectionUnit.FullRow,
+                GridLinesVisibility     = DataGridGridLinesVisibility.Horizontal,
+                HorizontalGridLinesBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(230, 235, 245)),
+                HeadersVisibility       = DataGridHeadersVisibility.Column,
             };
+            listBox.Columns.Add(new DataGridTextColumn { Header = "Tipo",    Binding = new System.Windows.Data.Binding(nameof(TaskSearchItem.TaskType)), Width = 80 });
+            listBox.Columns.Add(new DataGridTextColumn { Header = "ID",      Binding = new System.Windows.Data.Binding(nameof(TaskSearchItem.Id)),       Width = 60 });
+            listBox.Columns.Add(new DataGridTextColumn { Header = "Nome",    Binding = new System.Windows.Data.Binding(nameof(TaskSearchItem.Name)),     Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+            listBox.Columns.Add(new DataGridTextColumn { Header = "Recurso", Binding = new System.Windows.Data.Binding(nameof(TaskSearchItem.Resources)),Width = 140 });
+            listBox.Columns.Add(new DataGridTextColumn { Header = "%",       Binding = new System.Windows.Data.Binding(nameof(TaskSearchItem.Percent)),  Width = 46 });
             Grid.SetRow(listBox, 1);
             root.Children.Add(listBox);
 
@@ -2712,7 +2726,7 @@ namespace NXProject.Views
             }
 
             Refresh("");
-            searchBox.TextChanged   += (_, _) => Refresh(searchBox.Text);
+            searchBox.TextChanged    += (_, _) => Refresh(searchBox.Text);
             listBox.MouseDoubleClick += (_, _) => SelectAndClose(listBox.SelectedItem as TaskSearchItem);
             listBox.KeyDown += (_, e) =>
             {
@@ -2730,7 +2744,7 @@ namespace NXProject.Views
                     if (listBox.Items.Count > 0)
                     {
                         listBox.SelectedIndex = 0;
-                        (listBox.ItemContainerGenerator.ContainerFromIndex(0) as ListBoxItem)?.Focus();
+                        listBox.ScrollIntoView(listBox.Items[0]);
                     }
                     e.Handled = true;
                 }
