@@ -192,6 +192,10 @@
                     <DataGridTextColumn Header="% Aloc."
                                         Binding="{Binding AllocationPercent, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:0.##}}"
                                         Width="80"/>
+                    <DataGridTextColumn Header="H. Sprint"
+                                        Binding="{Binding SprintHours}"
+                                        IsReadOnly="True"
+                                        Width="90"/>
                     <DataGridTemplateColumn Header="Recurso" Width="190">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

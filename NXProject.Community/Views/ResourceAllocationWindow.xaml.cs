@@ -33,7 +33,7 @@ namespace NXProject.Views
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public ObservableCollection<Resource> AvailableResources { get; }
-        public ObservableCollection<AllocationDetailRow> SelectedDetails { get; } = new();
+        internal ObservableCollection<AllocationDetailRow> SelectedDetails { get; } = new();
         public ObservableCollection<GapJustificationRow> GapJustRows { get; } = new();
 
         private void OnRefreshClick(object sender, RoutedEventArgs e)
@@ -347,6 +347,9 @@ namespace NXProject.Views
             _selectedResource = resource;
             _selectedSprint = sprint;
             DetailsTitle.Text = $"{resource.DisplayName} - {sprint.Header}";
+            // Atualiza header da coluna de horas proporcionais
+            if (DetailsGrid.Columns.Count > 6)
+                DetailsGrid.Columns[6].Header = sprint.Header;
             SelectedDetails.Clear();
 
             foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && OverlapsWithSprint(t, sprint)))
@@ -355,7 +358,7 @@ namespace NXProject.Views
                 if (assignment == null)
                     continue;
 
-                SelectedDetails.Add(new AllocationDetailRow(this, task, assignment, resource));
+                SelectedDetails.Add(new AllocationDetailRow(this, task, assignment, resource, sprint));
             }
         }
 
@@ -505,7 +508,7 @@ namespace NXProject.Views
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-        private sealed record SprintColumn(int Number, string? Path, string Header, double CapacityHours, DateTime Start, DateTime End);
+        internal sealed record SprintColumn(int Number, string? Path, string Header, double CapacityHours, DateTime Start, DateTime End);
 
         private void OnDetailsResourceComboDropDownClosed(object? sender, EventArgs e)
         {
@@ -554,21 +557,24 @@ namespace NXProject.Views
             OnDetailsResourceComboDropDownClosed(sender, EventArgs.Empty);
         }
 
-        public sealed class AllocationDetailRow : INotifyPropertyChanged
+        internal sealed class AllocationDetailRow : INotifyPropertyChanged
         {
             private readonly ResourceAllocationWindow _owner;
             private Resource _resource;
+            private readonly SprintColumn _sprint;
 
             public AllocationDetailRow(
                 ResourceAllocationWindow owner,
                 TaskViewModel task,
                 TaskResource assignment,
-                Resource resource)
+                Resource resource,
+                SprintColumn sprint)
             {
                 _owner = owner;
                 Task = task;
                 Assignment = assignment;
                 _resource = resource;
+                _sprint = sprint;
             }
 
             public event PropertyChangedEventHandler? PropertyChanged;
@@ -588,8 +594,13 @@ namespace NXProject.Views
                     _owner._vm.RefreshTasks();
                     _owner.BuildMatrix();
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Hours)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SprintHours)));
                 }
             }
+
+            public string SprintHours =>
+                ProportionalHours(Task.Model, TaskScheduleService.GetAssignmentHours(Task.Model, Assignment), _sprint)
+                    is var h && h > 0 ? $"{h:0.##}" : "-";
 
             public double AllocationPercent
             {
