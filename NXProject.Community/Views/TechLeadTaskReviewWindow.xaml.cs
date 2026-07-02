@@ -177,18 +177,7 @@ namespace NXProject.Views
             foreach (var r in rows) _allRows.Add(r);
 
             if (!_cascadeMode)
-            {
-                var distinctFeatures = rows.Select(r => r.FeatureName).Where(f => !string.IsNullOrEmpty(f)).Distinct().OrderBy(f => f).ToList();
-                FeatureFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(distinctFeatures).ToList();
-                FeatureFilterBox.SelectedIndex = 0;
-
-                var distinctStories = rows.Select(r => r.StoryName).Distinct().OrderBy(s => s).ToList();
-                StoryFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(distinctStories).ToList();
-                StoryFilterBox.SelectedIndex = 0;
-
-                EpicFilterBox.ItemsSource = new[] { "(Todos)" };
-                EpicFilterBox.SelectedIndex = 0;
-            }
+                PopulateDirectModeFilters(rows);
 
             var states = new[] { "(Todos)" }.Concat(rows.Select(r => r.State).Distinct().OrderBy(s => s)).ToList();
             StateFilterBox.ItemsSource = states;
@@ -290,6 +279,68 @@ namespace NXProject.Views
             var visible = (_view?.Cast<TaskReviewRow>() ?? _allRows).ToList();
             for (int i = 0; i < visible.Count; i++)
                 visible[i].RowNumber = i + 1;
+        }
+
+        private void PopulateDirectModeFilters(List<TaskReviewRow> rows)
+        {
+            var selectedStory = _stories.Count == 1 ? _stories[0] : null;
+            var selectedFeature = selectedStory?.Parent;
+            var selectedEpic = selectedFeature != null
+                ? FindAncestorOrSelf(selectedFeature, "Epic")
+                : selectedStory != null
+                    ? FindAncestorOrSelf(selectedStory, "Epic")
+                    : null;
+
+            var epics = FlattenAll(_project.Tasks)
+                .Where(t => string.Equals(t.TfsType, "Epic", StringComparison.OrdinalIgnoreCase) && t.TfsId is > 0)
+                .Select(t => t.Name)
+                .Concat(selectedEpic?.Name is { Length: > 0 } epicName ? [epicName] : [])
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Distinct()
+                .OrderBy(n => n)
+                .ToList();
+
+            var features = rows.Select(r => r.FeatureName)
+                .Concat(selectedFeature?.Name is { Length: > 0 } featureName ? [featureName] : [])
+                .Where(f => !string.IsNullOrWhiteSpace(f))
+                .Distinct()
+                .OrderBy(f => f)
+                .ToList();
+
+            var stories = rows.Select(r => r.StoryName)
+                .Concat(_stories.Select(s => s.Name))
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct()
+                .OrderBy(s => s)
+                .ToList();
+
+            EpicFilterBox.ItemsSource = new[] { "(Todos)" }.Concat(epics).ToList();
+            EpicFilterBox.SelectedItem = selectedEpic?.Name is { Length: > 0 } && epics.Contains(selectedEpic.Name)
+                ? selectedEpic.Name
+                : "(Todos)";
+
+            FeatureFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(features).ToList();
+            FeatureFilterBox.SelectedItem = selectedFeature?.Name is { Length: > 0 } && features.Contains(selectedFeature.Name)
+                ? selectedFeature.Name
+                : "(Todas)";
+
+            StoryFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(stories).ToList();
+            StoryFilterBox.SelectedItem = selectedStory?.Name is { Length: > 0 } && stories.Contains(selectedStory.Name)
+                ? selectedStory.Name
+                : "(Todas)";
+        }
+
+        private static ProjectTask? FindAncestorOrSelf(ProjectTask task, string tfsType)
+        {
+            var current = task;
+            while (current != null)
+            {
+                if (string.Equals(current.TfsType, tfsType, StringComparison.OrdinalIgnoreCase))
+                    return current;
+                current = current.Parent;
+            }
+
+            return null;
         }
 
         private void OnEpicFilterChanged(object sender, SelectionChangedEventArgs e)
