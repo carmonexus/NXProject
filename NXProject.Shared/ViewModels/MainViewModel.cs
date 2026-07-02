@@ -751,12 +751,24 @@ namespace NXProject.ViewModels
             RestoreAvailabilityByResourceKey(Project.Resources, existingAvailability);
             RestoreOriginalEstimatedHours(Project.Tasks, existingOriginalHours);
             RestoreNoDevOpsTasks(noDevOpsTasks);
+            ClearImportedSyncConflicts(Project.Tasks);
             ApplyProjectSprintSettingsToViewModel(project);
             _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
             RebuildFlatTasks();
             ApplyVirtualPredecessorsToAll();
             Project.IsDirty = true;
             StatusMessage = statusMessage ?? "Projeto importado.";
+        }
+
+        private static void ClearImportedSyncConflicts(IEnumerable<Models.ProjectTask> tasks)
+        {
+            foreach (var task in tasks)
+            {
+                if (task.TfsId is > 0 && task.SyncVersion.HasValue)
+                    task.HasSyncConflict = false;
+
+                ClearImportedSyncConflicts(task.Children);
+            }
         }
 
         private List<(Models.ProjectTask task, int? parentTfsId)> CaptureNoDevOpsTasks()

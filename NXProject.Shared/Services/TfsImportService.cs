@@ -598,6 +598,10 @@ namespace NXProject.Services
                                 continue;
                             }
                         }
+                        else if (task.HasSyncConflict)
+                        {
+                            task.HasSyncConflict = false;
+                        }
                     }
 
                     ops.Clear();
