@@ -77,7 +77,7 @@ namespace NXProject.Views
                 .Where(t => string.Equals(t.TfsType, "Epic", StringComparison.OrdinalIgnoreCase) && t.TfsId is > 0)
                 .ToList();
 
-            EpicFilterBox.ItemsSource = new[] { "(Todos)" }.Concat(_epicTaskList.Select(TaskLabel)).ToList();
+            EpicFilterBox.ItemsSource = new[] { "(Todos)" }.Concat(FilterByProgress(_epicTaskList).Select(TaskLabel)).ToList();
             EpicFilterBox.SelectedIndex = 0;
 
             FeatureFilterBox.ItemsSource = new[] { "(Todas)" };
@@ -98,6 +98,15 @@ namespace NXProject.Views
             if (string.IsNullOrEmpty(label)) return "";
             var idx = label.LastIndexOf(" (");
             return idx > 0 ? label[..idx] : label;
+        }
+        private IEnumerable<ProjectTask> FilterByProgress(IEnumerable<ProjectTask> tasks)
+        {
+            bool emAndamento = FilterEmAndamentoBox?.IsChecked == true;
+            bool naoIniciada = FilterNaoIniciadaBox?.IsChecked == true;
+            if (!emAndamento && !naoIniciada) return tasks;
+            return tasks.Where(t =>
+                (emAndamento && t.PercentComplete > 0 && t.PercentComplete < 100) ||
+                (naoIniciada && t.PercentComplete <= 0));
         }
 
         private static IEnumerable<ProjectTask> FlattenAll(System.Collections.ObjectModel.ObservableCollection<ProjectTask> tasks)
@@ -246,7 +255,24 @@ namespace NXProject.Views
             return true;
         }
 
-        private void OnProgressFilterChanged(object sender, RoutedEventArgs e) { _view?.Refresh(); RefreshRowNumbers(); UpdateTotals(); }
+        private void OnProgressFilterChanged(object sender, RoutedEventArgs e)
+        {
+            if (_cascadeMode && _epicTaskList?.Count > 0)
+            {
+                EpicFilterBox.ItemsSource = new[] { "(Todos)" }.Concat(FilterByProgress(_epicTaskList).Select(TaskLabel)).ToList();
+                EpicFilterBox.SelectedIndex = 0;
+                FeatureFilterBox.ItemsSource = new[] { "(Todas)" };
+                FeatureFilterBox.SelectedIndex = 0;
+                FeatureFilterBox.IsEnabled = false;
+                StoryFilterBox.ItemsSource = new[] { "(Todas)" };
+                StoryFilterBox.SelectedIndex = 0;
+                StoryFilterBox.IsEnabled = false;
+            }
+            else
+            {
+                _view?.Refresh(); RefreshRowNumbers(); UpdateTotals();
+            }
+        }
 
         private void UpdateTotals()
         {
@@ -278,7 +304,7 @@ namespace NXProject.Views
                 .Where(t => selectedEpic == null || IsDescendantOf(t, selectedEpic) || ReferenceEquals(t.Parent, selectedEpic))
                 .ToList();
 
-            FeatureFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(_featureTaskList.Select(TaskLabel)).ToList();
+            FeatureFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(FilterByProgress(_featureTaskList).Select(TaskLabel)).ToList();
             FeatureFilterBox.SelectedIndex = 0;
             FeatureFilterBox.IsEnabled = true;
 
@@ -322,7 +348,7 @@ namespace NXProject.Views
                 })
                 .ToList();
 
-            StoryFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(_storyTaskList.Select(TaskLabel)).ToList();
+            StoryFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(FilterByProgress(_storyTaskList).Select(TaskLabel)).ToList();
             StoryFilterBox.SelectedIndex = 0;
             StoryFilterBox.IsEnabled = true;
             BuscarButton.IsEnabled = true;
