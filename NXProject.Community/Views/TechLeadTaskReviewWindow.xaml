@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Revisão de Tasks — Tech Lead"
-        Width="1160" Height="700"
-        MinWidth="900" MinHeight="520"
+        Width="1320" Height="700"
+        MinWidth="1040" MinHeight="560"
         WindowStartupLocation="CenterOwner"
         Background="White">
 
@@ -26,16 +26,48 @@
             <RowDefinition Height="Auto"/>  <!-- botões cronograma -->
         </Grid.RowDefinitions>
 
-        <!-- Cabeçalho + Botões DevOps (direita) -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,8" LastChildFill="False">
-            <StackPanel DockPanel.Dock="Left">
+        <!-- Cabeçalho -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+            <StackPanel>
                 <TextBlock Text="Revisão de Tasks — Tech Lead"
                            FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"/>
                 <TextBlock x:Name="StatusText" FontSize="11" Foreground="#666" Margin="0,2,0,0"
                            Text="Carregando Tasks do DevOps..."/>
             </StackPanel>
-            <!-- Botões DevOps -->
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        </StackPanel>
+
+        <!-- Breadcrumb da task selecionada: Epic > Feature > Story -->
+        <Border Grid.Row="1" Background="#F3F6FC" CornerRadius="4" Padding="10,6"
+                Margin="0,0,0,8" Visibility="{Binding ElementName=BreadcrumbPanel, Path=Visibility}">
+            <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" Visibility="Collapsed">
+                <TextBlock Text="📍" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="EpicBreadcrumb"    FontSize="11" Foreground="#666" VerticalAlignment="Center"/>
+                <TextBlock x:Name="FeatureBreadcrumb" FontSize="11" Foreground="#666" VerticalAlignment="Center"/>
+                <TextBlock x:Name="StoryBreadcrumb"   FontSize="11" FontWeight="SemiBold" Foreground="#2B579A" VerticalAlignment="Center"/>
+                <TextBlock Text=" › " FontSize="11" Foreground="#999" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TaskBreadcrumb"    FontSize="11" Foreground="#333" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Filtros -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,8">
+            <WrapPanel Orientation="Horizontal" Margin="0,0,0,6">
+                <TextBlock Text="Filtro:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <CheckBox x:Name="FilterEmAndamentoBox" Content="Em andamento"
+                          VerticalAlignment="Center" FontSize="12" Margin="0,0,12,0"
+                          ToolTip="Exibe apenas Tasks com % de conclusão > 0 e &lt; 100"
+                          Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
+                <CheckBox x:Name="FilterNaoIniciadaBox" Content="Não iniciada"
+                          VerticalAlignment="Center" FontSize="12" Margin="0,0,16,0"
+                          ToolTip="Exibe apenas Tasks com % de conclusão = 0"
+                          Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
+                <Separator Width="1" Height="20" Background="#CCC" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Status:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <ComboBox x:Name="StateFilterBox" Width="120" FontSize="12" Margin="0,0,8,0"
+                          SelectionChanged="OnStateFilterChanged"/>
+                <Button Content="🔄 Recarregar" Click="OnReloadClick"
+                        Padding="8,3" FontSize="12" Margin="0,0,12,0"/>
+                <Separator Width="1" Height="20" Background="#CCC" Margin="0,0,12,0" VerticalAlignment="Center"/>
                 <TextBlock Text="DevOps" FontSize="10" Foreground="#888" FontWeight="SemiBold"
                            VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <TextBlock Text="Duração Story:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
@@ -56,53 +88,28 @@
                         Click="OnSaveChangesClick"
                         Height="28" Padding="10,0" Margin="0,0,0,0"
                         Background="#217346" Foreground="White" IsEnabled="False"/>
-            </StackPanel>
-        </DockPanel>
+            </WrapPanel>
 
-        <!-- Breadcrumb da task selecionada: Epic > Feature > Story -->
-        <Border Grid.Row="1" Background="#F3F6FC" CornerRadius="4" Padding="10,6"
-                Margin="0,0,0,8" Visibility="{Binding ElementName=BreadcrumbPanel, Path=Visibility}">
-            <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" Visibility="Collapsed">
-                <TextBlock Text="📍" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                <TextBlock x:Name="EpicBreadcrumb"    FontSize="11" Foreground="#666" VerticalAlignment="Center"/>
-                <TextBlock x:Name="FeatureBreadcrumb" FontSize="11" Foreground="#666" VerticalAlignment="Center"/>
-                <TextBlock x:Name="StoryBreadcrumb"   FontSize="11" FontWeight="SemiBold" Foreground="#2B579A" VerticalAlignment="Center"/>
-                <TextBlock Text=" › " FontSize="11" Foreground="#999" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TaskBreadcrumb"    FontSize="11" Foreground="#333" VerticalAlignment="Center"/>
-            </StackPanel>
-        </Border>
-
-        <!-- Filtros -->
-        <WrapPanel Grid.Row="2" Margin="0,0,0,8" Orientation="Horizontal">
-            <TextBlock Text="Epic:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-            <ComboBox x:Name="EpicFilterBox" Width="170" FontSize="12" Margin="0,0,12,0"
-                      SelectionChanged="OnEpicFilterChanged"/>
-            <TextBlock Text="Feature:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-            <ComboBox x:Name="FeatureFilterBox" Width="170" FontSize="12" Margin="0,0,12,0"
-                      SelectionChanged="OnFeatureFilterChanged"/>
-            <TextBlock Text="Story:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-            <ComboBox x:Name="StoryFilterBox" Width="170" FontSize="12" Margin="0,0,12,0"
-                      SelectionChanged="OnStoryFilterChanged"/>
-            <Button x:Name="BuscarButton" Content="🔍 Buscar Tasks"
-                    Click="OnBuscarClick"
-                    Padding="8,3" FontSize="12" Margin="0,0,12,0"
-                    Background="#2B579A" Foreground="White"
-                    Visibility="Collapsed"/>
-            <TextBlock Text="Status:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-            <ComboBox x:Name="StateFilterBox" Width="100" FontSize="12" Margin="0,0,8,0"
-                      SelectionChanged="OnStateFilterChanged"/>
-            <Button Content="🔄 Recarregar" Click="OnReloadClick"
-                    Padding="8,3" FontSize="12" Margin="0,0,16,0"/>
-            <Separator Width="1" Height="20" Background="#CCC" Margin="0,0,16,0" VerticalAlignment="Center"/>
-            <CheckBox x:Name="FilterEmAndamentoBox" Content="Em andamento"
-                      VerticalAlignment="Center" FontSize="12" Margin="0,0,12,0"
-                      ToolTip="Exibe apenas Tasks com % de conclusão > 0 e &lt; 100"
-                      Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
-            <CheckBox x:Name="FilterNaoIniciadaBox" Content="Não iniciada"
-                      VerticalAlignment="Center" FontSize="12"
-                      ToolTip="Exibe apenas Tasks com % de conclusão = 0"
-                      Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
-        </WrapPanel>
+            <WrapPanel Orientation="Horizontal">
+                <TextBlock Text="Epic:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <ComboBox x:Name="EpicFilterBox" Width="260" FontSize="12" Margin="0,0,12,0"
+                          ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}}"
+                          SelectionChanged="OnEpicFilterChanged"/>
+                <TextBlock Text="Feature:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <ComboBox x:Name="FeatureFilterBox" Width="280" FontSize="12" Margin="0,0,12,0"
+                          ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}}"
+                          SelectionChanged="OnFeatureFilterChanged"/>
+                <TextBlock Text="Story:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <ComboBox x:Name="StoryFilterBox" Width="300" FontSize="12" Margin="0,0,12,0"
+                          ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}}"
+                          SelectionChanged="OnStoryFilterChanged"/>
+                <Button x:Name="BuscarButton" Content="🔍 Buscar Tasks"
+                        Click="OnBuscarClick"
+                        Padding="8,3" FontSize="12" Margin="0,0,12,0"
+                        Background="#2B579A" Foreground="White"
+                        Visibility="Collapsed"/>
+            </WrapPanel>
+        </StackPanel>
 
         <!-- Grid de Tasks editável -->
         <DataGrid Grid.Row="3"
@@ -234,7 +241,7 @@
                 </DataGridTextColumn>
 
                 <!-- % Conclusão (somente leitura) -->
-                <DataGridTextColumn Header="% Conc." Width="58"
+                <DataGridTextColumn Header="% Conc." Width="66"
                     Binding="{Binding PercentComplete, StringFormat={}{0:0.#}%}" IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
