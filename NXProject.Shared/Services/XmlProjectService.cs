@@ -32,6 +32,7 @@ namespace NXProject.Services
                     new XElement(NS + "LowDaysPerSfp", project.LowDaysPerSfp),
                     new XElement(NS + "MediumDaysPerSfp", project.MediumDaysPerSfp),
                     new XElement(NS + "HighDaysPerSfp", project.HighDaysPerSfp),
+                    new XElement(EXT + "LastZoom", project.LastZoom ?? "Mês"),
                     new XElement(NS + "ShowOriginalHoursColumn", project.ShowOriginalHoursColumn),
                     new XElement(NS + "HiddenColumns", project.HiddenColumns ?? ""),
                     new XElement(NS + "HiddenColumnsExpanded", project.HiddenColumnsExpanded ?? ""),
@@ -156,6 +157,11 @@ namespace NXProject.Services
                 new XElement(EXT + "HasSyncConflict", task.HasSyncConflict),
                 new XElement(EXT + "HasBrokenPredecessorLink", task.HasBrokenPredecessorLink),
                 new XElement(EXT + "StartFixed", task.StartFixed),
+                new XElement(EXT + "FinishFixed", task.FinishFixed),
+                new XElement(EXT + "CalculatedFinish", task.CalculatedFinish?.ToString("yyyy-MM-ddTHH:mm:ss") ?? ""),
+                new XElement(EXT + "Priority", task.Priority?.ToString() ?? ""),
+                new XElement(EXT + "TasksSuppressed", task.TasksSuppressed),
+                new XElement(EXT + "DevopsTaskCount", task.DevopsTaskCount?.ToString() ?? ""),
                 new XElement(EXT + "Justificativa", task.Justificativa ?? "")
             );
 
@@ -243,6 +249,8 @@ namespace NXProject.Services
                 LowDaysPerSfp = ParseDouble(root.Element(NS + "LowDaysPerSfp")?.Value) ?? 1.0,
                 MediumDaysPerSfp = ParseDouble(root.Element(NS + "MediumDaysPerSfp")?.Value) ?? 1.0,
                 HighDaysPerSfp = ParseDouble(root.Element(NS + "HighDaysPerSfp")?.Value) ?? 1.0,
+                LastZoom = string.IsNullOrWhiteSpace(root.Element(EXT + "LastZoom")?.Value)
+                    ? "Mês" : root.Element(EXT + "LastZoom")!.Value,
                 ShowOriginalHoursColumn = bool.TryParse(root.Element(NS + "ShowOriginalHoursColumn")?.Value, out var sohc) && sohc,
                 HiddenColumns = root.Element(NS + "HiddenColumns")?.Value ?? "",
                 HiddenColumnsExpanded = root.Element(NS + "HiddenColumnsExpanded")?.Value ?? "",
@@ -383,6 +391,11 @@ namespace NXProject.Services
                 HasSyncConflict = bool.TryParse(el.Element(EXT + "HasSyncConflict")?.Value, out var hsc) && hsc,
                 HasBrokenPredecessorLink = bool.TryParse(el.Element(EXT + "HasBrokenPredecessorLink")?.Value, out var hbpl) && hbpl,
                 StartFixed    = bool.TryParse(el.Element(EXT + "StartFixed")?.Value, out var sf) && sf,
+                FinishFixed   = bool.TryParse(el.Element(EXT + "FinishFixed")?.Value, out var ff) && ff,
+                CalculatedFinish = ParseDate(el.Element(EXT + "CalculatedFinish")?.Value),
+                Priority = int.TryParse(el.Element(EXT + "Priority")?.Value, out var prio) ? prio : null,
+                TasksSuppressed = bool.TryParse(el.Element(EXT + "TasksSuppressed")?.Value, out var ts) && ts,
+                DevopsTaskCount = int.TryParse(el.Element(EXT + "DevopsTaskCount")?.Value, out var dtc) ? dtc : null,
                 Justificativa = string.IsNullOrWhiteSpace(el.Element(EXT + "Justificativa")?.Value) ? null : el.Element(EXT + "Justificativa")?.Value,
                 Parent = parent
             };

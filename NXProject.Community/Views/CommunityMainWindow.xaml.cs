@@ -206,6 +206,7 @@ namespace NXProject.Views
                     args.Action == NotifyCollectionChangedAction.Remove ||
                     args.Action == NotifyCollectionChangedAction.Reset)
                 {
+                    RefreshCriticalPath(vm);
                     GanttCtrl.ForceRender();
                     TaskGridCtrl.FocusSelectedTask();
                 }
