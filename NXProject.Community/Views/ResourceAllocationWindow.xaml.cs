@@ -33,7 +33,7 @@ namespace NXProject.Views
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public ObservableCollection<Resource> AvailableResources { get; }
-        internal ObservableCollection<AllocationDetailRow> SelectedDetails { get; } = new();
+        public ObservableCollection<AllocationDetailRow> SelectedDetails { get; } = new();
         public ObservableCollection<GapJustificationRow> GapJustRows { get; } = new();
 
         private void OnRefreshClick(object sender, RoutedEventArgs e)
@@ -352,24 +352,11 @@ namespace NXProject.Views
             SelectedDetails.Clear();
 
             var hasDates = sprint.Start != default && sprint.End != default;
-            var leafTasks = _vm.FlatTasks.Where(IsLeafTask).ToList();
-            var overlapping = hasDates
-                ? leafTasks.Where(t => OverlapsWithSprint(t, sprint) || BelongsToSprint(t, sprint)).ToList()
-                : leafTasks.Where(t => BelongsToSprint(t, sprint)).ToList();
+            var filter = hasDates
+                ? (Func<TaskViewModel, bool>)(t => OverlapsWithSprint(t, sprint) || BelongsToSprint(t, sprint))
+                : t => BelongsToSprint(t, sprint);
 
-            var log = new System.Text.StringBuilder();
-            log.AppendLine($"Resource: {resource.DisplayName} (Id={resource.Id})");
-            log.AppendLine($"Sprint: {sprint.Header} Start={sprint.Start:dd/MM/yy} End={sprint.End:dd/MM/yy} hasDates={hasDates}");
-            log.AppendLine($"Leaf tasks: {leafTasks.Count}, Overlapping: {overlapping.Count}");
-            foreach (var t in overlapping.Take(10))
-            {
-                var asgn = t.Model.Resources.FirstOrDefault(r => r.ResourceId == resource.Id);
-                log.AppendLine($"  {t.Model.Name} Start={t.Model.Start:dd/MM/yy} Finish={t.Model.Finish:dd/MM/yy} asgn={(asgn != null ? "YES" : "NO")}");
-            }
-            var diagPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "nxproject_diag.txt");
-            System.IO.File.WriteAllText(diagPath, log.ToString());
-
-            foreach (var task in overlapping)
+            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && filter(t)))
             {
                 var assignment = task.Model.Resources.FirstOrDefault(r => r.ResourceId == resource.Id);
                 if (assignment == null)
@@ -586,13 +573,13 @@ namespace NXProject.Views
             OnDetailsResourceComboDropDownClosed(sender, EventArgs.Empty);
         }
 
-        internal sealed class AllocationDetailRow : INotifyPropertyChanged
+        public sealed class AllocationDetailRow : INotifyPropertyChanged
         {
             private readonly ResourceAllocationWindow _owner;
             private Resource _resource;
             private readonly SprintColumn _sprint;
 
-            public AllocationDetailRow(
+            internal AllocationDetailRow(
                 ResourceAllocationWindow owner,
                 TaskViewModel task,
                 TaskResource assignment,
