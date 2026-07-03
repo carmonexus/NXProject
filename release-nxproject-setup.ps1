@@ -82,6 +82,19 @@ foreach ($f in $ownLibFiles) {
 Write-Host "  Bibliotecas de terceiros (embutidas no Setup): $($ownLibFiles.Count)" -ForegroundColor DarkGray
 Write-Host "  Arquivos do nucleo (ficam fora, vem online): $($coreFiles.Count)" -ForegroundColor DarkGray
 
+# Material de apresentacao — copiado junto para a pasta de instalacao do NXProject.
+$presentationFiles = @(
+    "NXProject_Gestao_Inteligente_DevOps.pptx",
+    "NXProject_Intelligent_DevOps_Planning_EN.pptx"
+)
+foreach ($name in $presentationFiles) {
+    $src = Join-Path $SolutionDir $name
+    if (Test-Path $src) {
+        Copy-Item -Path $src -Destination (Join-Path $stagingDir $name) -Force
+        Write-Host "  Material incluido: $name" -ForegroundColor DarkGray
+    }
+}
+
 Write-Step "Compactando payload de bibliotecas..."
 Compress-Archive -Path (Join-Path $stagingDir "*") -DestinationPath $PayloadZip -Force
 Remove-Item -LiteralPath $stagingDir -Recurse -Force
