@@ -88,10 +88,9 @@ function Test-IsReleasePackageFile([string]$FileName) {
     $ext = [System.IO.Path]::GetExtension($FileName).ToLowerInvariant()
     if ($ext -in @(".json", ".ps1", ".txt", ".bat")) { return $true }
 
-    return
-        ($FileName -eq "NXProject.Community.exe") -or
-        ($FileName -eq "NXProject.Community.dll") -or
-        ($FileName -eq "NXProject.Shared.dll")
+    return ($FileName -eq "NXProject.Community.exe") -or
+           ($FileName -eq "NXProject.Community.dll") -or
+           ($FileName -eq "NXProject.Shared.dll")
 }
 
 function Remove-SetupOwnedFilesFromRelease([string]$PackageDir) {
