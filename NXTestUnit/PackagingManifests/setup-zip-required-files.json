@@ -1,0 +1,14 @@
+[
+  "NXProject-Setup.exe",
+  "hostfxr.dll",
+  "hostpolicy.dll",
+  "coreclr.dll",
+  "System.Private.CoreLib.dll",
+  "PresentationFramework.dll",
+  "PresentationCore.dll",
+  "WindowsBase.dll",
+  "PdfSharp.dll",
+  "Microsoft.Web.WebView2.Core.dll",
+  "WebView2Loader.dll",
+  "CommunityToolkit.Mvvm.dll"
+]

@@ -9,6 +9,7 @@ $SolutionDir = $PSScriptRoot
 $ProjectFile = Join-Path $SolutionDir "NXProject.Community\NXProject.Community.csproj"
 $TestProjectFile = Join-Path $SolutionDir "NXTestUnit\NXTestUnit.csproj"
 $OutputDir = Join-Path $SolutionDir "NXProject.Community\bin\$Configuration\net10.0-windows"
+$TestExePath = Join-Path $SolutionDir "NXTestUnit\bin\$Configuration\net10.0-windows\NXTestUnit.exe"
 $DistDir = Join-Path $SolutionDir "dist\community"
 $Runtime = "win-x64"
 $PublishDir = Join-Path $DistDir "publish-$Runtime"
@@ -278,6 +279,18 @@ Write-Host ""
 Write-Host "Pacote Community gerado com sucesso!" -ForegroundColor Green
 Write-Host "  Pasta: $StageDir" -ForegroundColor DarkGray
 Write-Host "  Zip:   $ZipPath" -ForegroundColor DarkGray
+
+Write-Step "Validando conteudo do NXProject.Community-Release.zip..."
+if (-not (Test-Path $TestExePath)) {
+    Write-Host "NXTestUnit.exe nao encontrado em $TestExePath; rode 'dotnet build NXTestUnit' primeiro." -ForegroundColor Red
+    exit 1
+}
+& $TestExePath packaging-community $SolutionDir
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "Validacao de empacotamento falhou. Release NAO sera publicada." -ForegroundColor Red
+    exit 1
+}
 
 # ── GitHub Release ────────────────────────────────────────────────────────────
 Write-Step "Publicando GitHub Release v$NewVersion..."

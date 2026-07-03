@@ -22,6 +22,8 @@ param(
 $SolutionDir = $PSScriptRoot
 $CommunityProject = Join-Path $SolutionDir "NXProject.Community\NXProject.Community.csproj"
 $SetupProject = Join-Path $SolutionDir "NXProject-Setup\NXProject-Setup.csproj"
+$TestProjectFile = Join-Path $SolutionDir "NXTestUnit\NXTestUnit.csproj"
+$TestExePath = Join-Path $SolutionDir "NXTestUnit\bin\$Configuration\net10.0-windows\NXTestUnit.exe"
 $Runtime = "win-x64"
 $PublishDir = Join-Path $SolutionDir "dist\community\publish-$Runtime"
 $SetupPublishDir = Join-Path $SolutionDir "dist\setup\publish-$Runtime"
@@ -115,6 +117,23 @@ Write-Host "  $SetupOutputZip ($setupZipSizeMb MB)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Instalador self-contained: nao exige .NET pre-instalado para RODAR o Setup." -ForegroundColor Yellow
 Write-Host "So precisa ser regenerado quando as dependencias NuGet do projeto mudarem." -ForegroundColor Yellow
+
+Write-Step "Validando conteudo do NXProject-Setup.zip..."
+dotnet build $TestProjectFile -c $Configuration --nologo -v q
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Falha ao compilar NXTestUnit para validacao." -ForegroundColor Red
+    exit 1
+}
+if (-not (Test-Path $TestExePath)) {
+    Write-Host "NXTestUnit.exe nao encontrado em $TestExePath." -ForegroundColor Red
+    exit 1
+}
+& $TestExePath packaging-setup $SolutionDir
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "Validacao de empacotamento falhou. NXProject-Setup.zip NAO deve ser publicado." -ForegroundColor Red
+    exit 1
+}
 
 if ($Upload) {
     if ([string]::IsNullOrWhiteSpace($TagName)) {

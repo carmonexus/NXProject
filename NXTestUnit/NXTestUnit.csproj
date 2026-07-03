@@ -33,4 +33,10 @@
     </Compile>
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="PackagingManifests\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

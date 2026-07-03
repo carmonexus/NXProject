@@ -1,3 +1,6 @@
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Text.Json;
 using NXProject.Models;
 using NXProject.Services;
@@ -7,7 +10,9 @@ namespace NXTestUnit;
 
 internal static class Program
 {
-    private static readonly List<(string Name, Action Test)> Tests =
+    private static string _solutionRoot = "";
+
+    private static readonly List<(string Name, Action Test)> ScheduleTests =
     [
         ("Calendario: fim exclusivo aparece como fim inclusivo correto", CalendarInclusiveFinishUsesPreviousWorkingDay),
         ("Calendario: horas uteis ignoram fim de semana", CalendarWorkingHoursSkipWeekend),
@@ -42,19 +47,35 @@ internal static class Program
         ("Predecessor virtual: mudanca de duracao recalcula inicio e fim das seguintes", VirtualPredecessorDurationChangeCascadesFinish)
     ];
 
-    private static int Main()
+    private static int Main(string[] args)
     {
-        SetCurrentCalendar(new ProjectCalendar());
+        var category = args.Length > 0 ? args[0] : "schedule";
+        _solutionRoot = args.Length > 1 ? args[1] : Directory.GetCurrentDirectory();
+        var isSchedule = category.Equals("schedule", StringComparison.OrdinalIgnoreCase);
+
+        List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
+        {
+            "packaging-community" => [PackagingTests[0]],
+            "packaging-setup" => [PackagingTests[1]],
+            "packaging" => PackagingTests,
+            _ => ScheduleTests
+        };
+
+        if (isSchedule)
+            SetCurrentCalendar(new ProjectCalendar());
 
         var failures = new List<string>();
-        Console.WriteLine("NXTestUnit - testes criticos de cronograma");
+        Console.WriteLine(isSchedule
+            ? "NXTestUnit - testes criticos de cronograma"
+            : "NXTestUnit - validacao de empacotamento (zips de release)");
         Console.WriteLine();
 
-        foreach (var (name, test) in Tests)
+        foreach (var (name, test) in tests)
         {
             try
             {
-                ResetCalendar();
+                if (isSchedule)
+                    ResetCalendar();
                 test();
                 Console.WriteLine($"[OK]   {name}");
             }
@@ -69,15 +90,54 @@ internal static class Program
         Console.WriteLine();
         if (failures.Count == 0)
         {
-            Console.WriteLine($"NXTestUnit concluido: {Tests.Count} testes passaram.");
+            Console.WriteLine($"NXTestUnit concluido: {tests.Count} testes passaram.");
             return 0;
         }
 
-        Console.WriteLine($"NXTestUnit falhou: {failures.Count} de {Tests.Count} testes falharam.");
+        Console.WriteLine($"NXTestUnit falhou: {failures.Count} de {tests.Count} testes falharam.");
         foreach (var failure in failures)
             Console.WriteLine($" - {failure}");
 
         return 1;
+    }
+
+    private static readonly List<(string Name, Action Test)> PackagingTests =
+    [
+        ("Empacotamento: NXProject.Community-Release.zip contem arquivos essenciais", ValidateCommunityReleaseZip),
+        ("Empacotamento: NXProject-Setup.zip contem runtime e libs essenciais", ValidateSetupZip)
+    ];
+
+    private static void ValidateCommunityReleaseZip()
+    {
+        var zipPath = Path.Combine(_solutionRoot, "dist", "community", "NXProject.Community-Release.zip");
+        var manifestPath = Path.Combine(AppContext.BaseDirectory, "PackagingManifests", "release-zip-required-files.json");
+        ValidateZipAgainstManifest(zipPath, manifestPath);
+    }
+
+    private static void ValidateSetupZip()
+    {
+        var zipPath = Path.Combine(_solutionRoot, "dist", "setup", "NXProject-Setup.zip");
+        var manifestPath = Path.Combine(AppContext.BaseDirectory, "PackagingManifests", "setup-zip-required-files.json");
+        ValidateZipAgainstManifest(zipPath, manifestPath);
+    }
+
+    private static void ValidateZipAgainstManifest(string zipPath, string manifestPath)
+    {
+        if (!File.Exists(zipPath))
+            throw new InvalidOperationException($"Zip nao encontrado: {zipPath}");
+        if (!File.Exists(manifestPath))
+            throw new InvalidOperationException($"Manifest nao encontrado: {manifestPath}");
+
+        var requiredNames = JsonSerializer.Deserialize<string[]>(File.ReadAllText(manifestPath))
+            ?? throw new InvalidOperationException($"Manifest vazio ou invalido: {manifestPath}");
+
+        using var zip = ZipFile.OpenRead(zipPath);
+        var entryNames = zip.Entries.Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missing = requiredNames.Where(n => !entryNames.Contains(n)).ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException(
+                $"'{Path.GetFileName(zipPath)}' esta incompleto. Arquivos faltando: {string.Join(", ", missing)}");
     }
 
     private static void ResetCalendar()
