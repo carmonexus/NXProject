@@ -319,7 +319,9 @@ namespace NXProject.Views
                     var proceedSetup = MessageBox.Show(
                         "Uma nova versao base do NXProject foi publicada (por exemplo, uma biblioteca nova foi adicionada) " +
                         "e requer reinstalacao pelo NXProject-Setup.\n\n" +
-                        "O NXProject-Setup sera baixado e aberto agora; este aplicativo sera encerrado.\n\nDeseja continuar?",
+                        "IMPORTANTE: salve o projeto aberto antes de continuar — este aplicativo sera encerrado " +
+                        "automaticamente, sem perguntar se deseja salvar.\n\n" +
+                        "O NXProject-Setup sera baixado e aberto em seguida.\n\nDeseja continuar?",
                         "Atualizacao de base necessaria",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning);
@@ -394,6 +396,10 @@ namespace NXProject.Views
                     UseShellExecute = true
                 });
 
+                // Ja avisamos no dialogo anterior para salvar antes de continuar — nao
+                // pergunta de novo aqui, senao o Setup tenta instalar por cima enquanto
+                // este processo ainda esta travado nessa pergunta.
+                _allowClose = true;
                 System.Windows.Application.Current.Shutdown();
             }
             catch (Exception ex)
