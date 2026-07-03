@@ -300,6 +300,21 @@ if (-not $ghAvailable) {
         Write-Host ""
         Write-Host "Release $tag publicada com sucesso no GitHub!" -ForegroundColor Green
         Write-Host "  https://github.com/nexusxdata/NXProject/releases/tag/$tag" -ForegroundColor DarkGray
+
+        # Reaproveita o NXProject-Setup.zip ja gerado (nao muda a cada release do
+        # Community) e sobe na mesma tag, para aparecer junto na mesma release.
+        $SetupZipPath = Join-Path $SolutionDir "dist\setup\NXProject-Setup.zip"
+        if (Test-Path $SetupZipPath) {
+            Write-Step "Publicando NXProject-Setup.zip na mesma release $tag..."
+            gh release upload $tag $SetupZipPath --repo nexusxdata/NXProject --clobber
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  NXProject-Setup.zip publicado junto na release $tag." -ForegroundColor Green
+            } else {
+                Write-Host "  Aviso: falha ao publicar NXProject-Setup.zip na release." -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "  Aviso: NXProject-Setup.zip nao encontrado em dist\setup\; rode release-nxproject-setup.ps1 pelo menos uma vez." -ForegroundColor Yellow
+        }
     } else {
         Write-Host "  Falha ao criar a release. Verifique se esta autenticado: gh auth login" -ForegroundColor Red
     }
