@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
@@ -11,13 +12,85 @@ namespace NXProject.Setup;
 
 public partial class MainWindow : Window
 {
+    private const string DotNetRuntimeInstallerUrl = "https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe";
+
     private readonly string _installDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NXProject");
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Apps", "NXProject");
 
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += async (_, _) => await RunInstallAsync();
+        Loaded += (_, _) => RefreshStep1State();
+    }
+
+    private void OnHyperlinkRequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
+    }
+
+    private void RefreshStep1State()
+    {
+        if (NXProject.Services.UpdateService.IsDesktopRuntimeInstalled())
+        {
+            Step1StatusText.Text = "✓ .NET 10 Desktop Runtime já está instalado nesta máquina.";
+            Step1Button.IsEnabled = false;
+        }
+        else
+        {
+            Step1StatusText.Text = "Não encontrado nesta máquina. Necessário para o NXProject abrir.";
+            Step1Button.IsEnabled = true;
+        }
+    }
+
+    private async void OnStep1Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Step1Button.IsEnabled = false;
+            Step1StatusText.Text = "Baixando o instalador do .NET 10 Desktop Runtime...";
+
+            var tempExe = Path.Combine(Path.GetTempPath(), $"windowsdesktop-runtime-{Guid.NewGuid():N}.exe");
+            using (var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) })
+            using (var response = await client.GetAsync(DotNetRuntimeInstallerUrl, HttpCompletionOption.ResponseHeadersRead))
+            {
+                response.EnsureSuccessStatusCode();
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                await using var file = File.Create(tempExe);
+                await stream.CopyToAsync(file);
+            }
+
+            Step1StatusText.Text = "Instalando .NET 10 Desktop Runtime (pode pedir permissão de administrador)...";
+            using var proc = Process.Start(new ProcessStartInfo(tempExe, "/install /quiet /norestart")
+            {
+                UseShellExecute = true,
+                Verb = "runas"
+            });
+            if (proc != null)
+                await proc.WaitForExitAsync();
+
+            try { File.Delete(tempExe); } catch { /* limpeza best-effort */ }
+
+            RefreshStep1State();
+            if (!Step1Button.IsEnabled)
+                Step1StatusText.Text = "✓ .NET 10 Desktop Runtime instalado com sucesso.";
+        }
+        catch (Exception ex)
+        {
+            Step1StatusText.Text =
+                $"Falha ao instalar o .NET automaticamente: {ex.Message}\n" +
+                $"Baixe manualmente em: {NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl}";
+            Step1Button.IsEnabled = true;
+        }
+    }
+
+    private async void OnStep2Click(object sender, RoutedEventArgs e)
+    {
+        Step2Button.IsEnabled = false;
+        ErrorText.Visibility = Visibility.Collapsed;
+        RetryButton.Visibility = Visibility.Collapsed;
+        InstallProgress.Value = 0;
+        await RunInstallAsync();
     }
 
     private async void OnRetryClick(object sender, RoutedEventArgs e)
@@ -32,22 +105,13 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!NXProject.Services.UpdateService.IsDesktopRuntimeInstalled())
-            {
-                ShowError(
-                    "O NXProject requer o .NET 10 Desktop Runtime (x64), que não foi encontrado nesta máquina.\n\n" +
-                    $"Baixe e instale em: {NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl}\n\n" +
-                    "Depois, clique em \"Tentar novamente\".");
-                return;
-            }
-
             Directory.CreateDirectory(_installDir);
 
-            StatusText.Text = "Instalando bibliotecas base...";
+            Step2StatusText.Text = "Instalando bibliotecas base...";
             await Task.Run(() => ExtractEmbeddedOwnLibs(_installDir));
             InstallProgress.Value = 15;
 
-            StatusText.Text = "Verificando a versão mais recente do NXProject...";
+            Step2StatusText.Text = "Verificando a versão mais recente do NXProject...";
             var release = await NXProject.Services.UpdateService.GetLatestReleaseInfoAsync();
             if (release is null)
             {
@@ -56,12 +120,12 @@ public partial class MainWindow : Window
             }
             InstallProgress.Value = 20;
 
-            StatusText.Text = $"Baixando NXProject {release.TagName}...";
+            Step2StatusText.Text = $"Baixando NXProject {release.TagName}...";
             var extractedDir = await NXProject.Services.UpdateService.DownloadAndExtractAsync(
                 release.DownloadUrl,
                 new Progress<int>(p => InstallProgress.Value = 20 + p * 0.65));
 
-            StatusText.Text = "Instalando NXProject...";
+            Step2StatusText.Text = "Instalando NXProject...";
             CopyAllFiles(extractedDir, _installDir);
             TryDeleteTempParent(extractedDir);
             InstallProgress.Value = 90;
@@ -77,13 +141,13 @@ public partial class MainWindow : Window
             CreateDesktopShortcut(exePath);
             InstallProgress.Value = 100;
 
-            StatusText.Text = "Instalação concluída! Iniciando o NXProject...";
+            Step2StatusText.Text = "Instalação concluída! Iniciando o NXProject...";
             var started = TryStart(exePath);
             if (!started)
             {
                 ShowError(
                     "O NXProject foi instalado, mas não foi possível abri-lo automaticamente. " +
-                    $"Baixe em: {NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl}\n\nDepois, abra o NXProject.Community.exe em: {_installDir}");
+                    $"Baixe o .NET em: {NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl}\n\nDepois, abra o NXProject.Community.exe em: {_installDir}");
                 return;
             }
 
@@ -93,6 +157,10 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             ShowError($"Falha na instalação: {ex.Message}");
+        }
+        finally
+        {
+            Step2Button.IsEnabled = true;
         }
     }
 
@@ -132,7 +200,7 @@ public partial class MainWindow : Window
 
     private void ShowError(string message)
     {
-        StatusText.Text = "Instalação interrompida.";
+        Step2StatusText.Text = "Instalação interrompida.";
         ErrorText.Text = message;
         ErrorText.Visibility = Visibility.Visible;
         RetryButton.Visibility = Visibility.Visible;
