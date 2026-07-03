@@ -36,6 +36,7 @@ internal static class Program
         ("Import TFS: Marco-Devops ignora predecessora fora da hierarquia para posicionar", DevOpsMilestonePositionIgnoresExternalHierarchyPredecessor),
         ("Import TFS: Marco-Devops usa pai como ancora de posicionamento", DevOpsMilestonePositionUsesParentAnchor),
         ("Import TFS: NoDevOps preserva posicao para predecessora virtual", ImportPreservesNoDevOpsSiblingPosition),
+        ("Import TFS: atividades internas DevOps sao vinculadas por nome ou preservadas", ImportMatchesOrPreservesInternalDevOpsActivities),
         ("Resumo: datas e percentual consolidam filhos", SummaryRollupUsesChildrenDatesAndHours),
         ("Predecessor virtual: aplica fila por mesmo recurso e recalcula fim", VirtualPredecessorQueuesSameResourceSiblings),
         ("Predecessor virtual: mudanca de duracao recalcula inicio e fim das seguintes", VirtualPredecessorDurationChangeCascadesFinish)
@@ -789,6 +790,79 @@ internal static class Program
 
         AssertEqual(new DateTime(2026, 7, 7), localMarker.Start, "Marco local deve ficar depois da Story A pela predecessora virtual.");
         AssertEqual(new DateTime(2026, 7, 8), importedB.Start, "Story B deve ficar depois do NoDevOps restaurado pela predecessora virtual.");
+    }
+
+    private static void ImportMatchesOrPreservesInternalDevOpsActivities()
+    {
+        var resource = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 100 };
+        var currentParent = new ProjectTask
+        {
+            Id = 300,
+            TfsId = 3000,
+            TfsType = "Feature",
+            Name = "Feature",
+            IsSummary = true,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 9)
+        };
+        var currentA = CreateAssignedTask(301, "Story A", resource, new DateTime(2026, 7, 6), currentParent);
+        currentA.TfsId = 3001;
+        currentA.TfsType = "Story";
+        var internalSameName = CreateAssignedTask(302, "Story B", resource, new DateTime(2026, 7, 7), currentParent);
+        internalSameName.TfsId = 0;
+        internalSameName.TfsType = "Story";
+        internalSameName.IsPendingTfsCreate = true;
+        var internalNew = CreateAssignedTask(303, "Story C nova", resource, new DateTime(2026, 7, 8), currentParent);
+        internalNew.TfsId = 0;
+        internalNew.TfsType = "Story";
+        internalNew.IsPendingTfsCreate = true;
+        currentParent.Children.Add(currentA);
+        currentParent.Children.Add(internalNew);
+        currentParent.Children.Add(internalSameName);
+
+        var currentProject = new Project { Name = "Atual", StartDate = new DateTime(2026, 7, 6) };
+        currentProject.Resources.Add(resource);
+        currentProject.Tasks.Add(currentParent);
+
+        var vm = new MainViewModel("NXTestUnit") { Project = currentProject };
+        vm.RebuildFlatTasks();
+
+        var importedParent = new ProjectTask
+        {
+            Id = 400,
+            TfsId = 3000,
+            TfsType = "Feature",
+            Name = "Feature",
+            IsSummary = true,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 8)
+        };
+        var importedA = CreateAssignedTask(401, "Story A", resource, new DateTime(2026, 7, 6), importedParent);
+        importedA.TfsId = 3001;
+        importedA.TfsType = "Story";
+        var importedB = CreateAssignedTask(402, "Story B", resource, new DateTime(2026, 7, 7), importedParent);
+        importedB.TfsId = 3002;
+        importedB.TfsType = "Story";
+        importedParent.Children.Add(importedA);
+        importedParent.Children.Add(importedB);
+
+        var importedProject = new Project { Name = "Importado", StartDate = new DateTime(2026, 7, 6) };
+        importedProject.Resources.Add(resource);
+        importedProject.Tasks.Add(importedParent);
+
+        vm.ApplyImportedProject(importedProject);
+
+        var restoredParent = vm.Project.Tasks.Single(t => t.TfsId == 3000);
+        var names = string.Join("|", restoredParent.Children.Select(t => t.Name));
+        if (names != "Story A|Story C nova|Story B")
+            throw new InvalidOperationException($"Import deve preservar Story C nova e vincular Story B por nome. Ordem atual: {names}.");
+
+        AssertEqual(1, restoredParent.Children.Count(t => t.Name == "Story B"), "Atividade I com mesmo nome da importada nao deve duplicar.");
+        var restoredB = restoredParent.Children.Single(t => t.Name == "Story B");
+        AssertEqual(3002, restoredB.TfsId ?? 0, "Atividade I com mesmo nome deve virar a atividade T importada.");
+        var restoredNew = restoredParent.Children.Single(t => t.Name == "Story C nova");
+        if (restoredNew.HasTfsLink)
+            throw new InvalidOperationException("Atividade DevOps nova sem match no TFS deve continuar interna.");
     }
 
     private static void SummaryRollupUsesChildrenDatesAndHours()

@@ -809,15 +809,15 @@ namespace NXProject.ViewModels
             }
         }
 
-        private sealed record NoDevOpsTaskSnapshot(
+        private sealed record InternalTaskSnapshot(
             Models.ProjectTask Task,
             int? ParentTfsId,
             int? PreviousSiblingTfsId,
             int? NextSiblingTfsId);
 
-        private List<NoDevOpsTaskSnapshot> CaptureNoDevOpsTasks()
+        private List<InternalTaskSnapshot> CaptureNoDevOpsTasks()
         {
-            var result = new List<NoDevOpsTaskSnapshot>();
+            var result = new List<InternalTaskSnapshot>();
             if (Project == null) return result;
 
             void Collect(IList<Models.ProjectTask> tasks)
@@ -825,13 +825,14 @@ namespace NXProject.ViewModels
                 for (var i = 0; i < tasks.Count; i++)
                 {
                     var t = tasks[i];
-                    if (IsNoDevOpsType(t.TfsType))
+                    if (ShouldCaptureInternalTaskOnImport(t))
                     {
-                        result.Add(new NoDevOpsTaskSnapshot(
+                        result.Add(new InternalTaskSnapshot(
                             t,
                             t.Parent?.TfsId,
                             FindSiblingTfsId(tasks, i - 1, -1),
                             FindSiblingTfsId(tasks, i + 1, 1)));
+                        continue;
                     }
 
                     Collect(t.Children);
@@ -842,17 +843,23 @@ namespace NXProject.ViewModels
             return result;
         }
 
-        private void RestoreNoDevOpsTasks(List<NoDevOpsTaskSnapshot> noDevOpsTasks)
+        private void RestoreNoDevOpsTasks(List<InternalTaskSnapshot> internalTasks)
         {
-            if (noDevOpsTasks.Count == 0) return;
+            if (internalTasks.Count == 0) return;
 
-            // Mapa nome → tarefa importada do TFS (para detectar coincidências)
-            var byName = new System.Collections.Generic.Dictionary<string, Models.ProjectTask>(StringComparer.OrdinalIgnoreCase);
-            void IndexByName(IEnumerable<Models.ProjectTask> tasks)
+            // Mapa nome -> tarefa importada do TFS. Se uma atividade DevOps interna (I)
+            // voltou do TFS com o mesmo nome, ela passa a ser a T importada, sem duplicar.
+            var importedDevOpsByName = new System.Collections.Generic.Dictionary<string, Models.ProjectTask>(StringComparer.OrdinalIgnoreCase);
+            void IndexImportedDevOpsByName(IEnumerable<Models.ProjectTask> tasks)
             {
-                foreach (var t in tasks) { byName[t.Name] = t; IndexByName(t.Children); }
+                foreach (var t in tasks)
+                {
+                    if (t.HasTfsLink && !string.IsNullOrWhiteSpace(t.Name))
+                        importedDevOpsByName[t.Name.Trim()] = t;
+                    IndexImportedDevOpsByName(t.Children);
+                }
             }
-            IndexByName(Project.Tasks);
+            IndexImportedDevOpsByName(Project.Tasks);
 
             // Mapa TfsId → tarefa importada (para encontrar o pai)
             var byTfsId = new System.Collections.Generic.Dictionary<int, Models.ProjectTask>();
@@ -866,13 +873,17 @@ namespace NXProject.ViewModels
             }
             IndexByTfsId(Project.Tasks);
 
-            foreach (var snapshot in noDevOpsTasks)
+            foreach (var snapshot in internalTasks)
             {
                 var task = snapshot.Task;
+                var isNoDevOps = IsNoDevOpsType(task.TfsType);
 
-                // Se o TFS importado já tem uma tarefa com o mesmo nome, ela é o vínculo — não re-adiciona
-                if (byName.ContainsKey(task.Name))
+                if (!isNoDevOps &&
+                    !string.IsNullOrWhiteSpace(task.Name) &&
+                    importedDevOpsByName.ContainsKey(task.Name.Trim()))
+                {
                     continue;
+                }
 
                 // Re-insere sob o mesmo pai (por TfsId) ou na raiz
                 if (snapshot.ParentTfsId.HasValue && byTfsId.TryGetValue(snapshot.ParentTfsId.Value, out var parent))
@@ -889,6 +900,17 @@ namespace NXProject.ViewModels
                     InsertNoDevOpsTask(Project.Tasks, task, snapshot.PreviousSiblingTfsId, snapshot.NextSiblingTfsId);
                 }
             }
+        }
+
+        private static bool ShouldCaptureInternalTaskOnImport(Models.ProjectTask task)
+        {
+            if (task.IsSummary)
+                return false;
+
+            if (IsNoDevOpsType(task.TfsType))
+                return true;
+
+            return !task.HasTfsLink && IsDevOpsActivityType(task.TfsType);
         }
 
         private static int? FindSiblingTfsId(IList<Models.ProjectTask> siblings, int startIndex, int step)
