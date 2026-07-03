@@ -67,6 +67,7 @@ $CurrentVersion = Get-ProjectVersion $ProjectFile
 $NewVersion = Step-Version $CurrentVersion $Bump
 
 $ZipPath = Join-Path $DistDir "NXProject.Community-Release.zip"
+$TarXzPath = Join-Path $DistDir "NXProject.Community-Release.tar.xz"
 
 function Write-Step($msg) {
     Write-Host ""
@@ -195,7 +196,7 @@ Remove-UnusedSatelliteResourceFolders $StageDir
 NXProject Community
 
 Como executar:
-1. Extraia todo o conteudo deste .zip para uma pasta local.
+1. Extraia todo o conteudo deste pacote para uma pasta local.
 2. Execute o arquivo NXProject.Community.exe.
 
 Este pacote ja inclui o runtime do .NET para Windows x64.
@@ -224,16 +225,35 @@ cd /d "%~dp0"
 dotnet NXProject.Community.dll
 "@ | Set-Content -Path (Join-Path $StageDir "NXProject-FallbackLauncher.bat") -Encoding ASCII
 
-Write-Step "Gerando arquivo ZIP..."
+Write-Step "Gerando arquivos compactados..."
 if (Test-Path $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force
 }
+if (Test-Path $TarXzPath) {
+    Remove-Item -LiteralPath $TarXzPath -Force
+}
 Compress-Archive -Path (Join-Path $StageDir "*") -DestinationPath $ZipPath -Force
+
+$tarAvailable = Get-Command tar -ErrorAction SilentlyContinue
+if ($tarAvailable) {
+    tar -cJf $TarXzPath -C $DistDir "NXProject.Community"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  Aviso: falha ao gerar .tar.xz; o .zip sera mantido como pacote principal." -ForegroundColor Yellow
+        if (Test-Path $TarXzPath) {
+            Remove-Item -LiteralPath $TarXzPath -Force
+        }
+    }
+} else {
+    Write-Host "  tar.exe nao encontrado; gerando apenas .zip." -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "Pacote Community gerado com sucesso!" -ForegroundColor Green
 Write-Host "  Pasta: $StageDir" -ForegroundColor DarkGray
 Write-Host "  Zip:   $ZipPath" -ForegroundColor DarkGray
+if (Test-Path $TarXzPath) {
+    Write-Host "  TarXZ: $TarXzPath" -ForegroundColor DarkGray
+}
 
 # ── GitHub Release ────────────────────────────────────────────────────────────
 Write-Step "Publicando GitHub Release v$NewVersion..."
@@ -246,7 +266,12 @@ if (-not $ghAvailable) {
     Write-Host "  gh CLI nao encontrado. Instale em https://cli.github.com e faca 'gh auth login'." -ForegroundColor Yellow
     Write-Host "  Para publicar manualmente: gh release create $tag '$ZipPath' --title '$tag' --notes '$releaseNotes'" -ForegroundColor DarkGray
 } else {
-    gh release create $tag $ZipPath `
+    $releaseAssets = @($ZipPath)
+    if (Test-Path $TarXzPath) {
+        $releaseAssets += $TarXzPath
+    }
+
+    gh release create $tag $releaseAssets `
         --title "NXProject Community $tag" `
         --notes $releaseNotes `
         --repo nexusxdata/NXProject

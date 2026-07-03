@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -35,6 +36,7 @@ namespace NXProject.Views
         private bool _isDragging;
 
         public bool HasChanges { get; private set; }
+        public IReadOnlyList<TaskReviewRow> CurrentRows => _allRows.ToList();
         public List<string> ActivityList => _activityList;
         public List<string> ResourceList => _project.Resources.Select(r => r.DisplayName ?? r.Name ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
         /// <summary>Callback: adiciona rows ao cronograma e retorna a primeira ProjectTask adicionada (para seleção).</summary>
@@ -55,6 +57,7 @@ namespace NXProject.Views
                 ReleaseButton.Visibility     = ReleaseCallback       != null ? Visibility.Visible : Visibility.Collapsed;
                 ExpandAllButton.Visibility   = AddToScheduleCallback != null ? Visibility.Visible : Visibility.Collapsed;
                 AddSelectedButton.Visibility = AddToScheduleCallback != null ? Visibility.Visible : Visibility.Collapsed;
+                UpdateTaskActionButtons();
             };
         }
 
@@ -126,6 +129,7 @@ namespace NXProject.Views
             StatusText.Text = "Buscando Tasks no DevOps...";
             AddSelectedButton.IsEnabled = false;
             SaveChangesButton.IsEnabled = false;
+            UpdateTaskActionButtons();
 
             var options = TfsConnectionStore.Load("NXProject.Community");
             var rows = new List<TaskReviewRow>();
@@ -200,6 +204,7 @@ namespace NXProject.Views
             }
 
             UpdateTotals();
+            UpdateTaskActionButtons();
             StatusText.Text = $"{fetched} Stories consultadas — {rows.Count} Tasks encontradas no DevOps.";
         }
 
@@ -442,6 +447,7 @@ namespace NXProject.Views
         {
             UpdateTotals();
             AddSelectedButton.IsEnabled = _allRows.Any(r => r.IsSelected && !r.InSchedule);
+            UpdateTaskActionButtons();
 
             // Atualiza breadcrumb com a story da linha selecionada
             var row = TasksGrid.SelectedItem as TaskReviewRow;
@@ -482,6 +488,9 @@ namespace NXProject.Views
         }
 
         private async void OnSaveChangesClick(object sender, RoutedEventArgs e)
+            => await SaveDirtyRowsAsync();
+
+        private async Task SaveDirtyRowsAsync()
         {
             var dirty = _allRows.Where(r => r.IsDirty).ToList();
             if (dirty.Count == 0) return;
@@ -519,6 +528,152 @@ namespace NXProject.Views
             SaveChangesButton.IsEnabled = _allRows.Any(r => r.IsDirty);
             StatusText.Text = $"Sync concluído: {ok} OK" + (fail > 0 ? $", {fail} com erro" : "");
             UpdateTotals();
+            UpdateTaskActionButtons();
+        }
+
+        private ProjectTask? GetCurrentDevOpsStory()
+        {
+            if (TasksGrid.SelectedItem is TaskReviewRow row && row.StoryTask.TfsId is > 0)
+                return row.StoryTask;
+
+            if (_stories.Count == 1 && _stories[0].TfsId is > 0)
+                return _stories[0];
+
+            return null;
+        }
+
+        private TaskReviewRow? GetSelectedTaskRow()
+            => TasksGrid.SelectedItem as TaskReviewRow;
+
+        private bool CanCreateTaskForCurrentStory()
+            => GetCurrentDevOpsStory() is { TfsId: > 0 } story
+               && TfsImportService.IsStoryTypePublic(story.TfsType);
+
+        private void UpdateTaskActionButtons()
+        {
+            var selectedRow = GetSelectedTaskRow();
+            var canCreateTask = CanCreateTaskForCurrentStory();
+
+            if (AlterTaskButton != null)
+                AlterTaskButton.IsEnabled = selectedRow != null;
+            if (OpenTfsButton != null)
+                OpenTfsButton.IsEnabled = selectedRow != null && selectedRow.TaskId > 0;
+            if (IncludeTaskButton != null)
+                IncludeTaskButton.IsEnabled = canCreateTask;
+            if (DeleteTaskButton != null)
+                DeleteTaskButton.IsEnabled = selectedRow != null && selectedRow.TaskId > 0;
+        }
+
+        private void OnAlterTaskClick(object sender, RoutedEventArgs e)
+        {
+            if (GetSelectedTaskRow() == null) return;
+
+            TasksGrid.Focus();
+            TasksGrid.CurrentCell = new DataGridCellInfo(TasksGrid.SelectedItem, TasksGrid.Columns[3]);
+            TasksGrid.BeginEdit();
+        }
+
+        private void OnOpenTfsClick(object sender, RoutedEventArgs e)
+        {
+            var row = GetSelectedTaskRow();
+            if (row == null || row.TaskId <= 0) return;
+
+            var options = TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(options.OrganizationUrl) || string.IsNullOrWhiteSpace(options.TeamProject))
+            {
+                MessageBox.Show("Configure a conexão TFS/DevOps antes de abrir a Task.", "Abrir TFS/DevOps", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var baseUrl = options.OrganizationUrl.TrimEnd('/');
+            var project = Uri.EscapeDataString(options.TeamProject.Trim());
+            var url = $"{baseUrl}/{project}/_workitems/edit/{row.TaskId}";
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Não foi possível abrir a Task no TFS/DevOps:\n{ex.Message}", "Abrir TFS/DevOps", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnIncludeTaskClick(object sender, RoutedEventArgs e)
+        {
+            var story = GetCurrentDevOpsStory();
+            if (story?.TfsId is not > 0 || !TfsImportService.IsStoryTypePublic(story.TfsType))
+                return;
+
+            IncludeTaskButton.IsEnabled = false;
+            StatusText.Text = $"Criando nova Task no TFS para \"{story.Name}\"...";
+
+            try
+            {
+                var options = TfsConnectionStore.Load("NXProject.Community");
+                var newId = await TfsImportService.CreateChildTaskAsync(
+                    options,
+                    story.TfsId.Value,
+                    "Nova Task",
+                    iterationPath: story.TfsIterationPath);
+
+                HasChanges = true;
+                await LoadAsync();
+
+                var created = _allRows.FirstOrDefault(r => r.TaskId == newId);
+                if (created != null)
+                {
+                    TasksGrid.SelectedItem = created;
+                    TasksGrid.ScrollIntoView(created);
+                    StatusText.Text = $"Task #{newId} criada no TFS. Altere o nome na grid e salve as alterações.";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Erro ao criar Task no TFS.";
+                MessageBox.Show($"Erro ao criar Task no TFS:\n{ex.Message}", "Incluir Task", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                UpdateTaskActionButtons();
+            }
+        }
+
+        private async void OnDeleteTaskClick(object sender, RoutedEventArgs e)
+        {
+            var row = GetSelectedTaskRow();
+            if (row == null || row.TaskId <= 0) return;
+
+            var confirm = MessageBox.Show(
+                $"Excluir a Task TFS #{row.TaskId} \"{row.Title}\"?\n\nA exclusao sera feita no DevOps. Se a Story estiver expandida no cronograma, a grid sera refletida ao fechar esta janela.",
+                "Excluir Task TFS",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            DeleteTaskButton.IsEnabled = false;
+            StatusText.Text = $"Excluindo Task #{row.TaskId} no TFS...";
+
+            try
+            {
+                var options = TfsConnectionStore.Load("NXProject.Community");
+                await TfsImportService.DeleteWorkItemAsync(options, row.TaskId);
+
+                _allRows.Remove(row);
+                HasChanges = true;
+                RefreshRowNumbers();
+                UpdateTotals();
+                StatusText.Text = $"Task #{row.TaskId} excluida no TFS.";
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Erro ao excluir Task no TFS.";
+                MessageBox.Show($"Erro ao excluir Task no TFS:\n{ex.Message}", "Excluir Task TFS", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                UpdateTaskActionButtons();
+            }
         }
 
         private async void OnReloadClick(object sender, RoutedEventArgs e)

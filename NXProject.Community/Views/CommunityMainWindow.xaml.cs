@@ -670,6 +670,7 @@ namespace NXProject.Views
 
             if (dlg.HasChanges)
             {
+                SyncExpandedTaskRowsToSchedule(dlg.CurrentRows, storyVm.Model, vm);
                 vm.Project.IsDirty = true;
                 vm.RebuildFlatTasks();
                 GanttCtrl.ForceRender();
@@ -679,9 +680,9 @@ namespace NXProject.Views
         private NXProject.Models.ProjectTask? AddTaskRowsToSchedule(
             IEnumerable<TaskReviewRow> rows,
             NXProject.Models.ProjectTask story,
-            MainViewModel vm)
+            MainViewModel vm,
+            bool refreshAfterAdd = true)
         {
-            var projectResources = vm.Project.Resources;
             var existingIds = story.Children
                 .Where(c => string.Equals(c.TfsType, "Task", StringComparison.OrdinalIgnoreCase) && c.TfsId.HasValue)
                 .Select(c => c.TfsId!.Value).ToHashSet();
@@ -709,17 +710,7 @@ namespace NXProject.Views
                     Start            = story.Start,
                     Finish           = story.Finish,
                 };
-                var display = r.AssignedToDisplay;
-                var email   = r.AssignedTo;
-                if (!string.IsNullOrWhiteSpace(email) || !string.IsNullOrWhiteSpace(display))
-                {
-                    var res = projectResources.FirstOrDefault(x =>
-                        string.Equals(x.Email, email,   StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(x.Name,  email,   StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(x.Name,  display, StringComparison.OrdinalIgnoreCase));
-                    if (res != null)
-                        pt.Resources.Add(new NXProject.Models.TaskResource { ResourceId = res.Id, Resource = res, AllocationPercent = 100 });
-                }
+                ApplyTaskReviewResource(r, pt, vm);
                 story.Children.Add(pt);
                 story.TasksSuppressed = false;
                 firstAdded ??= pt;
@@ -731,10 +722,99 @@ namespace NXProject.Views
                 story.DevopsTaskCount = story.Children.Count(c =>
                     string.Equals(c.TfsType, "Task", StringComparison.OrdinalIgnoreCase));
                 vm.Project.IsDirty = true;
-                vm.RebuildFlatTasks();
-                GanttCtrl.ForceRender();
+                if (refreshAfterAdd)
+                {
+                    vm.RebuildFlatTasks();
+                    GanttCtrl.ForceRender();
+                }
             }
             return firstAdded;
+        }
+
+        private static void ApplyTaskReviewResource(
+            TaskReviewRow row,
+            NXProject.Models.ProjectTask task,
+            MainViewModel vm)
+        {
+            var display = row.AssignedToDisplay;
+            var email = row.AssignedTo;
+            task.Resources.Clear();
+            if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(display))
+                return;
+
+            var res = vm.Project.Resources.FirstOrDefault(x =>
+                string.Equals(x.Email, email, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(x.Name, email, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(x.Name, display, StringComparison.OrdinalIgnoreCase));
+            if (res == null)
+                return;
+
+            task.Resources.Add(new NXProject.Models.TaskResource
+            {
+                ResourceId = res.Id,
+                Resource = res,
+                AllocationPercent = 100
+            });
+        }
+
+        private void SyncExpandedTaskRowsToSchedule(
+            IReadOnlyList<TaskReviewRow> rows,
+            NXProject.Models.ProjectTask story,
+            MainViewModel vm)
+        {
+            var expandedTasks = story.Children
+                .Where(c => string.Equals(c.TfsType, "Task", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (expandedTasks.Count == 0)
+                return;
+
+            var rowsById = rows
+                .Where(r => r.TaskId > 0)
+                .GroupBy(r => r.TaskId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            foreach (var task in expandedTasks)
+            {
+                if (task.TfsId is not > 0 || !rowsById.TryGetValue(task.TfsId.Value, out var row))
+                {
+                    story.Children.Remove(task);
+                    continue;
+                }
+
+                ApplyTaskReviewRowToScheduleTask(row, task, story, vm);
+            }
+
+            var existingIds = story.Children
+                .Where(c => string.Equals(c.TfsType, "Task", StringComparison.OrdinalIgnoreCase) && c.TfsId.HasValue)
+                .Select(c => c.TfsId!.Value)
+                .ToHashSet();
+            var missingRows = rows.Where(r => r.TaskId > 0 && !existingIds.Contains(r.TaskId)).ToList();
+            if (missingRows.Count > 0)
+                AddTaskRowsToSchedule(missingRows, story, vm, refreshAfterAdd: false);
+
+            story.DevopsTaskCount = story.Children.Count(c =>
+                string.Equals(c.TfsType, "Task", StringComparison.OrdinalIgnoreCase));
+            vm.Project.IsDirty = true;
+        }
+
+        private void ApplyTaskReviewRowToScheduleTask(
+            TaskReviewRow row,
+            NXProject.Models.ProjectTask task,
+            NXProject.Models.ProjectTask story,
+            MainViewModel vm)
+        {
+            task.Name = row.Title;
+            task.TfsId = row.TaskId;
+            task.TfsType = "Task";
+            task.EstimatedHours = row.EstimatedHours > 0 ? row.EstimatedHours : null;
+            task.CurrentHours = row.CompletedHours > 0 ? row.CompletedHours : null;
+            task.PercentComplete = row.PercentComplete;
+            task.Priority = row.Priority > 0 ? row.Priority : 5;
+            task.TfsState = row.State;
+            task.TfsIterationPath = story.TfsIterationPath;
+            task.SprintNumber = story.SprintNumber;
+
+            ApplyTaskReviewResource(row, task, vm);
         }
 
         private void ReleaseStoryTasks(NXProject.Models.ProjectTask story, MainViewModel vm)

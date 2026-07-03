@@ -475,6 +475,8 @@ namespace NXProject.Services
                 ? await LoadWorkItemsAsync(orgBase, auth, existingIds, requested, cancellationToken, expandRelations: true)
                 : new Dictionary<int, WorkItem>();
 
+            var preCreatedIds = new List<int>();
+
             // Pré-etapa: qualquer atividade interna (I:) que já tenha tipo DevOps precisa
             // virar TfsId antes de sincronizarmos links de predecessora de outras atividades.
             foreach (var task in tasks)
@@ -553,8 +555,22 @@ namespace NXProject.Services
                 task.TfsId = newId;
                 task.TfsParentId = desiredParent;
                 task.IsPendingTfsCreate = false;
+                preCreatedIds.Add(newId);
                 report.Created++;
                 report.LogSuccess($"{createType} - #{newId} ({task.Name}): criado.");
+            }
+
+            if (preCreatedIds.Count > 0)
+            {
+                var createdItems = await LoadWorkItemsAsync(
+                    orgBase,
+                    auth,
+                    preCreatedIds,
+                    requested,
+                    cancellationToken,
+                    expandRelations: true);
+                foreach (var item in createdItems)
+                    current[item.Key] = item.Value;
             }
 
             foreach (var task in tasks)
@@ -3034,6 +3050,49 @@ namespace NXProject.Services
                 throw new InvalidOperationException($"Falha ao excluir #{workItemId}: {resp.StatusCode} — {body}");
             }
         }
+
+        public static async Task<int> CreateChildTaskAsync(
+            TfsConnectionOptions options,
+            int parentTfsId,
+            string title,
+            string? assignedTo = null,
+            string? activity = null,
+            string? iterationPath = null,
+            CancellationToken ct = default)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            if (parentTfsId <= 0) throw new ArgumentOutOfRangeException(nameof(parentTfsId));
+
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue(
+                "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+
+            var ops = new List<object>
+            {
+                PatchAdd("/fields/System.Title", string.IsNullOrWhiteSpace(title) ? "Nova Task" : title.Trim()),
+                PatchAdd("/fields/Microsoft.VSTS.Common.Priority", 4),
+                new
+                {
+                    op = "add",
+                    path = "/relations/-",
+                    value = new
+                    {
+                        rel = "System.LinkTypes.Hierarchy-Reverse",
+                        url = $"{orgBase}/_apis/wit/workItems/{parentTfsId}"
+                    }
+                }
+            };
+
+            if (!string.IsNullOrWhiteSpace(assignedTo))
+                ops.Add(PatchAdd("/fields/System.AssignedTo", assignedTo));
+            if (!string.IsNullOrWhiteSpace(activity))
+                ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Activity", activity));
+            if (!string.IsNullOrWhiteSpace(iterationPath))
+                ops.Add(PatchAdd("/fields/System.IterationPath", iterationPath.Trim()));
+
+            return await CreateWorkItemAsync(orgBase, auth, options.TeamProject, "Task", ops, ct);
+        }
+
         /// <summary>
         /// Atualiza campos de uma Task individual diretamente no DevOps (usado pelo Tech Lead Review).
         /// </summary>
@@ -3053,9 +3112,9 @@ namespace NXProject.Services
             var ops = new List<object>();
             if (!string.IsNullOrWhiteSpace(title))
                 ops.Add(PatchAdd("/fields/System.Title", title));
-            if (estimatedHours > 0)
+            if (estimatedHours >= 0)
                 ops.Add(PatchAdd("/fields/Microsoft.VSTS.Scheduling.OriginalEstimate", estimatedHours));
-            if (completedHours > 0)
+            if (completedHours >= 0)
                 ops.Add(PatchAdd("/fields/Microsoft.VSTS.Scheduling.CompletedWork", completedHours));
             if (priority > 0)
                 ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Priority", priority));
