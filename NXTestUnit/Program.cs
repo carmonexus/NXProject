@@ -17,6 +17,7 @@ internal static class Program
         ("Cronograma: matriz de percentual de alocacao do recurso", ScheduleResourceAllocationPercentMatrix),
         ("Cronograma: disponibilidade do recurso aumenta duracao calendario", ScheduleResourceAvailabilityPercentChangesCalendarDuration),
         ("Cronograma: tarefa 100% nao recalcula fim", ScheduleCompletedTaskKeepsFinish),
+        ("Cronograma: rebuild preserva fim de tarefa 100%", RebuildKeepsCompletedTaskFinish),
         ("Cronograma: No DevOps aceita duracao zero como marco", ScheduleNoDevOpsZeroDurationCreatesMilestone),
         ("Cronograma: Marco-Devops aceita somente duracao zero", ScheduleDevOpsMilestoneAcceptsOnlyZeroDuration),
         ("Cronograma: DevOps nao aceita duracao zero como marco local", ScheduleDevOpsZeroDurationIsIgnored),
@@ -28,6 +29,7 @@ internal static class Program
         ("Cronograma: Ctrl botao marco cria Marco-Devops filho", AddMilestoneCreatesDevOpsChildWithCtrl),
         ("Cronograma: Ctrl botao marco nao cria filho em marco", AddMilestoneDoesNotCreateChildUnderMilestone),
         ("Sync TFS: Marco-Devops cria Task com tag MARCO-PROJECT", DevOpsMilestoneCreateOpsAddsMarcoProjectTag),
+        ("Sync TFS: data fim usa fim inclusivo", TfsSyncFinishUsesInclusiveDate),
         ("Sync TFS: Marco-Devops usa irmao anterior como predecessora implicita", DevOpsMilestoneUsesPreviousSiblingAsImplicitPredecessor),
         ("Sync TFS: Marco-Devops sem irmao anterior usa pai como predecessora implicita", DevOpsMilestoneUsesParentAsImplicitPredecessor),
         ("Sync TFS: Marco-Devops resolve predecessora explicita com filhos", DevOpsMilestoneResolvesExplicitPredecessorWithChildren),
@@ -194,6 +196,28 @@ internal static class Program
         TaskScheduleService.RecalculateFinishFromAssignments(task);
 
         AssertEqual(originalFinish, task.Finish, "Task 100% nao deve ter fim recalculado por HH restante.");
+    }
+
+    private static void RebuildKeepsCompletedTaskFinish()
+    {
+        var originalFinish = new DateTime(2026, 7, 7);
+        var project = new Project { Name = "Teste", StartDate = new DateTime(2026, 7, 6) };
+        var task = new ProjectTask
+        {
+            Id = 1,
+            Name = "Atividade sincronizada",
+            TfsType = "Story",
+            Start = new DateTime(2026, 7, 6),
+            Finish = originalFinish,
+            EstimatedHours = 320,
+            PercentComplete = 100
+        };
+        project.Tasks.Add(task);
+
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+
+        AssertEqual(originalFinish, task.Finish, "Rebuild apos sync/import nao deve empurrar tarefa 100% por HH/alocacao.");
     }
 
     private static void ScheduleNoDevOpsZeroDurationCreatesMilestone()
@@ -472,6 +496,24 @@ internal static class Program
         var text = string.Join("\n", ops.Select(o => o.ToString()));
         if (!text.Contains("System.Tags") || !text.Contains("MARCO-PROJECT"))
             throw new InvalidOperationException("Marco-Devops deve criar Task no DevOps com tag MARCO-PROJECT.");
+    }
+
+    private static void TfsSyncFinishUsesInclusiveDate()
+    {
+        var task = new ProjectTask
+        {
+            Name = "Atividade concluida",
+            Start = new DateTime(2026, 7, 3),
+            Finish = new DateTime(2026, 7, 4),
+            PercentComplete = 100,
+            TfsType = "Story"
+        };
+
+        var tfsFinish = TfsImportService.GetTfsFinishDateForTests(task);
+
+        if (!tfsFinish.HasValue)
+            throw new InvalidOperationException("Sync TFS deve calcular uma data fim para atividade com Finish valido.");
+        AssertEqual(new DateTime(2026, 7, 3), tfsFinish.Value, "Sync TFS deve enviar a data fim inclusiva, nao o limite exclusivo interno.");
     }
 
     private static void DevOpsMilestoneUsesPreviousSiblingAsImplicitPredecessor()

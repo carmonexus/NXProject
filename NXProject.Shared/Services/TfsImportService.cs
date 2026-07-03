@@ -318,7 +318,7 @@ namespace NXProject.Services
             public string LocalTags   => Task.Tags ?? "";
             public double? LocalHours => Task.EstimatedHours;
             public DateTime? LocalStart  => Task.Start == default ? null : Task.Start;
-            public DateTime? LocalFinish => Task.Finish == default ? null : Task.Finish;
+            public DateTime? LocalFinish => GetTfsFinishDate(Task);
             public string TfsType => Task.TfsType ?? "";
             public int TfsId => Task.TfsId ?? 0;
             // Atividade já iniciada (% > 0) não deve ser sobrescrita automaticamente no merge.
@@ -847,14 +847,15 @@ namespace NXProject.Services
                             }
                         }
 
-                        // Data Fim: sincroniza sempre que a data local difere do TFS (inclusive quando vazia no TFS).
-                        if (typeFinishRef != null && task.Finish > DateTime.MinValue.AddYears(1))
+                        // Data Fim: o modelo guarda Finish como limite exclusivo; o TFS deve receber a data exibida.
+                        var tfsFinish = GetTfsFinishDate(task);
+                        if (typeFinishRef != null && tfsFinish.HasValue)
                         {
                             var currentFinish = ReadDate(wi, typeFinishRef);
-                            if (currentFinish == null || currentFinish.Value.Date != task.Finish.Date)
+                            if (currentFinish == null || currentFinish.Value.Date != tfsFinish.Value.Date)
                             {
-                                ops.Add(PatchAdd($"/fields/{typeFinishRef}", FormatDateForTfs(task.Finish)));
-                                changes.Add($"fim: {task.Finish:dd/MM}");
+                                ops.Add(PatchAdd($"/fields/{typeFinishRef}", FormatDateForTfs(tfsFinish.Value)));
+                                changes.Add($"fim: {tfsFinish.Value:dd/MM}");
                             }
                         }
 
@@ -1830,8 +1831,9 @@ namespace NXProject.Services
                 if (startRef != null && task.Start > DateTime.MinValue.AddYears(1))
                     ops.Add(PatchAdd($"/fields/{startRef}", FormatDateForTfs(task.Start)));
 
-                if (finishRef != null && IsClosedState(task.TfsState) && task.Finish > DateTime.MinValue.AddYears(1))
-                    ops.Add(PatchAdd($"/fields/{finishRef}", FormatDateForTfs(task.Finish)));
+                var tfsFinish = GetTfsFinishDate(task);
+                if (finishRef != null && IsClosedState(task.TfsState) && tfsFinish.HasValue)
+                    ops.Add(PatchAdd($"/fields/{finishRef}", FormatDateForTfs(tfsFinish.Value)));
             }
             else
             {
@@ -1986,6 +1988,14 @@ namespace NXProject.Services
             var offset = TimeZoneInfo.Local.GetUtcOffset(date.Date);
             var local = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, offset);
             return local.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+        }
+
+        private static DateTime? GetTfsFinishDate(ProjectTask task)
+        {
+            if (task.Finish <= DateTime.MinValue.AddYears(1))
+                return null;
+
+            return ProjectCalendarService.GetInclusiveFinishDate(task.Start, task.Finish);
         }
 
         private static async Task PatchWorkItemAsync(
@@ -2760,6 +2770,7 @@ namespace NXProject.Services
 
         public static bool IsStoryTypePublic(string? type) => IsStoryType(type);
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
+        public static DateTime? GetTfsFinishDateForTests(ProjectTask task) => GetTfsFinishDate(task);
         public static List<object> BuildCreateOpsForTests(
             ProjectTask task,
             int parentId,

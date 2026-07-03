@@ -198,7 +198,7 @@ namespace NXProject.ViewModels
                     continue;
                 }
 
-                if (task.IsSummary || task.IsMilestone || task.FinishFixed)
+                if (task.IsSummary || task.IsMilestone || task.FinishFixed || task.PercentComplete >= 100)
                     continue;
 
                 task.Finish = TaskScheduleService.CalculateFinishFromAssignments(task, task.Start);
@@ -2598,6 +2598,13 @@ namespace NXProject.ViewModels
                     var cursor = t.Start;
                     foreach (var tc in taskChildren)
                     {
+                        if (tc.PercentComplete >= 100 || tc.StartFixed || tc.FinishFixed)
+                        {
+                            if (tc.Finish > cursor)
+                                cursor = tc.Finish;
+                            continue;
+                        }
+
                         var taskHours = EffDur(tc);
                         var taskDuration = Services.TaskScheduleService
                             .ConvertWorkHoursToCalendarDurationHours(tc, taskHours);

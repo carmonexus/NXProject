@@ -148,20 +148,20 @@
             <!-- Sincronizar com Azure DevOps -->
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnSyncTfsToolbarClick"
                     ToolTip="Sincronizar com Azure DevOps — envia alterações e atualiza datas/estados">
-                <Viewbox Width="26" Height="20" Stretch="Uniform">
-                    <Canvas Width="72" Height="56">
-                        <!-- Nuvem DevOps -->
-                        <Path Fill="#107C10"
-                              Data="M 36,6 C 26,6 18,13 17,22 C 11,23 6,28 6,35 C 6,43 12,48 20,48 L 52,48 C 60,48 66,43 66,35 C 66,28 61,23 55,22 C 54,13 46,6 36,6 Z"/>
-                        <!-- Setas de sincronização circulares -->
-                        <Path Stroke="White" StrokeThickness="3.5" Fill="Transparent"
-                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                              Data="M 24,34 C 24,27 30,22 37,23"/>
-                        <Polygon Points="21,27 21,35 28,31" Fill="White"/>
-                        <Path Stroke="White" StrokeThickness="3.5" Fill="Transparent"
-                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                              Data="M 48,24 C 48,31 42,36 35,35"/>
-                        <Polygon Points="51,31 51,23 44,27" Fill="White"/>
+                <Viewbox Width="28" Height="22" Stretch="Uniform">
+                    <Canvas Width="64" Height="52">
+                        <Rectangle Canvas.Left="2" Canvas.Top="8" Width="39" Height="32" RadiusX="5" RadiusY="5"
+                                   Fill="#107C10" Stroke="#0B5E0B" StrokeThickness="2"/>
+                        <TextBlock Canvas.Left="7" Canvas.Top="9"
+                                   Text="TFS" Foreground="White" FontSize="21"
+                                   FontWeight="Black" FontFamily="Segoe UI"/>
+                        <Rectangle Canvas.Left="38" Canvas.Top="11" Width="23" Height="29" RadiusX="2" RadiusY="2"
+                                   Fill="#F8FAFC" Stroke="#0B5E0B" StrokeThickness="2.4"/>
+                        <Rectangle Canvas.Left="42" Canvas.Top="15" Width="12" Height="7"
+                                   Fill="#2B6CB0" Stroke="#0B5E0B" StrokeThickness="1"/>
+                        <Rectangle Canvas.Left="56" Canvas.Top="15" Width="3" Height="7" Fill="#0B5E0B"/>
+                        <Rectangle Canvas.Left="43" Canvas.Top="28" Width="13" Height="8" RadiusX="1" RadiusY="1"
+                                   Fill="#E8F1FB" Stroke="#0B5E0B" StrokeThickness="1"/>
                     </Canvas>
                 </Viewbox>
             </Button>
