@@ -84,6 +84,33 @@ function Remove-UnusedSatelliteResourceFolders([string]$PublishDir) {
     }
 }
 
+function Test-IsReleasePackageFile([string]$FileName) {
+    $ext = [System.IO.Path]::GetExtension($FileName).ToLowerInvariant()
+    if ($ext -in @(".json", ".ps1", ".txt", ".bat")) { return $true }
+
+    return
+        ($FileName -eq "NXProject.Community.exe") -or
+        ($FileName -eq "NXProject.Community.dll") -or
+        ($FileName -eq "NXProject.Shared.dll")
+}
+
+function Remove-SetupOwnedFilesFromRelease([string]$PackageDir) {
+    $removed = 0
+    Get-ChildItem -Path $PackageDir -Recurse -File | ForEach-Object {
+        if (-not (Test-IsReleasePackageFile $_.Name)) {
+            Remove-Item -LiteralPath $_.FullName -Force
+            $removed++
+        }
+    }
+
+    Get-ChildItem -Path $PackageDir -Recurse -Directory |
+        Sort-Object FullName -Descending |
+        Where-Object { -not (Get-ChildItem -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue) } |
+        Remove-Item -Force
+
+    Write-Host "  Arquivos de base mantidos no Setup e removidos do release.zip: $removed" -ForegroundColor DarkGray
+}
+
 function Stop-NXProjectCommunityProcess {
     $processes = Get-Process -Name "NXProject.Community" -ErrorAction SilentlyContinue
     if ($null -eq $processes) { return }
@@ -204,16 +231,18 @@ if (-not (Test-Path $exePath)) {
 }
 Copy-Item -Path (Join-Path $PublishDir "*") -Destination $StageDir -Recurse -Force
 Remove-UnusedSatelliteResourceFolders $StageDir
+Remove-SetupOwnedFilesFromRelease $StageDir
 
 @"
 NXProject Community
 
-Este pacote ja inclui o runtime do .NET para Windows x64.
-Nao precisa instalar o .NET Desktop Runtime para executar o NXProject.Community.exe.
+Este pacote usa a base instalada pelo NXProject-Setup.zip.
+Se executar sem o Setup, pode ser necessario instalar o .NET Desktop Runtime 10 x64.
 
 Como executar:
-1. Extraia todo o conteudo deste pacote para uma pasta local.
-2. Execute o arquivo NXProject.Community.exe.
+1. Instale/atualize a base com o NXProject-Setup.zip quando necessario.
+2. Extraia todo o conteudo deste pacote para a pasta do NXProject.
+3. Execute o arquivo NXProject.Community.exe.
 
 Se precisar diagnosticar abertura do aplicativo, execute:
 .\NXProject-Tracelog.ps1

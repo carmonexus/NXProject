@@ -1,10 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -107,8 +105,8 @@ public partial class MainWindow : Window
         {
             Directory.CreateDirectory(_installDir);
 
-            Step2StatusText.Text = "Instalando bibliotecas base...";
-            await Task.Run(() => ExtractEmbeddedOwnLibs(_installDir));
+            Step2StatusText.Text = "Instalando runtime e bibliotecas base...";
+            await Task.Run(() => CopySetupBundledFiles(_installDir));
             InstallProgress.Value = 15;
 
             Step2StatusText.Text = "Verificando a versão mais recente do NXProject...";
@@ -206,28 +204,30 @@ public partial class MainWindow : Window
         RetryButton.Visibility = Visibility.Visible;
     }
 
-    private static void ExtractEmbeddedOwnLibs(string installDir)
+    // Arquivos do proprio Setup — nao devem ir para a pasta de instalacao do NXProject.
+    private static readonly string[] SetupOwnFileNames =
     {
-        var asm = Assembly.GetExecutingAssembly();
-        var resourceName = asm.GetManifestResourceNames()
-            .FirstOrDefault(n => n.EndsWith("own-libs.zip", StringComparison.OrdinalIgnoreCase));
-        if (resourceName is null)
-            return; // Instalador antigo/sem payload embutido: as libs virao do zip de update.
+        "NXProject-Setup.exe", "NXProject-Setup.dll", "NXProject-Setup.pdb",
+        "NXProject-Setup.deps.json", "NXProject-Setup.runtimeconfig.json"
+    };
 
-        using var resourceStream = asm.GetManifestResourceStream(resourceName);
-        if (resourceStream is null) return;
-
-        var tempZip = Path.Combine(Path.GetTempPath(), $"nxsetup_ownlibs_{Guid.NewGuid():N}.zip");
-        try
+    // O Setup e publicado self-contained: o runtime .NET/WPF e as bibliotecas de
+    // terceiros (PdfSharp, WebView2, CommunityToolkit.Mvvm) ja ficam soltas ao lado
+    // do proprio executavel. Aqui so copiamos esses arquivos para a instalacao —
+    // sem download, sem zip embutido.
+    private static void CopySetupBundledFiles(string installDir)
+    {
+        var baseDir = AppContext.BaseDirectory;
+        foreach (var file in Directory.GetFiles(baseDir, "*", SearchOption.AllDirectories))
         {
-            using (var fileStream = File.Create(tempZip))
-                resourceStream.CopyTo(fileStream);
+            if (SetupOwnFileNames.Contains(Path.GetFileName(file), StringComparer.OrdinalIgnoreCase))
+                continue;
 
-            ZipFile.ExtractToDirectory(tempZip, installDir, overwriteFiles: true);
-        }
-        finally
-        {
-            if (File.Exists(tempZip)) File.Delete(tempZip);
+            var rel = Path.GetRelativePath(baseDir, file);
+            var dest = Path.Combine(installDir, rel);
+            var destFolder = Path.GetDirectoryName(dest);
+            if (!string.IsNullOrEmpty(destFolder)) Directory.CreateDirectory(destFolder);
+            File.Copy(file, dest, overwrite: true);
         }
     }
 
