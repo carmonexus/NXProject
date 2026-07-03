@@ -23,7 +23,9 @@ namespace NXProject.Views
             _task = task ?? throw new ArgumentNullException(nameof(task));
 
             TaskNameText.Text = task.Name;
-            IdBox.Text = task.TfsId?.ToString() ?? string.Empty;
+            IdBox.Text = task.TfsId is > 0 || task.TfsId == 0
+                ? task.TfsId.Value.ToString()
+                : string.Empty;
             SelectByText(TypeBox, task.TfsType);
             SelectByText(StateBox, task.TfsState);
             RefreshFeatureTypePanel(task.TfsType, task.TfsClassification);
@@ -215,9 +217,12 @@ namespace NXProject.Views
         {
             StatusText.Visibility = Visibility.Collapsed;
 
+            var selectedType = (TypeBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            var isNoDevOps = TaskViewModel.IsNoDevOpsType(selectedType);
+
             int? id = null;
             var idText = ExtractId(IdBox.Text);
-            if (!string.IsNullOrEmpty(idText))
+            if (!isNoDevOps && !string.IsNullOrEmpty(idText))
             {
                 if (!int.TryParse(idText, out var parsed) || parsed < 0)
                 {
@@ -230,16 +235,39 @@ namespace NXProject.Views
             }
 
             // 0 = criar no DevOps: exige um tipo selecionado.
-            if (id == 0 && StateBoxTypeMissing())
+            if (!isNoDevOps && id == 0 && StateBoxTypeMissing())
             {
                 StatusText.Text = "Para criar (ID = 0), selecione o Tipo DevOps (Epic, Feature ou Story).";
                 StatusText.Visibility = Visibility.Visible;
                 return;
             }
 
-            _task.TfsId = id;
-            _task.TfsType = (TypeBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
-            _task.TfsState = (StateBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            if (isNoDevOps)
+            {
+                _task.TfsId = null;
+                _task.Model.IsPendingTfsCreate = false;
+                _task.Model.TfsParentId = null;
+                _task.Model.SyncVersion = null;
+                _task.Model.HasSyncConflict = false;
+                _task.Model.DevopsTaskCount = null;
+                _task.TfsType = "No DevOps";
+                _task.TfsState = null;
+            }
+            else
+            {
+                var isPendingCreate = !id.HasValue || id.Value == 0;
+                _task.TfsId = id is > 0 ? id : null;
+                _task.Model.IsPendingTfsCreate = isPendingCreate;
+                if (isPendingCreate)
+                {
+                    _task.Model.TfsParentId = null;
+                    _task.Model.SyncVersion = null;
+                    _task.Model.HasSyncConflict = false;
+                }
+                _task.TfsType = selectedType;
+                _task.TfsState = (StateBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            }
+
             _task.Tags = string.Join("; ", SplitTags(TagsBox.Text));
 
             if (FeatureTypePanel.Visibility == Visibility.Visible)

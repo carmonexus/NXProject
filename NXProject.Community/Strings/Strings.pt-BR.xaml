@@ -51,7 +51,7 @@
     <!-- Menu Exibir -->
     <sys:String x:Key="Menu_View">_Exibir</sys:String>
     <sys:String x:Key="Menu_View_Gantt">G_antt</sys:String>
-    <sys:String x:Key="Menu_View_Sprint">_Sprint...</sys:String>
+    <sys:String x:Key="Menu_View_Sprint">_Sprint e Caminho crítico...</sys:String>
     <sys:String x:Key="Menu_View_Sfp">S_PF...</sys:String>
     <sys:String x:Key="Menu_View_Calendar">_Calendario...</sys:String>
     <sys:String x:Key="Menu_View_Resources">_Alocacao de Recursos...</sys:String>

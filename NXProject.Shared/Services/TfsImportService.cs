@@ -231,6 +231,7 @@ namespace NXProject.Services
             var depLinks = await LoadDependencyLinksAsync(
                 orgBase, options.TeamProject, authHeader, allIds, cancellationToken);
             var externalPredTfsIds = ApplyTfsPredecessors(project.Tasks, depLinks);
+            RepositionMarcosAfterPredecessors(project.Tasks);
             foreach (var t in project.Tasks)
                 t.RecalcSummary();
 
@@ -1402,8 +1403,110 @@ namespace NXProject.Services
             return result;
         }
 
+        /// <summary>
+        /// Reposiciona cada marco (Marco-DevOps) pela predecessora que faz sentido na hierarquia:
+        /// irmã no mesmo pai, ou o próprio pai. Predecessoras externas não movem o marco na árvore.
+        /// </summary>
+        private static void RepositionMarcosAfterPredecessors(
+            System.Collections.ObjectModel.ObservableCollection<ProjectTask> roots)
+        {
+            var allTasks = new List<ProjectTask>();
+            CollectAllTasks(roots, allTasks);
+            var byId = allTasks.ToDictionary(t => t.Id);
+            var byTfsId = allTasks
+                .Where(t => t.TfsId is > 0)
+                .GroupBy(t => t.TfsId!.Value)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            foreach (var marco in allTasks.Where(t => t.IsMilestone))
+            {
+                if (marco.Parent == null || marco.PredecessorIds.Count == 0) continue;
+
+                var siblings = marco.Parent.Children;
+                siblings.Remove(marco);
+
+                var anchor = FindMarcoPositionAnchor(marco, siblings, byId, byTfsId);
+                if (anchor == null)
+                {
+                    siblings.Add(marco);
+                    continue;
+                }
+
+                if (ReferenceEquals(anchor, marco.Parent))
+                {
+                    siblings.Insert(0, marco);
+                    continue;
+                }
+
+                var idx = siblings.IndexOf(anchor);
+                if (idx < 0) { siblings.Add(marco); continue; }
+                siblings.Insert(Math.Min(idx + 1, siblings.Count), marco);
+            }
+        }
+
+        private static ProjectTask? FindMarcoPositionAnchor(
+            ProjectTask marco,
+            System.Collections.ObjectModel.ObservableCollection<ProjectTask> siblings,
+            Dictionary<int, ProjectTask> byId,
+            Dictionary<int, ProjectTask> byTfsId)
+        {
+            ProjectTask? parentAnchor = null;
+            ProjectTask? siblingAnchor = null;
+            var siblingIndex = -1;
+            DateTime? siblingFinish = null;
+
+            foreach (var pid in marco.PredecessorIds)
+            {
+                var predecessor = ResolvePredecessorForPosition(pid, byId, byTfsId);
+                if (predecessor == null)
+                    continue;
+
+                if (ReferenceEquals(predecessor, marco.Parent))
+                {
+                    parentAnchor = predecessor;
+                    continue;
+                }
+
+                if (!ReferenceEquals(predecessor.Parent, marco.Parent))
+                    continue;
+
+                var idx = siblings.IndexOf(predecessor);
+                if (idx < 0)
+                    continue;
+
+                var finish = ProjectCalendarService.GetInclusiveFinishDate(predecessor.Start, predecessor.Finish);
+                if (siblingAnchor == null || finish > siblingFinish || (finish == siblingFinish && idx > siblingIndex))
+                {
+                    siblingAnchor = predecessor;
+                    siblingFinish = finish;
+                    siblingIndex = idx;
+                }
+            }
+
+            return siblingAnchor ?? parentAnchor;
+        }
+
+        private static ProjectTask? ResolvePredecessorForPosition(
+            int predecessorId,
+            Dictionary<int, ProjectTask> byId,
+            Dictionary<int, ProjectTask> byTfsId)
+        {
+            if (byId.TryGetValue(predecessorId, out var byInternalId))
+                return byInternalId;
+
+            return predecessorId > 0 && byTfsId.TryGetValue(predecessorId, out var byTfs)
+                ? byTfs
+                : null;
+        }
+
         private static bool ShouldSyncPredecessors(ProjectTask task) =>
-            task.Children.Count == 0 &&
+            task.Children.All(c => c.IsMilestone) &&
+            (IsStoryType(task.TfsType) || IsTaskType(task.TfsType) ||
+             IsEpicOrFeatureType(task.TfsType));
+
+        private static bool CanBeDevOpsPredecessor(ProjectTask task) =>
+            task.TfsId is > 0 &&
+            !IsNoDevOpsType(task.TfsType) &&
             (IsStoryType(task.TfsType) || IsTaskType(task.TfsType) ||
              IsEpicOrFeatureType(task.TfsType));
 
@@ -1424,6 +1527,55 @@ namespace NXProject.Services
             string.Equals(workItemType, "Task", StringComparison.OrdinalIgnoreCase) && HasTag(tags, "MARCO-PROJECT")
                 ? "Marco-DevOps"
                 : workItemType ?? "";
+
+        private static bool IsMarcoDevOpsItem(WorkItem item) =>
+            string.Equals(ResolveImportType(item.WorkItemType, item.Tags), "Marco-DevOps", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Encontra recursivamente todas as Tasks marcadas MARCO-PROJECT abaixo de um item,
+        /// descendo por Tasks comuns intermediárias (que não viram nó na árvore do cronograma).
+        /// Não desce em Epic/Feature/Story filhos: esses constroem seus próprios marcos.
+        /// </summary>
+        private static void CollectMarcoDescendants(BuildContext ctx, int parentId, List<WorkItem> result)
+        {
+            if (!ctx.ChildrenByParent.TryGetValue(parentId, out var children)) return;
+            foreach (var childId in children)
+            {
+                if (!ctx.Items.TryGetValue(childId, out var child)) continue;
+                if (IsMarcoDevOpsItem(child))
+                {
+                    result.Add(child);
+                    continue;
+                }
+                if (IsType(child, "Task"))
+                    CollectMarcoDescendants(ctx, childId, result);
+            }
+        }
+
+        /// <summary>Constrói uma Task marcada MARCO-PROJECT como marco (milestone) filho de Epic/Feature/Story.</summary>
+        private static ProjectTask BuildMilestoneChild(BuildContext ctx, WorkItem item, int level, DateTime anchor)
+        {
+            return new ProjectTask
+            {
+                Id = item.Id,
+                Name = item.Title,
+                Level = level,
+                IsSummary = false,
+                IsMilestone = true,
+                Start = anchor,
+                Finish = anchor,
+                PercentComplete = StateToPercent(item.State),
+                TfsId = item.Id,
+                TfsParentId = ctx.GetParent(item.Id),
+                TfsType = "Marco-DevOps",
+                TfsState = item.State,
+                Description = item.Description,
+                Tags = item.Tags,
+                TfsStackRank = item.StackRank,
+                TfsIterationPath = item.IterationPath,
+                Notes = $"TFS #{item.Id} · Marco-DevOps · {item.State}"
+            };
+        }
 
         private static bool IsDevOpsMilestoneType(string? type)
         {
@@ -1474,10 +1626,9 @@ namespace NXProject.Services
 
                 // 1. Tarefa interna (Id interno) com TfsId resolvível.
                 if (tasksById.TryGetValue(storedId, out var predecessor) &&
-                    ShouldSyncPredecessors(predecessor) &&
-                    predecessor.TfsId.HasValue && predecessor.TfsId.Value > 0)
+                    CanBeDevOpsPredecessor(predecessor))
                 {
-                    desired.Add(predecessor.TfsId.Value);
+                    desired.Add(predecessor.TfsId!.Value);
                     continue;
                 }
 
@@ -1488,7 +1639,7 @@ namespace NXProject.Services
                     // Pode ser TfsId de tarefa interna (já resolvida acima) ou externa.
                     // Se bate com um TfsId do projeto, usa a tarefa interna.
                     if (tasksByTfsId.TryGetValue(storedId, out var byTfs) &&
-                        ShouldSyncPredecessors(byTfs))
+                        CanBeDevOpsPredecessor(byTfs))
                     {
                         desired.Add(storedId);
                         continue;
@@ -1501,7 +1652,37 @@ namespace NXProject.Services
                 invalidPredecessors.Add(storedId);
             }
 
+            if (desired.Count == 0 && IsDevOpsMilestoneType(task.TfsType))
+            {
+                var implicitPredecessor = ResolveImplicitMarcoPredecessorTfsId(task);
+                if (implicitPredecessor is > 0)
+                    desired.Add(implicitPredecessor.Value);
+            }
+
             return invalidPredecessors.Count == 0;
+        }
+
+        private static int? ResolveImplicitMarcoPredecessorTfsId(ProjectTask task)
+        {
+            if (!IsDevOpsMilestoneType(task.TfsType))
+                return null;
+
+            var siblings = task.Parent?.Children;
+            if (siblings != null)
+            {
+                var index = siblings.IndexOf(task);
+                if (index > 0)
+                {
+                    for (var i = index - 1; i >= 0; i--)
+                    {
+                        var previous = siblings[i];
+                        if (previous.TfsId is > 0)
+                            return previous.TfsId.Value;
+                    }
+                }
+            }
+
+            return task.Parent?.TfsId is > 0 ? task.Parent.TfsId.Value : null;
         }
 
         private static object AddPredecessorRelation(string orgBase, int predecessorId) =>
@@ -1953,6 +2134,17 @@ namespace NXProject.Services
                 }
             }
 
+            // Marcos (Tasks MARCO-PROJECT) diretamente sob este Epic/Feature, ou sob
+            // Tasks comuns intermediárias, viram filhos-marco aqui mesmo.
+            var marcoItems = new List<WorkItem>();
+            CollectMarcoDescendants(ctx, id, marcoItems);
+            foreach (var m in marcoItems)
+            {
+                var marco = BuildMilestoneChild(ctx, m, level + 1, ctx.ProjectStart);
+                marco.Parent = task;
+                task.Children.Add(marco);
+            }
+
             if (task.Children.Count > 0)
             {
                 task.RecalcSummary();
@@ -2149,6 +2341,17 @@ namespace NXProject.Services
             task.DevopsTaskCount = ctx.ChildrenByParent.TryGetValue(item.Id, out var tkChildren)
                 ? tkChildren.Count(cid => ctx.Items.TryGetValue(cid, out var tk) && IsType(tk, "Task"))
                 : 0;
+
+            // Marcos (Tasks MARCO-PROJECT) diretamente sob esta Story, ou sob
+            // Tasks comuns intermediárias, viram filhos-marco aqui mesmo.
+            var marcoItems = new List<WorkItem>();
+            CollectMarcoDescendants(ctx, item.Id, marcoItems);
+            foreach (var m in marcoItems)
+            {
+                var marco = BuildMilestoneChild(ctx, m, level + 1, task.Finish);
+                marco.Parent = task;
+                task.Children.Add(marco);
+            }
 
             return task;
         }
@@ -2563,6 +2766,10 @@ namespace NXProject.Services
             Dictionary<int, ProjectTask> tasksById,
             bool syncPredecessorLinks = true) =>
             BuildCreateOps(task, parentId, "https://dev.azure.com/test", null, null, null, tasksById, syncPredecessorLinks);
+
+        public static void RepositionMarcosAfterPredecessorsForTests(
+            System.Collections.ObjectModel.ObservableCollection<ProjectTask> roots) =>
+            RepositionMarcosAfterPredecessors(roots);
 
         /// <summary>
         /// Busca os HH das Tasks filhas usando o campo padrão Microsoft.VSTS.Scheduling.OriginalEstimate.

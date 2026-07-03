@@ -94,8 +94,22 @@ A coluna Pred. define quais atividades precisam terminar antes da atividade atua
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Quando a data fim de uma predecessora muda, todas as dependentes sao recalculadas em cascata."/>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- O recalculo usa ordenacao topologica: uma atividade so e recalculada apos todas as suas predecessoras estarem posicionadas. Referencias cruzadas (A depende de B que depende de A) sao detectadas e interrompidas automaticamente."/>
 
-                    <!-- 6. Gantt -->
-                    <TextBlock Text="6. Gantt"
+                    <!-- 6. Marcos do cronograma -->
+                    <TextBlock Text="6. Marcos do cronograma"
+                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
+Marcos sao atividades com duracao zero usadas para registrar uma data importante no cronograma.
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Para um marco local que nao vai para o Azure DevOps, use Tipo = No DevOps e Dur.(h) = 0."/>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Para um marco sincronizavel no Azure DevOps, use Tipo = Marco-Devops e Dur.(h) = 0; ele e criado como Task com a tag MARCO-PROJECT."/>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Marco-Devops so aceita duracao zero. Atividades DevOps comuns nao aceitam duracao zero como marco."/>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Se o marco tiver predecessoras explicitas, a data de inicio usa a maior data fim entre elas, como nas demais atividades."/>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Se o Marco-Devops nao tiver predecessora informada, o sistema usa automaticamente a atividade irma anterior; se nao houver irma anterior, usa o pai."/>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Na importacao do Azure DevOps, o Marco-Devops e posicionado pela predecessora que faz sentido na hierarquia: uma atividade irma ou o proprio pai."/>
+                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Predecessoras fora da hierarquia podem existir como dependencia no DevOps, mas sao ignoradas para posicionar o marco visualmente dentro da lista."/>
+
+                    <!-- 7. Gantt -->
+                    <TextBlock Text="7. Gantt"
                                FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
 O Gantt exibe barras de duracao, marcos, sprints e setas de dependencia.
@@ -107,8 +121,8 @@ O Gantt exibe barras de duracao, marcos, sprints e setas de dependencia.
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Ative o botao de lupa na toolbar e mova o mouse sobre o Gantt para analisar o grafico de perto."/>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Ao mover uma atividade no Gantt, as dependentes podem acompanhar o deslocamento."/>
 
-                    <!-- 7. Colunas e modos de exibicao -->
-                    <TextBlock Text="7. Colunas e modos de exibicao"
+                    <!-- 8. Colunas e modos de exibicao -->
+                    <TextBlock Text="8. Colunas e modos de exibicao"
                                FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
 Use o botao Exibir > Customizar colunas para escolher quais colunas aparecem em cada modo de visualizacao.
@@ -117,8 +131,8 @@ Use o botao Exibir > Customizar colunas para escolher quais colunas aparecem em 
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Visao Expandida: configuracao completa com HH Atual, HH Restante, OrgH, SFP e Predecessoras."/>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- A configuracao e salva no arquivo do projeto e restaurada ao reabrir."/>
 
-                    <!-- 8. Progresso e Curva S -->
-                    <TextBlock Text="8. Progresso do Projeto e Curva S"
+                    <!-- 9. Progresso e Curva S -->
+                    <TextBlock Text="9. Progresso do Projeto e Curva S"
                                FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
 Acesse em Exibir > Progresso do Projeto e Curva S para acompanhar o andamento geral do projeto.
@@ -128,8 +142,8 @@ Acesse em Exibir > Progresso do Projeto e Curva S para acompanhar o andamento ge
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Linha laranja tracejada: HH Restante projetado (sprints futuras)."/>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- O calculo considera somente atividades no nivel story (nivel de menor profundidade com sprint atribuida)."/>
 
-                    <!-- 9. Predecessora Virtual -->
-                    <TextBlock Text="9. Predecessora Virtual (mesmo recurso e hierarquia)"
+                    <!-- 10. Predecessora Virtual -->
+                    <TextBlock Text="10. Predecessora Virtual (mesmo recurso e hierarquia)"
                                FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
 Atividades do mesmo nivel hierarquico com o mesmo recurso atribuido sao encadeadas automaticamente, como se a atividade anterior fosse predecessora da seguinte — sem necessidade de cadastrar predecessoras explicitas.
@@ -142,8 +156,8 @@ Atividades do mesmo nivel hierarquico com o mesmo recurso atribuido sao encadead
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Atividades com predecessoras explicitas nao sao movidas pela predecessora virtual."/>
                     <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Ao abrir ou importar o projeto, o encadeamento virtual e as predecessoras explicitas sao aplicados automaticamente em toda a hierarquia."/>
 
-                    <!-- 10. Sprint -->
-                    <TextBlock Text="10. Sprint"
+                    <!-- 11. Sprint -->
+                    <TextBlock Text="11. Sprint"
                                FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
 A coluna Sprint associa a atividade a uma iteracao do Azure DevOps (ou a um numero sintetico de sprint do cronograma).

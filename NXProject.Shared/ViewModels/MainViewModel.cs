@@ -809,24 +809,40 @@ namespace NXProject.ViewModels
             }
         }
 
-        private List<(Models.ProjectTask task, int? parentTfsId)> CaptureNoDevOpsTasks()
+        private sealed record NoDevOpsTaskSnapshot(
+            Models.ProjectTask Task,
+            int? ParentTfsId,
+            int? PreviousSiblingTfsId,
+            int? NextSiblingTfsId);
+
+        private List<NoDevOpsTaskSnapshot> CaptureNoDevOpsTasks()
         {
-            var result = new List<(Models.ProjectTask, int?)>();
+            var result = new List<NoDevOpsTaskSnapshot>();
             if (Project == null) return result;
-            void Collect(IEnumerable<Models.ProjectTask> tasks)
+
+            void Collect(IList<Models.ProjectTask> tasks)
             {
-                foreach (var t in tasks)
+                for (var i = 0; i < tasks.Count; i++)
                 {
-                    if (string.Equals(t.TfsType?.Trim(), "No DevOps", StringComparison.OrdinalIgnoreCase))
-                        result.Add((t, t.Parent?.TfsId));
+                    var t = tasks[i];
+                    if (IsNoDevOpsType(t.TfsType))
+                    {
+                        result.Add(new NoDevOpsTaskSnapshot(
+                            t,
+                            t.Parent?.TfsId,
+                            FindSiblingTfsId(tasks, i - 1, -1),
+                            FindSiblingTfsId(tasks, i + 1, 1)));
+                    }
+
                     Collect(t.Children);
                 }
             }
+
             Collect(Project.Tasks);
             return result;
         }
 
-        private void RestoreNoDevOpsTasks(List<(Models.ProjectTask task, int? parentTfsId)> noDevOpsTasks)
+        private void RestoreNoDevOpsTasks(List<NoDevOpsTaskSnapshot> noDevOpsTasks)
         {
             if (noDevOpsTasks.Count == 0) return;
 
@@ -850,27 +866,80 @@ namespace NXProject.ViewModels
             }
             IndexByTfsId(Project.Tasks);
 
-            foreach (var (task, parentTfsId) in noDevOpsTasks)
+            foreach (var snapshot in noDevOpsTasks)
             {
+                var task = snapshot.Task;
+
                 // Se o TFS importado já tem uma tarefa com o mesmo nome, ela é o vínculo — não re-adiciona
                 if (byName.ContainsKey(task.Name))
                     continue;
 
                 // Re-insere sob o mesmo pai (por TfsId) ou na raiz
-                if (parentTfsId.HasValue && byTfsId.TryGetValue(parentTfsId.Value, out var parent))
+                if (snapshot.ParentTfsId.HasValue && byTfsId.TryGetValue(snapshot.ParentTfsId.Value, out var parent))
                 {
                     task.Parent = parent;
                     task.Level = parent.Level + 1;
-                    parent.Children.Add(task);
+                    InsertNoDevOpsTask(parent.Children, task, snapshot.PreviousSiblingTfsId, snapshot.NextSiblingTfsId);
                     parent.IsSummary = true;
                 }
                 else
                 {
                     task.Parent = null;
                     task.Level = 0;
-                    Project.Tasks.Add(task);
+                    InsertNoDevOpsTask(Project.Tasks, task, snapshot.PreviousSiblingTfsId, snapshot.NextSiblingTfsId);
                 }
             }
+        }
+
+        private static int? FindSiblingTfsId(IList<Models.ProjectTask> siblings, int startIndex, int step)
+        {
+            for (var i = startIndex; i >= 0 && i < siblings.Count; i += step)
+            {
+                if (siblings[i].TfsId is > 0)
+                    return siblings[i].TfsId;
+            }
+
+            return null;
+        }
+
+        private static void InsertNoDevOpsTask(
+            IList<Models.ProjectTask> siblings,
+            Models.ProjectTask task,
+            int? previousSiblingTfsId,
+            int? nextSiblingTfsId)
+        {
+            if (nextSiblingTfsId.HasValue)
+            {
+                var nextIndex = IndexOfTfsId(siblings, nextSiblingTfsId.Value);
+                if (nextIndex >= 0)
+                {
+                    siblings.Insert(nextIndex, task);
+                    return;
+                }
+            }
+
+            if (previousSiblingTfsId.HasValue)
+            {
+                var previousIndex = IndexOfTfsId(siblings, previousSiblingTfsId.Value);
+                if (previousIndex >= 0)
+                {
+                    siblings.Insert(previousIndex + 1, task);
+                    return;
+                }
+            }
+
+            siblings.Add(task);
+        }
+
+        private static int IndexOfTfsId(IList<Models.ProjectTask> siblings, int tfsId)
+        {
+            for (var i = 0; i < siblings.Count; i++)
+            {
+                if (siblings[i].TfsId == tfsId)
+                    return i;
+            }
+
+            return -1;
         }
 
         private Dictionary<(int taskId, string resourceKey), double> CaptureAllocationPercentByDevOpsTask()
@@ -1310,6 +1379,11 @@ namespace NXProject.ViewModels
         // Chamado ao abrir ou importar projeto para garantir consistência inicial.
         public void ApplyVirtualPredecessorsToAll()
         {
+            // 0. Marcos (milestones) não têm recurso e não entram na fila por (pai + recurso);
+            //    usam a irmã imediatamente anterior no mesmo pai como predecessora virtual,
+            //    para preservar o posicionamento ao sincronizar/importar do DevOps.
+            ApplyMilestonePredecessors();
+
             // 1. Cascata virtual: primeiro de cada grupo (pai + recurso) propaga para os irmãos seguintes.
             var processed = new System.Collections.Generic.HashSet<(int parentId, int resourceId)>();
             foreach (var task in FlatTasks)
@@ -1353,6 +1427,50 @@ namespace NXProject.ViewModels
                     task.MoveAfterLatestPredecessor(); // consulta todas predecessoras → pega maior data fim
                     pending.Remove(task.Model.Id);
                 }
+            }
+        }
+
+        // Marcos usam como predecessora virtual o irmão anterior no MESMO NÍVEL
+        // (mesmo pai). Se não houver irmão anterior nesse nível (marco é 1º/único
+        // filho), sobe para o nível do pai e procura o irmão anterior do pai, e
+        // assim por diante — nunca desce para dentro de um ramo anterior (ex.: um
+        // marco filho de uma Feature que vem depois de outra Feature com Stories
+        // usa a Feature anterior como predecessora, não a última Story dela).
+        // Recalculado a cada chamada — se o usuário arrastar o marco, a
+        // predecessora é corrigida automaticamente antes da sincronização.
+        public void ApplyMilestonePredecessors()
+        {
+            static ProjectTask? FindVirtualPredecessor(ProjectTask task)
+            {
+                var current = task;
+                while (current.Parent != null)
+                {
+                    var siblings = current.Parent.Children;
+                    var idx = siblings.IndexOf(current);
+                    if (idx > 0)
+                        return siblings[idx - 1];
+
+                    current = current.Parent;
+                }
+                return null;
+            }
+
+            foreach (var task in AllTasks())
+            {
+                if (!task.IsMilestone) continue;
+
+                var prev = FindVirtualPredecessor(task);
+                if (prev == null)
+                {
+                    if (task.PredecessorIds.Count > 0) task.PredecessorIds.Clear();
+                    continue;
+                }
+
+                if (task.PredecessorIds.Count == 1 && task.PredecessorIds[0] == prev.Id)
+                    continue;
+
+                task.PredecessorIds.Clear();
+                task.PredecessorIds.Add(prev.Id);
             }
         }
 
@@ -1739,6 +1857,119 @@ namespace NXProject.ViewModels
             RequestScrollToSelected?.Invoke();
         }
 
+        public void AddMilestone(bool asChild)
+        {
+            var selected = SelectedTask;
+            if (asChild && selected == null)
+            {
+                StatusMessage = AppStrings.Get("Status_SelectParentTask");
+                return;
+            }
+
+            var selectedModel = selected?.Model;
+            if (asChild && selectedModel?.IsMilestone == true)
+            {
+                StatusMessage = "Marco nao pode ter outro marco como filho. Use clique simples para criar um marco irmao.";
+                return;
+            }
+
+            var isDevOpsMilestone = selectedModel != null && IsDevOpsActivityType(selectedModel.TfsType);
+            var milestoneType = isDevOpsMilestone ? "Marco-Devops" : "No DevOps";
+
+            ProjectTask? parent = null;
+            System.Collections.ObjectModel.ObservableCollection<ProjectTask> siblings;
+            var insertIndex = -1;
+            ProjectTask? predecessor = null;
+
+            if (asChild)
+            {
+                parent = selectedModel;
+                siblings = parent!.Children;
+                predecessor = siblings.LastOrDefault();
+                insertIndex = siblings.Count;
+            }
+            else if (selectedModel?.Parent != null)
+            {
+                parent = selectedModel.Parent;
+                siblings = parent.Children;
+                insertIndex = siblings.IndexOf(selectedModel) + 1;
+                predecessor = selectedModel;
+            }
+            else
+            {
+                siblings = Project.Tasks;
+                if (selectedModel != null)
+                {
+                    insertIndex = Project.Tasks.IndexOf(selectedModel) + 1;
+                    predecessor = selectedModel;
+                }
+                else
+                {
+                    insertIndex = Project.Tasks.Count;
+                }
+            }
+
+            var start = ResolveMilestoneStart(parent, predecessor, selectedModel);
+            var task = new ProjectTask
+            {
+                Id = _nextId++,
+                Name = isDevOpsMilestone ? "Novo Marco DevOps" : "Novo Marco",
+                Start = start,
+                Finish = start,
+                Level = parent != null ? parent.Level + 1 : selectedModel?.Level ?? 0,
+                Parent = parent,
+                IsMilestone = true,
+                EstimatedHours = 0,
+                OriginalEstimatedHours = 0,
+                CurrentHours = 0,
+                PercentComplete = 0,
+                TfsType = milestoneType,
+                TfsClassification = milestoneType,
+                TfsIterationPath = selectedModel?.TfsIterationPath ?? parent?.TfsIterationPath,
+                TfsId = isDevOpsMilestone ? 0 : _nextNoDevOpsId--,
+                IsPendingTfsCreate = isDevOpsMilestone,
+                TfsState = isDevOpsMilestone ? "New" : null,
+                Tags = isDevOpsMilestone ? "MARCO-PROJECT" : null
+            };
+
+            if (predecessor != null)
+                task.PredecessorIds.Add(predecessor.Id);
+
+            if (insertIndex < 0 || insertIndex > siblings.Count)
+                siblings.Add(task);
+            else
+                siblings.Insert(insertIndex, task);
+
+            if (parent != null)
+            {
+                parent.IsSummary = true;
+                parent.RecalcSummary();
+            }
+
+            Project.IsDirty = true;
+            PrepareTaskInsertionScroll?.Invoke();
+            RebuildFlatTasks();
+            SelectedTask = FlatTasks.FirstOrDefault(t => t.Id == task.Id);
+            StatusMessage = asChild
+                ? "Marco adicionado como filho da atividade selecionada."
+                : "Marco adicionado abaixo da atividade selecionada.";
+            RequestScrollToSelected?.Invoke();
+        }
+
+        private static DateTime ResolveMilestoneStart(ProjectTask? parent, ProjectTask? predecessor, ProjectTask? selected)
+        {
+            if (predecessor != null)
+            {
+                var finish = ProjectCalendarService.GetInclusiveFinishDate(predecessor.Start, predecessor.Finish);
+                return ProjectCalendarService.AddWorkingDays(finish, 1);
+            }
+
+            if (parent != null)
+                return parent.Start;
+
+            return selected?.Start ?? DateTime.Today;
+        }
+
         /// <summary>Adiciona subtarefa ao pai especificado com ação direta ("Task" ou "NoDevOps").</summary>
         public void AddSubtask(TaskViewModel parentVm, string action)
         {
@@ -1888,7 +2119,10 @@ namespace NXProject.ViewModels
                 return;
 
             if (MoveTaskByOffset(task, -1))
+            {
+                if (task.IsMilestone) task.PredecessorIds.Clear();
                 StatusMessage = AppStrings.Get("Status_TaskMovedUp");
+            }
         }
 
         [RelayCommand]
@@ -1899,7 +2133,10 @@ namespace NXProject.ViewModels
                 return;
 
             if (MoveTaskByOffset(task, 1))
+            {
+                if (task.IsMilestone) task.PredecessorIds.Clear();
                 StatusMessage = AppStrings.Get("Status_TaskMovedDown");
+            }
         }
 
         public bool MoveTaskByDrop(TaskViewModel sourceVm, TaskViewModel targetVm, bool insertAfter)
@@ -1937,6 +2174,7 @@ namespace NXProject.ViewModels
 
             MoveTask(sourceCollection, currentIndex, targetIndex);
             RescheduleAfterDrop(sourceVm);
+            if (sourceVm.Model.IsMilestone) sourceVm.Model.PredecessorIds.Clear();
             StatusMessage = AppStrings.Get("Status_TaskReordered");
             return true;
         }
@@ -2374,8 +2612,18 @@ namespace NXProject.ViewModels
             }
         }
 
-        private static bool IsNoDevOpsType(string? type) =>
-            string.Equals(type?.Trim(), "No DevOps", StringComparison.OrdinalIgnoreCase);
+        private static bool IsNoDevOpsType(string? type)
+        {
+            var normalized = (type ?? string.Empty)
+                .Trim()
+                .Replace(" ", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace("_", string.Empty);
+            return string.Equals(normalized, "NoDevOps", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsDevOpsActivityType(string? type) =>
+            !string.IsNullOrWhiteSpace(type) && !IsNoDevOpsType(type);
 
         private static bool IsStoryLikeType(string? type) =>
             string.Equals(type?.Trim(), "User Story",  StringComparison.OrdinalIgnoreCase) ||

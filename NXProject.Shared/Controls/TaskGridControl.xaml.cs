@@ -1253,6 +1253,33 @@ namespace NXProject.Controls
                 return;
             }
 
+            if (TaskViewModel.TryParseDurationText(tb.Text, out var parsedHours) &&
+                parsedHours <= 0.0001 &&
+                !vm.CanUseZeroDuration)
+            {
+                System.Windows.MessageBox.Show(
+                    "Duração zero cria um marco no cronograma.\n\n" +
+                    "Use Tipo = No DevOps para marco local ou Tipo = Marco-Devops para marco anexado/sincronizável no DevOps.",
+                    "Duração zero",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                CancelCurrentEdit();
+                return;
+            }
+
+            if (TaskViewModel.TryParseDurationText(tb.Text, out parsedHours) &&
+                parsedHours > 0.0001 &&
+                vm.IsDevOpsMilestoneActivity)
+            {
+                System.Windows.MessageBox.Show(
+                    "Atividade do tipo Marco-Devops é um marco anexado ao DevOps e só aceita Dur.(h) = 0.",
+                    "Marco-Devops",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                CancelCurrentEdit();
+                return;
+            }
+
             vm.DurationText = tb.Text;
             // Notifica explicitamente as colunas read-only que dependem de DurationHours
             vm.RefreshDerivedDisplayProperties();

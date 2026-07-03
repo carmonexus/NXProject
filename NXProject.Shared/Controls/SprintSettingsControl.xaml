@@ -45,6 +45,10 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="14"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="14"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="14"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0"
@@ -101,6 +105,46 @@
                     <TextBlock Grid.Row="4"
                                Grid.Column="2"
                                Text="Escolhe se o cronograma avanca as sprints de forma sequencial, apenas par ou apenas impar."
+                               VerticalAlignment="Center"
+                               Margin="12,0,0,0"
+                               FontSize="12"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               TextWrapping="Wrap"/>
+
+                    <TextBlock Grid.Row="6"
+                               Grid.Column="0"
+                               Text="Amarelo ate"
+                               VerticalAlignment="Center"
+                               FontSize="13"
+                               FontWeight="SemiBold"/>
+                    <TextBox Grid.Row="6"
+                             Grid.Column="1"
+                             Width="96"
+                             Text="{Binding CriticalPathRiskSlackDays, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0.#}}"
+                             VerticalContentAlignment="Center"/>
+                    <TextBlock Grid.Row="6"
+                               Grid.Column="2"
+                               Text="Limite superior da faixa de atencao. Sugestao inicial: use 2d e ajuste conforme a velocidade da empresa."
+                               VerticalAlignment="Center"
+                               Margin="12,0,0,0"
+                               FontSize="12"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               TextWrapping="Wrap"/>
+
+                    <TextBlock Grid.Row="8"
+                               Grid.Column="0"
+                               Text="Vermelho abaixo de"
+                               VerticalAlignment="Center"
+                               FontSize="13"
+                               FontWeight="SemiBold"/>
+                    <TextBox Grid.Row="8"
+                             Grid.Column="1"
+                             Width="96"
+                             Text="{Binding CriticalPathCriticalSlackDays, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0.#}}"
+                             VerticalContentAlignment="Center"/>
+                    <TextBlock Grid.Row="8"
+                               Grid.Column="2"
+                               Text="Limite critico conforme a velocidade da empresa. Sugestao inicial: use 1d; a faixa amarela fica entre este limite e o limite de atencao."
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"

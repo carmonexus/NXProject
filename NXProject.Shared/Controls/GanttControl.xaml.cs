@@ -65,6 +65,10 @@ namespace NXProject.Controls
             DependencyProperty.Register(nameof(CriticalTaskIds), typeof(HashSet<int>),
                 typeof(GanttControl), new PropertyMetadata(null, OnLayoutChanged));
 
+        public static readonly DependencyProperty CriticalPathRiskTaskIdsProperty =
+            DependencyProperty.Register(nameof(CriticalPathRiskTaskIds), typeof(HashSet<int>),
+                typeof(GanttControl), new PropertyMetadata(null, OnLayoutChanged));
+
         public static readonly DependencyProperty ShowCriticalPathProperty =
             DependencyProperty.Register(nameof(ShowCriticalPath), typeof(bool),
                 typeof(GanttControl), new PropertyMetadata(false, OnLayoutChanged));
@@ -185,6 +189,12 @@ namespace NXProject.Controls
         {
             get => (HashSet<int>?)GetValue(CriticalTaskIdsProperty);
             set => SetValue(CriticalTaskIdsProperty, value);
+        }
+
+        public HashSet<int>? CriticalPathRiskTaskIds
+        {
+            get => (HashSet<int>?)GetValue(CriticalPathRiskTaskIdsProperty);
+            set => SetValue(CriticalPathRiskTaskIdsProperty, value);
         }
 
         public bool ShowCriticalPath
@@ -1273,8 +1283,13 @@ namespace NXProject.Controls
                                 && estHours is > 0
                                 && estHours > origHours;
 
-            var bgColor = isSelected         ? Color.FromRgb(220, 124, 0)
-                        : isPredecessor      ? Color.FromRgb(200, 100, 20)
+            var isCriticalPath = ShowCriticalPath && CriticalTaskIds != null && CriticalTaskIds.Contains(task.Model.Id);
+            var isCriticalPathRisk = ShowCriticalPath && CriticalPathRiskTaskIds != null && CriticalPathRiskTaskIds.Contains(task.Model.Id);
+
+            var bgColor = isCriticalPath      ? Color.FromRgb(192, 57, 43)
+                        : isCriticalPathRisk  ? Color.FromRgb(245, 158, 11)
+                        : isSelected          ? Color.FromRgb(220, 124, 0)
+                        : isPredecessor       ? Color.FromRgb(200, 100, 20)
                         : task.UseOriginalHoursView && origHours is > 0 ? Color.FromRgb(185, 28, 28)
                         : task.HasSyncConflict || durationOverrun ? Color.FromRgb(196, 43, 43)
                         :                      Color.FromRgb(91, 155, 213);
@@ -1302,7 +1317,7 @@ namespace NXProject.Controls
             GanttCanvas.Children.Add(bg);
 
             // Borda vermelha do caminho crítico
-            if (ShowCriticalPath && CriticalTaskIds != null && CriticalTaskIds.Contains(task.Model.Id))
+            if (isCriticalPath)
             {
                 var critBorder = new Rectangle
                 {

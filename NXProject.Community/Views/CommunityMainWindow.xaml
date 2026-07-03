@@ -188,6 +188,29 @@
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding AddTaskCommand}" ToolTip="{DynamicResource Toolbar_AddTask}">
                 <TextBlock Text="+" FontSize="16" FontWeight="Bold"/>
             </Button>
+            <Button Style="{StaticResource ToolbarButtonStyle}"
+                    Click="OnAddMilestoneToolbarClick">
+                <Button.ToolTip>
+                    <ToolTip>
+                        <StackPanel>
+                            <TextBlock Text="Criar marco" FontWeight="SemiBold"/>
+                            <TextBlock Text="Clique: cria marco irmao abaixo da atividade selecionada."/>
+                            <TextBlock Text="Ctrl+clique: cria marco filho da atividade selecionada, exceto se ela ja for marco."/>
+                            <TextBlock Text="Se a selecionada for DevOps, cria Marco-Devops."/>
+                        </StackPanel>
+                    </ToolTip>
+                </Button.ToolTip>
+                <Viewbox Width="22" Height="20" Stretch="Uniform">
+                    <Canvas Width="24" Height="24">
+                        <Polygon Points="12,3 21,12 12,21 3,12"
+                                 Fill="#D89B00" Stroke="#8A6500" StrokeThickness="1.4"/>
+                        <Line X1="12" Y1="7" X2="12" Y2="17"
+                              Stroke="White" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        <Line X1="7" Y1="12" X2="17" Y2="12"
+                              Stroke="White" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding AddSubtaskCommand}" ToolTip="{DynamicResource Toolbar_AddSubtask}">
                 <TextBlock Text="+&gt;" FontSize="12" FontWeight="Bold"/>
             </Button>

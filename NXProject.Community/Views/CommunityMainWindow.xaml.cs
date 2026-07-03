@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -59,8 +60,22 @@ namespace NXProject.Views
                     Dispatcher.InvokeAsync(() => RefreshCriticalPath(vm),
                         System.Windows.Threading.DispatcherPriority.Background);
                 }
+                else if (args.PropertyName == nameof(vm.CriticalPathRiskSlackDays))
+                {
+                    Dispatcher.InvokeAsync(() => RefreshCriticalPath(vm),
+                        System.Windows.Threading.DispatcherPriority.Background);
+                }
+                else if (args.PropertyName == nameof(vm.CriticalPathCriticalSlackDays))
+                {
+                    Dispatcher.InvokeAsync(() => RefreshCriticalPath(vm),
+                        System.Windows.Threading.DispatcherPriority.Background);
+                }
             };
-            vm.FlatTasks.CollectionChanged += (_, _) => UpdateEpicHours(vm);
+            vm.FlatTasks.CollectionChanged += (_, _) =>
+            {
+                UpdateEpicHours(vm);
+                RefreshCriticalPath(vm);
+            };
             vm.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName == nameof(vm.FlatTasks) || args.PropertyName == "ProjectPercent")
@@ -281,6 +296,15 @@ namespace NXProject.Views
             {
                 Owner = this
             }.ShowDialog();
+        }
+
+        private void OnAddMilestoneToolbarClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainViewModel vm)
+                return;
+
+            var asChild = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+            vm.AddMilestone(asChild);
         }
 
         private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
@@ -966,6 +990,8 @@ namespace NXProject.Views
             if (!ConfirmCompletedTfsState(vm))
                 return;
 
+            vm.ApplyMilestonePredecessors();
+
             System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
             Services.TfsImportService.SyncReport? report = null;
             try
@@ -1285,7 +1311,13 @@ namespace NXProject.Views
             if (DataContext is not MainViewModel vm)
                 return;
 
+            OpenSprintSettings(vm);
+        }
+
+        private void OpenSprintSettings(MainViewModel vm)
+        {
             new SprintManagerWindow(vm) { Owner = this }.ShowDialog();
+            RefreshCriticalPath(vm);
             GanttCtrl.ForceRender();
         }
 
@@ -2255,7 +2287,12 @@ namespace NXProject.Views
         private void OnCriticalPathWindowClick(object sender, RoutedEventArgs e)
         {
             if (DataContext is not MainViewModel vm || vm.Project == null) return;
-            new CriticalPathWindow(AllTasksFlat(vm)) { Owner = this }.ShowDialog();
+            new CriticalPathWindow(
+                AllTasksFlat(vm),
+                vm.Project.CriticalPathRiskSlackDays,
+                vm.Project.CriticalPathCriticalSlackDays,
+                () => OpenSprintSettings(vm))
+                { Owner = this }.ShowDialog();
         }
 
         private void RefreshCriticalPath(MainViewModel vm)
@@ -2263,17 +2300,27 @@ namespace NXProject.Views
             if (vm.Project?.ShowCriticalPath == true)
             {
                 var entries = NXProject.Services.CriticalPathService.Compute(AllTasksFlat(vm));
-                var ids = entries
-                    .Where(e => e.TotalFloat < 0.5)
+                var riskSlackDays = Math.Max(0.0, vm.Project.CriticalPathRiskSlackDays);
+                var criticalSlackDays = Math.Max(0.0, vm.Project.CriticalPathCriticalSlackDays);
+                if (riskSlackDays < criticalSlackDays)
+                    riskSlackDays = criticalSlackDays;
+                var criticalIds = entries
+                    .Where(e => e.TotalFloat < criticalSlackDays)
+                    .Select(e => e.Task.Id)
+                    .ToHashSet();
+                var riskIds = entries
+                    .Where(e => e.TotalFloat >= criticalSlackDays && riskSlackDays > 0.0 && e.TotalFloat <= riskSlackDays)
                     .Select(e => e.Task.Id)
                     .ToHashSet();
                 GanttCtrl.ShowCriticalPath = true;
-                GanttCtrl.CriticalTaskIds  = ids;
+                GanttCtrl.CriticalTaskIds  = criticalIds;
+                GanttCtrl.CriticalPathRiskTaskIds = riskIds;
             }
             else
             {
                 GanttCtrl.ShowCriticalPath = false;
                 GanttCtrl.CriticalTaskIds  = null;
+                GanttCtrl.CriticalPathRiskTaskIds = null;
             }
             GanttCtrl.ForceRender();
         }

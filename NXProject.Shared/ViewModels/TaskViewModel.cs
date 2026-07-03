@@ -155,6 +155,11 @@ namespace NXProject.ViewModels
             {
                 _task.TfsType = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(DisplayId));
+                OnPropertyChanged(nameof(HasDevOpsLink));
+                OnPropertyChanged(nameof(IsNoDevOpsActivity));
+                OnPropertyChanged(nameof(IsDevOpsMilestoneActivity));
+                OnPropertyChanged(nameof(CanUseZeroDuration));
                 OnPropertyChanged(nameof(DevOpsTag));
                 OnPropertyChanged(nameof(DevOpsTooltip));
                 OnPropertyChanged(nameof(SupportsSprint));
@@ -458,6 +463,8 @@ namespace NXProject.ViewModels
             get {
                 if (_task.IsSummary)
                     return SumTaskHours(_task);
+                if (_task.IsMilestone)
+                    return 0;
                 var cur = _task.CurrentHours ?? 0;
                 var est = _task.EstimatedHours ?? 0;
                 if (cur > 0 || est > 0) return cur + est;
@@ -471,6 +478,45 @@ namespace NXProject.ViewModels
 
                 if (value >= 0)
                 {
+                    if (value <= 0.0001)
+                    {
+                        if (!CanUseZeroDuration)
+                            return;
+
+                        _task.IsMilestone = true;
+                        _task.CurrentHours = null;
+                        _task.EstimatedHours = 0;
+                        _task.OriginalEstimatedHours = null;
+                        SyncAssignmentEstimatedHours(0);
+                        _task.Finish = _task.Start;
+                        _task.PercentComplete = 0;
+
+                        OnPropertyChanged();
+                        OnPropertyChanged(nameof(IsMilestone));
+                        OnPropertyChanged(nameof(CurrentHours));
+                        OnPropertyChanged(nameof(CurrentHoursDisplay));
+                        OnPropertyChanged(nameof(EstimatedHoursDisplay));
+                        OnPropertyChanged(nameof(PercentComplete));
+                        OnPropertyChanged(nameof(Finish));
+                        OnPropertyChanged(nameof(FinishDisplay));
+                        OnPropertyChanged(nameof(DurationDays));
+                        OnPropertyChanged(nameof(DisplayAsMilestone));
+                        RefreshOriginalEstimatedHoursProperties();
+                        RecalcAncestorSummaries();
+                        RefreshAncestorCalculatedProperties();
+                        ScheduleSuccessors?.Invoke(this);
+                        return;
+                    }
+
+                    if (IsDevOpsMilestoneActivity)
+                        return;
+
+                    if (_task.IsMilestone)
+                    {
+                        _task.IsMilestone = false;
+                        OnPropertyChanged(nameof(IsMilestone));
+                    }
+
                     // Ao editar, o usuário define o total; HH Atual não muda — extrai HH Restante.
                     var remaining = _task.CurrentHours is > 0
                         ? Math.Max(0, value - _task.CurrentHours.Value)
@@ -511,19 +557,9 @@ namespace NXProject.ViewModels
             set
             {
                 if (!CanEditDuration) return;
-                var raw = value?.Trim() ?? string.Empty;
-                double hours;
-                if (raw.EndsWith("d", StringComparison.OrdinalIgnoreCase) &&
-                    double.TryParse(raw[..^1].Trim(), System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.CurrentCulture, out var days))
-                {
-                    hours = days * ProjectCalendarService.WorkingHoursPerDay;
-                }
-                else if (!double.TryParse(raw, System.Globalization.NumberStyles.Any,
-                             System.Globalization.CultureInfo.CurrentCulture, out hours))
-                {
+                if (!TryParseDurationText(value, out var hours))
                     return; // entrada inválida — ignora
-                }
+
                 DurationHours = Math.Max(0, hours);
             }
         }
@@ -803,6 +839,47 @@ namespace NXProject.ViewModels
         public bool CanEditDuration => _task.Children.Count == 0 && !UsesSfpEstimate;
 
         public bool IsDurationReadOnly => !CanEditDuration || _task.PercentComplete >= 100;
+
+        public bool IsNoDevOpsActivity => IsNoDevOpsType(_task.TfsType);
+
+        public bool IsDevOpsMilestoneActivity => IsDevOpsMilestoneType(_task.TfsType);
+
+        public bool CanUseZeroDuration => IsNoDevOpsActivity || IsDevOpsMilestoneActivity;
+
+        public static bool IsNoDevOpsType(string? type)
+        {
+            var normalized = (type ?? string.Empty)
+                .Trim()
+                .Replace(" ", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace("_", string.Empty);
+            return string.Equals(normalized, "NoDevOps", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsDevOpsMilestoneType(string? type)
+        {
+            var normalized = (type ?? string.Empty)
+                .Trim()
+                .Replace(" ", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace("_", string.Empty);
+            return string.Equals(normalized, "MarcoDevops", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool TryParseDurationText(string? value, out double hours)
+        {
+            var raw = value?.Trim() ?? string.Empty;
+            if (raw.EndsWith("d", StringComparison.OrdinalIgnoreCase) &&
+                double.TryParse(raw[..^1].Trim(), System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.CurrentCulture, out var days))
+            {
+                hours = days * ProjectCalendarService.WorkingHoursPerDay;
+                return true;
+            }
+
+            return double.TryParse(raw, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.CurrentCulture, out hours);
+        }
 
         public double? CurrentHours => _task.CurrentHours;
         public double? EstimatedHoursValue => _task.EstimatedHours;
@@ -1094,13 +1171,21 @@ namespace NXProject.ViewModels
                         var resolved = FindByDisplayId(raw);
                         if (resolved.HasValue)
                         {
+                            var predecessor = FindByInternalId?.Invoke(resolved.Value);
+                            if (!CanUsePredecessor(predecessor))
+                                continue;
+
                             _task.PredecessorIds.Add(resolved.Value);
                             continue;
                         }
                     }
                     // Fallback: trata como Id interno direto.
                     if (int.TryParse(raw, out int id))
-                        _task.PredecessorIds.Add(id);
+                    {
+                        var predecessor = FindByInternalId?.Invoke(id);
+                        if (CanUsePredecessor(predecessor))
+                            _task.PredecessorIds.Add(id);
+                    }
                 }
                 if (_task.PredecessorIds.Count == 0)
                 {
@@ -1130,6 +1215,14 @@ namespace NXProject.ViewModels
                 MoveAfterLatestPredecessor();
                 OnPropertyChanged();
             }
+        }
+
+        private bool CanUsePredecessor(TaskViewModel? predecessor)
+        {
+            if (IsNoDevOpsActivity || predecessor == null)
+                return true;
+
+            return predecessor.Model.TfsId is > 0 || !predecessor.IsNoDevOpsActivity;
         }
 
         public bool CanEditPredecessors => _task.Children.Count == 0;

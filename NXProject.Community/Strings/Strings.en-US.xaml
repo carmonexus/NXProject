@@ -43,7 +43,7 @@
     <!-- View Menu -->
     <sys:String x:Key="Menu_View">_View</sys:String>
     <sys:String x:Key="Menu_View_Gantt">G_antt</sys:String>
-    <sys:String x:Key="Menu_View_Sprint">_Sprint...</sys:String>
+    <sys:String x:Key="Menu_View_Sprint">_Sprint and Critical Path...</sys:String>
     <sys:String x:Key="Menu_View_Sfp">S_PF...</sys:String>
     <sys:String x:Key="Menu_View_Calendar">_Calendar...</sys:String>
     <sys:String x:Key="Menu_View_Resources">_Resource Allocation...</sys:String>

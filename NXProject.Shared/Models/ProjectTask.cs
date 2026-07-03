@@ -50,8 +50,9 @@ namespace NXProject.Models
         // Substitui a convenção TfsId == 0, que agora coexiste para compatibilidade.
         public bool IsPendingTfsCreate { get; set; } = false;
 
-        // true = task tem vínculo real com o DevOps (TfsId preenchido e não pendente de criação).
-        public bool HasTfsLink => TfsId.HasValue && TfsId.Value != 0 && !IsPendingTfsCreate;
+        // true = task tem vínculo real com o DevOps (TfsId positivo e não pendente de criação).
+        // IDs negativos são internos de atividades No DevOps.
+        public bool HasTfsLink => TfsId.HasValue && TfsId.Value > 0 && !IsPendingTfsCreate;
         // Id do work item PAI no DevOps (parent hierárquico) na época da importação,
         // usado para detectar reparenting e atualizar o link na sincronização.
         public int? TfsParentId { get; set; }

@@ -75,6 +75,7 @@
                     <ComboBoxItem>Epic</ComboBoxItem>
                     <ComboBoxItem>Feature</ComboBoxItem>
                     <ComboBoxItem>Story</ComboBoxItem>
+                    <ComboBoxItem>Marco-Devops</ComboBoxItem>
                     <ComboBoxItem>No DevOps</ComboBoxItem>
                 </ComboBox>
 
