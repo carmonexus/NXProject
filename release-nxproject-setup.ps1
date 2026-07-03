@@ -119,6 +119,11 @@ Write-Host "Instalador self-contained: nao exige .NET pre-instalado para RODAR o
 Write-Host "So precisa ser regenerado quando as dependencias NuGet do projeto mudarem." -ForegroundColor Yellow
 
 Write-Step "Validando conteudo do NXProject-Setup.zip..."
+# Remove o .exe antigo antes de compilar: se o build falhar, o passo seguinte
+# encontra "arquivo nao existe" em vez de rodar um binario velho.
+if (Test-Path $TestExePath) {
+    Remove-Item -LiteralPath $TestExePath -Force
+}
 dotnet build $TestProjectFile -c $Configuration --nologo -v q
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Falha ao compilar NXTestUnit para validacao." -ForegroundColor Red

@@ -180,9 +180,31 @@ Invoke-DotnetCommandWithRetry -ActionLabel "O restore do NXTestUnit" -Command {
     dotnet restore $TestProjectFile --nologo -v q
 }
 
+# Remove o .exe antigo antes de compilar: se o build falhar por qualquer motivo,
+# o passo seguinte encontra "arquivo nao existe" em vez de rodar um binario velho.
+if (Test-Path $TestExePath) {
+    Remove-Item -LiteralPath $TestExePath -Force
+}
+
+Write-Step "Compilando NXTestUnit..."
+Invoke-DotnetCommandWithRetry -ActionLabel "A compilacao do NXTestUnit" -Command {
+    dotnet build $TestProjectFile -c $Configuration --no-restore --nologo
+}
+
+if (-not (Test-Path $TestExePath)) {
+    Write-Host "NXTestUnit.exe nao foi gerado apos o build em $TestExePath." -ForegroundColor Red
+    exit 1
+}
+
 Write-Step "Rodando NXTestUnit..."
-Invoke-DotnetCommandWithRetry -ActionLabel "O NXTestUnit" -Command {
-    dotnet run --project $TestProjectFile -c $Configuration --no-restore --nologo
+# Roda o .exe compilado diretamente (nao 'dotnet run'): o apphost nativo usa a
+# cultura do sistema, enquanto 'dotnet run'/'dotnet exec' pode usar cultura
+# diferente e quebrar testes de calendario que dependem do dia da semana.
+& $TestExePath
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "NXTestUnit falhou. Release NAO sera gerada." -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ""
