@@ -191,12 +191,6 @@ if (-not (Test-Path $exePath)) {
 Copy-Item -Path (Join-Path $PublishDir "*") -Destination $StageDir -Recurse -Force
 Remove-UnusedSatelliteResourceFolders $StageDir
 
-$PptSrc = Join-Path $SolutionDir "NXProject_Gestao_Inteligente_DevOps.pptx"
-if (Test-Path $PptSrc) {
-    Copy-Item -Path $PptSrc -Destination (Join-Path $StageDir "NXProject_Gestao_Inteligente_DevOps.pptx") -Force
-    Write-Host "  PPT incluido no pacote." -ForegroundColor DarkGray
-}
-
 @"
 NXProject Community
 
