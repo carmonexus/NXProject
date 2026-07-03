@@ -149,14 +149,13 @@ if ($Upload) {
         exit 1
     }
 
-    Write-Step "Publicando assets do NXProject-Setup na release $TagName..."
-    gh release upload $TagName $SetupOutputExe $SetupOutputZip --repo nexusxdata/NXProject --clobber
+    Write-Step "Publicando NXProject-Setup.zip na release $TagName..."
+    gh release upload $TagName $SetupOutputZip --repo nexusxdata/NXProject --clobber
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Falha ao publicar assets do NXProject-Setup no GitHub." -ForegroundColor Red
+        Write-Host "Falha ao publicar NXProject-Setup.zip no GitHub." -ForegroundColor Red
         exit 1
     }
 
-    Write-Host "Assets publicados:" -ForegroundColor Green
-    Write-Host "  NXProject-Setup.exe" -ForegroundColor DarkGray
+    Write-Host "Asset publicado:" -ForegroundColor Green
     Write-Host "  NXProject-Setup.zip" -ForegroundColor DarkGray
 }
