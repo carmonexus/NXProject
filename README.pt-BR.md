@@ -65,15 +65,18 @@ Hoje o NXProject transforma dados do Azure DevOps em uma visão gerencial de pla
 
 ## Download
 
-- [Baixar ZIP do NXProject Community com `.exe` e DLLs](../../releases/latest/download/NXProject.Community-Release.zip)
+**Primeira instalação?** Baixe e rode o Setup — ele instala o runtime do .NET, as bibliotecas de terceiros e cria um atalho na Área de Trabalho, depois baixa automaticamente a versão mais recente do NXProject:
+
+- [Baixar NXProject-Setup.zip](../../releases/latest/download/NXProject-Setup.zip)
+
+**Já tem o NXProject instalado?** Basta baixar o pacote pequeno de atualização e extrair por cima da instalação existente:
+
+- [Baixar NXProject.Community-Release.zip (atualização)](../../releases/latest/download/NXProject.Community-Release.zip)
 - [Ver notas da versão e downloads do código-fonte](../../releases/latest)
 
-**Não precisa instalar nada.** Extraia o ZIP e execute o `NXProject.Community.exe` — o runtime do .NET já vem embutido.
-
-> O binário foi gerado em ambiente com antivírus McAfee. Se preferir compilar você mesmo, veja as instruções abaixo.
+> Sozinho, o `NXProject.Community-Release.zip` **não** inclui o runtime do .NET nem as bibliotecas de terceiros (PdfSharp, WebView2, CommunityToolkit.Mvvm) — ele só contém os arquivos do app (`.exe`/`.dll`) que mudam a cada release, e precisa ser extraído **por cima** de uma instalação já existente (feita pelo NXProject-Setup ou por uma versão completa anterior). Use o NXProject-Setup.zip para instalar em uma máquina nova.
 >
-> Nota para publicação: o `.exe` oficial do NXProject Community deve ser gerado com `dotnet publish --self-contained true`, para que o pacote de release inclua o runtime do .NET e execute direto pelo `NXProject.Community.exe`.
-> Se o pacote for gerado apenas com `dotnet build`, o Windows pode exibir uma mensagem enganosa de .NET corrompido, instalação quebrada ou runtime ausente.
+> Os binários foram gerados em ambiente com antivírus McAfee. Se preferir compilar você mesmo, veja as instruções abaixo.
 
 ---
 

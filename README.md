@@ -65,15 +65,18 @@ Today NXProject turns Azure DevOps data into a management view of planning and e
 
 ## Download
 
-- [Download NXProject Community ZIP with `.exe` and DLLs](../../releases/latest/download/NXProject.Community-Release.zip)
+**First time installing?** Download and run the Setup — it installs the .NET runtime, third-party libraries and a Desktop shortcut, then automatically fetches the latest NXProject version:
+
+- [Download NXProject-Setup.zip](../../releases/latest/download/NXProject-Setup.zip)
+
+**Already installed?** Just grab the small update package and extract it over your existing installation:
+
+- [Download NXProject.Community-Release.zip (update)](../../releases/latest/download/NXProject.Community-Release.zip)
 - [View release notes and source code downloads](../../releases/latest)
 
-**No installation required.** Extract the ZIP and run `NXProject.Community.exe` — the .NET runtime is bundled inside.
-
-> The binary was built in an environment with McAfee antivirus. If you prefer to build from source, see the instructions below.
+> `NXProject.Community-Release.zip` alone does **not** include the .NET runtime or third-party libraries (PdfSharp, WebView2, CommunityToolkit.Mvvm) — it only contains the app files (`.exe`/`.dll`) that change every release, and must be extracted **on top of** an existing installation (created by NXProject-Setup or a previous full release). Use NXProject-Setup.zip for a first-time install on a new machine.
 >
-> Release note: the official NXProject Community `.exe` must be generated with `dotnet publish --self-contained true`, so the release package includes the .NET runtime and runs directly through `NXProject.Community.exe`.
-> If the package is generated only with `dotnet build`, Windows may show a misleading corrupted .NET, broken installation, or missing runtime message.
+> The binaries were built in an environment with McAfee antivirus. If you prefer to build from source, see the instructions below.
 
 ---
 
