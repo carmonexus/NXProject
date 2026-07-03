@@ -16,6 +16,43 @@ function Get-ExePath($configuration) {
     return $null
 }
 
+function Test-NXProjectCertificateInCurrentUserRoot {
+    $certSubject = "CN=NXProject Dev Local"
+    $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue |
+            Where-Object { $_.Subject -eq $certSubject } |
+            Select-Object -First 1
+
+    if (-not $cert) { return $false }
+
+    $store = $null
+    try {
+        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root", "CurrentUser")
+        $store.Open("ReadOnly")
+        return [bool]($store.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint })
+    } catch {
+        Write-Host "Nao foi possivel verificar CurrentUser\Root: $($_.Exception.Message)" -ForegroundColor Yellow
+        return $false
+    } finally {
+        if ($store) { $store.Close() }
+    }
+}
+
+function Ensure-NXProjectCertificateTrusted {
+    if (Test-NXProjectCertificateInCurrentUserRoot) { return }
+
+    $signScript = Join-Path $PSScriptRoot "sign-nxproject.ps1"
+    if (-not (Test-Path $signScript)) {
+        Write-Host "Script de assinatura nao encontrado: $signScript" -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "Certificado NXProject nao esta confiavel em CurrentUser\Root. Tentando instalar e assinar..." -ForegroundColor Yellow
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $signScript
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Aviso: assinatura/configuracao do certificado falhou. O aplicativo ainda sera iniciado." -ForegroundColor Yellow
+    }
+}
+
 if ($PSBoundParameters.ContainsKey('Configuration')) {
     $exe = Get-ExePath $Configuration
     if ($null -eq $exe) {
@@ -36,6 +73,8 @@ else {
         exit 1
     }
 }
+
+Ensure-NXProjectCertificateTrusted
 
 Write-Host "Iniciando NXProject..." -ForegroundColor Cyan
 & $exe

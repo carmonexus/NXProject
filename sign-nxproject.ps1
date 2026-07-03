@@ -12,6 +12,38 @@ $ProjectBin  = @(
     (Join-Path $PSScriptRoot "NXProject.Community\bin\Release\net10.0-windows")
 )
 
+function Open-CurrentUserStore([string]$StoreName, [string]$OpenFlags = "ReadWrite") {
+    $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($StoreName, "CurrentUser")
+    $store.Open($OpenFlags)
+    return $store
+}
+
+function Add-CertificateToCurrentUserStore(
+    [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+    [string]$StoreName,
+    [string]$Purpose
+) {
+    $store = $null
+    try {
+        $store = Open-CurrentUserStore $StoreName
+        $alreadyThere = $store.Certificates | Where-Object { $_.Thumbprint -eq $Certificate.Thumbprint }
+        if ($alreadyThere) {
+            Write-Host "   CurrentUser\$StoreName ja contem o certificado ($Purpose)." -ForegroundColor DarkGray
+            return
+        }
+
+        Write-Host "   Gravando certificado em CurrentUser\$StoreName ($Purpose)..." -ForegroundColor Cyan
+        $store.Add($Certificate)
+
+        $installed = $store.Certificates | Where-Object { $_.Thumbprint -eq $Certificate.Thumbprint }
+        if (-not $installed) {
+            throw "O certificado nao apareceu em CurrentUser\$StoreName apos a gravacao."
+        }
+    } finally {
+        if ($store) { $store.Close() }
+    }
+}
+
 Write-Host "==> Verificando certificado do usuario atual..." -ForegroundColor Cyan
 $certificates = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue |
                 Where-Object { $_.Subject -eq $CertSubject }
@@ -23,8 +55,7 @@ if ($RecreateCertificate) {
 
     foreach ($storeName in @("My", "TrustedPublisher", "Root")) {
         try {
-            $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($storeName, "CurrentUser")
-            $store.Open("ReadWrite")
+            $store = Open-CurrentUserStore $storeName
             $toRemove = $store.Certificates | Where-Object { $_.Thumbprint -in $thumbprints -or $_.Subject -eq $CertSubject }
             foreach ($c in $toRemove) { $store.Remove($c) }
             $store.Close()
@@ -49,35 +80,21 @@ if (-not $cert) {
     Write-Host "   Certificado ja existe: $($cert.Thumbprint)" -ForegroundColor Green
 }
 
-# Exporta e instala como confiavel apenas para o usuario atual (so se ainda nao estiver la).
+# Mantem a chave privada em CurrentUser\My para assinar, e grava uma copia publica em
+# CurrentUser\Root para o Windows confiar neste certificado autoassinado.
 Write-Host "==> Verificando certificado nos stores confiaveis..." -ForegroundColor Cyan
 try {
-    $stores = @("Root", "TrustedPublisher")
-    foreach ($storeName in $stores) {
-        $store = $null
-        try {
-            $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($storeName, "CurrentUser")
-            $store.Open("ReadWrite")
-            $alreadyThere = $store.Certificates | Where-Object { $_.Thumbprint -eq $cert.Thumbprint }
-            if (-not $alreadyThere) {
-                Write-Host "   Adicionando ao store CurrentUser\$storeName..." -ForegroundColor Cyan
-                $store.Add($cert)
-            }
-        } catch {
-            Write-Host "   Erro ao acessar CurrentUser\${storeName}: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host ""
-            Write-Host "A pasta do projeto esta acessivel; a falha ocorreu no repositorio de certificados do Windows." -ForegroundColor Yellow
-            Write-Host "Para o Windows confiar na assinatura, o certificado precisa estar em CurrentUser\Root e CurrentUser\TrustedPublisher." -ForegroundColor Yellow
-            Write-Host "Se o Windows bloquear esse store, tente recriar o certificado ou execute uma vez em PowerShell elevado:" -ForegroundColor Yellow
-            Write-Host ""
-            Write-Host "  powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -RecreateCertificate" -ForegroundColor Cyan
-            throw
-        } finally {
-            if ($store) { $store.Close() }
-        }
-    }
+    Add-CertificateToCurrentUserStore $cert "Root" "raiz confiavel do usuario atual"
+    Add-CertificateToCurrentUserStore $cert "TrustedPublisher" "publicador confiavel do usuario atual"
     Write-Host "   Certificado confiavel." -ForegroundColor Green
 } catch {
+    Write-Host "   Erro ao gravar certificado em store CurrentUser: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "A pasta do projeto esta acessivel; a falha ocorreu no repositorio de certificados do Windows." -ForegroundColor Yellow
+    Write-Host "Para o Windows confiar na assinatura, o certificado precisa estar em CurrentUser\Root e CurrentUser\TrustedPublisher." -ForegroundColor Yellow
+    Write-Host "Se o Windows bloquear esse store, tente recriar o certificado ou execute uma vez em PowerShell elevado:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -RecreateCertificate" -ForegroundColor Cyan
     exit 1
 }
 
