@@ -44,7 +44,11 @@ internal static class Program
         ("Import TFS: atividades internas DevOps sao vinculadas por nome ou preservadas", ImportMatchesOrPreservesInternalDevOpsActivities),
         ("Resumo: datas e percentual consolidam filhos", SummaryRollupUsesChildrenDatesAndHours),
         ("Predecessor virtual: aplica fila por mesmo recurso e recalcula fim", VirtualPredecessorQueuesSameResourceSiblings),
-        ("Predecessor virtual: mudanca de duracao recalcula inicio e fim das seguintes", VirtualPredecessorDurationChangeCascadesFinish)
+        ("Predecessor virtual: mudanca de duracao recalcula inicio e fim das seguintes", VirtualPredecessorDurationChangeCascadesFinish),
+        ("Setup update: sem baseline conhecida nao dispara reinstalacao", SetupUpdateNoBaselineDoesNotTrigger),
+        ("Setup update: asset igual a baseline nao dispara reinstalacao", SetupUpdateSameTimestampDoesNotTrigger),
+        ("Setup update: asset mais antigo que a baseline nao dispara reinstalacao", SetupUpdateOlderAssetDoesNotTrigger),
+        ("Setup update: asset mais novo que a baseline dispara reinstalacao", SetupUpdateNewerAssetTriggers)
     ];
 
     private static int Main(string[] args)
@@ -1103,6 +1107,40 @@ internal static class Program
 
             return null;
         };
+    }
+
+    private static void SetupUpdateNoBaselineDoesNotTrigger()
+    {
+        var remote = DateTimeOffset.UtcNow;
+        var result = UpdateService.ShouldTriggerSetupUpdate(null, remote);
+        if (result)
+            throw new InvalidOperationException("Sem baseline conhecida, nao deveria disparar reinstalacao (evita falso positivo).");
+    }
+
+    private static void SetupUpdateSameTimestampDoesNotTrigger()
+    {
+        var t = DateTimeOffset.UtcNow;
+        var result = UpdateService.ShouldTriggerSetupUpdate(t, t);
+        if (result)
+            throw new InvalidOperationException("Asset com o mesmo timestamp da baseline nao deveria disparar reinstalacao.");
+    }
+
+    private static void SetupUpdateOlderAssetDoesNotTrigger()
+    {
+        var known = DateTimeOffset.UtcNow;
+        var remote = known.AddHours(-1);
+        var result = UpdateService.ShouldTriggerSetupUpdate(known, remote);
+        if (result)
+            throw new InvalidOperationException("Asset mais antigo que a baseline nao deveria disparar reinstalacao.");
+    }
+
+    private static void SetupUpdateNewerAssetTriggers()
+    {
+        var known = DateTimeOffset.UtcNow;
+        var remote = known.AddHours(1);
+        var result = UpdateService.ShouldTriggerSetupUpdate(known, remote);
+        if (!result)
+            throw new InvalidOperationException("Asset mais novo que a baseline deveria disparar reinstalacao.");
     }
 
     private static void AssertEqual(DateTime expected, DateTime actual, string message)

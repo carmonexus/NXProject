@@ -31,6 +31,9 @@
     <Compile Include="..\NXProject.Community\Services\AppStrings.cs">
       <Link>Services\AppStrings.cs</Link>
     </Compile>
+    <Compile Include="..\NXProject.Community\Services\UpdateService.cs">
+      <Link>Services\UpdateService.cs</Link>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>

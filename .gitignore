@@ -16,6 +16,7 @@ objetivo.md
 
 dist/
 NXProject-Setup/Payload/*.zip
+NXProject.Community/Assets/known-setup-timestamp.txt
 
 teste.pdf
 teste_openproj.pod

@@ -189,6 +189,19 @@ Write-Host ""
 Write-Host ">> Versao: $CurrentVersion → $NewVersion" -ForegroundColor Yellow
 Set-ProjectVersion $ProjectFile $NewVersion
 
+# Grava a data do NXProject-Setup.zip local atual (se existir) embutida no build —
+# usada por UpdateService.CheckForSetupUpdateAsync para saber se o Setup publicado
+# no GitHub foi regenerado depois deste build (ex.: nova lib NuGet adicionada).
+$SetupZipForTimestamp = Join-Path $SolutionDir "dist\setup\NXProject-Setup.zip"
+$KnownSetupTimestampPath = Join-Path $SolutionDir "NXProject.Community\Assets\known-setup-timestamp.txt"
+if (Test-Path $SetupZipForTimestamp) {
+    $setupTimestamp = (Get-Item $SetupZipForTimestamp).LastWriteTimeUtc.ToString("o")
+    Set-Content -Path $KnownSetupTimestampPath -Value $setupTimestamp -Encoding ASCII -NoNewline
+    Write-Host "  Timestamp do Setup embutido no build: $setupTimestamp" -ForegroundColor DarkGray
+} elseif (Test-Path $KnownSetupTimestampPath) {
+    Remove-Item -LiteralPath $KnownSetupTimestampPath -Force
+}
+
 # Remove obj/ (nao so o assets.json) para forcar restore limpo com o RID correto —
 # um build/restore anterior sem RID pode deixar o assets.json sem o alvo win-x64.
 $objDir = Join-Path $SolutionDir "NXProject.Community\obj"

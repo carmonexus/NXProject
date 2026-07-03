@@ -36,6 +36,7 @@ public static class UpdateService
     }
 
     public record ReleaseInfo(string TagName, string DownloadUrl, string HtmlUrl);
+    public record SetupUpdateInfo(string TagName, string DownloadUrl, string HtmlUrl, DateTimeOffset UpdatedAt);
 
     public static async Task<ReleaseInfo?> CheckForUpdateAsync(CancellationToken ct = default)
     {
@@ -70,6 +71,52 @@ public static class UpdateService
         if (release is null) return null;
 
         return ToReleaseInfo(release, SetupZipAssetName, SetupExeAssetName);
+    }
+
+    /// <summary>Compara a data do NXProject-Setup.zip mais recente do GitHub com a data
+    /// conhecida embutida neste build (gravada quando o release foi gerado). Retorna
+    /// nao-nulo quando o Setup publicado e mais novo que o que este app conhece —
+    /// sinal de que uma biblioteca nova foi adicionada e o Setup precisa ser reinstalado.</summary>
+    public static async Task<SetupUpdateInfo?> CheckForSetupUpdateAsync(CancellationToken ct = default)
+    {
+        using var client = CreateClient();
+        var release = await client.GetFromJsonAsync<GithubRelease>(ApiUrl, ct);
+        if (release?.Assets is null) return null;
+
+        var asset = release.Assets.Find(a => string.Equals(a.Name, SetupZipAssetName, StringComparison.OrdinalIgnoreCase));
+        if (asset is null) return null;
+
+        var known = GetKnownSetupTimestamp();
+        if (!ShouldTriggerSetupUpdate(known, asset.UpdatedAt)) return null;
+
+        return new SetupUpdateInfo(release.TagName, asset.BrowserDownloadUrl, release.HtmlUrl, asset.UpdatedAt);
+    }
+
+    /// <summary>Logica pura (sem rede) de decisao: dispara a reinstalacao via Setup somente
+    /// quando ha uma baseline conhecida E o asset publicado e estritamente mais novo que ela.
+    /// Sem baseline (build local/antiga sem o arquivo embutido), nao arrisca falso positivo.</summary>
+    public static bool ShouldTriggerSetupUpdate(DateTimeOffset? knownTimestamp, DateTimeOffset remoteAssetUpdatedAt)
+    {
+        if (knownTimestamp is null) return false;
+        return remoteAssetUpdatedAt > knownTimestamp.Value;
+    }
+
+    /// <summary>Le a data do NXProject-Setup.zip que era o mais recente quando este
+    /// build do NXProject.Community foi gerado (arquivo embutido em tempo de release).
+    /// Retorna null se o build nao tiver essa informacao (ex.: build local de desenvolvimento).</summary>
+    private static DateTimeOffset? GetKnownSetupTimestamp()
+    {
+        var asm = Assembly.GetExecutingAssembly();
+        var resourceName = asm.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("known-setup-timestamp.txt", StringComparison.OrdinalIgnoreCase));
+        if (resourceName is null) return null;
+
+        using var stream = asm.GetManifestResourceStream(resourceName);
+        if (stream is null) return null;
+
+        using var reader = new StreamReader(stream);
+        var text = reader.ReadToEnd().Trim();
+        return DateTimeOffset.TryParse(text, out var dt) ? dt : null;
     }
 
     public static async Task<string> DownloadAndExtractAsync(
@@ -250,5 +297,8 @@ public static class UpdateService
 
         [JsonPropertyName("browser_download_url")]
         public string BrowserDownloadUrl { get; set; } = "";
+
+        [JsonPropertyName("updated_at")]
+        public DateTimeOffset UpdatedAt { get; set; }
     }
 }

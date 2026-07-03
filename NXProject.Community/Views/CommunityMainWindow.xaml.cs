@@ -312,6 +312,26 @@ namespace NXProject.Views
             try
             {
                 IsEnabled = false;
+                var setupUpdate = await NXProject.Services.UpdateService.CheckForSetupUpdateAsync();
+                if (setupUpdate is not null)
+                {
+                    IsEnabled = true;
+                    var proceedSetup = MessageBox.Show(
+                        "Uma nova versao base do NXProject foi publicada (por exemplo, uma biblioteca nova foi adicionada) " +
+                        "e requer reinstalacao pelo NXProject-Setup.\n\n" +
+                        "O NXProject-Setup sera baixado e aberto agora; este aplicativo sera encerrado.\n\nDeseja continuar?",
+                        "Atualizacao de base necessaria",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning);
+
+                    if (proceedSetup == MessageBoxResult.Yes)
+                    {
+                        IsEnabled = false;
+                        await DownloadAndLaunchSetupAsync(setupUpdate.DownloadUrl);
+                        return;
+                    }
+                }
+
                 var release = await NXProject.Services.UpdateService.CheckForUpdateAsync();
                 IsEnabled = true;
 
@@ -348,6 +368,42 @@ namespace NXProject.Views
                     "Verificar Atualizacao",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+            }
+        }
+
+        private async Task DownloadAndLaunchSetupAsync(string downloadUrl)
+        {
+            try
+            {
+                var extractedDir = await NXProject.Services.UpdateService.DownloadAndExtractAsync(downloadUrl);
+                var setupExePath = System.IO.Path.Combine(extractedDir, "NXProject-Setup.exe");
+                if (!System.IO.File.Exists(setupExePath))
+                {
+                    IsEnabled = true;
+                    MessageBox.Show(
+                        "Nao foi possivel encontrar o NXProject-Setup.exe no pacote baixado.",
+                        "Atualizacao de base necessaria",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    return;
+                }
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(setupExePath)
+                {
+                    WorkingDirectory = extractedDir,
+                    UseShellExecute = true
+                });
+
+                System.Windows.Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                IsEnabled = true;
+                MessageBox.Show(
+                    $"Falha ao baixar/abrir o NXProject-Setup.\n\n{ex.Message}",
+                    "Atualizacao de base necessaria",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
