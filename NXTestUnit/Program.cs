@@ -116,6 +116,7 @@ internal static class Program
         var zipPath = Path.Combine(_solutionRoot, "dist", "community", "NXProject.Community-Release.zip");
         var manifestPath = Path.Combine(AppContext.BaseDirectory, "PackagingManifests", "release-zip-required-files.json");
         ValidateZipAgainstManifest(zipPath, manifestPath);
+        ValidateSelfContainedNotSingleFile(zipPath, "NXProject.Community.exe", "NXProject.Community.dll", "NXProject.Community.runtimeconfig.json");
     }
 
     private static void ValidateSetupZip()
@@ -123,6 +124,37 @@ internal static class Program
         var zipPath = Path.Combine(_solutionRoot, "dist", "setup", "NXProject-Setup.zip");
         var manifestPath = Path.Combine(AppContext.BaseDirectory, "PackagingManifests", "setup-zip-required-files.json");
         ValidateZipAgainstManifest(zipPath, manifestPath);
+        ValidateSelfContainedNotSingleFile(zipPath, "NXProject-Setup.exe", "NXProject-Setup.dll", "NXProject-Setup.runtimeconfig.json");
+    }
+
+    /// <summary>Confirma que o publish foi self-contained (runtimeconfig.json com
+    /// "includedFrameworks", nao "frameworks") e nao foi PublishSingleFile (o .dll
+    /// companheiro do .exe existe como entrada separada no zip, nao embutido).</summary>
+    private static void ValidateSelfContainedNotSingleFile(string zipPath, string exeName, string dllName, string runtimeConfigName)
+    {
+        using var zip = ZipFile.OpenRead(zipPath);
+        var zipLabel = Path.GetFileName(zipPath);
+
+        var dllEntry = zip.Entries.FirstOrDefault(e => string.Equals(e.Name, dllName, StringComparison.OrdinalIgnoreCase));
+        if (dllEntry is null)
+            throw new InvalidOperationException(
+                $"'{zipLabel}': '{dllName}' nao encontrado como arquivo separado — parece que o publish usou PublishSingleFile.");
+
+        var configEntry = zip.Entries.FirstOrDefault(e => string.Equals(e.Name, runtimeConfigName, StringComparison.OrdinalIgnoreCase));
+        if (configEntry is null)
+            throw new InvalidOperationException($"'{zipLabel}': '{runtimeConfigName}' nao encontrado no zip.");
+
+        using var stream = configEntry.Open();
+        using var doc = JsonDocument.Parse(stream);
+        var root = doc.RootElement.GetProperty("runtimeOptions");
+
+        if (root.TryGetProperty("frameworks", out _) && !root.TryGetProperty("includedFrameworks", out _))
+            throw new InvalidOperationException(
+                $"'{zipLabel}': '{runtimeConfigName}' usa 'frameworks' (framework-dependent) em vez de 'includedFrameworks' (self-contained) — {exeName} exige .NET pre-instalado no sistema.");
+
+        if (!root.TryGetProperty("includedFrameworks", out _))
+            throw new InvalidOperationException(
+                $"'{zipLabel}': '{runtimeConfigName}' nao contem 'includedFrameworks' — publish nao parece self-contained.");
     }
 
     private static void ValidateZipAgainstManifest(string zipPath, string manifestPath)

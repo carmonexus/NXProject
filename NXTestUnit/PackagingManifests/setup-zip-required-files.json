@@ -1,5 +1,6 @@
 [
   "NXProject-Setup.exe",
+  "NXProject-Setup.runtimeconfig.json",
   "hostfxr.dll",
   "hostpolicy.dll",
   "coreclr.dll",
