@@ -67,7 +67,6 @@ $CurrentVersion = Get-ProjectVersion $ProjectFile
 $NewVersion = Step-Version $CurrentVersion $Bump
 
 $ZipPath = Join-Path $DistDir "NXProject.Community-Release.zip"
-$TarXzPath = Join-Path $DistDir "NXProject.Community-Release.tar.xz"
 
 function Write-Step($msg) {
     Write-Host ""
@@ -170,12 +169,12 @@ Invoke-DotnetCommandWithRetry -ActionLabel "O restore" -Command {
     dotnet restore $ProjectFile -r $Runtime --nologo -v q --force
 }
 
-Write-Step "Publicando NXProject Community self-contained ($Runtime)..."
+Write-Step "Publicando NXProject Community framework-dependent ($Runtime)..."
 if (Test-Path $PublishDir) {
     Remove-Item -LiteralPath $PublishDir -Recurse -Force
 }
 Invoke-DotnetCommandWithRetry -ActionLabel "A compilacao" -Command {
-    dotnet publish $ProjectFile -c $Configuration -r $Runtime --self-contained true -o $PublishDir --nologo --no-restore
+    dotnet publish $ProjectFile -c $Configuration -r $Runtime --self-contained false -o $PublishDir --nologo --no-restore
 }
 
 Write-Step "Preparando pasta de distribuicao..."
@@ -195,11 +194,16 @@ Remove-UnusedSatelliteResourceFolders $StageDir
 @"
 NXProject Community
 
+Requisito: .NET 10 Desktop Runtime (x64) instalado na maquina.
+Se nao tiver instalado, baixe em:
+https://dotnet.microsoft.com/download/dotnet/10.0
+(escolha ".NET Desktop Runtime" para Windows x64)
+
 Como executar:
 1. Extraia todo o conteudo deste pacote para uma pasta local.
 2. Execute o arquivo NXProject.Community.exe.
+   Se o Windows avisar que falta o .NET, use o link acima para instalar.
 
-Este pacote ja inclui o runtime do .NET para Windows x64.
 Se precisar diagnosticar abertura do aplicativo, execute:
 .\NXProject-Tracelog.ps1
 
@@ -225,35 +229,16 @@ cd /d "%~dp0"
 dotnet NXProject.Community.dll
 "@ | Set-Content -Path (Join-Path $StageDir "NXProject-FallbackLauncher.bat") -Encoding ASCII
 
-Write-Step "Gerando arquivos compactados..."
+Write-Step "Gerando arquivo compactado..."
 if (Test-Path $ZipPath) {
     Remove-Item -LiteralPath $ZipPath -Force
 }
-if (Test-Path $TarXzPath) {
-    Remove-Item -LiteralPath $TarXzPath -Force
-}
 Compress-Archive -Path (Join-Path $StageDir "*") -DestinationPath $ZipPath -Force
-
-$tarAvailable = Get-Command tar -ErrorAction SilentlyContinue
-if ($tarAvailable) {
-    tar -cJf $TarXzPath -C $DistDir "NXProject.Community"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  Aviso: falha ao gerar .tar.xz; o .zip sera mantido como pacote principal." -ForegroundColor Yellow
-        if (Test-Path $TarXzPath) {
-            Remove-Item -LiteralPath $TarXzPath -Force
-        }
-    }
-} else {
-    Write-Host "  tar.exe nao encontrado; gerando apenas .zip." -ForegroundColor Yellow
-}
 
 Write-Host ""
 Write-Host "Pacote Community gerado com sucesso!" -ForegroundColor Green
 Write-Host "  Pasta: $StageDir" -ForegroundColor DarkGray
 Write-Host "  Zip:   $ZipPath" -ForegroundColor DarkGray
-if (Test-Path $TarXzPath) {
-    Write-Host "  TarXZ: $TarXzPath" -ForegroundColor DarkGray
-}
 
 # ── GitHub Release ────────────────────────────────────────────────────────────
 Write-Step "Publicando GitHub Release v$NewVersion..."
@@ -266,12 +251,7 @@ if (-not $ghAvailable) {
     Write-Host "  gh CLI nao encontrado. Instale em https://cli.github.com e faca 'gh auth login'." -ForegroundColor Yellow
     Write-Host "  Para publicar manualmente: gh release create $tag '$ZipPath' --title '$tag' --notes '$releaseNotes'" -ForegroundColor DarkGray
 } else {
-    $releaseAssets = @($ZipPath)
-    if (Test-Path $TarXzPath) {
-        $releaseAssets += $TarXzPath
-    }
-
-    gh release create $tag $releaseAssets `
+    gh release create $tag $ZipPath `
         --title "NXProject Community $tag" `
         --notes $releaseNotes `
         --repo nexusxdata/NXProject

@@ -15,6 +15,7 @@ create_test_pod.ps1
 objetivo.md
 
 dist/
+NXProject-Setup/Payload/*.zip
 
 teste.pdf
 teste_openproj.pod

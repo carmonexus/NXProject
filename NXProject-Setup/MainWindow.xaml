@@ -1,0 +1,21 @@
+<Window x:Class="NXProject.Setup.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Instalar NXProject"
+        Width="460" Height="230"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="White">
+    <StackPanel Margin="28" VerticalAlignment="Center">
+        <TextBlock Text="Instalando NXProject"
+                   FontSize="18" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,0,0,16"/>
+        <TextBlock x:Name="StatusText" Text="Preparando instalação..."
+                   FontSize="12" Foreground="#555" Margin="0,0,0,10" TextWrapping="Wrap"/>
+        <ProgressBar x:Name="InstallProgress" Height="18" Minimum="0" Maximum="100" Value="0"/>
+        <TextBlock x:Name="ErrorText" Foreground="#C0392B" FontSize="11" Margin="0,14,0,0"
+                   TextWrapping="Wrap" Visibility="Collapsed"/>
+        <Button x:Name="RetryButton" Content="Tentar novamente" Width="130" Height="28"
+                HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"
+                Click="OnRetryClick"/>
+    </StackPanel>
+</Window>

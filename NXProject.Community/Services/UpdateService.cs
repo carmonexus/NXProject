@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Reflection;
@@ -16,18 +17,43 @@ public static class UpdateService
 {
     private const string ApiUrl = "https://api.github.com/repos/nexusxdata/NXProject/releases/latest";
     private const string AssetName = "NXProject.Community-Release.zip";
+    public const string DotNetDesktopRuntimeDownloadUrl = "https://dotnet.microsoft.com/download/dotnet/10.0";
+
+    /// <summary>Verifica se o .NET Desktop Runtime (x64) esta instalado na maquina,
+    /// checando a pasta compartilhada padrao de instalacao do .NET.
+    /// Usado antes de aplicar atualizacoes framework-dependent (sem runtime embutido).</summary>
+    public static bool IsDesktopRuntimeInstalled(int minMajorVersion = 10)
+    {
+        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        var sharedDir = Path.Combine(programFiles, "dotnet", "shared", "Microsoft.WindowsDesktop.App");
+        if (!Directory.Exists(sharedDir)) return false;
+
+        return Directory.GetDirectories(sharedDir)
+            .Select(d => Path.GetFileName(d).Split('.')[0])
+            .Any(major => int.TryParse(major, out var v) && v >= minMajorVersion);
+    }
 
     public record ReleaseInfo(string TagName, string DownloadUrl, string HtmlUrl);
 
     public static async Task<ReleaseInfo?> CheckForUpdateAsync(CancellationToken ct = default)
     {
-        using var client = CreateClient();
-        var release = await client.GetFromJsonAsync<GithubRelease>(ApiUrl, ct);
+        var release = await GetLatestReleaseInfoAsync(ct);
         if (release is null) return null;
 
         var latest = ParseVersion(release.TagName);
         var current = GetCurrentVersion();
         if (latest <= current) return null;
+
+        return release;
+    }
+
+    /// <summary>Retorna a release mais recente do GitHub, sem comparar com a versão atual do executável.
+    /// Usado pelo instalador (NXProject.Setup), que sempre busca a última versão disponível.</summary>
+    public static async Task<ReleaseInfo?> GetLatestReleaseInfoAsync(CancellationToken ct = default)
+    {
+        using var client = CreateClient();
+        var release = await client.GetFromJsonAsync<GithubRelease>(ApiUrl, ct);
+        if (release is null) return null;
 
         var asset = release.Assets?.Find(a => a.Name == AssetName);
         if (asset is null) return null;
