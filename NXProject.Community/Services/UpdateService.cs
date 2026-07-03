@@ -16,7 +16,9 @@ namespace NXProject.Services;
 public static class UpdateService
 {
     private const string ApiUrl = "https://api.github.com/repos/nexusxdata/NXProject/releases/latest";
-    private const string AssetName = "NXProject.Community-Release.zip";
+    public const string CommunityReleaseAssetName = "NXProject.Community-Release.zip";
+    public const string SetupZipAssetName = "NXProject-Setup.zip";
+    public const string SetupExeAssetName = "NXProject-Setup.exe";
     public const string DotNetDesktopRuntimeDownloadUrl = "https://dotnet.microsoft.com/download/dotnet/10.0";
 
     /// <summary>Verifica se o .NET Desktop Runtime (x64) esta instalado na maquina,
@@ -55,10 +57,19 @@ public static class UpdateService
         var release = await client.GetFromJsonAsync<GithubRelease>(ApiUrl, ct);
         if (release is null) return null;
 
-        var asset = release.Assets?.Find(a => a.Name == AssetName);
-        if (asset is null) return null;
+        return ToReleaseInfo(release, CommunityReleaseAssetName);
+    }
 
-        return new ReleaseInfo(release.TagName, asset.BrowserDownloadUrl, release.HtmlUrl);
+    /// <summary>Retorna o asset do instalador da release mais recente.
+    /// Prefere o ZIP para reduzir bloqueios de download de executaveis, mantendo
+    /// fallback para o .exe em releases antigas.</summary>
+    public static async Task<ReleaseInfo?> GetLatestSetupReleaseInfoAsync(CancellationToken ct = default)
+    {
+        using var client = CreateClient();
+        var release = await client.GetFromJsonAsync<GithubRelease>(ApiUrl, ct);
+        if (release is null) return null;
+
+        return ToReleaseInfo(release, SetupZipAssetName, SetupExeAssetName);
     }
 
     public static async Task<string> DownloadAndExtractAsync(
@@ -189,6 +200,21 @@ public static class UpdateService
     {
         var s = tag.TrimStart('v', 'V');
         return Version.TryParse(s, out var v) ? v : new Version(0, 0, 0);
+    }
+
+    private static ReleaseInfo? ToReleaseInfo(GithubRelease release, params string[] assetNames)
+    {
+        var assets = release.Assets;
+        if (assets is null) return null;
+
+        foreach (var assetName in assetNames)
+        {
+            var asset = assets.Find(a => string.Equals(a.Name, assetName, StringComparison.OrdinalIgnoreCase));
+            if (asset is not null)
+                return new ReleaseInfo(release.TagName, asset.BrowserDownloadUrl, release.HtmlUrl);
+        }
+
+        return null;
     }
 
     private static HttpClient CreateClient()

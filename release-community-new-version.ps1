@@ -162,9 +162,23 @@ Write-Host ""
 Write-Host ">> Versao: $CurrentVersion → $NewVersion" -ForegroundColor Yellow
 Set-ProjectVersion $ProjectFile $NewVersion
 
-# Remove assets.json para forcar restore com RID correto
-$assetsJson = Join-Path $SolutionDir "NXProject.Community\obj\project.assets.json"
-if (Test-Path $assetsJson) { Remove-Item $assetsJson -Force }
+# Remove obj/ (nao so o assets.json) para forcar restore limpo com o RID correto —
+# um build/restore anterior sem RID pode deixar o assets.json sem o alvo win-x64.
+$objDir = Join-Path $SolutionDir "NXProject.Community\obj"
+if (Test-Path $objDir) {
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            Remove-Item $objDir -Recurse -Force -ErrorAction Stop
+            break
+        } catch {
+            if ($attempt -eq 3) {
+                Write-Host "  Aviso: nao foi possivel remover obj/ completamente (pasta ocupada); seguindo mesmo assim." -ForegroundColor Yellow
+            } else {
+                Start-Sleep -Milliseconds 500
+            }
+        }
+    }
+}
 Invoke-DotnetCommandWithRetry -ActionLabel "O restore" -Command {
     dotnet restore $ProjectFile -r $Runtime --nologo -v q --force
 }

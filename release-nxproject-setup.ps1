@@ -11,7 +11,11 @@ pacote). Releases normais do app usam so release-community-new-version.ps1.
 #>
 param(
     [ValidateSet("Release", "Debug")]
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+
+    [string]$TagName = "",
+
+    [switch]$Upload
 )
 
 $SolutionDir = $PSScriptRoot
@@ -23,6 +27,7 @@ $PayloadDir = Join-Path $SolutionDir "NXProject-Setup\Payload"
 $PayloadZip = Join-Path $PayloadDir "own-libs.zip"
 $SetupPublishDir = Join-Path $SolutionDir "dist\setup\publish-$Runtime"
 $SetupOutputExe = Join-Path $SolutionDir "dist\setup\NXProject-Setup.exe"
+$SetupOutputZip = Join-Path $SolutionDir "dist\setup\NXProject-Setup.zip"
 
 function Write-Step($msg) {
     Write-Host ""
@@ -122,10 +127,36 @@ $destFolder = Split-Path $SetupOutputExe -Parent
 if (-not (Test-Path $destFolder)) { New-Item -ItemType Directory -Path $destFolder -Force | Out-Null }
 Copy-Item -Path $builtExe -Destination $SetupOutputExe -Force
 
+if (Test-Path $SetupOutputZip) {
+    Remove-Item -LiteralPath $SetupOutputZip -Force
+}
+Compress-Archive -Path $SetupOutputExe -DestinationPath $SetupOutputZip -Force
+
 $setupSizeKb = [Math]::Round((Get-Item $SetupOutputExe).Length / 1KB, 0)
+$setupZipSizeKb = [Math]::Round((Get-Item $SetupOutputZip).Length / 1KB, 0)
 Write-Host ""
-Write-Host "NXProject-Setup.exe gerado com sucesso!" -ForegroundColor Green
+Write-Host "NXProject-Setup gerado com sucesso!" -ForegroundColor Green
 Write-Host "  $SetupOutputExe ($setupSizeKb KB)" -ForegroundColor DarkGray
+Write-Host "  $SetupOutputZip ($setupZipSizeKb KB)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Requer .NET 10 Desktop Runtime (x64) ja instalado na maquina de destino." -ForegroundColor Yellow
 Write-Host "So precisa ser regenerado quando as dependencias NuGet do projeto mudarem." -ForegroundColor Yellow
+Write-Host "Na release do GitHub, publique os dois assets; prefira divulgar o .zip para reduzir bloqueios de download de .exe." -ForegroundColor Yellow
+
+if ($Upload) {
+    if ([string]::IsNullOrWhiteSpace($TagName)) {
+        Write-Host "Informe -TagName vX.Y.Z para publicar os assets na release do GitHub." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Step "Publicando assets do NXProject-Setup na release $TagName..."
+    gh release upload $TagName $SetupOutputExe $SetupOutputZip --repo nexusxdata/NXProject --clobber
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Falha ao publicar assets do NXProject-Setup no GitHub." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "Assets publicados:" -ForegroundColor Green
+    Write-Host "  NXProject-Setup.exe" -ForegroundColor DarkGray
+    Write-Host "  NXProject-Setup.zip" -ForegroundColor DarkGray
+}

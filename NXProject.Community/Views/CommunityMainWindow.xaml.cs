@@ -1349,6 +1349,22 @@ namespace NXProject.Views
                 ? $"| {epicHours:0.#} HH (Epics)"
                 : string.Empty;
 
+            var scheduleTasks = vm.FlatTasks
+                .Where(t => !t.IsMilestone)
+                .ToList();
+            if (scheduleTasks.Count > 0)
+            {
+                var start = scheduleTasks.Min(t => t.Model.Start.Date);
+                var finish = scheduleTasks
+                    .Select(t => ProjectCalendarService.GetInclusiveFinishDate(t.Model.Start, t.Model.Finish).Date)
+                    .Max();
+                DevOpsScheduleDatesLabel.Text = $"| Início: {start:dd/MM/yy} | Fim: {finish:dd/MM/yy}";
+            }
+            else
+            {
+                DevOpsScheduleDatesLabel.Text = string.Empty;
+            }
+
             // % de conclusão: média ponderada pelas horas de todas as atividades folha
             var leaves = vm.FlatTasks.Where(t => !t.IsSummary && !t.IsMilestone).ToList();
             if (leaves.Count > 0)
@@ -1382,6 +1398,8 @@ namespace NXProject.Views
             else
             {
                 DevOpsEpicHoursLabel.Text = string.Empty;
+                DevOpsScheduleDatesLabel.Text = string.Empty;
+                DevOpsPercentLabel.Text = string.Empty;
                 DevOpsProjectBanner.Visibility = Visibility.Collapsed;
             }
         }
@@ -2565,6 +2583,17 @@ namespace NXProject.Views
         {
             if (args.PropertyName == nameof(TaskViewModel.PredecessorsText))
                 GanttCtrl.ForceRender();
+
+            if (args.PropertyName == nameof(TaskViewModel.Start) ||
+                args.PropertyName == nameof(TaskViewModel.StartDisplay) ||
+                args.PropertyName == nameof(TaskViewModel.Finish) ||
+                args.PropertyName == nameof(TaskViewModel.FinishDisplay) ||
+                args.PropertyName == nameof(TaskViewModel.DurationHours) ||
+                args.PropertyName == nameof(TaskViewModel.PercentComplete))
+            {
+                if (DataContext is MainViewModel vm)
+                    UpdateEpicHours(vm);
+            }
         }
 
         private void SubscribeTaskEvents(System.Collections.Generic.IEnumerable<TaskViewModel> tasks)
