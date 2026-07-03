@@ -117,7 +117,7 @@ function Invoke-DotnetCommandWithRetry {
 
         # Erros exclusivamente do _wpftmp nao indicam falha real do projeto
         $realErrors = $output | Where-Object {
-            $_ -match '\] ?error' -and $_ -notmatch '_wpftmp\.csproj'
+            ($_ -match '\b(error|NETSDK\d+)\b' -or $_ -match ' : error ') -and $_ -notmatch '_wpftmp\.csproj'
         }
         if (-not $realErrors) {
             Write-Host "  (erros de _wpftmp ignorados)" -ForegroundColor DarkGray
@@ -180,15 +180,15 @@ if (Test-Path $objDir) {
     }
 }
 Invoke-DotnetCommandWithRetry -ActionLabel "O restore" -Command {
-    dotnet restore $ProjectFile -r $Runtime --nologo -v q --force
+    dotnet restore $ProjectFile -r $Runtime -p:SelfContained=true --nologo -v q --force
 }
 
-Write-Step "Publicando NXProject Community framework-dependent ($Runtime)..."
+Write-Step "Publicando NXProject Community self-contained ($Runtime)..."
 if (Test-Path $PublishDir) {
     Remove-Item -LiteralPath $PublishDir -Recurse -Force
 }
 Invoke-DotnetCommandWithRetry -ActionLabel "A compilacao" -Command {
-    dotnet publish $ProjectFile -c $Configuration -r $Runtime --self-contained false -o $PublishDir --nologo --no-restore
+    dotnet publish $ProjectFile -c $Configuration -r $Runtime --self-contained true -o $PublishDir --nologo --no-restore
 }
 
 Write-Step "Preparando pasta de distribuicao..."
@@ -208,15 +208,12 @@ Remove-UnusedSatelliteResourceFolders $StageDir
 @"
 NXProject Community
 
-Requisito: .NET 10 Desktop Runtime (x64) instalado na maquina.
-Se nao tiver instalado, baixe em:
-https://dotnet.microsoft.com/download/dotnet/10.0
-(escolha ".NET Desktop Runtime" para Windows x64)
+Este pacote ja inclui o runtime do .NET para Windows x64.
+Nao precisa instalar o .NET Desktop Runtime para executar o NXProject.Community.exe.
 
 Como executar:
 1. Extraia todo o conteudo deste pacote para uma pasta local.
 2. Execute o arquivo NXProject.Community.exe.
-   Se o Windows avisar que falta o .NET, use o link acima para instalar.
 
 Se precisar diagnosticar abertura do aplicativo, execute:
 .\NXProject-Tracelog.ps1
@@ -238,7 +235,7 @@ if (Test-Path $TraceScriptSrc) {
 
 @"
 @echo off
-:: Use este .bat se ao abrir o NXProject.Community.exe aparecer mensagem pedindo instalar o .NET.
+:: Use este .bat apenas para diagnostico quando solicitado pelo suporte.
 cd /d "%~dp0"
 dotnet NXProject.Community.dll
 "@ | Set-Content -Path (Join-Path $StageDir "NXProject-FallbackLauncher.bat") -Encoding ASCII
