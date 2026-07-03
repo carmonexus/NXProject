@@ -321,7 +321,8 @@ namespace NXProject.Views
                         "e requer reinstalacao pelo NXProject-Setup.\n\n" +
                         "IMPORTANTE: salve o projeto aberto antes de continuar — este aplicativo sera encerrado " +
                         "automaticamente, sem perguntar se deseja salvar.\n\n" +
-                        "O NXProject-Setup sera baixado e aberto em seguida.\n\nDeseja continuar?",
+                        "O NXProject-Setup sera baixado para a pasta Downloads\\NXProject-Setup e aberto em seguida " +
+                        "(se algo falhar, voce pode rodar o NXProject-Setup.exe de la novamente).\n\nDeseja continuar?",
                         "Atualizacao de base necessaria",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning);
@@ -377,8 +378,8 @@ namespace NXProject.Views
         {
             try
             {
-                var extractedDir = await NXProject.Services.UpdateService.DownloadAndExtractAsync(downloadUrl);
-                var setupExePath = System.IO.Path.Combine(extractedDir, "NXProject-Setup.exe");
+                var tempExtractedDir = await NXProject.Services.UpdateService.DownloadAndExtractAsync(downloadUrl);
+                var setupExePath = System.IO.Path.Combine(tempExtractedDir, "NXProject-Setup.exe");
                 if (!System.IO.File.Exists(setupExePath))
                 {
                     IsEnabled = true;
@@ -390,9 +391,27 @@ namespace NXProject.Views
                     return;
                 }
 
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(setupExePath)
+                // Copia para Downloads (local fixo e visivel) em vez de rodar de uma pasta
+                // temporaria aleatoria — se a instalacao falhar, o usuario acha e roda de novo.
+                var downloadsDir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "NXProject-Setup");
+                if (System.IO.Directory.Exists(downloadsDir))
+                    System.IO.Directory.Delete(downloadsDir, recursive: true);
+                System.IO.Directory.CreateDirectory(downloadsDir);
+                foreach (var file in System.IO.Directory.GetFiles(tempExtractedDir, "*", System.IO.SearchOption.AllDirectories))
                 {
-                    WorkingDirectory = extractedDir,
+                    var rel = System.IO.Path.GetRelativePath(tempExtractedDir, file);
+                    var dest = System.IO.Path.Combine(downloadsDir, rel);
+                    var destFolder = System.IO.Path.GetDirectoryName(dest);
+                    if (!string.IsNullOrEmpty(destFolder)) System.IO.Directory.CreateDirectory(destFolder);
+                    System.IO.File.Copy(file, dest, overwrite: true);
+                }
+                try { System.IO.Directory.Delete(System.IO.Path.GetDirectoryName(tempExtractedDir)!, recursive: true); } catch { /* best-effort */ }
+
+                var finalSetupExePath = System.IO.Path.Combine(downloadsDir, "NXProject-Setup.exe");
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(finalSetupExePath)
+                {
+                    WorkingDirectory = downloadsDir,
                     UseShellExecute = true
                 });
 
