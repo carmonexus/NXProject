@@ -141,7 +141,7 @@ Write-Host "  $SetupOutputZip ($setupZipSizeKb KB)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Requer .NET 10 Desktop Runtime (x64) ja instalado na maquina de destino." -ForegroundColor Yellow
 Write-Host "So precisa ser regenerado quando as dependencias NuGet do projeto mudarem." -ForegroundColor Yellow
-Write-Host "Na release do GitHub, publique os dois assets; prefira divulgar o .zip para reduzir bloqueios de download de .exe." -ForegroundColor Yellow
+Write-Host "Na release do GitHub, publique so o NXProject-Setup.zip (evita bloqueios de download de .exe)." -ForegroundColor Yellow
 
 if ($Upload) {
     if ([string]::IsNullOrWhiteSpace($TagName)) {
