@@ -321,8 +321,8 @@ namespace NXProject.Views
                         "e requer reinstalacao pelo NXProject-Setup.\n\n" +
                         "IMPORTANTE: salve o projeto aberto antes de continuar — este aplicativo sera encerrado " +
                         "automaticamente, sem perguntar se deseja salvar.\n\n" +
-                        "O NXProject-Setup sera baixado para a pasta Downloads\\NXProject-Setup e aberto em seguida " +
-                        "(se algo falhar, voce pode rodar o NXProject-Setup.exe de la novamente).\n\nDeseja continuar?",
+                        "O NXProject-Setup.zip sera baixado para a pasta Downloads e aberto em seguida " +
+                        "(se algo falhar, o arquivo fica em Downloads para tentar de novo).\n\nDeseja continuar?",
                         "Atualizacao de base necessaria",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning);
@@ -376,44 +376,40 @@ namespace NXProject.Views
 
         private async Task DownloadAndLaunchSetupAsync(string downloadUrl)
         {
+            var downloadsDir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            var zipPath = System.IO.Path.Combine(downloadsDir, "NXProject-Setup.zip");
+
             try
             {
-                var tempExtractedDir = await NXProject.Services.UpdateService.DownloadAndExtractAsync(downloadUrl);
-                var setupExePath = System.IO.Path.Combine(tempExtractedDir, "NXProject-Setup.exe");
+                // Baixa o .zip para Downloads (local fixo e visivel) — se a instalacao
+                // falhar, o usuario acha o pacote e roda de novo sem precisar baixar outra vez.
+                await NXProject.Services.UpdateService.DownloadFileAsync(downloadUrl, zipPath);
+
+                var tempExtractDir = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), $"nxsetupupdate_{Guid.NewGuid():N}");
+                System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, tempExtractDir);
+
+                var setupExePath = System.IO.Path.Combine(tempExtractDir, "NXProject-Setup.exe");
                 if (!System.IO.File.Exists(setupExePath))
                 {
                     IsEnabled = true;
                     MessageBox.Show(
-                        "Nao foi possivel encontrar o NXProject-Setup.exe no pacote baixado.",
+                        $"Nao foi possivel encontrar o NXProject-Setup.exe no pacote baixado.\n\nO arquivo baixado foi mantido em: {zipPath}",
                         "Atualizacao de base necessaria",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                     return;
                 }
 
-                // Copia para Downloads (local fixo e visivel) em vez de rodar de uma pasta
-                // temporaria aleatoria — se a instalacao falhar, o usuario acha e roda de novo.
-                var downloadsDir = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "NXProject-Setup");
-                if (System.IO.Directory.Exists(downloadsDir))
-                    System.IO.Directory.Delete(downloadsDir, recursive: true);
-                System.IO.Directory.CreateDirectory(downloadsDir);
-                foreach (var file in System.IO.Directory.GetFiles(tempExtractedDir, "*", System.IO.SearchOption.AllDirectories))
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(setupExePath)
                 {
-                    var rel = System.IO.Path.GetRelativePath(tempExtractedDir, file);
-                    var dest = System.IO.Path.Combine(downloadsDir, rel);
-                    var destFolder = System.IO.Path.GetDirectoryName(dest);
-                    if (!string.IsNullOrEmpty(destFolder)) System.IO.Directory.CreateDirectory(destFolder);
-                    System.IO.File.Copy(file, dest, overwrite: true);
-                }
-                try { System.IO.Directory.Delete(System.IO.Path.GetDirectoryName(tempExtractedDir)!, recursive: true); } catch { /* best-effort */ }
-
-                var finalSetupExePath = System.IO.Path.Combine(downloadsDir, "NXProject-Setup.exe");
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(finalSetupExePath)
-                {
-                    WorkingDirectory = downloadsDir,
+                    WorkingDirectory = tempExtractDir,
                     UseShellExecute = true
                 });
+
+                // Chegou ate aqui com sucesso: apaga o zip baixado, nao precisa mais dele.
+                try { System.IO.File.Delete(zipPath); } catch { /* best-effort */ }
 
                 // Ja avisamos no dialogo anterior para salvar antes de continuar — nao
                 // pergunta de novo aqui, senao o Setup tenta instalar por cima enquanto
@@ -424,8 +420,11 @@ namespace NXProject.Views
             catch (Exception ex)
             {
                 IsEnabled = true;
+                var zipHint = System.IO.File.Exists(zipPath)
+                    ? $"\n\nO arquivo baixado foi mantido em: {zipPath} — pode roda-lo manualmente."
+                    : "";
                 MessageBox.Show(
-                    $"Falha ao baixar/abrir o NXProject-Setup.\n\n{ex.Message}",
+                    $"Falha ao baixar/abrir o NXProject-Setup.\n\n{ex.Message}{zipHint}",
                     "Atualizacao de base necessaria",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

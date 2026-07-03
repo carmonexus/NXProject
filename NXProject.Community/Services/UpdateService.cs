@@ -119,38 +119,45 @@ public static class UpdateService
         return DateTimeOffset.TryParse(text, out var dt) ? dt : null;
     }
 
-    public static async Task<string> DownloadAndExtractAsync(
+    /// <summary>Baixa um arquivo para o caminho indicado, reportando progresso 0-100.</summary>
+    public static async Task DownloadFileAsync(
         string downloadUrl,
+        string destPath,
         IProgress<int>? progress = null,
         CancellationToken ct = default)
     {
         using var client = CreateClient();
 
+        using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        var total = response.Content.Headers.ContentLength ?? 0L;
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        await using var file = File.Create(destPath);
+
+        var buffer = new byte[81920];
+        long downloaded = 0;
+        int read;
+        while ((read = await stream.ReadAsync(buffer, ct)) > 0)
+        {
+            await file.WriteAsync(buffer.AsMemory(0, read), ct);
+            downloaded += read;
+            if (total > 0)
+                progress?.Report((int)(downloaded * 100 / total));
+        }
+
+        progress?.Report(100);
+    }
+
+    public static async Task<string> DownloadAndExtractAsync(
+        string downloadUrl,
+        IProgress<int>? progress = null,
+        CancellationToken ct = default)
+    {
         var tempDir = Path.Combine(Path.GetTempPath(), $"nxupdate_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
         var zipPath = Path.Combine(tempDir, "update.zip");
-
-        using (var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct))
-        {
-            response.EnsureSuccessStatusCode();
-            var total = response.Content.Headers.ContentLength ?? 0L;
-            await using var stream = await response.Content.ReadAsStreamAsync(ct);
-            await using var file = File.Create(zipPath);
-
-            var buffer = new byte[81920];
-            long downloaded = 0;
-            int read;
-            while ((read = await stream.ReadAsync(buffer, ct)) > 0)
-            {
-                await file.WriteAsync(buffer.AsMemory(0, read), ct);
-                downloaded += read;
-                if (total > 0)
-                    progress?.Report((int)(downloaded * 100 / total));
-            }
-        }
-
-        progress?.Report(100);
+        await DownloadFileAsync(downloadUrl, zipPath, progress, ct);
 
         var extractDir = Path.Combine(tempDir, "extracted");
         ZipFile.ExtractToDirectory(zipPath, extractDir);
