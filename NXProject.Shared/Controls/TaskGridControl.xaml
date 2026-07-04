@@ -580,7 +580,7 @@
             <DataGridTemplateColumn x:Name="WorkingDaysColumn" Header="DU" Width="46" IsReadOnly="True" SortMemberPath="DurationWorkingDays">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding DurationWorkingDays, StringFormat={}{0:0.0}}"
+                        <TextBlock Text="{Binding DurationWorkingDays, StringFormat={}{0:0.#}}"
                                    VerticalAlignment="Center"
                                    TextAlignment="Center"
                                    FontSize="11"
