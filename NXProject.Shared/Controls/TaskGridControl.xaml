@@ -577,7 +577,7 @@
             </DataGridTemplateColumn>
 
             <!-- DU: dias uteis entre inicio e fim (só visão completa; read-only) -->
-            <DataGridTemplateColumn x:Name="WorkingDaysColumn" Header="DU" Width="46" IsReadOnly="True" SortMemberPath="DurationWorkingDays">
+            <DataGridTemplateColumn x:Name="WorkingDaysColumn" Header="DU" Width="48" IsReadOnly="True" SortMemberPath="DurationWorkingDays">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding DurationWorkingDays, StringFormat={}{0:0.#}}"
