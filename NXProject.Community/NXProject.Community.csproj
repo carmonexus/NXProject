@@ -110,7 +110,7 @@
   </ItemGroup>
 
   <Target Name="VerifyProtectedCommunityLogo" BeforeTargets="BeforeBuild">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;$bytes = [System.IO.File]::ReadAllBytes('$(MSBuildProjectDirectory)\Assets\logo-nexus-xdata.enc'); $sha = [System.Security.Cryptography.SHA256]::Create(); $hash = [System.BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant(); if ($hash -ne '009a1265ffbd2c365a8a50f250c8df8998e7a0dc72c0f3e136ef41a1957ed8c6') { Write-Error 'O logo protegido da Community foi alterado e falhou na validacao de hash.'; exit 1 }&quot;" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;$bytes = [System.IO.File]::ReadAllBytes('$(MSBuildProjectDirectory)\Assets\logo-nexus-xdata.enc'); $sha = [System.Security.Cryptography.SHA256]::Create(); $hash = [System.BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant(); if ($hash -ne '05763823967d049e1c50ae803ac8b0dff744497a3662c6f2699679deda53e7dd') { Write-Error 'O logo protegido da Community foi alterado e falhou na validacao de hash.'; exit 1 }&quot;" />
   </Target>
 
 </Project>
