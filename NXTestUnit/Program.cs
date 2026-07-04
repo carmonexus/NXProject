@@ -404,8 +404,8 @@ internal static class Program
             throw new InvalidOperationException("TfsId negativo nao deve ser tratado como vinculo DevOps.");
         if (vm.HasDevOpsLink)
             throw new InvalidOperationException("ViewModel nao deve indicar vinculo DevOps para TfsId negativo.");
-        if (vm.DisplayId != "I:42")
-            throw new InvalidOperationException($"ID negativo NoDevOps deve aparecer como I:42. Atual: {vm.DisplayId}.");
+        if (vm.DisplayId != "42:I")
+            throw new InvalidOperationException($"ID negativo NoDevOps deve aparecer como 42:I. Atual: {vm.DisplayId}.");
     }
 
     private static void PendingDevOpsCreateDisplaysAsInternal()
@@ -422,15 +422,15 @@ internal static class Program
 
         if (task.HasTfsLink)
             throw new InvalidOperationException("Atividade pendente sem TfsId positivo nao deve ser tratada como vinculo DevOps.");
-        if (vm.DisplayId != "I:43")
-            throw new InvalidOperationException($"Atividade DevOps pendente deve continuar como I:43 ate sincronizar. Atual: {vm.DisplayId}.");
+        if (vm.DisplayId != "43:I")
+            throw new InvalidOperationException($"Atividade DevOps pendente deve continuar como 43:I ate sincronizar. Atual: {vm.DisplayId}.");
 
         task.TfsId = 1234;
         task.IsPendingTfsCreate = false;
         vm.TfsId = 1234;
 
-        if (vm.DisplayId != "T:1234")
-            throw new InvalidOperationException($"Apos receber TfsId positivo, deve aparecer como T:1234. Atual: {vm.DisplayId}.");
+        if (vm.DisplayId != "1234:T")
+            throw new InvalidOperationException($"Apos receber TfsId positivo, deve aparecer como 1234:T. Atual: {vm.DisplayId}.");
     }
 
     private static void DevOpsPredecessorAcceptsInternalDevOpsOnly()
@@ -1131,6 +1131,18 @@ internal static class Program
                 int.TryParse(displayId[2..], out var tfsId))
             {
                 var match = tasks.FirstOrDefault(t => t.Model.TfsId == tfsId);
+                return match?.Model.Id;
+            }
+
+            if (displayId.EndsWith(":I", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(displayId[..^2], out var gridInternalId) &&
+                byInternalId.ContainsKey(gridInternalId))
+                return gridInternalId;
+
+            if (displayId.EndsWith(":T", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(displayId[..^2], out var gridTfsId))
+            {
+                var match = tasks.FirstOrDefault(t => t.Model.TfsId == gridTfsId);
                 return match?.Model.Id;
             }
 

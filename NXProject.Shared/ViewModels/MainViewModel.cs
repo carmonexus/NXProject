@@ -245,7 +245,7 @@ namespace NXProject.ViewModels
                     FlatTasks.FirstOrDefault(t => t.Model.Id == internalId),
                 FindByDisplayId = displayId =>
                 {
-                    // Formato novo: "T:1234" (TFS) ou "I:45" (interno)
+                    // Formato legado: "T:1234" (TFS) ou "I:45" (interno)
                     if (displayId.StartsWith("T:", StringComparison.OrdinalIgnoreCase) &&
                         int.TryParse(displayId[2..], out var tfsNum))
                     {
@@ -256,6 +256,19 @@ namespace NXProject.ViewModels
                         int.TryParse(displayId[2..], out var intNum))
                     {
                         var byInt = FlatTasks.FirstOrDefault(t => t.Model.Id == intNum);
+                        if (byInt != null) return byInt.Model.Id;
+                    }
+                    // Formato atual da UI: "1234:T" (TFS) ou "45:I" (interno)
+                    if (displayId.EndsWith(":T", StringComparison.OrdinalIgnoreCase) &&
+                        int.TryParse(displayId[..^2], out var gridTfsNum))
+                    {
+                        var byTfs = FlatTasks.FirstOrDefault(t => t.Model.TfsId == gridTfsNum);
+                        if (byTfs != null) return byTfs.Model.Id;
+                    }
+                    if (displayId.EndsWith(":I", StringComparison.OrdinalIgnoreCase) &&
+                        int.TryParse(displayId[..^2], out var gridIntNum))
+                    {
+                        var byInt = FlatTasks.FirstOrDefault(t => t.Model.Id == gridIntNum);
                         if (byInt != null) return byInt.Model.Id;
                     }
                     // Fallback legado: número puro → tenta TfsId depois Id interno

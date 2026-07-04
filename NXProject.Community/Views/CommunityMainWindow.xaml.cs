@@ -1905,6 +1905,32 @@ namespace NXProject.Views
                     FindByInternalId = id => byId.TryGetValue(id, out var found) ? found : null,
                     FindByDisplayId = displayId =>
                     {
+                        if (displayId.StartsWith("T:", StringComparison.OrdinalIgnoreCase) &&
+                            int.TryParse(displayId[2..], out var prefixedTfs))
+                        {
+                            var byPrefixedTfs = byId.Values.FirstOrDefault(t => t.Model.TfsId == prefixedTfs);
+                            if (byPrefixedTfs != null) return byPrefixedTfs.Model.Id;
+                        }
+                        if (displayId.StartsWith("I:", StringComparison.OrdinalIgnoreCase) &&
+                            int.TryParse(displayId[2..], out var prefixedInternal))
+                        {
+                            return byId.TryGetValue(prefixedInternal, out var byPrefixedInternal)
+                                ? byPrefixedInternal.Model.Id
+                                : null;
+                        }
+                        if (displayId.EndsWith(":T", StringComparison.OrdinalIgnoreCase) &&
+                            int.TryParse(displayId[..^2], out var suffixedTfs))
+                        {
+                            var bySuffixedTfs = byId.Values.FirstOrDefault(t => t.Model.TfsId == suffixedTfs);
+                            if (bySuffixedTfs != null) return bySuffixedTfs.Model.Id;
+                        }
+                        if (displayId.EndsWith(":I", StringComparison.OrdinalIgnoreCase) &&
+                            int.TryParse(displayId[..^2], out var suffixedInternal))
+                        {
+                            return byId.TryGetValue(suffixedInternal, out var bySuffixedInternal)
+                                ? bySuffixedInternal.Model.Id
+                                : null;
+                        }
                         if (!int.TryParse(displayId, out var value))
                             return null;
 

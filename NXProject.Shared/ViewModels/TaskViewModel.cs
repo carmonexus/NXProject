@@ -99,10 +99,14 @@ namespace NXProject.ViewModels
             set { _task.Id = value; OnPropertyChanged(); }
         }
 
-        // ID exibido na grade: o do DevOps quando vinculado, senão o interno.
+        // ID exibido nas telas: o do DevOps quando vinculado, senão o interno.
         public string DisplayId => _task.HasTfsLink
-            ? $"T:{_task.TfsId}"
-            : $"I:{_task.Id}";
+            ? $"{_task.TfsId}:T"
+            : $"{_task.Id}:I";
+
+        public Brush DisplayIdBrush => _task.HasTfsLink
+            ? new SolidColorBrush(Color.FromRgb(0x00, 0x4B, 0xA0))
+            : new SolidColorBrush(Color.FromRgb(0x8A, 0x4B, 0x00));
 
         public bool HasDevOpsLink => _task.TfsId.HasValue && _task.TfsId.Value > 0;
 
@@ -145,6 +149,8 @@ namespace NXProject.ViewModels
                 _task.TfsId = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(DisplayId));
+                OnPropertyChanged(nameof(DisplayIdBrush));
+                OnPropertyChanged(nameof(HasDevOpsLink));
             }
         }
 
@@ -157,6 +163,7 @@ namespace NXProject.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(DisplayId));
                 OnPropertyChanged(nameof(HasDevOpsLink));
+                OnPropertyChanged(nameof(DisplayIdBrush));
                 OnPropertyChanged(nameof(IsNoDevOpsActivity));
                 OnPropertyChanged(nameof(IsDevOpsMilestoneActivity));
                 OnPropertyChanged(nameof(CanUseZeroDuration));
@@ -192,7 +199,7 @@ namespace NXProject.ViewModels
         }
 
         // ── Selo compacto DevOps (cronograma) ────────────────────────────────
-        // Ex.: "FEA·A" (Feature, Active). Vazio quando não vinculado.
+        // Ex.: "FA" (Feature, Active). Vazio quando não vinculado.
         public string DevOpsTag
         {
             get
@@ -202,7 +209,7 @@ namespace NXProject.ViewModels
                 if (string.IsNullOrEmpty(t) && string.IsNullOrEmpty(s)) return string.Empty;
                 if (string.IsNullOrEmpty(s)) return t;
                 if (string.IsNullOrEmpty(t)) return s;
-                return $"{t}·{s}";
+                return $"{t}{s}";
             }
         }
 
@@ -250,12 +257,14 @@ namespace NXProject.ViewModels
 
         private static string TypeShort(string? type) => (type?.Trim().ToLowerInvariant()) switch
         {
-            "project" => "PRJ",
-            "epic" => "EPC",
-            "feature" => "FEA",
-            "user story" or "story" => "STO",
+            "epic" => "E",
+            "feature" => "F",
+            "user story" or "story" => "S",
+            "task" => "T",
+            "marco-devops" or "marco-devop" or "marcodevops" or "marcodevop" => "M",
+            "no devops" or "nodevops" or "no devop" or "nodevop" => "N",
             null or "" => string.Empty,
-            _ => type!.Trim().ToUpperInvariant()[..Math.Min(3, type!.Trim().Length)]
+            _ => type!.Trim().ToUpperInvariant()[..1]
         };
 
         private static string StateShort(string? state) => (state?.Trim().ToLowerInvariant()) switch
@@ -368,11 +377,7 @@ namespace NXProject.ViewModels
             }
         }
 
-        // Exibição na célula: "📌 dd/MM/yy" quando fixado, "dd/MM/yy" normal.
-        public string StartDisplay =>
-            _task.StartFixed
-                ? "📌 " + _task.Start.ToString("dd/MM/yy")
-                : _task.Start.ToString("dd/MM/yy");
+        public string StartDisplay => _task.Start.ToString("dd/MM/yy");
 
         [CommunityToolkit.Mvvm.Input.RelayCommand]
         private void ClearStartFixed() => StartText = "0";

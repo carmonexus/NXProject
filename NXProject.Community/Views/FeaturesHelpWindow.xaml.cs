@@ -687,7 +687,7 @@ namespace NXProject.Views
                      "A cor de fundo da barra não muda — só a borda é destacada para não confundir com outros alertas visuais."),
                     ("Janela de atividades críticas",
                      "Exibe uma grade com:\n" +
-                     "• ID (T:xxx para TFS, I:xxx para interno)\n" +
+                     "• ID (xxx:T para TFS, xxx:I para interno)\n" +
                      "• Tipo, Nome, Início, Fim, Duração\n" +
                      "• Folga: 'Crítica' (vermelho) ou número de dias de folga (verde)\n" +
                      "• Predecessoras\n\n" +
@@ -711,12 +711,12 @@ namespace NXProject.Views
                      "Clique em um nó para expandir/recolher seus filhos individualmente."),
                     ("Cores dos nós",
                      "• Azul escuro: Épico\n• Azul: Feature\n• Verde: Story\n• Roxo: Task\n" +
-                     "• Marrom/laranja: atividade interna (I:xxx) — criada localmente, ainda não sincronizada com o DevOps."),
-                    ("Identificação T: / I:",
+                     "• Marrom/laranja: atividade interna (xxx:I) — criada localmente, ainda não sincronizada com o DevOps."),
+                    ("Identificação :T / :I",
                      "Cada nó exibe um badge no canto inferior direito:\n" +
-                     "• T:1234 = work item do Azure DevOps com ID 1234\n" +
-                     "• I:45 = atividade interna com ID sequencial local\n" +
-                     "Após sincronizar com o DevOps, o I: é automaticamente promovido a T:."),
+                     "• 1234:T = work item do Azure DevOps com ID 1234\n" +
+                     "• 45:I = atividade interna com ID sequencial local\n" +
+                     "Após sincronizar com o DevOps, o :I é automaticamente promovido a :T."),
                     ("Tooltip ao passar o mouse",
                      "Passe o mouse sobre qualquer nó para ver: ID, Tipo, Estado, Início, Fim, HH Estimadas, % Concluído, Recurso e Sprint."),
                     ("Zoom e redimensionamento",
@@ -1367,7 +1367,7 @@ namespace NXProject.Views
                      "The bar background color does not change — only the border is highlighted to avoid confusion with other visual alerts."),
                     ("Critical activities window",
                      "Displays a grid with:\n" +
-                     "• ID (T:xxx for DevOps, I:xxx for internal)\n" +
+                     "• ID (xxx:T for DevOps, xxx:I for internal)\n" +
                      "• Type, Name, Start, End, Duration\n" +
                      "• Float: 'Critical' (red) or number of days of float (green)\n" +
                      "• Predecessors\n\n" +
@@ -1391,12 +1391,12 @@ namespace NXProject.Views
                      "Click a node to expand/collapse its children individually."),
                     ("Node colors",
                      "• Dark blue: Epic\n• Blue: Feature\n• Green: Story\n• Purple: Task\n" +
-                     "• Brown/orange: internal activity (I:xxx) — created locally, not yet synced with DevOps."),
-                    ("T: / I: badge",
+                     "• Brown/orange: internal activity (xxx:I) — created locally, not yet synced with DevOps."),
+                    (":T / :I badge",
                      "Each node displays a badge in the bottom-right corner:\n" +
-                     "• T:1234 = Azure DevOps work item with ID 1234\n" +
-                     "• I:45 = internal activity with local sequential ID\n" +
-                     "After syncing with DevOps, the I: is automatically promoted to T:."),
+                     "• 1234:T = Azure DevOps work item with ID 1234\n" +
+                     "• 45:I = internal activity with local sequential ID\n" +
+                     "After syncing with DevOps, :I is automatically promoted to :T."),
                     ("Tooltip on hover",
                      "Hover over any node to see: ID, Type, State, Start, End, Estimated Hours, % Complete, Resource and Sprint."),
                     ("Zoom and resize",

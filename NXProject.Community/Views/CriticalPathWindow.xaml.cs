@@ -52,11 +52,11 @@ namespace NXProject.Views
             foreach (var e in entries)
             {
                 var t         = e.Task;
-                var idKey     = t.HasTfsLink ? $"T:{t.TfsId}" : $"I:{t.Id}";
+                var idKey     = t.HasTfsLink ? $"{t.TfsId}:T" : $"{t.Id}:I";
                 var dur       = (e.EF - e.ES).TotalDays;
                 var predNames = t.PredecessorIds
                     .Select(id => taskById.TryGetValue(id, out var pt)
-                        ? (pt.HasTfsLink ? $"T:{pt.TfsId}" : $"I:{pt.Id}")
+                        ? (pt.HasTfsLink ? $"{pt.TfsId}:T" : $"{pt.Id}:I")
                         : id.ToString())
                     .ToList();
 

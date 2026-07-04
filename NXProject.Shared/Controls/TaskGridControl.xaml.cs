@@ -30,6 +30,16 @@ namespace NXProject.Controls
             }
         }
 
+        public static readonly DependencyProperty NameTextFontSizeProperty =
+            DependencyProperty.Register(nameof(NameTextFontSize), typeof(double),
+                typeof(TaskGridControl), new PropertyMetadata(11.0));
+
+        public double NameTextFontSize
+        {
+            get => (double)GetValue(NameTextFontSizeProperty);
+            set => SetValue(NameTextFontSizeProperty, value);
+        }
+
         public void RefreshRows() => TaskGrid.Items.Refresh();
 
         public void ScrollToSelected()
@@ -469,8 +479,9 @@ namespace NXProject.Controls
         {
             ApplyHiddenColumns(hiddenDefault, hiddenExpanded, expanded);
 
-            IdColumn.Width = new DataGridLength(expanded ? 100 : 55);
-            DevOpsColumn.Width = new DataGridLength(expanded ? 62 : 46);
+            IdColumn.Width = new DataGridLength(expanded ? 100 : 63);
+            DevOpsColumn.Width = new DataGridLength(expanded ? 30 : 26);
+            NameTextFontSize = 11.0;
             NameColumn.MinWidth = expanded ? 280 : 210;
             NameColumn.Width = expanded
                 ? new DataGridLength(2.2, DataGridLengthUnitType.Star)
@@ -480,12 +491,12 @@ namespace NXProject.Controls
             OriginalHoursColumn.Width = new DataGridLength(expanded ? 58 : 50);
             RealizedHoursColumn.Width = new DataGridLength(expanded ? 72 : 80);
             EstimatedHoursColumn.Width = new DataGridLength(expanded ? 80 : 80);
-            StartColumn.Width = new DataGridLength(expanded ? 118 : 76);
+            StartColumn.Width = new DataGridLength(expanded ? 124 : 90);
             FinishColumn.Width = new DataGridLength(expanded ? 118 : 76);
-            PercentColumn.Width = new DataGridLength(expanded ? 76 : 62);
-            PredecessorColumn.Width = new DataGridLength(expanded ? 110 : 80);
-            ResourcesColumn.Width = new DataGridLength(expanded ? 160 : 88);
-            SprintColumn.Width = new DataGridLength(expanded ? 148 : 118);
+            PercentColumn.Width = new DataGridLength(expanded ? 88 : 62);
+            PredecessorColumn.Width = new DataGridLength(expanded ? 111 : 80);
+            ResourcesColumn.Width = new DataGridLength(expanded ? 160 : 94);
+            SprintColumn.Width = new DataGridLength(expanded ? 148 : 115);
         }
 
         public void RefreshColumnHeaders()

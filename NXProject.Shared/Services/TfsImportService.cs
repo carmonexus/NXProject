@@ -1265,7 +1265,7 @@ namespace NXProject.Services
                 { } t when !string.IsNullOrEmpty(t) => t,
                 _                                   => "Item"
             };
-            var id = task.TfsId is > 0 ? $"#{task.TfsId}" : $"I:{task.Id}";
+            var id = task.TfsId is > 0 ? $"{task.TfsId}:T" : $"{task.Id}:I";
             return $"{type} - {id}";
         }
 

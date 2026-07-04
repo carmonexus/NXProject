@@ -360,8 +360,8 @@ namespace NXProject.Views
                 DiagramCanvas.Children.Add(indicator);
             }
 
-            // Badge T: / I:
-            var idKey   = node.Task.HasTfsLink ? $"T:{node.Task.TfsId}" : $"I:{node.Task.Id}";
+            // Badge numero:tipo
+            var idKey   = node.Task.HasTfsLink ? $"{node.Task.TfsId}:T" : $"{node.Task.Id}:I";
             var idBadge = new TextBlock
             {
                 Text       = idKey,
@@ -627,7 +627,7 @@ namespace NXProject.Views
         private static ToolTip BuildNodeTooltip(DiagramNode node)
         {
             var t = node.Task;
-            var idKey  = t.HasTfsLink ? $"T:{t.TfsId}" : $"I:{t.Id}";
+            var idKey  = t.HasTfsLink ? $"{t.TfsId}:T" : $"{t.Id}:I";
             var estado = t.TfsState ?? "—";
             var inicio = t.Start.ToString("dd/MM/yy");
             var fim    = t.Finish.ToString("dd/MM/yy");
