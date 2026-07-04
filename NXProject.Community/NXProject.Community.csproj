@@ -10,10 +10,10 @@
     <RootNamespace>NXProject</RootNamespace>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <DefineConstants>$(DefineConstants);COMMUNITY</DefineConstants>
-    <Version>1.0.45.95</Version>
-    <AssemblyVersion>1.0.45.95</AssemblyVersion>
-    <FileVersion>1.0.45.95</FileVersion>
-    <InformationalVersion>1.0.45.95</InformationalVersion>
+    <Version>1.0.45.96</Version>
+    <AssemblyVersion>1.0.45.96</AssemblyVersion>
+    <FileVersion>1.0.45.96</FileVersion>
+    <InformationalVersion>1.0.45.96</InformationalVersion>
     <NoWarn>$(NoWarn);NU1900</NoWarn>
     <SatelliteResourceLanguages>pt-BR</SatelliteResourceLanguages>
   </PropertyGroup>
