@@ -52,7 +52,8 @@ internal static class Program
         ("Import TFS: AvailabilityPercent existente e preservado sobre o valor importado", ImportPreservesExistingResourceAvailabilityPercent),
         ("Arquivo: AvailabilityPercent do recurso sobrevive a salvar/abrir", XmlRoundTripPreservesResourceAvailabilityPercent),
         ("Alocacao: recalcular repetidamente NAO infla o fim (sem compounding)", ResourceAllocationRecalcDoesNotCompoundFinish),
-        ("Alocacao: cronograma, import TFS e abertura produzem o MESMO fim", CentralizedFinishCalcIsIdenticalAcrossPaths)
+        ("Alocacao: cronograma, import TFS e abertura produzem o MESMO fim", CentralizedFinishCalcIsIdenticalAcrossPaths),
+        ("Duracao: tarefa so com HH Atual NAO conta as horas em dobro", EffectiveDurationDoesNotDoubleCountCurrentOnlyHours)
     ];
 
     private static int Main(string[] args)
@@ -1048,6 +1049,36 @@ internal static class Program
         AssertEqual(finishB, noHours.Finish, "Tarefa sem HH: recalcular alocacao varias vezes NAO deve inflar o fim (compounding).");
         if (noHours.Finish > new DateTime(2026, 9, 1))
             throw new InvalidOperationException($"Tarefa sem HH (span ~4 dias) inflou para {noHours.Finish:yyyy-MM-dd} apos varios recalculos.");
+    }
+
+    // Regressao direta do double-count: GetEffectiveDurationHours (restante) tinha um
+    // fallback que retornava task.DurationHours (= HH Atual + HH Restante). Numa tarefa
+    // SO com HH Atual (restante = 0), esse fallback devolvia o HH Atual como se fosse
+    // restante, e o mesmo HH Atual era contado de novo em GetEffectiveCurrentDurationHours.
+    private static void EffectiveDurationDoesNotDoubleCountCurrentOnlyHours()
+    {
+        var resource = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 100 };
+        var task = new ProjectTask
+        {
+            Id = 1, Name = "So HH Atual",
+            Start = new DateTime(2026, 7, 6),
+            EstimatedHours = 0,   // sem HH Restante
+            CurrentHours = 24,    // 24h de HH Atual
+            PercentComplete = 40
+        };
+        task.Resources.Add(new TaskResource { Resource = resource, ResourceId = 1, AllocationPercent = 100, EstimatedHours = 0 });
+
+        // Restante = 0 (nao ha HH Restante).
+        AssertEqual(0.0, TaskScheduleService.GetEffectiveDurationHours(task),
+            "Sem HH Restante, a duracao de trabalho restante deve ser 0 (nao o span nem o HH Atual).");
+
+        // Atual = 24h a 100% de fator = 24h de calendario.
+        AssertEqual(24.0, TaskScheduleService.GetEffectiveCurrentDurationHours(task),
+            "HH Atual deve ser contado uma unica vez em GetEffectiveCurrentDurationHours.");
+
+        // Total = 24h (nao 48h). Se contasse em dobro, daria 48h.
+        AssertEqual(24.0, TaskScheduleService.GetEffectiveTotalDurationHours(task),
+            "Tarefa so com HH Atual: total deve ser 24h (contagem unica), nunca 48h (dobro).");
     }
 
     // O fim calculado deve ser IDENTICO entre o cronograma (edicao), o import TFS e a
