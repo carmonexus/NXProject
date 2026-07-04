@@ -270,6 +270,7 @@ public partial class MainWindow : Window
                 $sc = $ws.CreateShortcut('{{Escape(shortcutPath)}}')
                 $sc.TargetPath = '{{Escape(exePath)}}'
                 $sc.WorkingDirectory = '{{Escape(workingDir)}}'
+                $sc.IconLocation = '{{Escape(exePath)}},0'
                 $sc.Save()
                 """;
 
