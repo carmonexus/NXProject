@@ -48,7 +48,9 @@ internal static class Program
         ("Setup update: sem baseline conhecida nao dispara reinstalacao", SetupUpdateNoBaselineDoesNotTrigger),
         ("Setup update: asset igual a baseline nao dispara reinstalacao", SetupUpdateSameTimestampDoesNotTrigger),
         ("Setup update: asset mais antigo que a baseline nao dispara reinstalacao", SetupUpdateOlderAssetDoesNotTrigger),
-        ("Setup update: asset mais novo que a baseline dispara reinstalacao", SetupUpdateNewerAssetTriggers)
+        ("Setup update: asset mais novo que a baseline dispara reinstalacao", SetupUpdateNewerAssetTriggers),
+        ("Arquivo: AvailabilityPercent do recurso sobrevive a salvar/abrir", XmlRoundTripPreservesResourceAvailabilityPercent),
+        ("Import TFS: AvailabilityPercent existente e preservado sobre o valor importado", ImportPreservesExistingResourceAvailabilityPercent)
     ];
 
     private static int Main(string[] args)
@@ -959,6 +961,72 @@ internal static class Program
         var restoredNew = restoredParent.Children.Single(t => t.Name == "Story C nova");
         if (restoredNew.HasTfsLink)
             throw new InvalidOperationException("Atividade DevOps nova sem match no TFS deve continuar interna.");
+    }
+
+    private static void XmlRoundTripPreservesResourceAvailabilityPercent()
+    {
+        var resource = new Resource { Id = 1, Name = "Dev Meio Periodo", AvailabilityPercent = 62.5 };
+        var task = new ProjectTask
+        {
+            Id = 10,
+            Name = "Tarefa",
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 7),
+            EstimatedHours = 8
+        };
+        task.Resources.Add(new TaskResource { Resource = resource, ResourceId = resource.Id, AllocationPercent = 100, EstimatedHours = 8 });
+
+        var project = new Project { Name = "RoundTrip", StartDate = new DateTime(2026, 7, 6) };
+        project.Resources.Add(resource);
+        project.Tasks.Add(task);
+
+        var tempFile = Path.Combine(Path.GetTempPath(), $"nxtest_roundtrip_{Guid.NewGuid():N}.xml");
+        try
+        {
+            XmlProjectService.Save(project, tempFile);
+            var loaded = XmlProjectService.Load(tempFile);
+
+            var loadedResource = loaded.Resources.Single(r => r.Id == resource.Id);
+            AssertEqual(62.5, loadedResource.AvailabilityPercent,
+                "AvailabilityPercent do recurso deve sobreviver ao salvar e reabrir o arquivo (nao voltar para o padrao 100).");
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
+    }
+
+    private static void ImportPreservesExistingResourceAvailabilityPercent()
+    {
+        // Recurso configurado com 50% de disponibilidade no projeto ATUAL (em memoria).
+        var currentResource = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 50 };
+        var currentTask = CreateAssignedTask(1, "Story A", currentResource, new DateTime(2026, 7, 6), null!);
+        currentTask.TfsId = 1001;
+        currentTask.TfsType = "Story";
+
+        var currentProject = new Project { Name = "Atual", StartDate = new DateTime(2026, 7, 6) };
+        currentProject.Resources.Add(currentResource);
+        currentProject.Tasks.Add(currentTask);
+
+        var vm = new MainViewModel("NXTestUnit") { Project = currentProject };
+        vm.RebuildFlatTasks();
+
+        // Reimport do TFS traz o MESMO recurso (mesmo nome/chave) com o padrao 100%
+        // (como normalmente vem de uma importacao fresca, sem configuracao manual).
+        var importedResource = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 100 };
+        var importedTask = CreateAssignedTask(2, "Story A", importedResource, new DateTime(2026, 7, 6), null!);
+        importedTask.TfsId = 1001;
+        importedTask.TfsType = "Story";
+
+        var importedProject = new Project { Name = "Importado", StartDate = new DateTime(2026, 7, 6) };
+        importedProject.Resources.Add(importedResource);
+        importedProject.Tasks.Add(importedTask);
+
+        vm.ApplyImportedProject(importedProject);
+
+        var restoredResource = vm.Project.Resources.Single(r => r.Name == "Dev");
+        AssertEqual(50, restoredResource.AvailabilityPercent,
+            "Reimportar do TFS nao deve sobrescrever o AvailabilityPercent ja configurado no projeto atual com o padrao 100% do import.");
     }
 
     private static void SummaryRollupUsesChildrenDatesAndHours()

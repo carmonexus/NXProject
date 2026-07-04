@@ -42,6 +42,7 @@ namespace NXProject.Views
         /// <summary>Callback: adiciona rows ao cronograma e retorna a primeira ProjectTask adicionada (para seleção).</summary>
         public Func<IEnumerable<TaskReviewRow>, ProjectTask?>? AddToScheduleCallback { get; set; }
         public Action? ReleaseCallback { get; set; }
+        private bool _memorize;
 
         // Chamado pelo botão direito na Story — pré-seleciona e carrega direto
         public TechLeadTaskReviewWindow(Project project, List<ProjectTask> stories, List<string>? activityList = null)
@@ -51,6 +52,7 @@ namespace NXProject.Views
             _stories = stories;
             _cascadeMode = false;
             InitializeComponent();
+            Closing += OnWindowClosing;
             Loaded += async (_, _) => await LoadAsync();
             Loaded += (_, _) =>
             {
@@ -69,7 +71,18 @@ namespace NXProject.Views
             _stories = [];
             _cascadeMode = true;
             InitializeComponent();
+            Closing += OnWindowClosing;
             Loaded += (_, _) => InitCascadeMode();
+        }
+
+        // Fechar de qualquer forma (X, Esc, Alt+F4 ou clique em botão) libera por
+        // padrão — remove as Tasks memorizadas no cronograma local. Só o botão
+        // "Memorizar Task no Cronograma" evita isso, marcando _memorize antes de fechar.
+        private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (_memorize) return;
+            ReleaseCallback?.Invoke();
+            HasChanges = true;
         }
 
         private void InitCascadeMode()
@@ -703,10 +716,9 @@ namespace NXProject.Views
             Close();
         }
 
-        private void OnReleaseClick(object sender, RoutedEventArgs e)
+        private void OnMemorizeClick(object sender, RoutedEventArgs e)
         {
-            ReleaseCallback?.Invoke();
-            HasChanges = true;
+            _memorize = true;
             Close();
         }
 

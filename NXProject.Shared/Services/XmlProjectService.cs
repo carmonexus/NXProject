@@ -106,7 +106,8 @@ namespace NXProject.Services
                     new XElement(NS + "Email", r.Email ?? ""),
                     new XElement(NS + "Notes", r.Notes ?? ""),
                     new XElement(EXT + "IsImportedFromTfs", r.IsImportedFromTfs),
-                    new XElement(EXT + "Kind", r.Kind.ToString())
+                    new XElement(EXT + "Kind", r.Kind.ToString()),
+                    new XElement(EXT + "AvailabilityPercent", r.AvailabilityPercent)
                     // CostType, CostPerHour e MonthlyRate NÃO são gravados no .nxp (sigilosos)
                     // → usar "Salvar config de custo" na tela Pessoas para persistir separadamente
                 ));
@@ -358,7 +359,8 @@ namespace NXProject.Services
             Email = el.Element(NS + "Email")?.Value,
             Notes = el.Element(NS + "Notes")?.Value,
             IsImportedFromTfs = bool.TryParse(el.Element(EXT + "IsImportedFromTfs")?.Value, out var importedFromTfs) && importedFromTfs,
-            Kind = Enum.TryParse<ResourceKind>(el.Element(EXT + "Kind")?.Value, out var rk) ? rk : ResourceKind.Project
+            Kind = Enum.TryParse<ResourceKind>(el.Element(EXT + "Kind")?.Value, out var rk) ? rk : ResourceKind.Project,
+            AvailabilityPercent = ParseDouble(el.Element(EXT + "AvailabilityPercent")?.Value) ?? 100.0
             // CostType/CostPerHour/MonthlyRate carregados separadamente via ResourceCostConfigService
         };
 

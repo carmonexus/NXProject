@@ -429,12 +429,14 @@
                     <Button x:Name="AddSelectedButton" Content="📥 Incluir selecionadas no cronograma"
                             Click="OnAddSelectedClick" Height="28" Padding="10,0" Margin="0,0,8,0"
                             Background="#2B579A" Foreground="White" IsEnabled="False" Visibility="Collapsed"/>
-                    <Button x:Name="ReleaseButton" Content="🔓 Liberar atividade"
-                            Click="OnReleaseClick" Height="28" Padding="10,0" Margin="0,0,8,0"
-                            Background="#C0392B" Foreground="White" Visibility="Collapsed"/>
+                    <Button x:Name="ReleaseButton" Content="💾 Memorizar Task no Cronograma"
+                            Click="OnMemorizeClick" Height="28" Padding="10,0" Margin="0,0,8,0"
+                            Background="#217346" Foreground="White" Visibility="Collapsed"
+                            ToolTip="Fecha mantendo as Tasks incluidas no cronograma local (nao libera a Story)"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Fechar" Click="OnCloseClick" Width="90" Height="28"/>
+                    <Button Content="🔓 Liberar Atividade" Click="OnCloseClick" Width="140" Height="28"
+                            ToolTip="Fecha e remove as Tasks do cronograma local (libera a Story)"/>
                 </StackPanel>
             </DockPanel>
         </Border>
