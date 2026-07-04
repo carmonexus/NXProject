@@ -400,6 +400,7 @@ namespace NXProject.ViewModels
                     OnPropertyChanged(nameof(StartFixed));
                     OnPropertyChanged(nameof(StartDisplay));
                     OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                     OnPropertyChanged(nameof(DurationHours));
                     RecalcAncestorSummaries();
                     ScheduleSuccessors?.Invoke(this);
@@ -424,6 +425,7 @@ namespace NXProject.ViewModels
                 OnPropertyChanged(nameof(Finish));
                 OnPropertyChanged(nameof(FinishDisplay));
                 OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                 OnPropertyChanged(nameof(DurationHours));
                 OnPropertyChanged(nameof(DisplayAsMilestone));
                 OnPropertyChanged(nameof(StartFixed));
@@ -450,6 +452,7 @@ namespace NXProject.ViewModels
                 OnPropertyChanged(nameof(FinishDisplay));
                 OnPropertyChanged(nameof(FinishFixed));
                 OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                 OnPropertyChanged(nameof(DurationHours));
                 OnPropertyChanged(nameof(DisplayAsMilestone));
                 RecalcAncestorSummaries();
@@ -505,6 +508,7 @@ namespace NXProject.ViewModels
                         OnPropertyChanged(nameof(Finish));
                         OnPropertyChanged(nameof(FinishDisplay));
                         OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                         OnPropertyChanged(nameof(DisplayAsMilestone));
                         RefreshOriginalEstimatedHoursProperties();
                         RecalcAncestorSummaries();
@@ -543,6 +547,7 @@ namespace NXProject.ViewModels
                     OnPropertyChanged(nameof(Finish));
                     OnPropertyChanged(nameof(FinishDisplay));
                     OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                     OnPropertyChanged(nameof(DisplayAsMilestone));
                     RecalcAncestorSummaries();
                     RefreshAncestorCalculatedProperties();
@@ -564,6 +569,14 @@ namespace NXProject.ViewModels
                 DurationHours = Math.Max(0, hours);
             }
         }
+
+        /// <summary>Dias úteis fracionários (horas úteis do calendário ÷ horas por dia),
+        /// exibido na coluna "DU" com uma casa decimal. Somente leitura.</summary>
+        public double DurationWorkingDays =>
+            _task.IsMilestone
+                ? 0.0
+                : ProjectCalendarService.CountWorkingHours(_task.Start, _task.Finish)
+                  / ProjectCalendarService.WorkingHoursPerDay;
 
         public int DurationDays
         {
@@ -600,6 +613,7 @@ namespace NXProject.ViewModels
                 OnPropertyChanged(nameof(CanEditDuration));
                 OnPropertyChanged(nameof(IsDurationReadOnly));
                 OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                 OnPropertyChanged(nameof(DurationHours));
                 OnPropertyChanged(nameof(Finish));
                 OnPropertyChanged(nameof(FinishDisplay));
@@ -659,6 +673,7 @@ namespace NXProject.ViewModels
                         OnPropertyChanged(nameof(FinishFixed));
                         OnPropertyChanged(nameof(FinishDisplay));
                         OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                         OnPropertyChanged(nameof(DurationHours));
                         RecalcAncestorSummaries();
                     }
@@ -723,6 +738,7 @@ namespace NXProject.ViewModels
                         OnPropertyChanged(nameof(Finish));
                         OnPropertyChanged(nameof(FinishDisplay));
                         OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                         OnPropertyChanged(nameof(DurationHours));
                         OnPropertyChanged(nameof(DisplayAsMilestone));
                         RecalcAncestorSummaries();
@@ -772,6 +788,7 @@ namespace NXProject.ViewModels
                         OnPropertyChanged(nameof(Finish));
                         OnPropertyChanged(nameof(FinishDisplay));
                         OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                         OnPropertyChanged(nameof(DurationHours));
                         OnPropertyChanged(nameof(DisplayAsMilestone));
                         RecalcAncestorSummaries();
@@ -788,6 +805,7 @@ namespace NXProject.ViewModels
                         OnPropertyChanged(nameof(Finish));
                         OnPropertyChanged(nameof(FinishDisplay));
                         OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                         OnPropertyChanged(nameof(DurationHours));
                         OnPropertyChanged(nameof(DisplayAsMilestone));
                         RecalcAncestorSummaries();
@@ -983,6 +1001,7 @@ namespace NXProject.ViewModels
             {
                 current.OnPropertyChanged(nameof(DurationHours));
                 current.OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                 current.OnPropertyChanged(nameof(Finish));
                 current.OnPropertyChanged(nameof(FinishDisplay));
                 current.OnPropertyChanged(nameof(DisplayAsMilestone));
@@ -1208,6 +1227,7 @@ namespace NXProject.ViewModels
                         OnPropertyChanged(nameof(StartDisplay));
                         OnPropertyChanged(nameof(FinishDisplay));
                         OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
                         RecalcAncestorSummaries();
                         ScheduleSuccessors?.Invoke(this);
                     }
@@ -1270,6 +1290,7 @@ namespace NXProject.ViewModels
             OnPropertyChanged(nameof(Finish));
             OnPropertyChanged(nameof(FinishDisplay));
             OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
             OnPropertyChanged(nameof(DurationHours));
             OnPropertyChanged(nameof(DisplayAsMilestone));
             OnPropertyChanged(nameof(StartFixed));
@@ -1292,6 +1313,7 @@ namespace NXProject.ViewModels
             OnPropertyChanged(nameof(Finish));
             OnPropertyChanged(nameof(FinishDisplay));
             OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
             OnPropertyChanged(nameof(DurationHours));
             OnPropertyChanged(nameof(DisplayAsMilestone));
             OnPropertyChanged(nameof(StartFixed));
@@ -1346,6 +1368,7 @@ namespace NXProject.ViewModels
             OnPropertyChanged(nameof(Finish));
             OnPropertyChanged(nameof(FinishDisplay));
             OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
             OnPropertyChanged(nameof(DurationHours));
             RecalcAncestorSummaries();
             ScheduleSuccessors?.Invoke(this);
@@ -1418,6 +1441,7 @@ namespace NXProject.ViewModels
             OnPropertyChanged(nameof(Finish));
             OnPropertyChanged(nameof(FinishDisplay));
             OnPropertyChanged(nameof(DurationDays));
+                    OnPropertyChanged(nameof(DurationWorkingDays));
             OnPropertyChanged(nameof(DisplayAsMilestone));
             RecalcAncestorSummaries();
         }

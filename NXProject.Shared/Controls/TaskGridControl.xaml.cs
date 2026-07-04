@@ -493,6 +493,8 @@ namespace NXProject.Controls
             EstimatedHoursColumn.Width = new DataGridLength(expanded ? 80 : 80);
             StartColumn.Width = new DataGridLength(expanded ? 124 : 90);
             FinishColumn.Width = new DataGridLength(expanded ? 118 : 76);
+            // DU (dias uteis) so aparece na visao completa — evita o calculo mental do fim de semana.
+            WorkingDaysColumn.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
             PercentColumn.Width = new DataGridLength(expanded ? 88 : 62);
             PredecessorColumn.Width = new DataGridLength(expanded ? 111 : 80);
             ResourcesColumn.Width = new DataGridLength(expanded ? 160 : 94);

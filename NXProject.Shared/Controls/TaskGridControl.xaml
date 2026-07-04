@@ -576,6 +576,20 @@
                 </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
 
+            <!-- DU: dias uteis entre inicio e fim (só visão completa; read-only) -->
+            <DataGridTemplateColumn x:Name="WorkingDaysColumn" Header="DU" Width="46" IsReadOnly="True" SortMemberPath="DurationWorkingDays">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DurationWorkingDays, StringFormat={}{0:0.0}}"
+                                   VerticalAlignment="Center"
+                                   TextAlignment="Center"
+                                   FontSize="11"
+                                   Foreground="#555"
+                                   ToolTip="Dias uteis (calendario) entre inicio e fim"/>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+
             <!-- TKs: quantidade de Tasks filhas no DevOps (só modo expandido) -->
             <DataGridTemplateColumn x:Name="TksColumn" Header="TKs" Width="40" IsReadOnly="True">
                 <DataGridTemplateColumn.CellTemplate>
