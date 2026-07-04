@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Sobre o NXProject Community"
         Width="580"
-        Height="410"
+        Height="540"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="White">
@@ -18,9 +18,11 @@
             <StackPanel>
                 <DockPanel Margin="0,0,0,12" LastChildFill="True">
                     <Image x:Name="CompanyLogoImage"
+                           DockPanel.Dock="Left"
                            Width="150"
-                           Height="56"
+                           Height="150"
                            Stretch="Uniform"
+                           HorizontalAlignment="Left"
                            Margin="0,0,16,0"/>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="NXProject Community"
