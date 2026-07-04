@@ -241,19 +241,23 @@ if (Test-Path $SetupZipForTimestamp) {
 }
 
 # Remove obj/ (nao so o assets.json) para forcar restore limpo com o RID correto —
-# um build/restore anterior sem RID pode deixar o assets.json sem o alvo win-x64.
+# um build/restore anterior sem RID (ex.: 'dotnet build' manual) deixa o assets.json
+# sem o alvo win-x64. Encerra os build servers ANTES para liberar locks na pasta obj;
+# senao a remocao falha silenciosamente e o assets.json velho sobrevive -> NETSDK1047.
+dotnet build-server shutdown 2>&1 | Out-Null
 $objDir = Join-Path $SolutionDir "NXProject.Community\obj"
 if (Test-Path $objDir) {
-    for ($attempt = 1; $attempt -le 3; $attempt++) {
+    for ($attempt = 1; $attempt -le 4; $attempt++) {
         try {
             Remove-Item $objDir -Recurse -Force -ErrorAction Stop
             break
         } catch {
-            if ($attempt -eq 3) {
-                Write-Host "  Aviso: nao foi possivel remover obj/ completamente (pasta ocupada); seguindo mesmo assim." -ForegroundColor Yellow
-            } else {
-                Start-Sleep -Milliseconds 500
+            if ($attempt -eq 4) {
+                Write-Host "  ERRO: nao foi possivel remover obj/ (pasta ocupada). Feche o app/IDE e tente de novo." -ForegroundColor Red
+                exit 1
             }
+            dotnet build-server shutdown 2>&1 | Out-Null
+            Start-Sleep -Milliseconds 700
         }
     }
 }
