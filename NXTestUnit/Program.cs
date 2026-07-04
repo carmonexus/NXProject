@@ -57,7 +57,6 @@ internal static class Program
     {
         var category = args.Length > 0 ? args[0] : "schedule";
         _solutionRoot = args.Length > 1 ? args[1] : Directory.GetCurrentDirectory();
-        var isSchedule = category.Equals("schedule", StringComparison.OrdinalIgnoreCase);
 
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
         {
@@ -66,6 +65,11 @@ internal static class Program
             "packaging" => PackagingTests,
             _ => ScheduleTests
         };
+
+        // Qualquer categoria desconhecida cai nos testes de cronograma (default do switch),
+        // entao "isSchedule" deve seguir a MESMA regra — senao os testes de cronograma
+        // rodam sem ResetCalendar() e usam um calendario default (datas +1 dia).
+        var isSchedule = ReferenceEquals(tests, ScheduleTests);
 
         if (isSchedule)
             SetCurrentCalendar(new ProjectCalendar());

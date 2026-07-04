@@ -112,11 +112,27 @@ function Remove-SetupOwnedFilesFromRelease([string]$PackageDir) {
 }
 
 function Stop-NXProjectCommunityProcess {
-    $processes = Get-Process -Name "NXProject.Community" -ErrorAction SilentlyContinue
+    # Nomes dos executaveis que podem segurar as DLLs (NXProject.Community.dll etc.)
+    # em memoria e travar o publish/zip: o proprio app e o instalador self-contained.
+    $names = @("NXProject.Community", "NXProject-Setup", "NXProject.Setup")
+    $processes = Get-Process -Name $names -ErrorAction SilentlyContinue
     if ($null -eq $processes) { return }
 
-    Write-Step "Encerrando NXProject.Community em execucao..."
-    $processes | Stop-Process -Force
+    Write-Step "Encerrando processos NXProject em execucao (DLL pode estar presa)..."
+    foreach ($p in $processes) {
+        try {
+            Write-Host "  Kill: $($p.ProcessName) (PID $($p.Id))" -ForegroundColor DarkGray
+            $p | Stop-Process -Force -ErrorAction Stop
+        } catch {
+            Write-Host "  Aviso: nao foi possivel encerrar PID $($p.Id): $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+
+    # Aguarda ate os processos realmente sairem e liberarem os handles das DLLs.
+    for ($i = 0; $i -lt 20; $i++) {
+        if (-not (Get-Process -Name $names -ErrorAction SilentlyContinue)) { break }
+        Start-Sleep -Milliseconds 250
+    }
 }
 
 function Invoke-DotnetCommandWithRetry {
