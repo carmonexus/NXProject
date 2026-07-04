@@ -2339,16 +2339,16 @@ namespace NXProject.Services
             // AssignResource é chamado depois do cálculo inicial do finish, então precisamos corrigir.
             // Quando StartFixed, a duração é negociada — não recalculamos o Finish, mas guardamos
             // o Finish calculado em CalculatedFinish para o Gantt exibir como alerta visual.
+            bool hasNonDefaultFactor =
+                task.Resources.Any(r => Math.Abs(r.AllocationPercent - 100.0) > 0.01) ||
+                task.Resources.Any(r => r.Resource != null && Math.Abs(r.Resource.AvailabilityPercent - 100.0) > 0.01);
             if (!task.FinishFixed && !task.IsMilestone &&
-                task.Resources.Count > 0 &&
-                task.Resources.Any(r => Math.Abs(r.AllocationPercent - 100.0) > 0.01))
+                task.Resources.Count > 0 && hasNonDefaultFactor)
             {
-                var effectiveDuration = TaskScheduleService.GetEffectiveDurationHours(task);
-                var currentEffective  = (task.CurrentHours ?? 0) / Math.Max(0.01, allocationFactor);
-                var totalEffective    = effectiveDuration + currentEffective;
-                if (totalEffective > 0)
+                // Cálculo único e centralizado (mesma fórmula do cronograma e da abertura de arquivo).
+                var calcFinish = TaskScheduleService.CalculateFinishFromAssignments(task, task.Start);
+                if (calcFinish > task.Start)
                 {
-                    var calcFinish = ProjectCalendarService.AddWorkingHours(task.Start, totalEffective);
                     if (task.StartFixed)
                     {
                         // Duração negociada: mantém Finish, registra o calculado para alerta visual.

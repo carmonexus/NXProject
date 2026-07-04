@@ -530,12 +530,8 @@ namespace NXProject.ViewModels
                     SyncAssignmentEstimatedHours(remaining);
                     if (!_task.FinishFixed)
                     {
-                        // Aplica o fator de alocação: HH trabalho ÷ alloc% = tempo calendário.
-                        var effectiveH = Services.TaskScheduleService.GetEffectiveDurationHours(_task);
-                        if (_task.CurrentHours is > 0)
-                            effectiveH += Services.TaskScheduleService.GetEffectiveCurrentDurationHours(_task);
-                        var totalH = _task.CurrentHours is > 0 ? _task.CurrentHours.Value + remaining : remaining;
-                        _task.Finish = ProjectCalendarService.AddWorkingHours(_task.Start, effectiveH > 0 ? effectiveH : totalH);
+                        // Cálculo único e centralizado (mesma fórmula do import TFS e da abertura de arquivo).
+                        _task.Finish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, _task.Start);
                     }
                     if (_task.PercentComplete < 0.0001)
                     {
@@ -1335,27 +1331,17 @@ namespace NXProject.ViewModels
         {
             if (_task.FinishFixed || _task.IsSummary || _task.IsMilestone) return;
 
-            // Garante que EstimatedHours está definido para que o fator de alocação
-            // seja aplicado corretamente. Se a tarefa não tem HH explícito, usa o
-            // span calendário atual como base de horas de trabalho (a 100% de alocação
-            // esse valor é equivalente a horas de trabalho).
-            if (!_task.EstimatedHours.HasValue || _task.EstimatedHours.Value <= 0)
-                _task.EstimatedHours = _task.DurationHours > 0 ? _task.DurationHours : null;
+            // Propaga o HH da tarefa para os assignments que ainda não têm HH explícito,
+            // para que o fator de alocação/disponibilidade seja aplicado sobre as HORAS
+            // DE TRABALHO (nunca sobre o span de calendário — isso inflaria a cada edição).
+            var workHours = _task.EstimatedHours ?? _task.OriginalEstimatedHours;
+            if (workHours is > 0)
+                foreach (var r in _task.Resources)
+                    if (!r.EstimatedHours.HasValue || r.EstimatedHours.Value <= 0)
+                        r.EstimatedHours = workHours;
 
-            // Propaga para os assignments que também não têm EstimatedHours explícito.
-            foreach (var r in _task.Resources)
-                if (!r.EstimatedHours.HasValue || r.EstimatedHours.Value <= 0)
-                    r.EstimatedHours = _task.EstimatedHours;
-
-            // Não pula por PercentComplete — alteração de alocação deve sempre recalcular o fim.
-            // effectiveHours = HH Restante / alloc% (tempo calendário para o trabalho restante).
-            // CurrentHours foi feito à mesma taxa de alocação, então o tempo calendário já consumido
-            // é CurrentHours / alloc%. A duração total (Start → Finish) é a soma dos dois.
-            var effectiveHours = Services.TaskScheduleService.GetEffectiveDurationHours(_task);
-            if (_task.CurrentHours is > 0)
-                effectiveHours += Services.TaskScheduleService.GetEffectiveCurrentDurationHours(_task);
-            if (effectiveHours > 0)
-                _task.Finish = Services.ProjectCalendarService.AddWorkingHours(_task.Start, effectiveHours);
+            // Cálculo único e centralizado (mesma fórmula do import TFS e da abertura de arquivo).
+            _task.Finish = Services.TaskScheduleService.CalculateFinishFromAssignments(_task, _task.Start);
 
             OnPropertyChanged(nameof(Finish));
             OnPropertyChanged(nameof(FinishDisplay));

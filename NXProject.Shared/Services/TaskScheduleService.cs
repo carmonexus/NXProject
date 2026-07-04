@@ -159,6 +159,12 @@ namespace NXProject.Services
                 return estimatedHours.Value / Math.Max(0.01, combinedFactor);
             }
 
+            // Sem HH Restante: se ha HH Atual, o restante e realmente 0 (o HH Atual entra
+            // em GetEffectiveCurrentDurationHours — retornar o span aqui contaria em dobro).
+            // So quando nao ha NENHUMA hora usamos o span de calendario como base.
+            if (task.CurrentHours is > 0)
+                return 0.0;
+
             return Math.Max(0.0, task.DurationHours);
         }
 

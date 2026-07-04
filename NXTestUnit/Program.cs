@@ -49,8 +49,10 @@ internal static class Program
         ("Setup update: asset igual a baseline nao dispara reinstalacao", SetupUpdateSameTimestampDoesNotTrigger),
         ("Setup update: asset mais antigo que a baseline nao dispara reinstalacao", SetupUpdateOlderAssetDoesNotTrigger),
         ("Setup update: asset mais novo que a baseline dispara reinstalacao", SetupUpdateNewerAssetTriggers),
+        ("Import TFS: AvailabilityPercent existente e preservado sobre o valor importado", ImportPreservesExistingResourceAvailabilityPercent),
         ("Arquivo: AvailabilityPercent do recurso sobrevive a salvar/abrir", XmlRoundTripPreservesResourceAvailabilityPercent),
-        ("Import TFS: AvailabilityPercent existente e preservado sobre o valor importado", ImportPreservesExistingResourceAvailabilityPercent)
+        ("Alocacao: recalcular repetidamente NAO infla o fim (sem compounding)", ResourceAllocationRecalcDoesNotCompoundFinish),
+        ("Alocacao: cronograma, import TFS e abertura produzem o MESMO fim", CentralizedFinishCalcIsIdenticalAcrossPaths)
     ];
 
     private static int Main(string[] args)
@@ -998,6 +1000,106 @@ internal static class Program
         {
             if (File.Exists(tempFile)) File.Delete(tempFile);
         }
+    }
+
+    // Regressao do bug "32h viram meses": recalcular a alocacao repetidamente inflava a
+    // duracao porque o span de calendario era re-semeado como horas de trabalho e re-dividido
+    // pelo fator a cada edicao. Deve ser idempotente.
+    private static void ResourceAllocationRecalcDoesNotCompoundFinish()
+    {
+        // Cenario com HH explicito: recalcular repetidamente deve ser idempotente.
+        var r1 = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 50 };
+        var withHours = new ProjectTask { Id = 1, Name = "Tarefa 32h", Start = new DateTime(2026, 7, 6), EstimatedHours = 32 };
+        withHours.Resources.Add(new TaskResource { Resource = r1, ResourceId = 1, AllocationPercent = 50, EstimatedHours = 32 });
+        var p1 = new Project { Name = "P", StartDate = new DateTime(2026, 7, 6) };
+        p1.Resources.Add(r1); p1.Tasks.Add(withHours);
+        var vm1 = new MainViewModel("NXTestUnit") { Project = p1 };
+        vm1.RebuildFlatTasks();
+        var tvm1 = vm1.FlatTasks.First(t => t.Id == 1);
+        tvm1.RecalcFinishFromPercAloc();
+        var finishA = withHours.Finish;
+        tvm1.RecalcFinishFromPercAloc();
+        tvm1.RecalcFinishFromPercAloc();
+        AssertEqual(finishA, withHours.Finish, "Recalcular alocacao varias vezes NAO deve mudar o fim (compounding).");
+        if (withHours.Finish > new DateTime(2026, 8, 15))
+            throw new InvalidOperationException($"32h a 50%/50% deveria terminar em ~julho/2026, mas terminou em {withHours.Finish:yyyy-MM-dd}.");
+
+        // Cenario que disparava o bug: tarefa SEM HH explicito, so com um span de calendario.
+        // O codigo antigo semeava EstimatedHours com o span e re-dividia pelo fator a cada
+        // recalculo, inflando sem parar. Deve permanecer estavel.
+        var r2 = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 50 };
+        var noHours = new ProjectTask
+        {
+            Id = 1, Name = "Tarefa sem HH",
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 10) // span de ~4 dias uteis, sem EstimatedHours
+        };
+        noHours.Resources.Add(new TaskResource { Resource = r2, ResourceId = 1, AllocationPercent = 50 });
+        var p2 = new Project { Name = "P2", StartDate = new DateTime(2026, 7, 6) };
+        p2.Resources.Add(r2); p2.Tasks.Add(noHours);
+        var vm2 = new MainViewModel("NXTestUnit") { Project = p2 };
+        vm2.RebuildFlatTasks();
+        var tvm2 = vm2.FlatTasks.First(t => t.Id == 1);
+        tvm2.RecalcFinishFromPercAloc();
+        var finishB = noHours.Finish;
+        tvm2.RecalcFinishFromPercAloc();
+        tvm2.RecalcFinishFromPercAloc();
+        tvm2.RecalcFinishFromPercAloc();
+        AssertEqual(finishB, noHours.Finish, "Tarefa sem HH: recalcular alocacao varias vezes NAO deve inflar o fim (compounding).");
+        if (noHours.Finish > new DateTime(2026, 9, 1))
+            throw new InvalidOperationException($"Tarefa sem HH (span ~4 dias) inflou para {noHours.Finish:yyyy-MM-dd} apos varios recalculos.");
+    }
+
+    // O fim calculado deve ser IDENTICO entre o cronograma (edicao), o import TFS e a
+    // abertura de arquivo — todos usam TaskScheduleService.CalculateFinishFromAssignments.
+    // Cobre os tres cenarios de horas: so HH Restante, so HH Atual, e HH Atual + HH Restante.
+    private static void CentralizedFinishCalcIsIdenticalAcrossPaths()
+    {
+        AssertCentralizedFinishConsistent("so HH Restante",       remaining: 24, current: null);
+        AssertCentralizedFinishConsistent("so HH Atual",          remaining: 0,  current: 24);
+        AssertCentralizedFinishConsistent("HH Atual + Restante",  remaining: 24, current: 8);
+    }
+
+    private static void AssertCentralizedFinishConsistent(string caseName, double remaining, double? current)
+    {
+        ProjectTask NewTask()
+        {
+            var resource = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 50 };
+            var t = new ProjectTask
+            {
+                Id = 1, Name = "T",
+                Start = new DateTime(2026, 7, 6),
+                EstimatedHours = remaining,
+                CurrentHours = current,
+                PercentComplete = current is > 0 ? 40 : 0
+            };
+            t.Resources.Add(new TaskResource { Resource = resource, ResourceId = 1, AllocationPercent = 50, EstimatedHours = remaining });
+            return t;
+        }
+
+        // Caminho 1: cálculo direto (o que o import TFS e a abertura de arquivo usam)
+        var t1 = NewTask();
+        var finishDirect = TaskScheduleService.CalculateFinishFromAssignments(t1, t1.Start);
+
+        // Caminho 2: edição no cronograma (RecalcFinishFromPercAloc)
+        var t2 = NewTask();
+        var project = new Project { Name = "P", StartDate = new DateTime(2026, 7, 6) };
+        project.Resources.Add(t2.Resources[0].Resource!);
+        project.Tasks.Add(t2);
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+        vm.FlatTasks.First(t => t.Id == 1).RecalcFinishFromPercAloc();
+        var finishGrid = t2.Finish;
+
+        AssertEqual(finishDirect, finishGrid,
+            $"[{caseName}] O fim do cronograma deve ser identico ao do import/abertura (mesma classe central).");
+
+        // Sanidade: o fator de alocacao/disponibilidade tem que estender a duracao.
+        // remaining/(0.5x0.5) + current/(0.5x0.5) horas de trabalho -> calendario.
+        var expectedCalendarHours = (remaining + (current ?? 0)) / 0.25;
+        var expectedFinish = ProjectCalendarService.AddWorkingHours(t1.Start, expectedCalendarHours);
+        AssertEqual(expectedFinish, finishDirect,
+            $"[{caseName}] HH (Atual+Restante) deve passar pelo fator alocacao x disponibilidade.");
     }
 
     private static void ImportPreservesExistingResourceAvailabilityPercent()
