@@ -10,7 +10,7 @@ namespace NXProject.Services
     internal static class ProtectedLogoProvider
     {
         private const string ResourceName = "NXProject.Assets.logo-nexus-xdata.enc";
-        private const string ExpectedPlainHash = "5a5547078b825b51fb95e41503f95a3eaea9725f02715fcf18e213fd6c8b13ce";
+        private const string ExpectedPlainHash = "4b719709295f30cacdbf3ff148ad23d9278aef138352d2292b9f58139dec22bc";
         private static readonly byte[] Key = System.Text.Encoding.UTF8.GetBytes("NXProjectCommunityLogoKey-2026!");
 
         private static BitmapImage? _cachedLogo;
