@@ -590,27 +590,6 @@
                 </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
 
-            <!-- TKs: quantidade de Tasks filhas no DevOps (só modo expandido) -->
-            <DataGridTemplateColumn x:Name="TksColumn" Header="TKs" Width="40" IsReadOnly="True">
-                <DataGridTemplateColumn.CellTemplate>
-                    <DataTemplate>
-                        <Button Content="{Binding TksCountDisplay}"
-                                Foreground="{Binding TksBrush}"
-                                FontWeight="SemiBold"
-                                FontSize="12"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Padding="0"
-                                Cursor="Hand"
-                                Visibility="{Binding TksButtonVisibility}"
-                                Click="OnTksClick"
-                                ToolTip="Abrir Grid de Tasks (DevOps)"/>
-                    </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-
             <!-- % Completo -->
             <DataGridTemplateColumn x:Name="PercentColumn" Header="{DynamicResource Col_PercentComplete}" Width="70">
                 <DataGridTemplateColumn.CellTemplate>
@@ -737,6 +716,27 @@
                         </Button>
                     </DataTemplate>
                 </DataGridTemplateColumn.CellEditingTemplate>
+            </DataGridTemplateColumn>
+
+            <!-- TKs: quantidade de Tasks filhas no DevOps (só modo expandido) -->
+            <DataGridTemplateColumn x:Name="TksColumn" Header="TKs" Width="40" IsReadOnly="True">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                        <Button Content="{Binding TksCountDisplay}"
+                                Foreground="{Binding TksBrush}"
+                                FontWeight="SemiBold"
+                                FontSize="12"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                Cursor="Hand"
+                                Visibility="{Binding TksButtonVisibility}"
+                                Click="OnTksClick"
+                                ToolTip="Abrir Grid de Tasks (DevOps)"/>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
 
             <!-- Recursos (editável: ComboBox com criação rápida) -->
