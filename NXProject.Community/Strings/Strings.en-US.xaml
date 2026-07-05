@@ -397,4 +397,44 @@
     <sys:String x:Key="Imp_NoConnectionStatus">Azure DevOps connection not configured. Click "Configure..." above.</sys:String>
     <sys:String x:Key="Imp_SelectOrEnterId">Select a project from the list or enter a valid root work item ID.</sys:String>
 
+    <!-- Azure DevOps Integration Configuration -->
+    <sys:String x:Key="Cfg_Title">Azure DevOps Integration Configuration</sys:String>
+    <sys:String x:Key="Cfg_Subtitle">Connection, calendar and fields used in import/sync.</sys:String>
+    <sys:String x:Key="Cfg_ConnSection">Azure DevOps Connection</sys:String>
+    <sys:String x:Key="Cfg_OrgUrl">Organization URL</sys:String>
+    <sys:String x:Key="Cfg_OrgUrlTip">E.g.: https://dev.azure.com/your-org  or  https://yourorg.visualstudio.com</sys:String>
+    <sys:String x:Key="Cfg_TeamProject">Team Project (exact project name in DevOps)</sys:String>
+    <sys:String x:Key="Cfg_TeamProjectTip">Project name as it appears in Azure DevOps</sys:String>
+    <sys:String x:Key="Cfg_Pat">Personal Access Token  (minimum scope: Work Items → Read)</sys:String>
+    <sys:String x:Key="Cfg_RememberToken">Remember the token on this computer (stored encrypted)</sys:String>
+    <sys:String x:Key="Cfg_PortfolioSection">Project portfolio</sys:String>
+    <sys:String x:Key="Cfg_CalendarLabel">Working calendar (hours/day, holidays, working days)</sys:String>
+    <sys:String x:Key="Cfg_AdvancedFields">⚙  Advanced fields</sys:String>
+    <sys:String x:Key="Cfg_FieldNamesHint">DevOps field names (leave blank to use the defaults)</sys:String>
+    <sys:String x:Key="Cfg_EffortField">Effort field (hours)</sys:String>
+    <sys:String x:Key="Cfg_StartField">Start date field</sys:String>
+    <sys:String x:Key="Cfg_FinishField">Finish date field</sys:String>
+    <sys:String x:Key="Cfg_PercAlocField">Allocation % field (Perc_Aloc)</sys:String>
+    <sys:String x:Key="Cfg_FixedStartTag">Negotiated date tag (fixed start)</sys:String>
+    <sys:String x:Key="Cfg_SyncPredLinks">Sync predecessor links in DevOps</sys:String>
+    <sys:String x:Key="Cfg_FutureSprints">Future sprints in the dropdown (days from today)</sys:String>
+    <sys:String x:Key="Cfg_FutureSprintsHint">  (0 = only sprints with items)</sys:String>
+    <sys:String x:Key="Cfg_RequiredFieldsHint">Required fields on creation (when DevOps requires fields that NXProject does not fill automatically):</sys:String>
+    <sys:String x:Key="Cfg_FieldRefHint">Field reference (e.g.: Custom.Type)</sys:String>
+    <sys:String x:Key="Cfg_DefaultValueHint">Default value (e.g.: Activity)</sys:String>
+    <sys:String x:Key="Cfg_AddField">+ Add field</sys:String>
+    <sys:String x:Key="Cfg_ClassSection">Classification fields (picklist on DevOps creation)</sys:String>
+    <sys:String x:Key="Cfg_ClassHint">Picklist field filled automatically when creating the item in DevOps. The default value is the Classification set on the item (editable via context menu → 🏷 Classification).</sys:String>
+    <sys:String x:Key="Cfg_ColDevOpsType">DevOps Type</sys:String>
+    <sys:String x:Key="Cfg_ColFieldRef">Field (ref.)</sys:String>
+    <sys:String x:Key="Cfg_ColFieldType">Field type</sys:String>
+    <sys:String x:Key="Cfg_ColValues">Values (comma-separated)</sys:String>
+    <sys:String x:Key="Cfg_FieldRefTip">DevOps field reference (e.g.: Custom.Type)</sys:String>
+    <sys:String x:Key="Cfg_FieldTypeTip">Field type as configured in DevOps</sys:String>
+    <sys:String x:Key="Cfg_ValuesTip">Values shown as a combo when editing classification for this type (e.g.: Architecture,Docs,Hotfix)</sys:String>
+    <sys:String x:Key="Cfg_AddMapping">+ Add mapping</sys:String>
+    <sys:String x:Key="Cfg_Save">Save</sys:String>
+    <sys:String x:Key="Cfg_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Cfg_UrlPatRequired">Enter the organization URL and the Personal Access Token before saving.</sys:String>
+
 </ResourceDictionary>

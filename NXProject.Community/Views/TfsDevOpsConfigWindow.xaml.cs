@@ -90,7 +90,7 @@ namespace NXProject.Views
             {
                 _devOpsProjectListPath = dlg.ResultFilePath ?? string.Empty;
                 ListPathLabel.Text = string.IsNullOrWhiteSpace(_devOpsProjectListPath)
-                    ? "(nenhum portfólio carregado — clique em ⚙ Gerenciar Portfólio)"
+                    ? AppStrings.Get("Imp_NoPortfolio")
                     : _devOpsProjectListPath;
             }
         }
@@ -100,7 +100,7 @@ namespace NXProject.Views
             var control = new NXProject.Controls.CalendarSettingsControl("NXProject.Community");
             var window = new Window
             {
-                Title = "Calendário de trabalho",
+                Title = AppStrings.Get("Imp_CalendarWindowTitle"),
                 Owner = this,
                 Width = 720,
                 Height = 520,
@@ -139,7 +139,7 @@ namespace NXProject.Views
         {
             if (string.IsNullOrWhiteSpace(OrgUrlBox.Text) || string.IsNullOrWhiteSpace(PatBox.Password))
             {
-                ShowStatus("Informe a URL da organização e o Personal Access Token antes de salvar.");
+                ShowStatus(AppStrings.Get("Cfg_UrlPatRequired"));
                 return;
             }
 
