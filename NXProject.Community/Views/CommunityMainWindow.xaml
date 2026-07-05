@@ -501,7 +501,7 @@
                 Padding="14,5"
                 Visibility="Collapsed">
             <WrapPanel VerticalAlignment="Center">
-                <TextBlock Text="🔗 Projeto DevOps: " FontSize="12" Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Text="{DynamicResource Banner_Prefix}" FontSize="12" Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <TextBlock x:Name="DevOpsProjectNameLabel" FontSize="12" Foreground="#0D47A1" FontWeight="Bold" VerticalAlignment="Center"/>
                 <TextBlock x:Name="DevOpsProjectIdLabel" FontSize="11" Foreground="#1976D2" VerticalAlignment="Center" Margin="6,0,0,0"/>
                 <TextBlock x:Name="DevOpsScheduleDatesLabel" FontSize="11" Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0"/>

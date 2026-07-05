@@ -1426,7 +1426,7 @@ namespace NXProject.Views
                 .Sum(t => t.DurationHours);
 
             DevOpsEpicHoursLabel.Text = epicHours > 0
-                ? $"| {epicHours:0.#} HH (Epics)"
+                ? AppStrings.Get("Banner_EpicHours", epicHours)
                 : string.Empty;
 
             var scheduleTasks = vm.FlatTasks
@@ -1438,7 +1438,7 @@ namespace NXProject.Views
                 var finish = scheduleTasks
                     .Select(t => ProjectCalendarService.GetInclusiveFinishDate(t.Model.Start, t.Model.Finish).Date)
                     .Max();
-                DevOpsScheduleDatesLabel.Text = $"| Início: {start:dd/MM/yy} | Fim: {finish:dd/MM/yy}";
+                DevOpsScheduleDatesLabel.Text = AppStrings.Get("Banner_Dates", start, finish);
             }
             else
             {
@@ -1453,7 +1453,7 @@ namespace NXProject.Views
                 double pct = totalW > 0
                     ? leaves.Sum(t => t.DurationHours * t.PercentComplete) / totalW
                     : leaves.Average(t => t.PercentComplete);
-                DevOpsPercentLabel.Text = $"| {pct:0.#}% concluído";
+                DevOpsPercentLabel.Text = AppStrings.Get("Banner_Percent", pct);
             }
             else
             {
@@ -1463,17 +1463,17 @@ namespace NXProject.Views
 
         private void UpdateDevOpsProjectBanner(string? name, int id, string? owner = null)
         {
-            DevOpsOwnerLabel.Text = string.IsNullOrWhiteSpace(owner) ? string.Empty : $"| Owner: {owner}";
+            DevOpsOwnerLabel.Text = string.IsNullOrWhiteSpace(owner) ? string.Empty : AppStrings.Get("Banner_Owner", owner);
 
             if (!string.IsNullOrWhiteSpace(name))
             {
                 DevOpsProjectNameLabel.Text = name;
-                DevOpsProjectIdLabel.Text = id > 0 ? $"(ID: {id})" : string.Empty;
+                DevOpsProjectIdLabel.Text = id > 0 ? AppStrings.Get("Banner_Id", id) : string.Empty;
                 DevOpsProjectBanner.Visibility = Visibility.Visible;
             }
             else if (id > 0)
             {
-                DevOpsProjectNameLabel.Text = $"ID {id}";
+                DevOpsProjectNameLabel.Text = AppStrings.Get("Banner_IdOnly", id);
                 DevOpsProjectIdLabel.Text = string.Empty;
                 DevOpsProjectBanner.Visibility = Visibility.Visible;
             }

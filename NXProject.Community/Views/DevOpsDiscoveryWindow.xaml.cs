@@ -21,7 +21,7 @@ namespace NXProject.Views
             _itemsView.Filter = FilterItem;
             ItemsGrid.ItemsSource = _itemsView;
             _items.CollectionChanged += (_, _) => RefreshCount();
-            SubtitleText.Text = $"Organização: {options.OrganizationUrl}  |  Projeto: {options.TeamProject}";
+            SubtitleText.Text = AppStrings.Get("Disc_Subtitle", options.OrganizationUrl, options.TeamProject);
             LoadAsync(options, existing.Select(p => p.RootWorkItemId).ToHashSet());
         }
 
@@ -66,7 +66,7 @@ namespace NXProject.Views
 
                 if (found.Count == 0)
                 {
-                    StatusText.Text = "Nenhum work item raiz encontrado no projeto.";
+                    StatusText.Text = AppStrings.Get("Disc_NoneFound");
                     LoadingPanel.Visibility = Visibility.Visible;
                     return;
                 }
@@ -83,7 +83,7 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Erro ao buscar dados: {ex.Message}";
+                StatusText.Text = AppStrings.Get("Disc_FetchError", ex.Message);
             }
         }
 
@@ -91,7 +91,7 @@ namespace NXProject.Views
         {
             int sel   = _items.Count(i => i.IsSelected);
             int total = _items.Count;
-            CountText.Text = $"{sel} de {total} selecionados";
+            CountText.Text = AppStrings.Get("Disc_CountSelected", sel, total);
         }
 
         private void OnSelectAllClick(object sender, RoutedEventArgs e)
@@ -113,7 +113,7 @@ namespace NXProject.Views
 
             if (SelectedProjects.Count == 0)
             {
-                MessageBox.Show("Selecione ao menos um item.", "Discovery", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("Disc_SelectAtLeastOne"), AppStrings.Get("Port_DiscoveryTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 

@@ -21,7 +21,7 @@ public partial class PercAlocEditWindow : Window
         _totalHours = totalHours;
 
         TaskNameText.Text = taskName;
-        RangeText.Text    = $"  (1 a {_maxPercent})";
+        RangeText.Text    = AppStrings.Get("PercAloc_Range", _maxPercent);
         PercAlocBox.Text  = ((int)currentPercent).ToString();
 
         // HH/dia pré-preenchido
@@ -31,9 +31,9 @@ public partial class PercAlocEditWindow : Window
 
         // Label da seção de data fim
         if (totalHours > 0)
-            FinishCalcLabel.Text = $"Calcular pela data fim  ({totalHours:0.#}h total):";
+            FinishCalcLabel.Text = AppStrings.Get("PercAloc_ByFinishTotal", totalHours);
         else
-            FinishCalcLabel.Text = "Calcular pela data fim:";
+            FinishCalcLabel.Text = AppStrings.Get("PercAloc_ByFinish");
 
         // Foco no campo de % de alocação ao abrir (com o texto selecionado).
         Loaded += (_, _) =>
@@ -49,7 +49,7 @@ public partial class PercAlocEditWindow : Window
         if (!double.TryParse(raw, System.Globalization.NumberStyles.Any,
                 System.Globalization.CultureInfo.InvariantCulture, out var hh) || hh <= 0)
         {
-            ShowError("Digite um valor válido para HH/dia.");
+            ShowError(AppStrings.Get("PercAloc_InvalidHhDay"));
             HhDiaBox.Focus();
             return;
         }
@@ -72,14 +72,14 @@ public partial class PercAlocEditWindow : Window
                 System.Globalization.CultureInfo.CurrentCulture,
                 System.Globalization.DateTimeStyles.None, out finish))
         {
-            ShowError("Data fim inválida. Use dd/MM/aaaa.");
+            ShowError(AppStrings.Get("PercAloc_InvalidFinish"));
             FinishDateBox.Focus();
             return;
         }
 
         if (finish <= _taskStart)
         {
-            ShowError("A data fim deve ser posterior à data de início.");
+            ShowError(AppStrings.Get("PercAloc_FinishBeforeStart"));
             FinishDateBox.Focus();
             return;
         }
@@ -88,7 +88,7 @@ public partial class PercAlocEditWindow : Window
         if (hours <= 0)
         {
             // Sem horas definidas, usa um dia como base
-            ShowError("A atividade não tem horas estimadas definidas para o cálculo.");
+            ShowError(AppStrings.Get("PercAloc_NoHours"));
             return;
         }
 
@@ -96,7 +96,7 @@ public partial class PercAlocEditWindow : Window
         double availableHours = ProjectCalendarService.CountWorkingHours(_taskStart, finish);
         if (availableHours <= 0)
         {
-            ShowError("Não há dias úteis no período informado.");
+            ShowError(AppStrings.Get("PercAloc_NoWorkingDays"));
             return;
         }
 
@@ -128,7 +128,7 @@ public partial class PercAlocEditWindow : Window
     {
         if (!int.TryParse(PercAlocBox.Text, out var v) || v < 1 || v > _maxPercent)
         {
-            ShowError($"Digite um valor entre 1 e {_maxPercent}.");
+            ShowError(AppStrings.Get("PercAloc_RangeError", _maxPercent));
             PercAlocBox.Focus();
             PercAlocBox.SelectAll();
             return;

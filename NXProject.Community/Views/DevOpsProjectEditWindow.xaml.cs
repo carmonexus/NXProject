@@ -1,5 +1,6 @@
 using System.Windows;
 using NXProject.Models;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -35,13 +36,13 @@ namespace NXProject.Views
             var name = NameBox.Text?.Trim() ?? "";
             if (string.IsNullOrWhiteSpace(name))
             {
-                MessageBox.Show("Informe o nome do projeto.", "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(AppStrings.Get("PortEdit_NameRequired"), AppStrings.Get("Common_Validation"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             if (!int.TryParse(IdBox.Text?.Trim(), out var id) || id <= 0)
             {
-                MessageBox.Show("Informe um ID numérico válido (maior que zero).", "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(AppStrings.Get("PortEdit_IdInvalid"), AppStrings.Get("Common_Validation"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

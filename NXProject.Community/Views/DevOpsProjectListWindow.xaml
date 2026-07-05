@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.DevOpsProjectListWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Portfólio de Projetos"
+        Title="{DynamicResource Port_Title}"
         Width="580" Height="480"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
@@ -20,9 +20,9 @@
 
             <!-- Título -->
             <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                <TextBlock Text="Portfólio de Projetos"
+                <TextBlock Text="{DynamicResource Port_Title}"
                            FontSize="17" FontWeight="SemiBold" Foreground="#2B579A"/>
-                <TextBlock Text="Cadastre os projetos do Azure DevOps para seleção rápida na importação."
+                <TextBlock Text="{DynamicResource Port_Subtitle}"
                            FontSize="12" Foreground="#666" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
@@ -36,15 +36,15 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Arquivo:" FontWeight="SemiBold"
+                    <TextBlock Grid.Column="0" Text="{DynamicResource Port_FileLabel}" FontWeight="SemiBold"
                                VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12"/>
                     <TextBlock x:Name="FilePathLabel" Grid.Column="1"
-                               Text="(nenhum arquivo selecionado)"
+                               Text="{DynamicResource Port_NoFile}"
                                VerticalAlignment="Center" FontSize="11" Foreground="#555"
                                TextTrimming="CharacterEllipsis" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-                    <Button Grid.Column="2" Content="Abrir / Criar..." Width="100" Height="26"
+                    <Button Grid.Column="2" Content="{DynamicResource Port_OpenCreate}" Width="100" Height="26"
                             Margin="8,0,0,0" Click="OnBrowseFileClick" FontSize="11"/>
-                    <Button Grid.Column="3" Content="Salvar Como..." Width="100" Height="26"
+                    <Button Grid.Column="3" Content="{DynamicResource Port_SaveAs}" Width="100" Height="26"
                             Margin="6,0,0,0" Click="OnSaveAsClick" FontSize="11"/>
                 </Grid>
             </Border>
@@ -65,32 +65,32 @@
                       ColumnHeaderHeight="32"
                       RowHeight="30">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Nome do Projeto" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                    <DataGridTextColumn Header="{DynamicResource Port_ColName}" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                         Width="*" MinWidth="160"/>
-                    <DataGridTextColumn Header="Owner" Binding="{Binding Owner}"
+                    <DataGridTextColumn Header="{DynamicResource Port_ColOwner}" Binding="{Binding Owner}"
                                         Width="150" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="ID DevOps (Work Item Raiz)" Binding="{Binding RootWorkItemId, UpdateSourceTrigger=PropertyChanged}"
+                    <DataGridTextColumn Header="{DynamicResource Port_ColId}" Binding="{Binding RootWorkItemId, UpdateSourceTrigger=PropertyChanged}"
                                         Width="160"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <!-- Botões da lista -->
             <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
-                <Button Content="+ Adicionar" Width="100" Height="28" Click="OnAddClick"/>
-                <Button Content="✏ Editar" Width="90" Height="28" Margin="8,0,0,0" Click="OnEditClick"/>
-                <Button Content="🗑 Excluir" Width="90" Height="28" Margin="8,0,0,0" Click="OnDeleteClick"/>
+                <Button Content="{DynamicResource Port_Add}" Width="100" Height="28" Click="OnAddClick"/>
+                <Button Content="{DynamicResource Port_Edit}" Width="90" Height="28" Margin="8,0,0,0" Click="OnEditClick"/>
+                <Button Content="{DynamicResource Port_Delete}" Width="90" Height="28" Margin="8,0,0,0" Click="OnDeleteClick"/>
                 <Separator Width="1" Height="20" Margin="10,0" Background="#CCC"/>
-                <Button Content="🔍 Discovery DevOps" Height="28" Padding="10,0"
+                <Button Content="{DynamicResource Port_Discovery}" Height="28" Padding="10,0"
                         Background="#2B579A" Foreground="White" FontWeight="SemiBold"
                         Click="OnDiscoveryClick"
-                        ToolTip="Lista todos os work items raiz do DevOps e permite adicionar ao portfólio"/>
+                        ToolTip="{DynamicResource Port_DiscoveryTip}"/>
             </StackPanel>
 
             <!-- Botões OK/Cancelar -->
             <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                <Button x:Name="OkButton" Content="OK" Width="100" Height="32"
+                <Button x:Name="OkButton" Content="{DynamicResource Port_Ok}" Width="100" Height="32"
                         IsDefault="True" Click="OnOkClick"/>
-                <Button Content="Cancelar" Width="100" Height="32" Margin="10,0,0,0"
+                <Button Content="{DynamicResource Port_Cancel}" Width="100" Height="32" Margin="10,0,0,0"
                         IsCancel="True" Click="OnCancelClick"/>
             </StackPanel>
         </Grid>

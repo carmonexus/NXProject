@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.DevOpsDiscoveryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Discovery — Projetos do Azure DevOps"
+        Title="{DynamicResource Disc_Title}"
         Width="640" Height="520"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
@@ -21,10 +21,10 @@
 
             <!-- Título -->
             <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                <TextBlock Text="Discovery — Projetos do Azure DevOps"
+                <TextBlock Text="{DynamicResource Disc_Title}"
                            FontSize="16" FontWeight="SemiBold" Foreground="#2B579A"/>
                 <TextBlock x:Name="SubtitleText"
-                           Text="Conectando ao Azure DevOps..."
+                           Text="{DynamicResource Disc_Connecting}"
                            FontSize="12" Foreground="#666" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
@@ -33,23 +33,23 @@
                     BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,10"
                     Visibility="Visible">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="StatusText" Text="🔄 Buscando work items raiz no DevOps..."
+                    <TextBlock x:Name="StatusText" Text="{DynamicResource Disc_Searching}"
                                FontSize="12" Foreground="#2B579A" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
 
             <!-- Filtros (type-to-filter): Nome e Owner -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Filtrar:" VerticalAlignment="Center" FontSize="12" Foreground="#555" Margin="0,0,8,0"/>
-                <TextBlock Text="Nome" VerticalAlignment="Center" FontSize="12" Foreground="#777" Margin="0,0,4,0"/>
+                <TextBlock Text="{DynamicResource Disc_FilterLabel}" VerticalAlignment="Center" FontSize="12" Foreground="#555" Margin="0,0,8,0"/>
+                <TextBlock Text="{DynamicResource Disc_FilterName}" VerticalAlignment="Center" FontSize="12" Foreground="#777" Margin="0,0,4,0"/>
                 <TextBox x:Name="NameFilterBox" Width="200" Height="26" FontSize="12"
                          VerticalContentAlignment="Center" Margin="0,0,14,0"
                          TextChanged="OnFilterChanged"/>
-                <TextBlock Text="Owner" VerticalAlignment="Center" FontSize="12" Foreground="#777" Margin="0,0,4,0"/>
+                <TextBlock Text="{DynamicResource Disc_FilterOwner}" VerticalAlignment="Center" FontSize="12" Foreground="#777" Margin="0,0,4,0"/>
                 <TextBox x:Name="OwnerFilterBox" Width="180" Height="26" FontSize="12"
                          VerticalContentAlignment="Center" Margin="0,0,10,0"
                          TextChanged="OnFilterChanged"/>
-                <Button Content="Limpar" Height="26" Padding="8,0" FontSize="11" Click="OnClearFilterClick"/>
+                <Button Content="{DynamicResource Disc_FilterClear}" Height="26" Padding="8,0" FontSize="11" Click="OnClearFilterClick"/>
             </StackPanel>
 
             <!-- Grid com checkboxes -->
@@ -69,7 +69,7 @@
                       RowHeight="30"
                       IsReadOnly="False">
                 <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="Adicionar" Width="70" CanUserResize="False">
+                    <DataGridTemplateColumn Header="{DynamicResource Disc_ColAdd}" Width="70" CanUserResize="False">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -77,28 +77,28 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Nome no Azure DevOps" Binding="{Binding Title}" Width="*" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Owner" Binding="{Binding Owner}" Width="170" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="{DynamicResource Disc_ColId}" Binding="{Binding Id}" Width="70" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="{DynamicResource Disc_ColName}" Binding="{Binding Title}" Width="*" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="{DynamicResource Disc_ColOwner}" Binding="{Binding Owner}" Width="170" IsReadOnly="True"/>
                 </DataGrid.Columns>
             </DataGrid>
 
             <!-- Seleção rápida -->
             <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,6,0,0">
                 <TextBlock x:Name="CountText" Text="" FontSize="11" Foreground="#555" VerticalAlignment="Center"/>
-                <Button Content="Marcar todos" Width="100" Height="26" Margin="12,0,0,0"
+                <Button Content="{DynamicResource Disc_SelectAll}" Width="100" Height="26" Margin="12,0,0,0"
                         FontSize="11" Click="OnSelectAllClick"/>
-                <Button Content="Desmarcar todos" Width="110" Height="26" Margin="6,0,0,0"
+                <Button Content="{DynamicResource Disc_DeselectAll}" Width="110" Height="26" Margin="6,0,0,0"
                         FontSize="11" Click="OnDeselectAllClick"/>
             </StackPanel>
 
             <!-- Botões OK/Cancelar -->
             <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                <Button x:Name="AddButton" Content="➕ Adicionar selecionados ao Portfólio"
+                <Button x:Name="AddButton" Content="{DynamicResource Disc_AddToPortfolio}"
                         Height="32" Padding="14,0" IsDefault="True"
                         Background="#2B579A" Foreground="White"
                         Click="OnAddClick" IsEnabled="False"/>
-                <Button Content="Cancelar" Width="100" Height="32" Margin="10,0,0,0"
+                <Button Content="{DynamicResource Disc_Cancel}" Width="100" Height="32" Margin="10,0,0,0"
                         IsCancel="True" Click="OnCancelClick"/>
             </StackPanel>
         </Grid>

@@ -42,9 +42,9 @@ namespace NXProject.Views
         {
             var dlg = new OpenFileDialog
             {
-                Title           = "Abrir ou criar Portfólio de Projetos",
-                Filter          = "Portfólio de Projetos (*.devops.json)|*.devops.json|JSON (*.json)|*.json|Todos (*.*)|*.*",
-                FileName        = "Portifolio de Projetos NX",
+                Title           = AppStrings.Get("Port_OpenDlgTitle"),
+                Filter          = AppStrings.Get("Port_FileFilter"),
+                FileName        = AppStrings.Get("Port_DefaultFileName"),
                 CheckFileExists = false
             };
 
@@ -70,10 +70,10 @@ namespace NXProject.Views
         {
             var dlg = new SaveFileDialog
             {
-                Title      = "Salvar Portfólio de Projetos",
-                Filter     = "Portfólio de Projetos (*.devops.json)|*.devops.json|JSON (*.json)|*.json",
+                Title      = AppStrings.Get("Port_SaveDlgTitle"),
+                Filter     = AppStrings.Get("Port_SaveFilter"),
                 DefaultExt = ".devops.json",
-                FileName   = "Portifolio de Projetos NX"
+                FileName   = AppStrings.Get("Port_DefaultFileName")
             };
 
             if (!string.IsNullOrWhiteSpace(ResultFilePath))
@@ -105,7 +105,7 @@ namespace NXProject.Views
         {
             if (ProjectsGrid.SelectedItem is not DevOpsProject selected)
             {
-                MessageBox.Show("Selecione um projeto para editar.", "Editar", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("Port_SelectToEdit"), AppStrings.Get("Port_EditTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -129,8 +129,8 @@ namespace NXProject.Views
             if (!options.IsValid)
             {
                 MessageBox.Show(
-                    "Configure a conexão com o Azure DevOps antes de usar o Discovery.\n(Menu Configurações → Conexão DevOps / TFS)",
-                    "Conexão não configurada", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppStrings.Get("Port_NoConnectionMsg"),
+                    AppStrings.Get("Port_NoConnectionTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -148,11 +148,11 @@ namespace NXProject.Views
             if (added > 0)
             {
                 SaveIfPathSet();
-                MessageBox.Show($"{added} projeto(s) adicionado(s) ao portfólio.", "Discovery", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("Port_AddedMsg", added), AppStrings.Get("Port_DiscoveryTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {
-                MessageBox.Show("Os itens selecionados já estão no portfólio.", "Discovery", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("Port_AlreadyInMsg"), AppStrings.Get("Port_DiscoveryTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -160,13 +160,13 @@ namespace NXProject.Views
         {
             if (ProjectsGrid.SelectedItem is not DevOpsProject selected)
             {
-                MessageBox.Show("Selecione um projeto para excluir.", "Excluir", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("Port_SelectToDelete"), AppStrings.Get("Port_DeleteTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var confirm = MessageBox.Show(
-                $"Excluir \"{selected.Name}\"?",
-                "Excluir Projeto", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                AppStrings.Get("Port_DeleteConfirm", selected.Name),
+                AppStrings.Get("Port_DeleteConfirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question);
 
             if (confirm == MessageBoxResult.Yes)
             {
@@ -186,8 +186,8 @@ namespace NXProject.Views
             if (string.IsNullOrWhiteSpace(ResultFilePath))
             {
                 MessageBox.Show(
-                    "Selecione ou crie um arquivo para salvar a lista (botão \"Abrir / Criar...\").",
-                    "Salvar Lista", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppStrings.Get("Port_NoFileMsg"),
+                    AppStrings.Get("Port_SaveListTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             DevOpsProjectListService.Save(_projects, ResultFilePath);

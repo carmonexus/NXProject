@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.PercAlocEditWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="% de Alocação"
+        Title="{DynamicResource PercAloc_Title}"
         Width="360"
         Height="340"
         MinWidth="320"
@@ -25,7 +25,7 @@
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
-                   Text="% de Alocação"
+                   Text="{DynamicResource PercAloc_Title}"
                    FontSize="16"
                    FontWeight="SemiBold"
                    Foreground="#2B579A"
@@ -40,7 +40,7 @@
 
         <!-- HH/dia → Calcular -->
         <StackPanel Grid.Row="2" Orientation="Vertical" Margin="0,0,0,8">
-            <TextBlock Text="Calcular pelo HH/dia:"
+            <TextBlock Text="{DynamicResource PercAloc_ByHhDay}"
                        FontSize="11" Foreground="#777" Margin="0,0,0,4"/>
             <StackPanel Orientation="Horizontal">
                 <TextBox x:Name="HhDiaBox"
@@ -48,14 +48,14 @@
                          TextAlignment="Center" Padding="4,4"
                          VerticalContentAlignment="Center"
                          PreviewTextInput="OnPreviewDecimalInput"
-                         ToolTip="Horas por dia para calcular o % de alocação"/>
-                <TextBlock Text=" h/dia"
+                         ToolTip="{DynamicResource PercAloc_HhDayTip}"/>
+                <TextBlock Text="{DynamicResource PercAloc_HhDayUnit}"
                            FontSize="12" Foreground="#444"
                            VerticalAlignment="Center" Margin="2,0,8,0"/>
-                <Button Content="Calcular →"
+                <Button Content="{DynamicResource PercAloc_CalcRight}"
                         Height="30" Padding="10,0" FontSize="12"
                         Click="OnCalculatePercent"
-                        ToolTip="Converte HH/dia em % de alocação"/>
+                        ToolTip="{DynamicResource PercAloc_CalcRightTip}"/>
             </StackPanel>
         </StackPanel>
 
@@ -71,12 +71,12 @@
                          Width="100" Height="30" FontSize="13"
                          TextAlignment="Center" Padding="4,4"
                          VerticalContentAlignment="Center"
-                         ToolTip="Data fim desejada (dd/MM/aaaa). Calcula o % necessário para concluir até essa data."/>
-                <Button Content="Calcular ←"
+                         ToolTip="{DynamicResource PercAloc_FinishTip}"/>
+                <Button Content="{DynamicResource PercAloc_CalcLeft}"
                         Height="30" Padding="10,0" FontSize="12"
                         Margin="6,0,0,0"
                         Click="OnCalculateFromFinish"
-                        ToolTip="Calcula o % de alocação com base na data fim informada"/>
+                        ToolTip="{DynamicResource PercAloc_CalcLeftTip}"/>
             </StackPanel>
         </StackPanel>
 
@@ -85,7 +85,7 @@
 
         <!-- % direto -->
         <StackPanel Grid.Row="6" Orientation="Vertical">
-            <TextBlock Text="% de alocação:"
+            <TextBlock Text="{DynamicResource PercAloc_Label}"
                        FontSize="11" Foreground="#777" Margin="0,0,0,4"/>
             <StackPanel Orientation="Horizontal">
                 <TextBox x:Name="PercAlocBox"
@@ -111,11 +111,11 @@
                    Visibility="Collapsed"/>
 
         <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Cancelar"
+            <Button Content="{DynamicResource PercAloc_Cancel}"
                     Width="80" Height="30"
                     Margin="0,0,8,0"
                     Click="OnCancel"/>
-            <Button Content="OK"
+            <Button Content="{DynamicResource PercAloc_Ok}"
                     Width="80" Height="30"
                     IsDefault="True"
                     Click="OnOk"

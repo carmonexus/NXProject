@@ -269,4 +269,106 @@
     <sys:String x:Key="Sync_NoConnection">Nenhuma conexão DevOps configurada.</sys:String>
     <sys:String x:Key="Sync_Title">Sincronizar Azure DevOps</sys:String>
 
+    <!-- Discovery -->
+    <sys:String x:Key="Disc_Title">Discovery — Projetos do Azure DevOps</sys:String>
+    <sys:String x:Key="Disc_Connecting">Conectando ao Azure DevOps...</sys:String>
+    <sys:String x:Key="Disc_Searching">🔄 Buscando work items raiz no DevOps...</sys:String>
+    <sys:String x:Key="Disc_Subtitle">Organização: {0}  |  Projeto: {1}</sys:String>
+    <sys:String x:Key="Disc_NoneFound">Nenhum work item raiz encontrado no projeto.</sys:String>
+    <sys:String x:Key="Disc_FetchError">Erro ao buscar dados: {0}</sys:String>
+    <sys:String x:Key="Disc_FilterLabel">Filtrar:</sys:String>
+    <sys:String x:Key="Disc_FilterName">Nome</sys:String>
+    <sys:String x:Key="Disc_FilterOwner">Owner</sys:String>
+    <sys:String x:Key="Disc_FilterClear">Limpar</sys:String>
+    <sys:String x:Key="Disc_ColAdd">Adicionar</sys:String>
+    <sys:String x:Key="Disc_ColId">ID</sys:String>
+    <sys:String x:Key="Disc_ColName">Nome no Azure DevOps</sys:String>
+    <sys:String x:Key="Disc_ColOwner">Owner</sys:String>
+    <sys:String x:Key="Disc_SelectAll">Marcar todos</sys:String>
+    <sys:String x:Key="Disc_DeselectAll">Desmarcar todos</sys:String>
+    <sys:String x:Key="Disc_CountSelected">{0} de {1} selecionados</sys:String>
+    <sys:String x:Key="Disc_AddToPortfolio">➕ Adicionar selecionados ao Portfólio</sys:String>
+    <sys:String x:Key="Disc_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="Disc_SelectAtLeastOne">Selecione ao menos um item.</sys:String>
+
+    <!-- Portfólio de Projetos -->
+    <sys:String x:Key="Port_Title">Portfólio de Projetos</sys:String>
+    <sys:String x:Key="Port_Subtitle">Cadastre os projetos do Azure DevOps para seleção rápida na importação.</sys:String>
+    <sys:String x:Key="Port_FileLabel">Arquivo:</sys:String>
+    <sys:String x:Key="Port_NoFile">(nenhum arquivo selecionado)</sys:String>
+    <sys:String x:Key="Port_OpenCreate">Abrir / Criar...</sys:String>
+    <sys:String x:Key="Port_SaveAs">Salvar Como...</sys:String>
+    <sys:String x:Key="Port_ColName">Nome do Projeto</sys:String>
+    <sys:String x:Key="Port_ColOwner">Owner</sys:String>
+    <sys:String x:Key="Port_ColId">ID DevOps (Work Item Raiz)</sys:String>
+    <sys:String x:Key="Port_Add">+ Adicionar</sys:String>
+    <sys:String x:Key="Port_Edit">✏ Editar</sys:String>
+    <sys:String x:Key="Port_Delete">🗑 Excluir</sys:String>
+    <sys:String x:Key="Port_Discovery">🔍 Discovery DevOps</sys:String>
+    <sys:String x:Key="Port_DiscoveryTip">Lista todos os work items raiz do DevOps e permite adicionar ao portfólio</sys:String>
+    <sys:String x:Key="Port_Ok">OK</sys:String>
+    <sys:String x:Key="Port_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="Port_OpenDlgTitle">Abrir ou criar Portfólio de Projetos</sys:String>
+    <sys:String x:Key="Port_FileFilter">Portfólio de Projetos (*.devops.json)|*.devops.json|JSON (*.json)|*.json|Todos (*.*)|*.*</sys:String>
+    <sys:String x:Key="Port_DefaultFileName">Portifolio de Projetos NX</sys:String>
+    <sys:String x:Key="Port_SaveDlgTitle">Salvar Portfólio de Projetos</sys:String>
+    <sys:String x:Key="Port_SaveFilter">Portfólio de Projetos (*.devops.json)|*.devops.json|JSON (*.json)|*.json</sys:String>
+    <sys:String x:Key="Port_SelectToEdit">Selecione um projeto para editar.</sys:String>
+    <sys:String x:Key="Port_EditTitle">Editar</sys:String>
+    <sys:String x:Key="Port_NoConnectionMsg">Configure a conexão com o Azure DevOps antes de usar o Discovery.&#10;(Menu Configurações → Conexão DevOps / TFS)</sys:String>
+    <sys:String x:Key="Port_NoConnectionTitle">Conexão não configurada</sys:String>
+    <sys:String x:Key="Port_AddedMsg">{0} projeto(s) adicionado(s) ao portfólio.</sys:String>
+    <sys:String x:Key="Port_AlreadyInMsg">Os itens selecionados já estão no portfólio.</sys:String>
+    <sys:String x:Key="Port_DiscoveryTitle">Discovery</sys:String>
+    <sys:String x:Key="Port_SelectToDelete">Selecione um projeto para excluir.</sys:String>
+    <sys:String x:Key="Port_DeleteTitle">Excluir</sys:String>
+    <sys:String x:Key="Port_DeleteConfirm">Excluir "{0}"?</sys:String>
+    <sys:String x:Key="Port_DeleteConfirmTitle">Excluir Projeto</sys:String>
+    <sys:String x:Key="Port_NoFileMsg">Selecione ou crie um arquivo para salvar a lista (botão "Abrir / Criar...").</sys:String>
+    <sys:String x:Key="Port_SaveListTitle">Salvar Lista</sys:String>
+
+    <!-- Editar Projeto do Portfólio -->
+    <sys:String x:Key="PortEdit_Title">Projeto DevOps</sys:String>
+    <sys:String x:Key="PortEdit_Name">Nome do Projeto</sys:String>
+    <sys:String x:Key="PortEdit_Id">ID DevOps (Work Item Raiz)</sys:String>
+    <sys:String x:Key="PortEdit_Type">Tipo</sys:String>
+    <sys:String x:Key="PortEdit_CostCenter">Centro de Custo</sys:String>
+    <sys:String x:Key="PortEdit_Ok">OK</sys:String>
+    <sys:String x:Key="PortEdit_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="PortEdit_NameRequired">Informe o nome do projeto.</sys:String>
+    <sys:String x:Key="PortEdit_IdInvalid">Informe um ID numérico válido (maior que zero).</sys:String>
+    <sys:String x:Key="Common_Validation">Validação</sys:String>
+
+    <!-- % de Alocação -->
+    <sys:String x:Key="PercAloc_Title">% de Alocação</sys:String>
+    <sys:String x:Key="PercAloc_ByHhDay">Calcular pelo HH/dia:</sys:String>
+    <sys:String x:Key="PercAloc_HhDayUnit"> h/dia</sys:String>
+    <sys:String x:Key="PercAloc_HhDayTip">Horas por dia para calcular o % de alocação</sys:String>
+    <sys:String x:Key="PercAloc_CalcRight">Calcular →</sys:String>
+    <sys:String x:Key="PercAloc_CalcRightTip">Converte HH/dia em % de alocação</sys:String>
+    <sys:String x:Key="PercAloc_ByFinishTotal">Calcular pela data fim  ({0:0.#}h total):</sys:String>
+    <sys:String x:Key="PercAloc_ByFinish">Calcular pela data fim:</sys:String>
+    <sys:String x:Key="PercAloc_FinishTip">Data fim desejada (dd/MM/aaaa). Calcula o % necessário para concluir até essa data.</sys:String>
+    <sys:String x:Key="PercAloc_CalcLeft">Calcular ←</sys:String>
+    <sys:String x:Key="PercAloc_CalcLeftTip">Calcula o % de alocação com base na data fim informada</sys:String>
+    <sys:String x:Key="PercAloc_Label">% de alocação:</sys:String>
+    <sys:String x:Key="PercAloc_Range">  (1 a {0})</sys:String>
+    <sys:String x:Key="PercAloc_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="PercAloc_Ok">OK</sys:String>
+    <sys:String x:Key="PercAloc_InvalidHhDay">Digite um valor válido para HH/dia.</sys:String>
+    <sys:String x:Key="PercAloc_InvalidFinish">Data fim inválida. Use dd/MM/aaaa.</sys:String>
+    <sys:String x:Key="PercAloc_FinishBeforeStart">A data fim deve ser posterior à data de início.</sys:String>
+    <sys:String x:Key="PercAloc_NoHours">A atividade não tem horas estimadas definidas para o cálculo.</sys:String>
+    <sys:String x:Key="PercAloc_NoWorkingDays">Não há dias úteis no período informado.</sys:String>
+    <sys:String x:Key="PercAloc_RangeError">Digite um valor entre 1 e {0}.</sys:String>
+
+    <!-- Banner do projeto DevOps no cronograma -->
+    <sys:String x:Key="Banner_Prefix">🔗 Projeto DevOps: </sys:String>
+    <sys:String x:Key="Banner_Id">(ID: {0})</sys:String>
+    <sys:String x:Key="Banner_IdOnly">ID {0}</sys:String>
+    <sys:String x:Key="Banner_Dates">| Início: {0:dd/MM/yy} | Fim: {1:dd/MM/yy}</sys:String>
+    <sys:String x:Key="Banner_EpicHours">| {0:0.#} HH (Epics)</sys:String>
+    <sys:String x:Key="Banner_Percent">| {0:0.#}% concluído</sys:String>
+    <sys:String x:Key="Banner_Owner">| Owner: {0}</sys:String>
+
 </ResourceDictionary>
