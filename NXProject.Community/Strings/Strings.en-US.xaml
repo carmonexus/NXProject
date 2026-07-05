@@ -39,6 +39,14 @@
     <sys:String x:Key="Menu_Manage_HealthCheck">_Project Progress and S-Curve...</sys:String>
     <sys:String x:Key="Menu_Manage_StoryStatusChart">_Story Status Chart...</sys:String>
     <sys:String x:Key="Menu_Manage_AllocationMap">Project _Allocation Map...</sys:String>
+    <sys:String x:Key="Menu_Manage_ActivityDiagram">_Activity Diagram...</sys:String>
+    <sys:String x:Key="Menu_Manage_Baseline">_Baseline</sys:String>
+    <sys:String x:Key="Menu_Manage_Baseline_Save">_Save Baseline</sys:String>
+    <sys:String x:Key="Menu_Manage_Baseline_Open">_Open Baseline</sys:String>
+    <sys:String x:Key="Menu_Manage_Baseline_Toggle_On">_Disable Baseline</sys:String>
+    <sys:String x:Key="Menu_Manage_Baseline_Toggle_Off">_Enable Baseline</sys:String>
+    <sys:String x:Key="Menu_Manage_Baseline_Clear">_Clear Baseline</sys:String>
+    <sys:String x:Key="Menu_Manage_Baseline_AutoLoad">_Load automatically when opening project</sys:String>
 
     <!-- View Menu -->
     <sys:String x:Key="Menu_View">_View</sys:String>
