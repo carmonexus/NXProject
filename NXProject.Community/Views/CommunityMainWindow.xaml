@@ -507,6 +507,7 @@
                 <TextBlock x:Name="DevOpsScheduleDatesLabel" FontSize="11" Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0"/>
                 <TextBlock x:Name="DevOpsEpicHoursLabel" FontSize="11" Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0"/>
                 <TextBlock x:Name="DevOpsPercentLabel" FontSize="12" Foreground="#0D47A1" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                <TextBlock x:Name="DevOpsOwnerLabel" FontSize="11" Foreground="#1565C0" FontWeight="SemiBold" VerticalAlignment="Center" Margin="16,0,0,0"/>
             </WrapPanel>
         </Border>
 

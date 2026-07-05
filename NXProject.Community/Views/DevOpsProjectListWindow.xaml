@@ -67,8 +67,10 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Nome do Projeto" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                         Width="*" MinWidth="160"/>
+                    <DataGridTextColumn Header="Owner" Binding="{Binding Owner}"
+                                        Width="150" IsReadOnly="True"/>
                     <DataGridTextColumn Header="ID DevOps (Work Item Raiz)" Binding="{Binding RootWorkItemId, UpdateSourceTrigger=PropertyChanged}"
-                                        Width="180"/>
+                                        Width="160"/>
                 </DataGrid.Columns>
             </DataGrid>
 

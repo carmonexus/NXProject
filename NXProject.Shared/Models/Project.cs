@@ -44,9 +44,10 @@ namespace NXProject.Models
         // Último nível de zoom selecionado pelo usuário
         public string LastZoom { get; set; } = "Mês";
 
-        // Vínculo com o Azure DevOps: nome e ID do work item raiz importado
+        // Vínculo com o Azure DevOps: nome, ID e owner (AssignedTo) do work item raiz importado
         public string? DevOpsProjectName { get; set; }
         public int DevOpsRootWorkItemId { get; set; }
+        public string? DevOpsProjectOwner { get; set; }
 
         // Exibe coluna "OrgH" (Estimativa Original) no cronograma
         public bool ShowOriginalHoursColumn { get; set; } = false;

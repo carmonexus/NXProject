@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 using NXProject.Models;
 using NXProject.Services;
 
@@ -9,15 +11,50 @@ namespace NXProject.Views
     public partial class DevOpsDiscoveryWindow : Window
     {
         private readonly ObservableCollection<DiscoveryItem> _items = [];
+        private readonly ICollectionView _itemsView;
         public List<DevOpsProject> SelectedProjects { get; private set; } = [];
 
         public DevOpsDiscoveryWindow(TfsConnectionOptions options, IEnumerable<DevOpsProject> existing)
         {
             InitializeComponent();
-            ItemsGrid.ItemsSource = _items;
+            _itemsView = CollectionViewSource.GetDefaultView(_items);
+            _itemsView.Filter = FilterItem;
+            ItemsGrid.ItemsSource = _itemsView;
             _items.CollectionChanged += (_, _) => RefreshCount();
             SubtitleText.Text = $"Organização: {options.OrganizationUrl}  |  Projeto: {options.TeamProject}";
             LoadAsync(options, existing.Select(p => p.RootWorkItemId).ToHashSet());
+        }
+
+        private bool FilterItem(object obj)
+        {
+            if (obj is not DiscoveryItem item) return false;
+
+            var nameFilter  = NameFilterBox?.Text?.Trim() ?? "";
+            var ownerFilter = OwnerFilterBox?.Text?.Trim() ?? "";
+
+            if (nameFilter.Length > 0 &&
+                (item.Title?.IndexOf(nameFilter, StringComparison.OrdinalIgnoreCase) ?? -1) < 0)
+                return false;
+
+            if (ownerFilter.Length > 0 &&
+                (item.Owner?.IndexOf(ownerFilter, StringComparison.OrdinalIgnoreCase) ?? -1) < 0)
+                return false;
+
+            return true;
+        }
+
+        private void OnFilterChanged(object sender, TextChangedEventArgs e)
+        {
+            _itemsView?.Refresh();
+            RefreshCount();
+        }
+
+        private void OnClearFilterClick(object sender, RoutedEventArgs e)
+        {
+            NameFilterBox.Text = "";
+            OwnerFilterBox.Text = "";
+            _itemsView?.Refresh();
+            RefreshCount();
         }
 
         private async void LoadAsync(TfsConnectionOptions options, HashSet<int> existingIds)
@@ -34,9 +71,9 @@ namespace NXProject.Views
                     return;
                 }
 
-                foreach (var (id, title, type) in found)
+                foreach (var (id, title, type, owner) in found)
                 {
-                    var item = new DiscoveryItem { Id = id, Title = title, Type = type };
+                    var item = new DiscoveryItem { Id = id, Title = title, Type = type, Owner = owner };
                     item.PropertyChanged += (_, _) => RefreshCount();
                     _items.Add(item);
                 }
@@ -71,7 +108,7 @@ namespace NXProject.Views
         {
             SelectedProjects = _items
                 .Where(i => i.IsSelected)
-                .Select(i => new DevOpsProject { Name = i.Title, RootWorkItemId = i.Id })
+                .Select(i => new DevOpsProject { Name = i.Title, RootWorkItemId = i.Id, Owner = i.Owner })
                 .ToList();
 
             if (SelectedProjects.Count == 0)
@@ -96,6 +133,7 @@ namespace NXProject.Views
         public int    Id    { get; set; }
         public string Title { get; set; } = "";
         public string Type  { get; set; } = "";
+        public string Owner { get; set; } = "";
 
         private bool _isSelected;
         public bool IsSelected

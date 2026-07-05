@@ -114,6 +114,8 @@ namespace NXProject.Views
                                                   selected.CostCenterSource) { Owner = this };
             if (dlg.ShowDialog() == true && dlg.Result != null)
             {
+                // Owner é informativo (vem do DevOps) e não é editável nesta tela — preserva o atual.
+                dlg.Result.Owner = selected.Owner;
                 var idx = _projects.IndexOf(selected);
                 _projects[idx] = dlg.Result;
                 ProjectsGrid.SelectedItem = dlg.Result;

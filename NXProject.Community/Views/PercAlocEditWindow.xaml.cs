@@ -35,8 +35,12 @@ public partial class PercAlocEditWindow : Window
         else
             FinishCalcLabel.Text = "Calcular pela data fim:";
 
-        HhDiaBox.Focus();
-        HhDiaBox.SelectAll();
+        // Foco no campo de % de alocação ao abrir (com o texto selecionado).
+        Loaded += (_, _) =>
+        {
+            PercAlocBox.Focus();
+            PercAlocBox.SelectAll();
+        };
     }
 
     private void OnCalculatePercent(object sender, RoutedEventArgs e)

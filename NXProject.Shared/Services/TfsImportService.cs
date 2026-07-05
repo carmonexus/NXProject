@@ -174,7 +174,8 @@ namespace NXProject.Services
                 StartDate = sprintAnchor ?? rootStart ?? DateTime.Today,
                 FirstSprintNumber = 1,
                 SprintNumberingMode = "Sequencial",
-                FilePath = null
+                FilePath = null,
+                DevOpsProjectOwner = string.IsNullOrWhiteSpace(rootItem.AssigneeName) ? null : rootItem.AssigneeName
             };
             if (sprintDuration.HasValue)
                 project.SprintDurationDays = sprintDuration.Value;
@@ -3146,7 +3147,19 @@ namespace NXProject.Services
         /// Busca work items de nível raiz (sem pai) do Team Project para discovery do portfólio.
         /// Retorna lista de (Id, Title, Type).
         /// </summary>
-        public static async Task<List<(int Id, string Title, string Type)>> FetchRootWorkItemsAsync(
+        // Extrai o displayName de um campo de identidade do DevOps (AssignedTo/CreatedBy),
+        // que pode vir como objeto {displayName,...} ou, em APIs antigas, como string simples.
+        private static string ReadIdentityDisplayName(JsonElement fields, string fieldRef)
+        {
+            if (!fields.TryGetProperty(fieldRef, out var el)) return "";
+            if (el.ValueKind == JsonValueKind.Object)
+                return el.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? "" : "";
+            if (el.ValueKind == JsonValueKind.String)
+                return el.GetString() ?? "";
+            return "";
+        }
+
+        public static async Task<List<(int Id, string Title, string Type, string Owner)>> FetchRootWorkItemsAsync(
             TfsConnectionOptions options, CancellationToken ct = default)
         {
             if (options == null || !options.IsValid) return [];
@@ -3173,13 +3186,13 @@ namespace NXProject.Services
                 .Where(x => x > 0).ToList();
             if (ids.Count == 0) return [];
 
-            var result = new List<(int, string, string)>();
+            var result = new List<(int, string, string, string)>();
             // Busca em lotes de 200
             for (int i = 0; i < ids.Count; i += 200)
             {
                 var batch = ids.Skip(i).Take(200).ToList();
                 var batchIds = string.Join(",", batch);
-                var batchUrl = $"{orgBase}/_apis/wit/workitems?ids={batchIds}&fields=System.Id,System.Title,System.WorkItemType&{ApiVersion}";
+                var batchUrl = $"{orgBase}/_apis/wit/workitems?ids={batchIds}&fields=System.Id,System.Title,System.WorkItemType,System.AssignedTo&{ApiVersion}";
                 using var batchReq = new HttpRequestMessage(HttpMethod.Get, batchUrl);
                 batchReq.Headers.Authorization = auth;
                 using var batchResp = await Http.SendAsync(batchReq, ct);
@@ -3193,8 +3206,10 @@ namespace NXProject.Services
                     var id    = f.TryGetProperty("System.Id",           out var ip) ? ip.GetInt32()    : 0;
                     var title = f.TryGetProperty("System.Title",        out var tp) ? tp.GetString() ?? "" : "";
                     var type  = f.TryGetProperty("System.WorkItemType", out var wt) ? wt.GetString() ?? "" : "";
+                    // "Owner" = responsavel do work item (System.AssignedTo).
+                    var owner = ReadIdentityDisplayName(f, "System.AssignedTo");
                     if (id > 0 && string.Equals(type, "Project", StringComparison.OrdinalIgnoreCase))
-                        result.Add((id, title, type));
+                        result.Add((id, title, type, owner));
                 }
             }
             return result;

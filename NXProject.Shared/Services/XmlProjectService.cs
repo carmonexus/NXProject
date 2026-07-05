@@ -38,6 +38,7 @@ namespace NXProject.Services
                     new XElement(NS + "HiddenColumnsExpanded", project.HiddenColumnsExpanded ?? ""),
                     new XElement(EXT + "DevOpsProjectName", project.DevOpsProjectName ?? ""),
                     new XElement(EXT + "DevOpsRootWorkItemId", project.DevOpsRootWorkItemId),
+                    new XElement(EXT + "DevOpsProjectOwner", project.DevOpsProjectOwner ?? ""),
                     new XElement(EXT + "UseHierarchyColors", project.UseHierarchyColors),
                     new XElement(EXT + "BaselineActive", project.BaselineActive),
                     new XElement(EXT + "DiagramLevelWidths",    project.DiagramLevelWidths    ?? ""),
@@ -262,6 +263,8 @@ namespace NXProject.Services
                 DevOpsProjectName = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsProjectName")?.Value)
                     ? null : root.Element(EXT + "DevOpsProjectName")!.Value,
                 DevOpsRootWorkItemId = int.TryParse(root.Element(EXT + "DevOpsRootWorkItemId")?.Value, out var devOpsId) ? devOpsId : 0,
+                DevOpsProjectOwner = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsProjectOwner")?.Value)
+                    ? null : root.Element(EXT + "DevOpsProjectOwner")!.Value,
                 UseHierarchyColors    = bool.TryParse(root.Element(EXT + "UseHierarchyColors")?.Value, out var uhc) && uhc,
                 BaselineActive        = !bool.TryParse(root.Element(EXT + "BaselineActive")?.Value, out var ba) || ba,
                 DiagramLevelWidths    = root.Element(EXT + "DiagramLevelWidths")?.Value    ?? "",

@@ -65,7 +65,7 @@
 
                         <ComboBox x:Name="DevOpsProjectCombo"
                                   Height="30" Padding="6,4" FontSize="12"
-                                  DisplayMemberPath="Name"
+                                  DisplayMemberPath="DisplayName"
                                   SelectionChanged="OnProjectComboChanged"
                                   ToolTip="Selecione o projeto ou informe o ID manualmente abaixo"/>
                         <TextBlock x:Name="ListPathLabel"

@@ -55,7 +55,7 @@ namespace NXProject.Views
             {
                 if (args.PropertyName == nameof(vm.Project))
                 {
-                    UpdateDevOpsProjectBanner(vm.Project.DevOpsProjectName, vm.Project.DevOpsRootWorkItemId);
+                    UpdateDevOpsProjectBanner(vm.Project.DevOpsProjectName, vm.Project.DevOpsRootWorkItemId, vm.Project.DevOpsProjectOwner);
                     vm.Project.ShowCriticalPath = true;
                     Dispatcher.InvokeAsync(() => RefreshCriticalPath(vm),
                         System.Windows.Threading.DispatcherPriority.Background);
@@ -1401,7 +1401,7 @@ namespace NXProject.Views
                 vm.ApplyImportedProject(
                     project,
                     $"Projeto importado do TFS: {project.Name}");
-                UpdateDevOpsProjectBanner(project.DevOpsProjectName, project.DevOpsRootWorkItemId);
+                UpdateDevOpsProjectBanner(project.DevOpsProjectName, project.DevOpsRootWorkItemId, project.DevOpsProjectOwner);
             }
         }
 
@@ -1461,8 +1461,10 @@ namespace NXProject.Views
             }
         }
 
-        private void UpdateDevOpsProjectBanner(string? name, int id)
+        private void UpdateDevOpsProjectBanner(string? name, int id, string? owner = null)
         {
+            DevOpsOwnerLabel.Text = string.IsNullOrWhiteSpace(owner) ? string.Empty : $"| Owner: {owner}";
+
             if (!string.IsNullOrWhiteSpace(name))
             {
                 DevOpsProjectNameLabel.Text = name;
@@ -1480,6 +1482,7 @@ namespace NXProject.Views
                 DevOpsEpicHoursLabel.Text = string.Empty;
                 DevOpsScheduleDatesLabel.Text = string.Empty;
                 DevOpsPercentLabel.Text = string.Empty;
+                DevOpsOwnerLabel.Text = string.Empty;
                 DevOpsProjectBanner.Visibility = Visibility.Collapsed;
             }
         }
