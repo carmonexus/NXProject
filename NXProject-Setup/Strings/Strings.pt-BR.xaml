@@ -1,0 +1,35 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <sys:String x:Key="Setup_Subtitle">Instalador do NXProject</sys:String>
+    <sys:String x:Key="Setup_Step1Title">Passo 1 — .NET 10 Desktop Runtime</sys:String>
+    <sys:String x:Key="Setup_Step1Button">Baixar e instalar .NET 10</sys:String>
+    <sys:String x:Key="Setup_Step2Title">Passo 2 — Instalar NXProject</sys:String>
+    <sys:String x:Key="Setup_Step2Status">Baixa a versão mais recente e instala no seu usuário.</sys:String>
+    <sys:String x:Key="Setup_Step2Button">Instalar NXProject</sys:String>
+    <sys:String x:Key="Setup_Retry">Tentar novamente</sys:String>
+    <sys:String x:Key="Setup_ManualRepo">Prefere instalar manualmente? Repositório: </sys:String>
+    <sys:String x:Key="Setup_DotNetLink">.NET 10 Desktop Runtime: </sys:String>
+
+    <sys:String x:Key="Setup_Step1Installed">✓ .NET 10 Desktop Runtime já está instalado nesta máquina.</sys:String>
+    <sys:String x:Key="Setup_Step1NotFound">Não encontrado nesta máquina. Necessário para o NXProject abrir.</sys:String>
+    <sys:String x:Key="Setup_Step1Downloading">Baixando o instalador do .NET 10 Desktop Runtime...</sys:String>
+    <sys:String x:Key="Setup_Step1Installing">Instalando .NET 10 Desktop Runtime (pode pedir permissão de administrador)...</sys:String>
+    <sys:String x:Key="Setup_Step1Success">✓ .NET 10 Desktop Runtime instalado com sucesso.</sys:String>
+    <sys:String x:Key="Setup_Step1Fail">Falha ao instalar o .NET automaticamente: {0}&#10;Baixe manualmente em: {1}</sys:String>
+
+    <sys:String x:Key="Setup_InstallingBase">Instalando runtime e bibliotecas base...</sys:String>
+    <sys:String x:Key="Setup_CheckingLatest">Verificando a versão mais recente do NXProject...</sys:String>
+    <sys:String x:Key="Setup_CannotGetLatest">Não foi possível obter a versão mais recente do NXProject. Verifique sua conexão com a internet e tente novamente.</sys:String>
+    <sys:String x:Key="Setup_Downloading">Baixando NXProject {0}...</sys:String>
+    <sys:String x:Key="Setup_Installing">Instalando NXProject...</sys:String>
+    <sys:String x:Key="Setup_IncompleteInstall">Instalação incompleta: '{0}' não foi encontrado após o download.</sys:String>
+    <sys:String x:Key="Setup_Done">Instalação concluída! Iniciando o NXProject...</sys:String>
+    <sys:String x:Key="Setup_InstalledCantOpen">O NXProject foi instalado, mas não foi possível abri-lo automaticamente. Baixe o .NET em: {0}&#10;&#10;Depois, abra o NXProject.Community.exe em: {1}</sys:String>
+    <sys:String x:Key="Setup_InstallFail">Falha na instalação: {0}</sys:String>
+    <sys:String x:Key="Setup_Interrupted">Instalação interrompida.</sys:String>
+
+    <sys:String x:Key="Setup_ReadmeText">NXProject Community&#10;&#10;Requisito: .NET 10 Desktop Runtime (x64) instalado na máquina.&#10;Se o aplicativo não abrir ou o Windows pedir para instalar o .NET, baixe em:&#10;{0}&#10;(escolha ".NET Desktop Runtime" para Windows x64)&#10;&#10;Contato:&#10;- Nexus XData Tecnologia Ltda&#10;- comercial.nexus.xdata@gmail.com</sys:String>
+
+</ResourceDictionary>

@@ -31,12 +31,12 @@ public partial class MainWindow : Window
     {
         if (NXProject.Services.UpdateService.IsDesktopRuntimeInstalled())
         {
-            Step1StatusText.Text = "✓ .NET 10 Desktop Runtime já está instalado nesta máquina.";
+            Step1StatusText.Text = App.Str("Setup_Step1Installed");
             Step1Button.IsEnabled = false;
         }
         else
         {
-            Step1StatusText.Text = "Não encontrado nesta máquina. Necessário para o NXProject abrir.";
+            Step1StatusText.Text = App.Str("Setup_Step1NotFound");
             Step1Button.IsEnabled = true;
         }
     }
@@ -46,7 +46,7 @@ public partial class MainWindow : Window
         try
         {
             Step1Button.IsEnabled = false;
-            Step1StatusText.Text = "Baixando o instalador do .NET 10 Desktop Runtime...";
+            Step1StatusText.Text = App.Str("Setup_Step1Downloading");
 
             var tempExe = Path.Combine(Path.GetTempPath(), $"windowsdesktop-runtime-{Guid.NewGuid():N}.exe");
             using (var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) })
@@ -58,7 +58,7 @@ public partial class MainWindow : Window
                 await stream.CopyToAsync(file);
             }
 
-            Step1StatusText.Text = "Instalando .NET 10 Desktop Runtime (pode pedir permissão de administrador)...";
+            Step1StatusText.Text = App.Str("Setup_Step1Installing");
             using var proc = Process.Start(new ProcessStartInfo(tempExe, "/install /quiet /norestart")
             {
                 UseShellExecute = true,
@@ -71,13 +71,12 @@ public partial class MainWindow : Window
 
             RefreshStep1State();
             if (!Step1Button.IsEnabled)
-                Step1StatusText.Text = "✓ .NET 10 Desktop Runtime instalado com sucesso.";
+                Step1StatusText.Text = App.Str("Setup_Step1Success");
         }
         catch (Exception ex)
         {
-            Step1StatusText.Text =
-                $"Falha ao instalar o .NET automaticamente: {ex.Message}\n" +
-                $"Baixe manualmente em: {NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl}";
+            Step1StatusText.Text = App.Str("Setup_Step1Fail",
+                ex.Message, NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl);
             Step1Button.IsEnabled = true;
         }
     }
@@ -105,25 +104,25 @@ public partial class MainWindow : Window
         {
             Directory.CreateDirectory(_installDir);
 
-            Step2StatusText.Text = "Instalando runtime e bibliotecas base...";
+            Step2StatusText.Text = App.Str("Setup_InstallingBase");
             await Task.Run(() => CopySetupBundledFiles(_installDir));
             InstallProgress.Value = 15;
 
-            Step2StatusText.Text = "Verificando a versão mais recente do NXProject...";
+            Step2StatusText.Text = App.Str("Setup_CheckingLatest");
             var release = await NXProject.Services.UpdateService.GetLatestReleaseInfoAsync();
             if (release is null)
             {
-                ShowError("Não foi possível obter a versão mais recente do NXProject. Verifique sua conexão com a internet e tente novamente.");
+                ShowError(App.Str("Setup_CannotGetLatest"));
                 return;
             }
             InstallProgress.Value = 20;
 
-            Step2StatusText.Text = $"Baixando NXProject {release.TagName}...";
+            Step2StatusText.Text = App.Str("Setup_Downloading", release.TagName);
             var extractedDir = await NXProject.Services.UpdateService.DownloadAndExtractAsync(
                 release.DownloadUrl,
                 new Progress<int>(p => InstallProgress.Value = 20 + p * 0.65));
 
-            Step2StatusText.Text = "Instalando NXProject...";
+            Step2StatusText.Text = App.Str("Setup_Installing");
             CopyAllFiles(extractedDir, _installDir);
             TryDeleteTempParent(extractedDir);
             InstallProgress.Value = 90;
@@ -131,7 +130,7 @@ public partial class MainWindow : Window
             var exePath = Path.Combine(_installDir, "NXProject.Community.exe");
             if (!File.Exists(exePath))
             {
-                ShowError($"Instalação incompleta: '{Path.GetFileName(exePath)}' não foi encontrado após o download.");
+                ShowError(App.Str("Setup_IncompleteInstall", Path.GetFileName(exePath)));
                 return;
             }
 
@@ -139,13 +138,12 @@ public partial class MainWindow : Window
             CreateDesktopShortcut(exePath);
             InstallProgress.Value = 100;
 
-            Step2StatusText.Text = "Instalação concluída! Iniciando o NXProject...";
+            Step2StatusText.Text = App.Str("Setup_Done");
             var started = TryStart(exePath);
             if (!started)
             {
-                ShowError(
-                    "O NXProject foi instalado, mas não foi possível abri-lo automaticamente. " +
-                    $"Baixe o .NET em: {NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl}\n\nDepois, abra o NXProject.Community.exe em: {_installDir}");
+                ShowError(App.Str("Setup_InstalledCantOpen",
+                    NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl, _installDir));
                 return;
             }
 
@@ -154,7 +152,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            ShowError($"Falha na instalação: {ex.Message}");
+            ShowError(App.Str("Setup_InstallFail", ex.Message));
         }
         finally
         {
@@ -181,24 +179,14 @@ public partial class MainWindow : Window
 
     private static void WriteReadme(string installDir)
     {
-        var text = $"""
-            NXProject Community
-
-            Requisito: .NET 10 Desktop Runtime (x64) instalado na máquina.
-            Se o aplicativo não abrir ou o Windows pedir para instalar o .NET, baixe em:
-            {NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl}
-            (escolha ".NET Desktop Runtime" para Windows x64)
-
-            Contato:
-            - Nexus XData Tecnologia Ltda
-            - comercial.nexus.xdata@gmail.com
-            """;
+        var text = App.Str("Setup_ReadmeText",
+            NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl);
         File.WriteAllText(Path.Combine(installDir, "README-INSTALACAO.txt"), text);
     }
 
     private void ShowError(string message)
     {
-        Step2StatusText.Text = "Instalação interrompida.";
+        Step2StatusText.Text = App.Str("Setup_Interrupted");
         ErrorText.Text = message;
         ErrorText.Visibility = Visibility.Visible;
         RetryButton.Visibility = Visibility.Visible;
