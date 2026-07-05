@@ -371,4 +371,30 @@
     <sys:String x:Key="Banner_Percent">| {0:0.#}% complete</sys:String>
     <sys:String x:Key="Banner_Owner">| Owner: {0}</sys:String>
 
+    <!-- Import from Azure DevOps -->
+    <sys:String x:Key="Imp_Title">Import from Azure DevOps</sys:String>
+    <sys:String x:Key="Imp_Subtitle">Choose the project and root ID to build the schedule.</sys:String>
+    <sys:String x:Key="Imp_NotConfigured">⚠ Azure DevOps connection not configured yet. </sys:String>
+    <sys:String x:Key="Imp_Configure">Configure...</sys:String>
+    <sys:String x:Key="Imp_Step1Title">  Project portfolio</sys:String>
+    <sys:String x:Key="Imp_ManagePortfolio">⚙ Manage Portfolio...</sys:String>
+    <sys:String x:Key="Imp_ManageTip">Add, edit or remove projects from the portfolio</sys:String>
+    <sys:String x:Key="Imp_SelectProject">Select the project registered in the portfolio.</sys:String>
+    <sys:String x:Key="Imp_ComboTip">Select the project or enter the ID manually below</sys:String>
+    <sys:String x:Key="Imp_NoPortfolio">(no portfolio loaded — click ⚙ Manage Portfolio)</sys:String>
+    <sys:String x:Key="Imp_Step2Title">  Root item ID (Project type)</sys:String>
+    <sys:String x:Key="Imp_RootIdHelp">Enter the ID of the Project-type work item in Azure DevOps. It is the starting point of the hierarchy: Project → Epic → Feature → Story.</sys:String>
+    <sys:String x:Key="Imp_RootIdTip">Numeric ID of the root work item (Project type) in DevOps</sys:String>
+    <sys:String x:Key="Imp_Calendar">📅 Calendar...</sys:String>
+    <sys:String x:Key="Imp_CalendarTip">Configure hours per day, holidays and working days used in deadline calculation</sys:String>
+    <sys:String x:Key="Imp_CalendarWindowTitle">Working calendar</sys:String>
+    <sys:String x:Key="Imp_ScheduleRules">💡 Schedule rules: each Story's effort (Estimated HH) is converted into working days. If Data_Inicio is set in DevOps, the bar starts there; Data_Fim, if set, is used directly. Stories without dates are chained from the project start date.</sys:String>
+    <sys:String x:Key="Imp_ConfigDevOps">⚙ Configure DevOps</sys:String>
+    <sys:String x:Key="Imp_ConfigDevOpsTip">Opens the Azure DevOps integration configuration</sys:String>
+    <sys:String x:Key="Imp_Import">Import</sys:String>
+    <sys:String x:Key="Imp_Importing">Importing...</sys:String>
+    <sys:String x:Key="Imp_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Imp_NoConnectionStatus">Azure DevOps connection not configured. Click "Configure..." above.</sys:String>
+    <sys:String x:Key="Imp_SelectOrEnterId">Select a project from the list or enter a valid root work item ID.</sys:String>
+
 </ResourceDictionary>

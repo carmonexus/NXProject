@@ -98,13 +98,13 @@ namespace NXProject.Views
             _savedOptions = TfsConnectionStore.Load(_storageKey);
             if (string.IsNullOrWhiteSpace(_savedOptions.OrganizationUrl) || string.IsNullOrWhiteSpace(_savedOptions.PersonalAccessToken))
             {
-                ShowStatus("Conexão com o Azure DevOps não configurada. Clique em \"Configurar...\" acima.");
+                ShowStatus(AppStrings.Get("Imp_NoConnectionStatus"));
                 return;
             }
 
             if (!int.TryParse(RootIdBox.Text?.Trim(), out var rootId) || rootId <= 0)
             {
-                ShowStatus("Selecione um projeto da lista ou informe um ID de work item raiz válido.");
+                ShowStatus(AppStrings.Get("Imp_SelectOrEnterId"));
                 return;
             }
 
@@ -168,7 +168,7 @@ namespace NXProject.Views
             var control = new NXProject.Controls.CalendarSettingsControl("NXProject.Community");
             var window = new Window
             {
-                Title = "Calendário de trabalho",
+                Title = AppStrings.Get("Imp_CalendarWindowTitle"),
                 Owner = this,
                 Width = 720,
                 Height = 520,
@@ -183,7 +183,7 @@ namespace NXProject.Views
         {
             _isImporting = importing;
             ImportButton.IsEnabled = !importing;
-            ImportButton.Content = importing ? "Importando..." : "Importar";
+            ImportButton.Content = importing ? AppStrings.Get("Imp_Importing") : AppStrings.Get("Imp_Import");
             Mouse.OverrideCursor = importing ? Cursors.Wait : null;
         }
 

@@ -371,4 +371,30 @@
     <sys:String x:Key="Banner_Percent">| {0:0.#}% concluído</sys:String>
     <sys:String x:Key="Banner_Owner">| Owner: {0}</sys:String>
 
+    <!-- Importar do Azure DevOps -->
+    <sys:String x:Key="Imp_Title">Importar do Azure DevOps</sys:String>
+    <sys:String x:Key="Imp_Subtitle">Escolha o projeto e o ID raiz para montar o cronograma.</sys:String>
+    <sys:String x:Key="Imp_NotConfigured">⚠ Conexão com o Azure DevOps ainda não configurada. </sys:String>
+    <sys:String x:Key="Imp_Configure">Configurar...</sys:String>
+    <sys:String x:Key="Imp_Step1Title">  Portfólio de projetos</sys:String>
+    <sys:String x:Key="Imp_ManagePortfolio">⚙ Gerenciar Portfólio...</sys:String>
+    <sys:String x:Key="Imp_ManageTip">Adicionar, editar ou remover projetos do portfólio</sys:String>
+    <sys:String x:Key="Imp_SelectProject">Selecione o projeto cadastrado no portfólio.</sys:String>
+    <sys:String x:Key="Imp_ComboTip">Selecione o projeto ou informe o ID manualmente abaixo</sys:String>
+    <sys:String x:Key="Imp_NoPortfolio">(nenhum portfólio carregado — clique em ⚙ Gerenciar Portfólio)</sys:String>
+    <sys:String x:Key="Imp_Step2Title">  ID do item raiz (tipo Project)</sys:String>
+    <sys:String x:Key="Imp_RootIdHelp">Informe o ID do work item do tipo Project no Azure DevOps. Ele é o ponto de partida da hierarquia: Project → Epic → Feature → Story.</sys:String>
+    <sys:String x:Key="Imp_RootIdTip">ID numérico do work item raiz (tipo Project) no DevOps</sys:String>
+    <sys:String x:Key="Imp_Calendar">📅 Calendário...</sys:String>
+    <sys:String x:Key="Imp_CalendarTip">Configurar horas por dia, feriados e dias úteis usados no cálculo de prazos</sys:String>
+    <sys:String x:Key="Imp_CalendarWindowTitle">Calendário de trabalho</sys:String>
+    <sys:String x:Key="Imp_ScheduleRules">💡 Regras de cronograma: o esforço (HH Estimado) de cada Story é convertido em dias úteis. Se Data_Inicio estiver preenchida no DevOps, a barra começa nela; Data_Fim, se preenchida, é usada diretamente. Stories sem datas são encadeadas a partir da data de início do projeto.</sys:String>
+    <sys:String x:Key="Imp_ConfigDevOps">⚙ Configurar DevOps</sys:String>
+    <sys:String x:Key="Imp_ConfigDevOpsTip">Abre a configuração da integração com Azure DevOps</sys:String>
+    <sys:String x:Key="Imp_Import">Importar</sys:String>
+    <sys:String x:Key="Imp_Importing">Importando...</sys:String>
+    <sys:String x:Key="Imp_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="Imp_NoConnectionStatus">Conexão com o Azure DevOps não configurada. Clique em "Configurar..." acima.</sys:String>
+    <sys:String x:Key="Imp_SelectOrEnterId">Selecione um projeto da lista ou informe um ID de work item raiz válido.</sys:String>
+
 </ResourceDictionary>
