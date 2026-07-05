@@ -104,6 +104,18 @@ foreach ($name in $presentationFiles) {
     }
 }
 
+# Timestamp intrinseco do Setup: gerado UMA vez aqui (quando o Setup e realmente
+# reconstruido) e gravado DENTRO do zip (setup-build-timestamp.txt) e no recurso
+# embutido do Community (known-setup-timestamp.txt) — mesmo valor. A release do
+# Community NAO recarimba esse valor; ela so cria a tag. Assim o UpdateService so
+# dispara reinstalacao quando o Setup muda de verdade (o timestamp fica NO Setup).
+$SetupStamp = [System.DateTime]::UtcNow.ToString("o")
+$SetupStampFile = Join-Path $SetupPublishDir "setup-build-timestamp.txt"
+Set-Content -Path $SetupStampFile -Value $SetupStamp -Encoding ASCII -NoNewline
+$KnownSetupTimestampPath = Join-Path $SolutionDir "NXProject.Community\Assets\known-setup-timestamp.txt"
+Set-Content -Path $KnownSetupTimestampPath -Value $SetupStamp -Encoding ASCII -NoNewline
+Write-Host "  Timestamp intrinseco do Setup: $SetupStamp" -ForegroundColor DarkGray
+
 Write-Step "Compactando NXProject-Setup.zip..."
 if (Test-Path $SetupOutputZip) {
     Remove-Item -LiteralPath $SetupOutputZip -Force
@@ -153,6 +165,12 @@ if ($Upload) {
         exit 1
     }
 
+    # Asset-companheiro com o timestamp intrinseco: e ele (nao o UpdatedAt do GitHub)
+    # que o UpdateService compara, para nao disparar reinstalacao a cada re-upload.
+    $StampAsset = Join-Path $SolutionDir "dist\setup\NXProject-Setup.timestamp.txt"
+    Set-Content -Path $StampAsset -Value $SetupStamp -Encoding ASCII -NoNewline
+    gh release upload $TagName $StampAsset --repo nexusxdata/NXProject --clobber
+
     Write-Host "Asset publicado:" -ForegroundColor Green
-    Write-Host "  NXProject-Setup.zip" -ForegroundColor DarkGray
+    Write-Host "  NXProject-Setup.zip + NXProject-Setup.timestamp.txt" -ForegroundColor DarkGray
 }

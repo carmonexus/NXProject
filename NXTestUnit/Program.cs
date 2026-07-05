@@ -64,7 +64,7 @@ internal static class Program
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
         {
             "packaging-community" => [PackagingTests[0]],
-            "packaging-setup" => [PackagingTests[1]],
+            "packaging-setup" => [PackagingTests[1], PackagingTests[2]],
             "packaging" => PackagingTests,
             _ => ScheduleTests
         };
@@ -117,8 +117,42 @@ internal static class Program
     private static readonly List<(string Name, Action Test)> PackagingTests =
     [
         ("Empacotamento: NXProject.Community-Release.zip contem arquivos essenciais", ValidateCommunityReleaseZip),
-        ("Empacotamento: NXProject-Setup.zip contem runtime e libs essenciais", ValidateSetupZip)
+        ("Empacotamento: NXProject-Setup.zip contem runtime e libs essenciais", ValidateSetupZip),
+        ("Setup: timestamp e intrinseco ao zip e igual ao embutido no build", ValidateSetupTimestampIntrinsic)
     ];
+
+    /// <summary>Garante que a identidade do Setup (timestamp) FICA NO proprio Setup e que a
+    /// release so cria a tag, sem recarimbar. O valor gravado dentro do NXProject-Setup.zip
+    /// (setup-build-timestamp.txt) deve ser identico ao embutido no build do Community
+    /// (known-setup-timestamp.txt). Se um dia a release voltar a gerar o timestamp por
+    /// conta propria (ex.: mtime do arquivo ou UpdatedAt do GitHub), os dois divergem e
+    /// este teste falha — evitando reinstalacoes falsas do Setup a cada release.</summary>
+    private static void ValidateSetupTimestampIntrinsic()
+    {
+        var zipPath = Path.Combine(_solutionRoot, "dist", "setup", "NXProject-Setup.zip");
+        var embeddedPath = Path.Combine(_solutionRoot, "NXProject.Community", "Assets", "known-setup-timestamp.txt");
+
+        if (!File.Exists(embeddedPath))
+            throw new InvalidOperationException(
+                "known-setup-timestamp.txt ausente — o release-nxproject-setup.ps1 deve grava-lo (identidade intrinseca do Setup).");
+
+        var embedded = File.ReadAllText(embeddedPath).Trim();
+
+        using var zip = ZipFile.OpenRead(zipPath);
+        var stampEntry = zip.Entries.FirstOrDefault(e =>
+            string.Equals(e.Name, "setup-build-timestamp.txt", StringComparison.OrdinalIgnoreCase));
+        if (stampEntry is null)
+            throw new InvalidOperationException(
+                "'NXProject-Setup.zip' nao contem setup-build-timestamp.txt — o timestamp deve ficar DENTRO do proprio Setup.");
+
+        using var reader = new StreamReader(stampEntry.Open());
+        var inZip = reader.ReadToEnd().Trim();
+
+        if (!string.Equals(embedded, inZip, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"Timestamp do Setup divergente: embutido no build = '{embedded}', dentro do zip = '{inZip}'. " +
+                "A release nao pode recarimbar o timestamp; ele deve ficar no Setup e so a tag muda.");
+    }
 
     private static void ValidateCommunityReleaseZip()
     {

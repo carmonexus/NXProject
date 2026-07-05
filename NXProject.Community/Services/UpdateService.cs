@@ -19,6 +19,10 @@ public static class UpdateService
     public const string CommunityReleaseAssetName = "NXProject.Community-Release.zip";
     public const string SetupZipAssetName = "NXProject-Setup.zip";
     public const string SetupExeAssetName = "NXProject-Setup.exe";
+    // Asset-companheiro com o timestamp INTRINSECO do Setup (o mesmo valor gravado
+    // dentro do zip e embutido no build). E ele que decide se o Setup mudou — nunca
+    // o UpdatedAt do GitHub, que muda a cada re-upload mesmo sem mudanca de conteudo.
+    public const string SetupTimestampAssetName = "NXProject-Setup.timestamp.txt";
     public const string DotNetDesktopRuntimeDownloadUrl = "https://dotnet.microsoft.com/download/dotnet/10.0";
 
     /// <summary>Verifica se o .NET Desktop Runtime (x64) esta instalado na maquina,
@@ -73,23 +77,40 @@ public static class UpdateService
         return ToReleaseInfo(release, SetupZipAssetName, SetupExeAssetName);
     }
 
-    /// <summary>Compara a data do NXProject-Setup.zip mais recente do GitHub com a data
-    /// conhecida embutida neste build (gravada quando o release foi gerado). Retorna
-    /// nao-nulo quando o Setup publicado e mais novo que o que este app conhece —
-    /// sinal de que uma biblioteca nova foi adicionada e o Setup precisa ser reinstalado.</summary>
+    /// <summary>Decide se o Setup publicado precisa ser reinstalado. Compara o timestamp
+    /// INTRINSECO do Setup (asset-companheiro NXProject-Setup.timestamp.txt, o mesmo valor
+    /// gravado dentro do zip) com o embutido neste build. Nunca usa o UpdatedAt do GitHub —
+    /// re-subir o mesmo Setup em novas tags nao pode disparar reinstalacao. Retorna
+    /// nao-nulo apenas quando o Setup mudou de verdade (novo timestamp intrinseco).</summary>
     public static async Task<SetupUpdateInfo?> CheckForSetupUpdateAsync(CancellationToken ct = default)
     {
         using var client = CreateClient();
         var release = await client.GetFromJsonAsync<GithubRelease>(ApiUrl, ct);
         if (release?.Assets is null) return null;
 
-        var asset = release.Assets.Find(a => string.Equals(a.Name, SetupZipAssetName, StringComparison.OrdinalIgnoreCase));
-        if (asset is null) return null;
+        var zipAsset = release.Assets.Find(a => string.Equals(a.Name, SetupZipAssetName, StringComparison.OrdinalIgnoreCase));
+        if (zipAsset is null) return null;
+
+        var stampAsset = release.Assets.Find(a => string.Equals(a.Name, SetupTimestampAssetName, StringComparison.OrdinalIgnoreCase));
+        if (stampAsset is null) return null; // Sem timestamp intrinseco publicado, nao arrisca falso positivo.
+
+        DateTimeOffset remoteStamp;
+        try
+        {
+            var text = (await client.GetStringAsync(stampAsset.BrowserDownloadUrl, ct)).Trim();
+            if (!DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out remoteStamp))
+                return null;
+        }
+        catch
+        {
+            return null;
+        }
 
         var known = GetKnownSetupTimestamp();
-        if (!ShouldTriggerSetupUpdate(known, asset.UpdatedAt)) return null;
+        if (!ShouldTriggerSetupUpdate(known, remoteStamp)) return null;
 
-        return new SetupUpdateInfo(release.TagName, asset.BrowserDownloadUrl, release.HtmlUrl, asset.UpdatedAt);
+        return new SetupUpdateInfo(release.TagName, zipAsset.BrowserDownloadUrl, release.HtmlUrl, remoteStamp);
     }
 
     /// <summary>Logica pura (sem rede) de decisao: dispara a reinstalacao via Setup somente

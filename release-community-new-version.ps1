@@ -227,17 +227,17 @@ Write-Host ""
 Write-Host ">> Versao: $CurrentVersion → $NewVersion" -ForegroundColor Yellow
 Set-ProjectVersion $ProjectFile $NewVersion
 
-# Grava a data do NXProject-Setup.zip local atual (se existir) embutida no build —
-# usada por UpdateService.CheckForSetupUpdateAsync para saber se o Setup publicado
-# no GitHub foi regenerado depois deste build (ex.: nova lib NuGet adicionada).
-$SetupZipForTimestamp = Join-Path $SolutionDir "dist\setup\NXProject-Setup.zip"
+# O timestamp do Setup e INTRINSECO ao artefato: quem o define e o
+# release-nxproject-setup.ps1, que grava o mesmo valor DENTRO do zip
+# (setup-build-timestamp.txt) e no recurso embutido known-setup-timestamp.txt.
+# A release do Community NAO recarimba esse valor — so cria a tag. Isso evita que
+# cada release faca o UpdateService achar que o Setup mudou (falso positivo).
 $KnownSetupTimestampPath = Join-Path $SolutionDir "NXProject.Community\Assets\known-setup-timestamp.txt"
-if (Test-Path $SetupZipForTimestamp) {
-    $setupTimestamp = (Get-Item $SetupZipForTimestamp).LastWriteTimeUtc.ToString("o")
-    Set-Content -Path $KnownSetupTimestampPath -Value $setupTimestamp -Encoding ASCII -NoNewline
-    Write-Host "  Timestamp do Setup embutido no build: $setupTimestamp" -ForegroundColor DarkGray
-} elseif (Test-Path $KnownSetupTimestampPath) {
-    Remove-Item -LiteralPath $KnownSetupTimestampPath -Force
+if (Test-Path $KnownSetupTimestampPath) {
+    $embeddedSetupStamp = (Get-Content -Path $KnownSetupTimestampPath -Raw).Trim()
+    Write-Host "  Timestamp intrinseco do Setup (preservado): $embeddedSetupStamp" -ForegroundColor DarkGray
+} else {
+    Write-Host "  Aviso: known-setup-timestamp.txt ausente; rode release-nxproject-setup.ps1 ao menos uma vez." -ForegroundColor Yellow
 }
 
 # Remove obj/ (nao so o assets.json) para forcar restore limpo com o RID correto —
@@ -378,6 +378,18 @@ if (-not $ghAvailable) {
                 Write-Host "  NXProject-Setup.zip publicado junto na release $tag." -ForegroundColor Green
             } else {
                 Write-Host "  Aviso: falha ao publicar NXProject-Setup.zip na release." -ForegroundColor Yellow
+            }
+
+            # Companheiro com o timestamp INTRINSECO do Setup (mesmo valor embutido no
+            # build). E ele que o UpdateService compara — nao o UpdatedAt do GitHub —
+            # entao re-subir o mesmo Setup em novas tags nao dispara reinstalacao.
+            if (Test-Path $KnownSetupTimestampPath) {
+                $StampAsset = Join-Path $SolutionDir "dist\setup\NXProject-Setup.timestamp.txt"
+                Copy-Item -Path $KnownSetupTimestampPath -Destination $StampAsset -Force
+                gh release upload $tag $StampAsset --repo nexusxdata/NXProject --clobber
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "  NXProject-Setup.timestamp.txt publicado (timestamp intrinseco)." -ForegroundColor Green
+                }
             }
         } else {
             Write-Host "  Aviso: NXProject-Setup.zip nao encontrado em dist\setup\; rode release-nxproject-setup.ps1 pelo menos uma vez." -ForegroundColor Yellow
