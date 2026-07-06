@@ -28,7 +28,7 @@ namespace NXProject.Views
 
             var fields = cfg?.CustomDevopsFields ?? [];
 
-            TitleText.Text = $"Custom DevOps — {tfsType}";
+            TitleText.Text = AppStrings.Get("CustomDO_TitleFormat", tfsType);
 
             foreach (var fd in fields)
             {
@@ -51,7 +51,7 @@ namespace NXProject.Views
             {
                 FieldsPanel.Children.Add(new TextBlock
                 {
-                    Text = "Nenhum campo Custom DevOps configurado para este tipo.",
+                    Text = AppStrings.Get("CustomDO_NoFields"),
                     FontSize = 11,
                     Foreground = System.Windows.Media.Brushes.Gray,
                     TextWrapping = TextWrapping.Wrap,
@@ -59,7 +59,7 @@ namespace NXProject.Views
                 });
 
                 var link = new System.Windows.Documents.Hyperlink(
-                    new System.Windows.Documents.Run("⚙ Abrir Configuração Azure DevOps"));
+                    new System.Windows.Documents.Run(AppStrings.Get("CustomDO_OpenConfig")));
                 link.Click += (_, _) =>
                 {
                     var cfg = new TfsDevOpsConfigWindow { Owner = this };
@@ -80,7 +80,7 @@ namespace NXProject.Views
                 {
                     Height = 28, Padding = new Thickness(6, 3, 6, 3), FontSize = 12,
                     Text = current ?? "",
-                    ToolTip = $"Valor inteiro para {fd.Field}"
+                    ToolTip = AppStrings.Get("CustomDO_IntTip", fd.Field)
                 };
             }
 
@@ -90,7 +90,7 @@ namespace NXProject.Views
                 {
                     Height = 28, FontSize = 12,
                     SelectedDate = DateTime.TryParse(current, out var dt) ? dt : null,
-                    ToolTip = $"Data para {fd.Field}"
+                    ToolTip = AppStrings.Get("CustomDO_DateTip", fd.Field)
                 };
             }
 
@@ -99,7 +99,7 @@ namespace NXProject.Views
             {
                 IsEditable = true, Height = 28,
                 Padding = new Thickness(4, 2, 4, 2), FontSize = 12,
-                ToolTip = $"Valor para {fd.Field}"
+                ToolTip = AppStrings.Get("CustomDO_ValueTip", fd.Field)
             };
 
             if (!string.IsNullOrWhiteSpace(fd.Values))

@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.FetchTasksConfirmDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Tasks encontradas no DevOps"
+        Title="{DynamicResource Fetch_Title}"
         Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
@@ -19,8 +19,8 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="📥" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Incluir no cronograma" FontWeight="SemiBold" FontSize="13"/>
-                    <TextBlock Text="Adiciona as Tasks novas ao cronograma para visualização" FontSize="11" Foreground="#666"/>
+                    <TextBlock Text="{DynamicResource Fetch_Include}" FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Text="{DynamicResource Fetch_IncludeDesc}" FontSize="11" Foreground="#666"/>
                 </StackPanel>
             </StackPanel>
         </Button>
@@ -31,15 +31,15 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="🔓" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Liberar atividade (não sincronizar)" FontWeight="SemiBold" FontSize="13"/>
-                    <TextBlock Text="Remove Tasks do cronograma sem sincronizar com DevOps" FontSize="11" Foreground="#666"/>
+                    <TextBlock Text="{DynamicResource Fetch_Release}" FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Text="{DynamicResource Fetch_ReleaseDesc}" FontSize="11" Foreground="#666"/>
                 </StackPanel>
             </StackPanel>
         </Button>
 
         <Separator Margin="0,10,0,10"/>
 
-        <Button Content="Cancelar" Height="32" Width="90"
+        <Button Content="{DynamicResource Fetch_Cancel}" Height="32" Width="90"
                 HorizontalAlignment="Right"
                 Click="OnCancelClick"/>
     </StackPanel>

@@ -720,4 +720,24 @@
     <sys:String x:Key="SyncRes_LogWarn">[AVS] </sys:String>
     <sys:String x:Key="SyncRes_LogErr">[ERR] </sys:String>
 
+    <!-- Tasks encontradas no DevOps (confirmar) -->
+    <sys:String x:Key="Fetch_Title">Tasks encontradas no DevOps</sys:String>
+    <sys:String x:Key="Fetch_Summary">{0} Tasks encontradas no DevOps. {1} são novas.</sys:String>
+    <sys:String x:Key="Fetch_Warning">⚠ Ao liberar: as {0} Task(s) nova(s) serão suprimidas e não adicionadas ao cronograma.</sys:String>
+    <sys:String x:Key="Fetch_Include">Incluir no cronograma</sys:String>
+    <sys:String x:Key="Fetch_IncludeDesc">Adiciona as Tasks novas ao cronograma para visualização</sys:String>
+    <sys:String x:Key="Fetch_Release">Liberar atividade (não sincronizar)</sys:String>
+    <sys:String x:Key="Fetch_ReleaseDesc">Remove Tasks do cronograma sem sincronizar com DevOps</sys:String>
+    <sys:String x:Key="Fetch_Cancel">Cancelar</sys:String>
+
+    <!-- Custom DevOps -->
+    <sys:String x:Key="CustomDO_Title">Custom DevOps</sys:String>
+    <sys:String x:Key="CustomDO_TitleFormat">Custom DevOps — {0}</sys:String>
+    <sys:String x:Key="CustomDO_NoFields">Nenhum campo Custom DevOps configurado para este tipo.</sys:String>
+    <sys:String x:Key="CustomDO_OpenConfig">⚙ Abrir Configuração Azure DevOps</sys:String>
+    <sys:String x:Key="CustomDO_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="CustomDO_IntTip">Valor inteiro para {0}</sys:String>
+    <sys:String x:Key="CustomDO_DateTip">Data para {0}</sys:String>
+    <sys:String x:Key="CustomDO_ValueTip">Valor para {0}</sys:String>
+
 </ResourceDictionary>

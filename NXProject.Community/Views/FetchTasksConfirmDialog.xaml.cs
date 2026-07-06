@@ -1,4 +1,5 @@
 using System.Windows;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -11,12 +12,12 @@ namespace NXProject.Views
         public FetchTasksConfirmDialog(int totalFound, int newCount)
         {
             InitializeComponent();
-            SummaryText.Text = $"{totalFound} Tasks encontradas no DevOps. {newCount} são novas.";
+            SummaryText.Text = AppStrings.Get("Fetch_Summary", totalFound, newCount);
 
             // Se há Tasks novas ou alteradas, avisa que serão suprimidas ao liberar
             if (newCount > 0)
             {
-                WarningText.Text = $"⚠ Ao liberar: as {newCount} Task(s) nova(s) serão suprimidas e não adicionadas ao cronograma.";
+                WarningText.Text = AppStrings.Get("Fetch_Warning", newCount);
                 WarningText.Visibility = Visibility.Visible;
             }
         }

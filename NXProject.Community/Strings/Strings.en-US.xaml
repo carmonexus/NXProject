@@ -720,4 +720,24 @@
     <sys:String x:Key="SyncRes_LogWarn">[WARN]</sys:String>
     <sys:String x:Key="SyncRes_LogErr">[ERR] </sys:String>
 
+    <!-- Tasks found in DevOps (confirm) -->
+    <sys:String x:Key="Fetch_Title">Tasks found in DevOps</sys:String>
+    <sys:String x:Key="Fetch_Summary">{0} Tasks found in DevOps. {1} are new.</sys:String>
+    <sys:String x:Key="Fetch_Warning">⚠ On release: the {0} new Task(s) will be suppressed and not added to the schedule.</sys:String>
+    <sys:String x:Key="Fetch_Include">Include in schedule</sys:String>
+    <sys:String x:Key="Fetch_IncludeDesc">Adds the new Tasks to the schedule for viewing</sys:String>
+    <sys:String x:Key="Fetch_Release">Release activity (do not sync)</sys:String>
+    <sys:String x:Key="Fetch_ReleaseDesc">Removes Tasks from the schedule without syncing to DevOps</sys:String>
+    <sys:String x:Key="Fetch_Cancel">Cancel</sys:String>
+
+    <!-- Custom DevOps -->
+    <sys:String x:Key="CustomDO_Title">Custom DevOps</sys:String>
+    <sys:String x:Key="CustomDO_TitleFormat">Custom DevOps — {0}</sys:String>
+    <sys:String x:Key="CustomDO_NoFields">No Custom DevOps field configured for this type.</sys:String>
+    <sys:String x:Key="CustomDO_OpenConfig">⚙ Open Azure DevOps Configuration</sys:String>
+    <sys:String x:Key="CustomDO_Cancel">Cancel</sys:String>
+    <sys:String x:Key="CustomDO_IntTip">Integer value for {0}</sys:String>
+    <sys:String x:Key="CustomDO_DateTip">Date for {0}</sys:String>
+    <sys:String x:Key="CustomDO_ValueTip">Value for {0}</sys:String>
+
 </ResourceDictionary>
