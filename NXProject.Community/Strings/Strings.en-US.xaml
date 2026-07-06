@@ -840,4 +840,94 @@
     <sys:String x:Key="Online_DeleteConfirmTitle">Confirm deletion</sys:String>
     <sys:String x:Key="Online_Deleted">"{0}" deleted.</sys:String>
 
+    <!-- Tech Lead Task Grid -->
+    <sys:String x:Key="TLR_Title">Tech Lead Task Grid</sys:String>
+    <sys:String x:Key="TLR_Loading">Loading Tasks from DevOps...</sys:String>
+    <sys:String x:Key="TLR_Filter">Filter:</sys:String>
+    <sys:String x:Key="TLR_InProgress">In progress</sys:String>
+    <sys:String x:Key="TLR_InProgressTip">Shows only Tasks with completion % &gt; 0 and &lt; 100</sys:String>
+    <sys:String x:Key="TLR_NotStarted">Not started</sys:String>
+    <sys:String x:Key="TLR_NotStartedTip">Shows only Tasks with completion % = 0</sys:String>
+    <sys:String x:Key="TLR_Status">Status:</sys:String>
+    <sys:String x:Key="TLR_Reload">🔄 Reload</sys:String>
+    <sys:String x:Key="TLR_StoryDuration">Story Duration:</sys:String>
+    <sys:String x:Key="TLR_HourUnit">h</sys:String>
+    <sys:String x:Key="TLR_StoryDurationTip">Total Story duration in hours</sys:String>
+    <sys:String x:Key="TLR_Ratear">⚖ Distribute HH across Tasks</sys:String>
+    <sys:String x:Key="TLR_RatearTip">Distributes the Story hours across Tasks with zeroed Estimated HH and Current HH</sys:String>
+    <sys:String x:Key="TLR_Zerar">✕ Zero estimates</sys:String>
+    <sys:String x:Key="TLR_ZerarTip">Zeros Estimated HH and Current HH of unclosed Tasks (Status ≠ Closed/Done)</sys:String>
+    <sys:String x:Key="TLR_Epic">Epic:</sys:String>
+    <sys:String x:Key="TLR_Feature">Feature:</sys:String>
+    <sys:String x:Key="TLR_Story">Story:</sys:String>
+    <sys:String x:Key="TLR_BuscarTasks">🔍 Search Tasks</sys:String>
+    <sys:String x:Key="TLR_DragToReorder">Drag to reorder</sys:String>
+    <sys:String x:Key="TLR_ColTask">Task</sys:String>
+    <sys:String x:Key="TLR_ColStatus">Status</sys:String>
+    <sys:String x:Key="TLR_BlockBadge">🔴 BLOCK</sys:String>
+    <sys:String x:Key="TLR_ColHHEst">Est. HH</sys:String>
+    <sys:String x:Key="TLR_ColHHConc">Done HH</sys:String>
+    <sys:String x:Key="TLR_ColPctConc">% Done</sys:String>
+    <sys:String x:Key="TLR_ColPri">Pri</sys:String>
+    <sys:String x:Key="TLR_ColAssigned">Assigned to</sys:String>
+    <sys:String x:Key="TLR_ColCategory">Category</sys:String>
+    <sys:String x:Key="TLR_ColAddSchedule">Add to Schedule</sys:String>
+    <sys:String x:Key="TLR_ColBlock">Block</sys:String>
+    <sys:String x:Key="TLR_BlockToggleTip">Set/remove Block (changes State to Blocked or Active)</sys:String>
+    <sys:String x:Key="TLR_AddBlockMenu">🔴 Add Block to Task</sys:String>
+    <sys:String x:Key="TLR_RemoveBlockMenu">✅ Remove Block from Task</sys:String>
+    <sys:String x:Key="TLR_AlterTaskLocal">Edit Task&#x0a;Local</sys:String>
+    <sys:String x:Key="TLR_AlterTaskTip">Edits the selected Task in the grid</sys:String>
+    <sys:String x:Key="TLR_OpenTfs">Open&#x0a;TFS/DevOps</sys:String>
+    <sys:String x:Key="TLR_OpenTfsTip">Opens the selected Task in TFS/DevOps</sys:String>
+    <sys:String x:Key="TLR_IncludeTaskOnline">Add Task&#x0a;Online</sys:String>
+    <sys:String x:Key="TLR_IncludeTaskTip">Creates a new Task in TFS/DevOps for the selected Story</sys:String>
+    <sys:String x:Key="TLR_DeleteTfsOnline">Delete TFS&#x0a;Online</sys:String>
+    <sys:String x:Key="TLR_DeleteTfsTip">Deletes the selected Task in TFS/DevOps</sys:String>
+    <sys:String x:Key="TLR_SaveTfsOnline">Save TFS&#x0a;Online</sys:String>
+    <sys:String x:Key="TLR_SaveTfsTip">Saves the grid's pending changes to TFS/DevOps</sys:String>
+    <sys:String x:Key="TLR_DirtyHint">  |  Yellow cells = change pending DevOps sync</sys:String>
+    <sys:String x:Key="TLR_Schedule">Schedule</sys:String>
+    <sys:String x:Key="TLR_ExpandAll">📂 Expand all in schedule</sys:String>
+    <sys:String x:Key="TLR_AddSelected">📥 Add selected to schedule</sys:String>
+    <sys:String x:Key="TLR_Memorize">💾 Memorize Task in Schedule</sys:String>
+    <sys:String x:Key="TLR_MemorizeTip">Closes keeping the Tasks included in the local schedule (does not release the Story)</sys:String>
+    <sys:String x:Key="TLR_Release">🔓 Release Activity</sys:String>
+    <sys:String x:Key="TLR_ReleaseTip">Closes and removes the Tasks from the local schedule (releases the Story)</sys:String>
+    <sys:String x:Key="TLR_SelectAndSearch">Select Epic → Feature → Story and click 🔍 Search Tasks.</sys:String>
+    <sys:String x:Key="TLR_Searching">Searching Tasks in DevOps...</sys:String>
+    <sys:String x:Key="TLR_Totals">Visible: {0} Tasks | Est: {1:0.#}h | Done: {2:0.#}h | {3} in schedule</sys:String>
+    <sys:String x:Key="TLR_TotalsDirty"> | {0} pending sync</sys:String>
+    <sys:String x:Key="TLR_NoStoriesFound">No Story/Feature linked to DevOps found for the selection.</sys:String>
+    <sys:String x:Key="TLR_SyncingCount">Syncing {0} Task(s) with DevOps...</sys:String>
+    <sys:String x:Key="TLR_SyncDone">Sync complete: {0} OK</sys:String>
+    <sys:String x:Key="TLR_SyncDoneErrors">, {0} with error</sys:String>
+    <sys:String x:Key="TLR_ConfigTfsFirst">Configure the TFS/DevOps connection before opening the Task.</sys:String>
+    <sys:String x:Key="TLR_OpenTfsTitle">Open TFS/DevOps</sys:String>
+    <sys:String x:Key="TLR_CannotOpen">Could not open the Task in TFS/DevOps:&#10;{0}</sys:String>
+    <sys:String x:Key="TLR_CreatingTask">Creating new Task in TFS for "{0}"...</sys:String>
+    <sys:String x:Key="TLR_NewTask">New Task</sys:String>
+    <sys:String x:Key="TLR_TaskCreated">Task #{0} created in TFS. Change the name in the grid and save the changes.</sys:String>
+    <sys:String x:Key="TLR_CreateError">Error creating Task in TFS.</sys:String>
+    <sys:String x:Key="TLR_IncludeTaskTitle">Add Task</sys:String>
+    <sys:String x:Key="TLR_CreateErrorDetail">Error creating Task in TFS:&#10;{0}</sys:String>
+    <sys:String x:Key="TLR_DeleteTaskConfirm">Delete TFS Task #{0} "{1}"?&#10;&#10;The deletion will be done in DevOps. If the Story is expanded in the schedule, the grid will be reflected when you close this window.</sys:String>
+    <sys:String x:Key="TLR_DeleteTaskTitle">Delete TFS Task</sys:String>
+    <sys:String x:Key="TLR_DeletingTask">Deleting Task #{0} in TFS...</sys:String>
+    <sys:String x:Key="TLR_TaskDeleted">Task #{0} deleted in TFS.</sys:String>
+    <sys:String x:Key="TLR_DeleteError">Error deleting Task in TFS.</sys:String>
+    <sys:String x:Key="TLR_DeleteErrorDetail">Error deleting Task in TFS:&#10;{0}</sys:String>
+    <sys:String x:Key="TLR_AllInSchedule">All Tasks are already in the schedule.</sys:String>
+    <sys:String x:Key="TLR_InfoTitle">Info</sys:String>
+    <sys:String x:Key="TLR_EnterDuration">Enter the Story duration in hours (e.g.: 40).</sys:String>
+    <sys:String x:Key="TLR_RateioTitle">Distribution</sys:String>
+    <sys:String x:Key="TLR_AllHaveHours">All Tasks already have Original HH or Current HH.</sys:String>
+    <sys:String x:Key="TLR_RateioApplied2">Distribution applied to {0} task(s): Original HH = {1:0.#}h | Current HH = {2:0.#}h</sys:String>
+    <sys:String x:Key="TLR_RateioApplied1">Distribution applied to {0} task(s): Original HH = {1:0.#}h</sys:String>
+    <sys:String x:Key="TLR_NoUnclosedTasks">There are no visible unclosed tasks.</sys:String>
+    <sys:String x:Key="TLR_ZerarTitle">Zero estimates</sys:String>
+    <sys:String x:Key="TLR_ZerarConfirm">Zero Estimated HH and Current HH of {0} unclosed task(s)?</sys:String>
+    <sys:String x:Key="TLR_BlockLabelOn">🔴 Block</sys:String>
+    <sys:String x:Key="TLR_BlockLabelOff">Block</sys:String>
+
 </ResourceDictionary>

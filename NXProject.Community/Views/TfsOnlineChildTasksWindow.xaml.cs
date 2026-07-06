@@ -48,7 +48,7 @@ namespace NXProject.Views
             _mainVm = mainVm;
 
             ItemsGrid.ItemsSource = _rows;
-            TitleText.Text = AppStrings.Get("Online_TitleFormat", parent.TfsId, parent.Name);
+            TitleText.Text = AppStrings.Get("Online_TitleFormat", parent.TfsId ?? 0, parent.Name ?? "");
             StatusText.Text = AppStrings.Get("Online_Loading");
 
             Loaded += async (_, _) =>

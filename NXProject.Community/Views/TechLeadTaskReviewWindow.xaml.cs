@@ -105,7 +105,7 @@ namespace NXProject.Views
             StoryFilterBox.IsEnabled = false;
 
             BuscarButton.IsEnabled = false;
-            StatusText.Text = "Selecione Epic → Feature → Story e clique em 🔍 Buscar Tasks.";
+            StatusText.Text = AppStrings.Get("TLR_SelectAndSearch");
         }
 
         private static string TaskLabel(ProjectTask t) => $"{t.Name ?? ""} ({(int)Math.Round(t.PercentComplete)}%)";
@@ -139,7 +139,7 @@ namespace NXProject.Views
 
         private async Task LoadAsync()
         {
-            StatusText.Text = "Buscando Tasks no DevOps...";
+            StatusText.Text = AppStrings.Get("TLR_Searching");
             AddSelectedButton.IsEnabled = false;
             SaveChangesButton.IsEnabled = false;
             UpdateTaskActionButtons();
@@ -288,8 +288,8 @@ namespace NXProject.Views
             double doneH  = visible.Sum(r => r.CompletedHours);
             int inSched   = visible.Count(r => r.InSchedule);
             int dirty     = _allRows.Count(r => r.IsDirty);
-            TotalsText.Text = $"Visível: {visible.Count} Tasks | Est: {totalH:0.#}h | Conc: {doneH:0.#}h | {inSched} no cronograma" +
-                              (dirty > 0 ? $" | {dirty} pendentes de sync" : "");
+            TotalsText.Text = AppStrings.Get("TLR_Totals", visible.Count, totalH, doneH, inSched) +
+                              (dirty > 0 ? AppStrings.Get("TLR_TotalsDirty", dirty) : "");
         }
 
         private void RefreshRowNumbers()
@@ -446,7 +446,7 @@ namespace NXProject.Views
 
             if (_stories.Count == 0)
             {
-                StatusText.Text = "Nenhuma Story/Feature vinculada ao DevOps encontrada para a seleção.";
+                StatusText.Text = AppStrings.Get("TLR_NoStoriesFound");
                 return;
             }
 
@@ -509,7 +509,7 @@ namespace NXProject.Views
             if (dirty.Count == 0) return;
 
             SaveChangesButton.IsEnabled = false;
-            StatusText.Text = $"Sincronizando {dirty.Count} Task(s) com o DevOps...";
+            StatusText.Text = AppStrings.Get("TLR_SyncingCount", dirty.Count);
 
             var options = TfsConnectionStore.Load("NXProject.Community");
             int ok = 0, fail = 0;
@@ -539,7 +539,7 @@ namespace NXProject.Views
             HasChanges = true;
             DirtyHint.Visibility = _allRows.Any(r => r.IsDirty) ? Visibility.Visible : Visibility.Collapsed;
             SaveChangesButton.IsEnabled = _allRows.Any(r => r.IsDirty);
-            StatusText.Text = $"Sync concluído: {ok} OK" + (fail > 0 ? $", {fail} com erro" : "");
+            StatusText.Text = AppStrings.Get("TLR_SyncDone", ok) + (fail > 0 ? AppStrings.Get("TLR_SyncDoneErrors", fail) : "");
             UpdateTotals();
             UpdateTaskActionButtons();
         }
@@ -594,7 +594,7 @@ namespace NXProject.Views
             var options = TfsConnectionStore.Load("NXProject.Community");
             if (string.IsNullOrWhiteSpace(options.OrganizationUrl) || string.IsNullOrWhiteSpace(options.TeamProject))
             {
-                MessageBox.Show("Configure a conexão TFS/DevOps antes de abrir a Task.", "Abrir TFS/DevOps", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("TLR_ConfigTfsFirst"), AppStrings.Get("TLR_OpenTfsTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -607,7 +607,7 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Não foi possível abrir a Task no TFS/DevOps:\n{ex.Message}", "Abrir TFS/DevOps", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(AppStrings.Get("TLR_CannotOpen", ex.Message), AppStrings.Get("TLR_OpenTfsTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -618,7 +618,7 @@ namespace NXProject.Views
                 return;
 
             IncludeTaskButton.IsEnabled = false;
-            StatusText.Text = $"Criando nova Task no TFS para \"{story.Name}\"...";
+            StatusText.Text = AppStrings.Get("TLR_CreatingTask", story.Name);
 
             try
             {
@@ -626,7 +626,7 @@ namespace NXProject.Views
                 var newId = await TfsImportService.CreateChildTaskAsync(
                     options,
                     story.TfsId.Value,
-                    "Nova Task",
+                    AppStrings.Get("TLR_NewTask"),
                     iterationPath: story.TfsIterationPath);
 
                 HasChanges = true;
@@ -637,13 +637,13 @@ namespace NXProject.Views
                 {
                     TasksGrid.SelectedItem = created;
                     TasksGrid.ScrollIntoView(created);
-                    StatusText.Text = $"Task #{newId} criada no TFS. Altere o nome na grid e salve as alterações.";
+                    StatusText.Text = AppStrings.Get("TLR_TaskCreated", newId);
                 }
             }
             catch (Exception ex)
             {
-                StatusText.Text = "Erro ao criar Task no TFS.";
-                MessageBox.Show($"Erro ao criar Task no TFS:\n{ex.Message}", "Incluir Task", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = AppStrings.Get("TLR_CreateError");
+                MessageBox.Show(AppStrings.Get("TLR_CreateErrorDetail", ex.Message), AppStrings.Get("TLR_IncludeTaskTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -657,15 +657,15 @@ namespace NXProject.Views
             if (row == null || row.TaskId <= 0) return;
 
             var confirm = MessageBox.Show(
-                $"Excluir a Task TFS #{row.TaskId} \"{row.Title}\"?\n\nA exclusao sera feita no DevOps. Se a Story estiver expandida no cronograma, a grid sera refletida ao fechar esta janela.",
-                "Excluir Task TFS",
+                AppStrings.Get("TLR_DeleteTaskConfirm", row.TaskId, row.Title),
+                AppStrings.Get("TLR_DeleteTaskTitle"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes)
                 return;
 
             DeleteTaskButton.IsEnabled = false;
-            StatusText.Text = $"Excluindo Task #{row.TaskId} no TFS...";
+            StatusText.Text = AppStrings.Get("TLR_DeletingTask", row.TaskId);
 
             try
             {
@@ -676,12 +676,12 @@ namespace NXProject.Views
                 HasChanges = true;
                 RefreshRowNumbers();
                 UpdateTotals();
-                StatusText.Text = $"Task #{row.TaskId} excluida no TFS.";
+                StatusText.Text = AppStrings.Get("TLR_TaskDeleted", row.TaskId);
             }
             catch (Exception ex)
             {
-                StatusText.Text = "Erro ao excluir Task no TFS.";
-                MessageBox.Show($"Erro ao excluir Task no TFS:\n{ex.Message}", "Excluir Task TFS", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = AppStrings.Get("TLR_DeleteError");
+                MessageBox.Show(AppStrings.Get("TLR_DeleteErrorDetail", ex.Message), AppStrings.Get("TLR_DeleteTaskTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -705,7 +705,7 @@ namespace NXProject.Views
         private void OnExpandAllClick(object sender, RoutedEventArgs e)
         {
             var toAdd = (_view?.Cast<TaskReviewRow>() ?? _allRows).Where(r => !r.InSchedule).ToList();
-            if (toAdd.Count == 0) { MessageBox.Show("Todas as Tasks já estão no cronograma.", "Info", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+            if (toAdd.Count == 0) { MessageBox.Show(AppStrings.Get("TLR_AllInSchedule"), AppStrings.Get("TLR_InfoTitle"), MessageBoxButton.OK, MessageBoxImage.Information); return; }
             AddToScheduleAndClose(toAdd);
         }
 
@@ -739,8 +739,8 @@ namespace NXProject.Views
             var row = TasksGrid.SelectedItem as TaskReviewRow;
             if (BlockTaskMenuItem != null)
                 BlockTaskMenuItem.Header = (row?.IsBlockedState == true)
-                    ? "✅ Retirar Block da Task"
-                    : "🔴 Adicionar Block na Task";
+                    ? AppStrings.Get("TLR_RemoveBlockMenu")
+                    : AppStrings.Get("TLR_AddBlockMenu");
         }
 
         private void OnRowToggleBlockClick(object sender, RoutedEventArgs e)
@@ -770,7 +770,7 @@ namespace NXProject.Views
                     System.Globalization.NumberStyles.Any,
                     System.Globalization.CultureInfo.InvariantCulture, out double storyHours) || storyHours <= 0)
             {
-                MessageBox.Show("Informe a duração da Story em horas (ex: 40).", "Rateio", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(AppStrings.Get("TLR_EnterDuration"), AppStrings.Get("TLR_RateioTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -780,7 +780,7 @@ namespace NXProject.Views
             var eligible = allVisible.Where(r => r.EstimatedHours <= 0 && r.CompletedHours <= 0).ToList();
             if (eligible.Count == 0)
             {
-                MessageBox.Show("Todas as Tasks já possuem HH Original ou HH Atual.", "Rateio", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("TLR_AllHaveHours"), AppStrings.Get("TLR_RateioTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -813,9 +813,9 @@ namespace NXProject.Views
             UpdateTotals();
 
             var msg = perCur > 0
-                ? $"Rateio aplicado em {n} task(s): HH Original = {perOrig:0.#}h | HH Atual = {perCur:0.#}h"
-                : $"Rateio aplicado em {n} task(s): HH Original = {perOrig:0.#}h";
-            MessageBox.Show(msg, "Rateio", MessageBoxButton.OK, MessageBoxImage.Information);
+                ? AppStrings.Get("TLR_RateioApplied2", n, perOrig, perCur)
+                : AppStrings.Get("TLR_RateioApplied1", n, perOrig);
+            MessageBox.Show(msg, AppStrings.Get("TLR_RateioTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void OnZerarClick(object sender, RoutedEventArgs e)
@@ -828,13 +828,13 @@ namespace NXProject.Views
 
             if (eligible.Count == 0)
             {
-                MessageBox.Show("Não há tasks não encerradas visíveis.", "Zerar estimativas", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("TLR_NoUnclosedTasks"), AppStrings.Get("TLR_ZerarTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var confirm = MessageBox.Show(
-                $"Zerar HH Estimado e HH Atual de {eligible.Count} task(s) não encerrada(s)?",
-                "Zerar estimativas", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                AppStrings.Get("TLR_ZerarConfirm", eligible.Count),
+                AppStrings.Get("TLR_ZerarTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
 
             foreach (var r in eligible)
@@ -1018,7 +1018,7 @@ namespace NXProject.Views
                         .Any(t => string.Equals(t, "Block", StringComparison.OrdinalIgnoreCase));
 
         public bool IsBlockedState => HasBlockTag(_tags);
-        public string BlockButtonLabel => IsBlockedState ? "🔴 Block" : "Block";
+        public string BlockButtonLabel => IsBlockedState ? AppStrings.Get("TLR_BlockLabelOn") : AppStrings.Get("TLR_BlockLabelOff");
         public string BlockButtonColor => IsBlockedState ? "#C0392B" : "#AAA";
 
         public void ToggleBlock()

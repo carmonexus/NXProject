@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.TechLeadTaskReviewWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Grid de Task Tech Lead"
+        Title="{DynamicResource TLR_Title}"
         Width="1320" Height="700"
         MinWidth="1040" MinHeight="560"
         WindowStartupLocation="CenterOwner"
@@ -29,10 +29,10 @@
         <!-- Cabeçalho -->
         <StackPanel Grid.Row="0" Margin="0,0,0,8">
             <StackPanel>
-                <TextBlock Text="Grid de Task Tech Lead"
+                <TextBlock Text="{DynamicResource TLR_Title}"
                            FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"/>
                 <TextBlock x:Name="StatusText" FontSize="11" Foreground="#666" Margin="0,2,0,0"
-                           Text="Carregando Tasks do DevOps..."/>
+                           Text="{DynamicResource TLR_Loading}"/>
             </StackPanel>
         </StackPanel>
 
@@ -52,54 +52,54 @@
         <!-- Filtros -->
         <StackPanel Grid.Row="2" Margin="0,0,0,8">
             <WrapPanel Orientation="Horizontal" Margin="0,0,0,6">
-                <TextBlock Text="Filtro:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                <CheckBox x:Name="FilterEmAndamentoBox" Content="Em andamento"
+                <TextBlock Text="{DynamicResource TLR_Filter}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <CheckBox x:Name="FilterEmAndamentoBox" Content="{DynamicResource TLR_InProgress}"
                           VerticalAlignment="Center" FontSize="12" Margin="0,0,12,0"
-                          ToolTip="Exibe apenas Tasks com % de conclusão > 0 e &lt; 100"
+                          ToolTip="{DynamicResource TLR_InProgressTip}"
                           Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
-                <CheckBox x:Name="FilterNaoIniciadaBox" Content="Não iniciada"
+                <CheckBox x:Name="FilterNaoIniciadaBox" Content="{DynamicResource TLR_NotStarted}"
                           VerticalAlignment="Center" FontSize="12" Margin="0,0,16,0"
-                          ToolTip="Exibe apenas Tasks com % de conclusão = 0"
+                          ToolTip="{DynamicResource TLR_NotStartedTip}"
                           Checked="OnProgressFilterChanged" Unchecked="OnProgressFilterChanged"/>
                 <Separator Width="1" Height="20" Background="#CCC" Margin="0,0,16,0" VerticalAlignment="Center"/>
-                <TextBlock Text="Status:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <TextBlock Text="{DynamicResource TLR_Status}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <ComboBox x:Name="StateFilterBox" Width="120" FontSize="12" Margin="0,0,8,0"
                           SelectionChanged="OnStateFilterChanged"/>
-                <Button Content="🔄 Recarregar" Click="OnReloadClick"
+                <Button Content="{DynamicResource TLR_Reload}" Click="OnReloadClick"
                         Padding="8,3" FontSize="12" Margin="0,0,12,0"/>
                 <Separator Width="1" Height="20" Background="#CCC" Margin="0,0,12,0" VerticalAlignment="Center"/>
                 <TextBlock Text="DevOps" FontSize="10" Foreground="#888" FontWeight="SemiBold"
                            VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <TextBlock Text="Duração Story:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <TextBlock Text="{DynamicResource TLR_StoryDuration}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <TextBox x:Name="StoryDurationBox" Width="60" FontSize="12" Margin="0,0,4,0"
-                         VerticalContentAlignment="Center" ToolTip="Duração total da Story em horas"/>
-                <TextBlock Text="h" VerticalAlignment="Center" Margin="0,0,12,0" FontSize="12"/>
-                <Button Content="⚖ Ratear HH nas Tasks" x:Name="RatearButton"
+                         VerticalContentAlignment="Center" ToolTip="{DynamicResource TLR_StoryDurationTip}"/>
+                <TextBlock Text="{DynamicResource TLR_HourUnit}" VerticalAlignment="Center" Margin="0,0,12,0" FontSize="12"/>
+                <Button Content="{DynamicResource TLR_Ratear}" x:Name="RatearButton"
                         Click="OnRatearClick"
                         Height="28" Padding="10,0" Margin="0,0,8,0"
                         Background="#7B3F00" Foreground="White"
-                        ToolTip="Distribui as horas da Story entre as Tasks com HH Estimado e HH Atual zerados"/>
-                <Button Content="✕ Zerar estimativas" x:Name="ZerarButton"
+                        ToolTip="{DynamicResource TLR_RatearTip}"/>
+                <Button Content="{DynamicResource TLR_Zerar}" x:Name="ZerarButton"
                         Click="OnZerarClick"
                         Height="28" Padding="10,0" Margin="0,0,8,0"
                         Background="#555" Foreground="White"
-                        ToolTip="Zera HH Estimado e HH Atual das Tasks não encerradas (Status ≠ Closed/Done)"/>
+                        ToolTip="{DynamicResource TLR_ZerarTip}"/>
             </WrapPanel>
 
             <WrapPanel Orientation="Horizontal">
-                <TextBlock Text="Epic:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <TextBlock Text="{DynamicResource TLR_Epic}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <ComboBox x:Name="EpicFilterBox" Width="260" FontSize="12" Margin="0,0,12,0"
                           ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}}"
                           SelectionChanged="OnEpicFilterChanged"/>
-                <TextBlock Text="Feature:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <TextBlock Text="{DynamicResource TLR_Feature}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <ComboBox x:Name="FeatureFilterBox" Width="280" FontSize="12" Margin="0,0,12,0"
                           ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}}"
                           SelectionChanged="OnFeatureFilterChanged"/>
-                <TextBlock Text="Story:" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <TextBlock Text="{DynamicResource TLR_Story}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <ComboBox x:Name="StoryFilterBox" Width="300" FontSize="12" Margin="0,0,12,0"
                           ToolTip="{Binding SelectedItem, RelativeSource={RelativeSource Self}}"
                           SelectionChanged="OnStoryFilterChanged"/>
-                <Button x:Name="BuscarButton" Content="🔍 Buscar Tasks"
+                <Button x:Name="BuscarButton" Content="{DynamicResource TLR_BuscarTasks}"
                         Click="OnBuscarClick"
                         Padding="8,3" FontSize="12" Margin="0,0,12,0"
                         Background="#2B579A" Foreground="White"
@@ -132,7 +132,7 @@
                   Drop="OnGridDrop">
             <DataGrid.RowHeaderTemplate>
                 <DataTemplate>
-                    <TextBlock Text="⠿" FontSize="11" Foreground="#999" ToolTip="Arraste para reordenar" Cursor="SizeAll"/>
+                    <TextBlock Text="⠿" FontSize="11" Foreground="#999" ToolTip="{DynamicResource TLR_DragToReorder}" Cursor="SizeAll"/>
                 </DataTemplate>
             </DataGrid.RowHeaderTemplate>
             <DataGrid.Columns>
@@ -165,14 +165,14 @@
 
 
                 <!-- Task (editável, com badge Block) -->
-                <DataGridTemplateColumn Header="Task" Width="340">
+                <DataGridTemplateColumn Header="{DynamicResource TLR_ColTask}" Width="340">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
                                 <Border Background="#C0392B" CornerRadius="3" Padding="3,1"
                                         Margin="0,0,4,0"
                                         Visibility="{Binding IsBlockedState, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="🔴 BLOCK" FontSize="10" Foreground="White" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{DynamicResource TLR_BlockBadge}" FontSize="10" Foreground="White" FontWeight="SemiBold"/>
                                 </Border>
                                 <TextBlock Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
@@ -187,7 +187,7 @@
                 </DataGridTemplateColumn>
 
                 <!-- Status (editável via template) -->
-                <DataGridTemplateColumn Header="Status" Width="110">
+                <DataGridTemplateColumn Header="{DynamicResource TLR_ColStatus}" Width="110">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding State}" Padding="2,0"
@@ -220,7 +220,7 @@
                 </DataGridTemplateColumn>
 
                 <!-- HH Estimado (editável) -->
-                <DataGridTextColumn Header="HH Est." Width="72"
+                <DataGridTextColumn Header="{DynamicResource TLR_ColHHEst}" Width="72"
                     Binding="{Binding EstimatedHours, StringFormat={}{0:0.#}, UpdateSourceTrigger=LostFocus}">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -231,7 +231,7 @@
                 </DataGridTextColumn>
 
                 <!-- HH Concluído (somente leitura) -->
-                <DataGridTextColumn Header="HH Conc." Width="72"
+                <DataGridTextColumn Header="{DynamicResource TLR_ColHHConc}" Width="72"
                     Binding="{Binding CompletedHours, StringFormat={}{0:0.#}}" IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -243,7 +243,7 @@
                 </DataGridTextColumn>
 
                 <!-- % Conclusão (somente leitura) -->
-                <DataGridTextColumn Header="% Conc." Width="66"
+                <DataGridTextColumn Header="{DynamicResource TLR_ColPctConc}" Width="66"
                     Binding="{Binding PercentComplete, StringFormat={}{0:0.#}%}" IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -255,7 +255,7 @@
                 </DataGridTextColumn>
 
                 <!-- Prioridade (editável) -->
-                <DataGridTextColumn Header="Pri" Width="45"
+                <DataGridTextColumn Header="{DynamicResource TLR_ColPri}" Width="45"
                     Binding="{Binding Priority, UpdateSourceTrigger=LostFocus}">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -267,7 +267,7 @@
                 </DataGridTextColumn>
 
                 <!-- Responsável (ComboBox com lista de recursos do projeto) -->
-                <DataGridTemplateColumn Header="Responsável" Width="160">
+                <DataGridTemplateColumn Header="{DynamicResource TLR_ColAssigned}" Width="160">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding AssignedToDisplay}" Padding="3,0" VerticalAlignment="Center"/>
@@ -286,7 +286,7 @@
                 </DataGridTemplateColumn>
 
                 <!-- Categoria / Activity (ComboBox editável sincroniza Microsoft.VSTS.Common.Activity) -->
-                <DataGridTemplateColumn Header="Categoria" Width="130">
+                <DataGridTemplateColumn Header="{DynamicResource TLR_ColCategory}" Width="130">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Activity}" Padding="2,0" FontSize="12"
@@ -304,7 +304,7 @@
                 </DataGridTemplateColumn>
 
                 <!-- No cronograma (somente leitura) -->
-                <DataGridTextColumn Header="Add Cronograma" Width="90"
+                <DataGridTextColumn Header="{DynamicResource TLR_ColAddSchedule}" Width="90"
                     Binding="{Binding InScheduleDisplay}" IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -314,7 +314,7 @@
                 </DataGridTextColumn>
 
                 <!-- Block -->
-                <DataGridTemplateColumn Header="Block" Width="62" IsReadOnly="True">
+                <DataGridTemplateColumn Header="{DynamicResource TLR_ColBlock}" Width="62" IsReadOnly="True">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Button Content="{Binding BlockButtonLabel}"
@@ -324,7 +324,7 @@
                                     Background="{Binding BlockButtonColor}"
                                     Foreground="White"
                                     BorderThickness="0"
-                                    ToolTip="Marcar/retirar Block (altera State para Blocked ou Active)"/>
+                                    ToolTip="{DynamicResource TLR_BlockToggleTip}"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
@@ -350,7 +350,7 @@
             <DataGrid.ContextMenu>
                 <ContextMenu Opened="OnGridContextMenuOpened">
                     <MenuItem x:Name="BlockTaskMenuItem"
-                              Header="🔴 Adicionar Block na Task"
+                              Header="{DynamicResource TLR_AddBlockMenu}"
                               Click="OnRowToggleBlockClick"/>
                 </ContextMenu>
             </DataGrid.ContextMenu>
@@ -364,46 +364,46 @@
                     Padding="7">
                 <StackPanel>
                     <Button x:Name="AlterTaskButton"
-                            Content="Alterar Task&#x0a;Local"
+                            Content="{DynamicResource TLR_AlterTaskLocal}"
                             Height="42"
                             Margin="0,0,0,7"
                             FontSize="11"
                             Padding="3"
-                            ToolTip="Edita a Task selecionada na grid"
+                            ToolTip="{DynamicResource TLR_AlterTaskTip}"
                             Click="OnAlterTaskClick"/>
                     <Button x:Name="OpenTfsButton"
-                            Content="Abrir&#x0a;TFS/DevOps"
+                            Content="{DynamicResource TLR_OpenTfs}"
                             Height="42"
                             Margin="0,0,0,7"
                             FontSize="10.5"
                             Padding="3"
-                            ToolTip="Abre a Task selecionada no TFS/DevOps"
+                            ToolTip="{DynamicResource TLR_OpenTfsTip}"
                             Click="OnOpenTfsClick"/>
                     <Button x:Name="IncludeTaskButton"
-                            Content="Incluir Task&#x0a;Online"
+                            Content="{DynamicResource TLR_IncludeTaskOnline}"
                             Height="42"
                             Margin="0,0,0,7"
                             FontSize="11"
                             Padding="3"
-                            ToolTip="Cria uma nova Task no TFS/DevOps para a Story selecionada"
+                            ToolTip="{DynamicResource TLR_IncludeTaskTip}"
                             Click="OnIncludeTaskClick"/>
                     <Button x:Name="DeleteTaskButton"
-                            Content="Excluir TFS&#x0a;Online"
+                            Content="{DynamicResource TLR_DeleteTfsOnline}"
                             Height="42"
                             Margin="0,0,0,7"
                             FontSize="10.5"
                             Padding="3"
-                            ToolTip="Exclui no TFS/DevOps a Task selecionada"
+                            ToolTip="{DynamicResource TLR_DeleteTfsTip}"
                             Click="OnDeleteTaskClick"/>
                     <Button x:Name="SaveChangesButton"
-                            Content="Salvar TFS&#x0a;Online"
+                            Content="{DynamicResource TLR_SaveTfsOnline}"
                             Height="42"
                             FontSize="10.5"
                             Padding="3"
                             Background="#217346"
                             Foreground="White"
                             IsEnabled="False"
-                            ToolTip="Salva no TFS/DevOps as alterações pendentes da grid"
+                            ToolTip="{DynamicResource TLR_SaveTfsTip}"
                             Click="OnSaveChangesClick"/>
                 </StackPanel>
             </Border>
@@ -412,7 +412,7 @@
         <!-- Totais e dica de edição -->
         <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,6,0,0">
             <TextBlock x:Name="TotalsText" FontSize="11" Foreground="#666"/>
-            <TextBlock Text="  |  Células amarelas = alteração pendente de sync DevOps"
+            <TextBlock Text="{DynamicResource TLR_DirtyHint}"
                        FontSize="11" Foreground="#B8860B" Margin="8,0,0,0"
                        x:Name="DirtyHint" Visibility="Collapsed"/>
         </StackPanel>
@@ -420,23 +420,23 @@
         <!-- Botões Cronograma -->
         <Border Grid.Row="5" Margin="0,10,0,4" BorderBrush="#D0D8E8" BorderThickness="0,1,0,0" Padding="0,8,0,0">
             <DockPanel>
-                <TextBlock Text="Cronograma" FontSize="10" Foreground="#888" FontWeight="SemiBold"
+                <TextBlock Text="{DynamicResource TLR_Schedule}" FontSize="10" Foreground="#888" FontWeight="SemiBold"
                            VerticalAlignment="Center" Margin="0,0,12,0" DockPanel.Dock="Left"/>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <Button x:Name="ExpandAllButton" Content="📂 Expandir todas no cronograma"
+                    <Button x:Name="ExpandAllButton" Content="{DynamicResource TLR_ExpandAll}"
                             Click="OnExpandAllClick" Height="28" Padding="10,0" Margin="0,0,8,0"
                             Background="#5C3E8F" Foreground="White" Visibility="Collapsed"/>
-                    <Button x:Name="AddSelectedButton" Content="📥 Incluir selecionadas no cronograma"
+                    <Button x:Name="AddSelectedButton" Content="{DynamicResource TLR_AddSelected}"
                             Click="OnAddSelectedClick" Height="28" Padding="10,0" Margin="0,0,8,0"
                             Background="#2B579A" Foreground="White" IsEnabled="False" Visibility="Collapsed"/>
-                    <Button x:Name="ReleaseButton" Content="💾 Memorizar Task no Cronograma"
+                    <Button x:Name="ReleaseButton" Content="{DynamicResource TLR_Memorize}"
                             Click="OnMemorizeClick" Height="28" Padding="10,0" Margin="0,0,8,0"
                             Background="#217346" Foreground="White" Visibility="Collapsed"
-                            ToolTip="Fecha mantendo as Tasks incluidas no cronograma local (nao libera a Story)"/>
+                            ToolTip="{DynamicResource TLR_MemorizeTip}"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="🔓 Liberar Atividade" Click="OnCloseClick" Width="140" Height="28"
-                            ToolTip="Fecha e remove as Tasks do cronograma local (libera a Story)"/>
+                    <Button Content="{DynamicResource TLR_Release}" Click="OnCloseClick" Width="140" Height="28"
+                            ToolTip="{DynamicResource TLR_ReleaseTip}"/>
                 </StackPanel>
             </DockPanel>
         </Border>
