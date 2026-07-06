@@ -778,4 +778,32 @@
     <sys:String x:Key="Conf_LocalTip">Local: {0}</sys:String>
     <sys:String x:Key="Conf_DevOpsTip">DevOps: {0}</sys:String>
 
+    <!-- DevOps link (edit work item) -->
+    <sys:String x:Key="WiEdit_Title">DevOps Link</sys:String>
+    <sys:String x:Key="WiEdit_Header">Link with TFS / Azure DevOps</sys:String>
+    <sys:String x:Key="WiEdit_OpenInDevOps">Open in DevOps ↗</sys:String>
+    <sys:String x:Key="WiEdit_ConflictBold">⚠ Concurrency conflict.</sys:String>
+    <sys:String x:Key="WiEdit_ConflictText"> Another user saved a newer version. Re-import to update before syncing.</sys:String>
+    <sys:String x:Key="WiEdit_Reimport">↓ Re-import</sys:String>
+    <sys:String x:Key="WiEdit_IdLabel">DevOps ID</sys:String>
+    <sys:String x:Key="WiEdit_IdHint">Enter 0 to create this item in DevOps on sync. Empty = unlink.</sys:String>
+    <sys:String x:Key="WiEdit_TypeLabel">DevOps Type</sys:String>
+    <sys:String x:Key="WiEdit_StateLabel">DevOps State</sys:String>
+    <sys:String x:Key="WiEdit_FeatureTypeLabel">Feature Type</sys:String>
+    <sys:String x:Key="WiEdit_CostCenterLabel">Cost Center Type</sys:String>
+    <sys:String x:Key="WiEdit_CostCenterHint">DEFINIDO_NO_PROJETO = inherits the project configuration from the Allocation Map.</sys:String>
+    <sys:String x:Key="WiEdit_TagsLabel">Tags (separated by ;)</sys:String>
+    <sys:String x:Key="WiEdit_Blocked">Blocked (Block tag)</sys:String>
+    <sys:String x:Key="WiEdit_ChildTasks">Linked activities (DevOps Tasks)</sys:String>
+    <sys:String x:Key="WiEdit_DeleteStory">🗑 Delete Story in DevOps</sys:String>
+    <sys:String x:Key="WiEdit_Cancel">Cancel</sys:String>
+    <sys:String x:Key="WiEdit_ConfirmDeleteTitle">Confirm Deletion</sys:String>
+    <sys:String x:Key="WiEdit_DeleteStoryQuestion">⚠ Delete Story #{0} from Azure DevOps?</sys:String>
+    <sys:String x:Key="WiEdit_DeleteStoryDetail">"{0}"&#10;&#10;This action is irreversible. The item will be permanently deleted from DevOps.</sys:String>
+    <sys:String x:Key="WiEdit_DeletePermanently">Delete permanently</sys:String>
+    <sys:String x:Key="WiEdit_Deleting">Deleting Story in DevOps...</sys:String>
+    <sys:String x:Key="WiEdit_DeleteError">Error deleting: {0}</sys:String>
+    <sys:String x:Key="WiEdit_InvalidId">Enter a valid ID: DevOps number, 0 to create on sync, or empty to unlink.</sys:String>
+    <sys:String x:Key="WiEdit_SelectTypeToCreate">To create (ID = 0), select the DevOps Type (Epic, Feature or Story).</sys:String>
+
 </ResourceDictionary>

@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.TfsWorkItemEditWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Vínculo DevOps"
+        Title="{DynamicResource WiEdit_Title}"
         Width="520"
         SizeToContent="Height"
         MaxHeight="700"
@@ -24,11 +24,11 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Vínculo com o TFS / Azure DevOps"
+                    <TextBlock Grid.Column="0" Text="{DynamicResource WiEdit_Header}"
                                FontSize="16" FontWeight="SemiBold" Foreground="#2B579A"/>
                     <Button x:Name="OpenInDevOpsButton"
                             Grid.Column="1"
-                            Content="Abrir no DevOps ↗"
+                            Content="{DynamicResource WiEdit_OpenInDevOps}"
                             Padding="8,3" FontSize="11"
                             Visibility="Collapsed"
                             Click="OnOpenInDevOpsClick"
@@ -48,12 +48,12 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" TextWrapping="Wrap" Foreground="#880E4F" FontSize="12" VerticalAlignment="Center">
-                            <Run FontWeight="Bold">⚠ Conflito de concorrência.</Run>
-                            <Run> Outro usuário gravou uma versão mais recente. Reimporte para atualizar antes de sincronizar.</Run>
+                            <Run FontWeight="Bold" Text="{DynamicResource WiEdit_ConflictBold}"/>
+                            <Run Text="{DynamicResource WiEdit_ConflictText}"/>
                         </TextBlock>
                         <Button Grid.Column="1"
                                 x:Name="ImportButton"
-                                Content="↓ Reimportar"
+                                Content="{DynamicResource WiEdit_Reimport}"
                                 Padding="10,4" Margin="10,0,0,0"
                                 FontSize="12" FontWeight="SemiBold"
                                 Background="#C62828" Foreground="White"
@@ -64,12 +64,12 @@
             </StackPanel>
 
             <StackPanel Grid.Row="1">
-                <TextBlock Text="ID do DevOps" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <TextBlock Text="{DynamicResource WiEdit_IdLabel}" FontWeight="SemiBold" Margin="0,0,0,4"/>
                 <TextBox x:Name="IdBox" Height="28" Padding="6,4"/>
-                <TextBlock Text="Digite 0 para criar este item no DevOps ao sincronizar. Vazio = desvincular."
+                <TextBlock Text="{DynamicResource WiEdit_IdHint}"
                            FontSize="11" Foreground="#888" Margin="0,3,0,0" TextWrapping="Wrap"/>
 
-                <TextBlock Text="Tipo DevOps" FontWeight="SemiBold" Margin="0,12,0,4"/>
+                <TextBlock Text="{DynamicResource WiEdit_TypeLabel}" FontWeight="SemiBold" Margin="0,12,0,4"/>
                 <ComboBox x:Name="TypeBox" Height="28">
                     <ComboBoxItem>Project</ComboBoxItem>
                     <ComboBoxItem>Epic</ComboBoxItem>
@@ -79,7 +79,7 @@
                     <ComboBoxItem>No DevOps</ComboBoxItem>
                 </ComboBox>
 
-                <TextBlock Text="Estado DevOps" FontWeight="SemiBold" Margin="0,12,0,4"/>
+                <TextBlock Text="{DynamicResource WiEdit_StateLabel}" FontWeight="SemiBold" Margin="0,12,0,4"/>
                 <ComboBox x:Name="StateBox" Height="28">
                     <ComboBoxItem>New</ComboBoxItem>
                     <ComboBoxItem>Active</ComboBoxItem>
@@ -93,7 +93,7 @@
                         Background="#F5F7FA" BorderBrush="#D0D7E0" BorderThickness="1"
                         CornerRadius="4" Padding="10,8" Margin="0,12,0,0">
                     <StackPanel>
-                        <TextBlock Text="Tipo da Feature" FontWeight="SemiBold" FontSize="12"
+                        <TextBlock Text="{DynamicResource WiEdit_FeatureTypeLabel}" FontWeight="SemiBold" FontSize="12"
                                    Foreground="#2B579A" Margin="0,0,0,4"/>
                         <ComboBox x:Name="FeatureTypeBox" Height="28">
                             <ComboBoxItem>Architecture</ComboBoxItem>
@@ -111,21 +111,21 @@
                         Background="#F5F7FA" BorderBrush="#D0D7E0" BorderThickness="1"
                         CornerRadius="4" Padding="10,8" Margin="0,12,0,0">
                     <StackPanel>
-                        <TextBlock Text="Tipo Centro de Custo" FontWeight="SemiBold" FontSize="12"
+                        <TextBlock Text="{DynamicResource WiEdit_CostCenterLabel}" FontWeight="SemiBold" FontSize="12"
                                    Foreground="#2B579A" Margin="0,0,0,4"/>
                         <ComboBox x:Name="TipoCentroCustoBox" Height="28">
                             <ComboBoxItem Content="DEFINIDO_NO_PROJETO"/>
                             <ComboBoxItem Content="CAPEX"/>
                             <ComboBoxItem Content="OPEX"/>
                         </ComboBox>
-                        <TextBlock Text="DEFINIDO_NO_PROJETO = herda configuração do projeto no Mapa de Alocação."
+                        <TextBlock Text="{DynamicResource WiEdit_CostCenterHint}"
                                    FontSize="11" Foreground="#888" Margin="0,3,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <TextBlock Text="Tags (separadas por ;)" FontWeight="SemiBold" Margin="0,12,0,4"/>
+                <TextBlock Text="{DynamicResource WiEdit_TagsLabel}" FontWeight="SemiBold" Margin="0,12,0,4"/>
                 <TextBox x:Name="TagsBox" Height="28" Padding="6,4"/>
-                <CheckBox x:Name="BlockCheck" Content="Bloqueado (tag Block)"
+                <CheckBox x:Name="BlockCheck" Content="{DynamicResource WiEdit_Blocked}"
                           Margin="0,6,0,0" Checked="OnBlockToggled" Unchecked="OnBlockToggled"/>
 
                 <TextBlock x:Name="StatusText" Foreground="#B00020" TextWrapping="Wrap"
@@ -139,7 +139,7 @@
                     Background="#F5F7FA" BorderBrush="#D9E1EA" BorderThickness="1"
                     CornerRadius="4" Padding="8,6" Margin="0,12,0,0">
                 <StackPanel>
-                    <TextBlock Text="Atividades vinculadas (Tasks DevOps)"
+                    <TextBlock Text="{DynamicResource WiEdit_ChildTasks}"
                                FontWeight="SemiBold" FontSize="11" Foreground="#2B579A"
                                Margin="0,0,0,4"/>
                     <ItemsControl x:Name="ChildTasksList">
@@ -176,13 +176,13 @@
                 </Grid.ColumnDefinitions>
                 <Button x:Name="DeleteStoryButton"
                         Grid.Column="0"
-                        Content="🗑 Excluir Story no DevOps"
+                        Content="{DynamicResource WiEdit_DeleteStory}"
                         Height="30" Padding="12,0"
                         Visibility="Collapsed"
                         Cursor="Hand"
                         Click="OnDeleteStoryClick"/>
                 <Button Grid.Column="2" Content="OK" Width="90" Height="30" IsDefault="True" Click="OnOkClick"/>
-                <Button Grid.Column="3" Content="Cancelar" Width="90" Height="30" Margin="10,0,0,0" IsCancel="True"/>
+                <Button Grid.Column="3" Content="{DynamicResource WiEdit_Cancel}" Width="90" Height="30" Margin="10,0,0,0" IsCancel="True"/>
             </Grid>
         </Grid>
     </Border>

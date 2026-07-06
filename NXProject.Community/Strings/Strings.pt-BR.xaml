@@ -778,4 +778,32 @@
     <sys:String x:Key="Conf_LocalTip">Local: {0}</sys:String>
     <sys:String x:Key="Conf_DevOpsTip">DevOps: {0}</sys:String>
 
+    <!-- Vínculo DevOps (editar work item) -->
+    <sys:String x:Key="WiEdit_Title">Vínculo DevOps</sys:String>
+    <sys:String x:Key="WiEdit_Header">Vínculo com o TFS / Azure DevOps</sys:String>
+    <sys:String x:Key="WiEdit_OpenInDevOps">Abrir no DevOps ↗</sys:String>
+    <sys:String x:Key="WiEdit_ConflictBold">⚠ Conflito de concorrência.</sys:String>
+    <sys:String x:Key="WiEdit_ConflictText"> Outro usuário gravou uma versão mais recente. Reimporte para atualizar antes de sincronizar.</sys:String>
+    <sys:String x:Key="WiEdit_Reimport">↓ Reimportar</sys:String>
+    <sys:String x:Key="WiEdit_IdLabel">ID do DevOps</sys:String>
+    <sys:String x:Key="WiEdit_IdHint">Digite 0 para criar este item no DevOps ao sincronizar. Vazio = desvincular.</sys:String>
+    <sys:String x:Key="WiEdit_TypeLabel">Tipo DevOps</sys:String>
+    <sys:String x:Key="WiEdit_StateLabel">Estado DevOps</sys:String>
+    <sys:String x:Key="WiEdit_FeatureTypeLabel">Tipo da Feature</sys:String>
+    <sys:String x:Key="WiEdit_CostCenterLabel">Tipo Centro de Custo</sys:String>
+    <sys:String x:Key="WiEdit_CostCenterHint">DEFINIDO_NO_PROJETO = herda configuração do projeto no Mapa de Alocação.</sys:String>
+    <sys:String x:Key="WiEdit_TagsLabel">Tags (separadas por ;)</sys:String>
+    <sys:String x:Key="WiEdit_Blocked">Bloqueado (tag Block)</sys:String>
+    <sys:String x:Key="WiEdit_ChildTasks">Atividades vinculadas (Tasks DevOps)</sys:String>
+    <sys:String x:Key="WiEdit_DeleteStory">🗑 Excluir Story no DevOps</sys:String>
+    <sys:String x:Key="WiEdit_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="WiEdit_ConfirmDeleteTitle">Confirmar Exclusão</sys:String>
+    <sys:String x:Key="WiEdit_DeleteStoryQuestion">⚠ Excluir Story #{0} do Azure DevOps?</sys:String>
+    <sys:String x:Key="WiEdit_DeleteStoryDetail">"{0}"&#10;&#10;Esta ação é irreversível. O item será excluído permanentemente do DevOps.</sys:String>
+    <sys:String x:Key="WiEdit_DeletePermanently">Excluir permanentemente</sys:String>
+    <sys:String x:Key="WiEdit_Deleting">Excluindo Story no DevOps...</sys:String>
+    <sys:String x:Key="WiEdit_DeleteError">Erro ao excluir: {0}</sys:String>
+    <sys:String x:Key="WiEdit_InvalidId">Informe um ID válido: número do DevOps, 0 para criar na sincronização, ou vazio para desvincular.</sys:String>
+    <sys:String x:Key="WiEdit_SelectTypeToCreate">Para criar (ID = 0), selecione o Tipo DevOps (Epic, Feature ou Story).</sys:String>
+
 </ResourceDictionary>

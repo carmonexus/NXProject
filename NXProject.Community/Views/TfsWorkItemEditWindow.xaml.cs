@@ -101,7 +101,7 @@ namespace NXProject.Views
             // Confirmação com destaque visual
             var confirm = new Window
             {
-                Title = "Confirmar Exclusão",
+                Title = AppStrings.Get("WiEdit_ConfirmDeleteTitle"),
                 Width = 480, Height = 240,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
@@ -112,14 +112,14 @@ namespace NXProject.Views
             var panel = new StackPanel { Margin = new Thickness(24, 20, 24, 20) };
             panel.Children.Add(new TextBlock
             {
-                Text = $"⚠ Excluir Story #{_task.TfsId} do Azure DevOps?",
+                Text = AppStrings.Get("WiEdit_DeleteStoryQuestion", _task.TfsId),
                 FontSize = 15, FontWeight = FontWeights.Bold,
                 Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC6, 0x28, 0x28)),
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8)
             });
             panel.Children.Add(new TextBlock
             {
-                Text = $"\"{_task.Name}\"\n\nEsta ação é irreversível. O item será excluído permanentemente do DevOps.",
+                Text = AppStrings.Get("WiEdit_DeleteStoryDetail", _task.Name),
                 FontSize = 12, TextWrapping = TextWrapping.Wrap,
                 Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x44, 0x00, 0x00)),
                 Margin = new Thickness(0, 0, 0, 16)
@@ -127,12 +127,12 @@ namespace NXProject.Views
             var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
             var btnConfirm = new Button
             {
-                Content = "Excluir permanentemente", Width = 180, Height = 30,
+                Content = AppStrings.Get("WiEdit_DeletePermanently"), Width = 180, Height = 30,
                 Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC6, 0x28, 0x28)),
                 Foreground = System.Windows.Media.Brushes.White, BorderThickness = new Thickness(0),
                 FontWeight = FontWeights.SemiBold, Cursor = System.Windows.Input.Cursors.Hand
             };
-            var btnCancel = new Button { Content = "Cancelar", Width = 90, Height = 30, Margin = new Thickness(10, 0, 0, 0), IsCancel = true };
+            var btnCancel = new Button { Content = AppStrings.Get("WiEdit_Cancel"), Width = 90, Height = 30, Margin = new Thickness(10, 0, 0, 0), IsCancel = true };
             btnConfirm.Click += (_, _) => { result = true; confirm.Close(); };
             btnCancel.Click  += (_, _) => confirm.Close();
             btnPanel.Children.Add(btnConfirm);
@@ -146,7 +146,7 @@ namespace NXProject.Views
             try
             {
                 DeleteStoryButton.IsEnabled = false;
-                StatusText.Text = "Excluindo Story no DevOps...";
+                StatusText.Text = AppStrings.Get("WiEdit_Deleting");
                 StatusText.Visibility = Visibility.Visible;
                 StatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x44, 0x44, 0x44));
 
@@ -160,7 +160,7 @@ namespace NXProject.Views
             catch (Exception ex)
             {
                 DeleteStoryButton.IsEnabled = true;
-                StatusText.Text = $"Erro ao excluir: {ex.Message}";
+                StatusText.Text = AppStrings.Get("WiEdit_DeleteError", ex.Message);
                 StatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xB0, 0x00, 0x20));
                 StatusText.Visibility = Visibility.Visible;
             }
@@ -226,7 +226,7 @@ namespace NXProject.Views
             {
                 if (!int.TryParse(idText, out var parsed) || parsed < 0)
                 {
-                    StatusText.Text = "Informe um ID válido: número do DevOps, 0 para criar na sincronização, ou vazio para desvincular.";
+                    StatusText.Text = AppStrings.Get("WiEdit_InvalidId");
                     StatusText.Visibility = Visibility.Visible;
                     return;
                 }
@@ -237,7 +237,7 @@ namespace NXProject.Views
             // 0 = criar no DevOps: exige um tipo selecionado.
             if (!isNoDevOps && id == 0 && StateBoxTypeMissing())
             {
-                StatusText.Text = "Para criar (ID = 0), selecione o Tipo DevOps (Epic, Feature ou Story).";
+                StatusText.Text = AppStrings.Get("WiEdit_SelectTypeToCreate");
                 StatusText.Visibility = Visibility.Visible;
                 return;
             }
