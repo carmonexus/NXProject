@@ -57,6 +57,7 @@ namespace NXProject.Views
                 {
                     UpdateDevOpsProjectBanner(vm.Project.DevOpsProjectName, vm.Project.DevOpsRootWorkItemId, vm.Project.DevOpsProjectOwner);
                     vm.Project.ShowCriticalPath = true;
+                    ResetScheduleViewport();
                     Dispatcher.InvokeAsync(() => RefreshCriticalPath(vm),
                         System.Windows.Threading.DispatcherPriority.Background);
                 }
@@ -120,6 +121,7 @@ namespace NXProject.Views
             TaskGridCtrl.TaskIdClicked += OnTaskIdClicked;
             TaskGridCtrl.ViewOnlineChildrenRequested += OnViewOnlineChildren;
             TaskGridCtrl.EditDescriptionRequested += OnEditDescription;
+            TaskGridCtrl.ResolveManualConflictRequested += OnResolveManualConflict;
             TaskGridCtrl.FetchTaskHoursRequested += OnFetchTaskHoursFromDevOps;
             TaskGridCtrl.FetchChildTasksRequested    += OnFetchChildTasksFromDevOps;
             TaskGridCtrl.TksClickRequested           += OpenTaskReviewForStory;
@@ -617,6 +619,47 @@ namespace NXProject.Views
             var win = new TaskDescriptionEditWindow(task.Model) { Owner = this };
             if (win.ShowDialog() == true)
                 vm.Project.IsDirty = true;
+        }
+
+        private async void OnResolveManualConflict(TaskViewModel task)
+        {
+            if (DataContext is not MainViewModel vm) return;
+            if (task.Model.TfsId is not > 0) return;
+
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                vm.StatusMessage = AppStrings.Get("Conf_LoadingManual");
+
+                var options = Services.TfsConnectionStore.Load("NXProject.Community");
+                var conflict = await Services.TfsImportService.LoadManualConflictItemAsync(task.Model, options);
+
+                Mouse.OverrideCursor = null;
+                var resolved = new TfsSyncConflictWindow([conflict], vm.Project, options)
+                {
+                    Owner = this
+                }.ShowDialog() == true;
+
+                if (resolved)
+                {
+                    task.Model.HasSyncConflict = false;
+                    vm.Project.IsDirty = true;
+                    TaskGridCtrl.RefreshRows();
+                    GanttCtrl.ForceRender();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    AppStrings.Get("Conf_ManualError", ex.Message),
+                    AppStrings.Get("Conf_Error"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
         }
 
         private async void OnFetchTaskHoursFromDevOps(TaskViewModel task)
@@ -1402,7 +1445,17 @@ namespace NXProject.Views
                     project,
                     $"Projeto importado do TFS: {project.Name}");
                 UpdateDevOpsProjectBanner(project.DevOpsProjectName, project.DevOpsRootWorkItemId, project.DevOpsProjectOwner);
+                ResetScheduleViewport();
             }
+        }
+
+        private void ResetScheduleViewport()
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                TaskGridCtrl.ResetVerticalOffset();
+                GanttCtrl.ScrollToProjectStart();
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private void OnDevOpsProjectListClick(object sender, RoutedEventArgs e)

@@ -241,6 +241,7 @@ namespace NXProject.ViewModels
             {
                 ParentViewModel = parentVm,
                 GetSprintStart = () => GetDefaultStart(task),
+                GetVirtualPredecessorStart = source => GetVirtualPredecessorStart(source),
                 FindByInternalId = internalId =>
                     FlatTasks.FirstOrDefault(t => t.Model.Id == internalId),
                 FindByDisplayId = displayId =>
@@ -1138,7 +1139,36 @@ namespace NXProject.ViewModels
 
         private bool _cascading;
 
-        private void CascadeSuccessors(TaskViewModel changed)
+        private DateTime? GetVirtualPredecessorStart(TaskViewModel task)
+        {
+            if (task.IsSummary || task.Model.PredecessorIds.Count > 0)
+                return null;
+
+            var resourceId = task.Model.Resources.FirstOrDefault()?.ResourceId;
+            if (resourceId == null)
+                return null;
+
+            var taskIndex = FlatTasks.IndexOf(task);
+            if (taskIndex < 0)
+                return null;
+
+            for (int i = taskIndex - 1; i >= 0; i--)
+            {
+                var prev = FlatTasks[i];
+                if (prev.Depth < task.Depth) break;
+                if (prev.Depth > task.Depth) continue;
+                if (!ReferenceEquals(prev.ParentViewModel, task.ParentViewModel)) break;
+                if (prev.IsSummary) continue;
+                if (prev.Model.Resources.FirstOrDefault()?.ResourceId != resourceId) continue;
+
+                var prevFinish = ProjectCalendarService.GetInclusiveFinishDate(prev.Model.Start, prev.Model.Finish);
+                return ProjectCalendarService.AddWorkingDays(prevFinish, 1);
+            }
+
+            return null;
+        }
+
+        private void CascadeSuccessors(TaskViewModel changed, bool allowStartedReposition = false)
         {
             if (_cascading) return;
             _cascading = true;
@@ -1160,14 +1190,14 @@ namespace NXProject.ViewModels
                         if (!visited.Add(task.Model.Id)) continue;
 
                         var oldFinish = task.Model.Finish;
-                        task.MoveAfterLatestPredecessor();
+                        task.MoveAfterLatestPredecessor(allowStartedReposition);
                         if (task.Model.Finish != oldFinish)
                             queue.Enqueue(task.Model.Id);
                     }
 
                     // Predecessor virtual: irmãos do mesmo pai, mesmo recurso, sem predecessoras, após a tarefa alterada
                     if (current != null)
-                        CascadeVirtualSiblings(current, visited, queue);
+                        CascadeVirtualSiblings(current, visited, queue, allowStartedReposition);
                 }
             }
             finally
@@ -1176,7 +1206,11 @@ namespace NXProject.ViewModels
             }
         }
 
-        private void CascadeVirtualSiblings(TaskViewModel changed, System.Collections.Generic.HashSet<int> visited, System.Collections.Generic.Queue<int> queue)
+        private void CascadeVirtualSiblings(
+            TaskViewModel changed,
+            System.Collections.Generic.HashSet<int> visited,
+            System.Collections.Generic.Queue<int> queue,
+            bool allowStartedReposition = false)
         {
             if (changed.IsSummary)
                 return;
@@ -1193,24 +1227,12 @@ namespace NXProject.ViewModels
             if (changed.Model.PercentComplete < 0.0001 && !changed.Model.StartFixed &&
                 changed.Model.PredecessorIds.Count == 0)
             {
-                for (int i = changedIndex - 1; i >= 0; i--)
+                var newStart = GetVirtualPredecessorStart(changed);
+                if (newStart.HasValue && changed.Model.Start.Date != newStart.Value.Date)
                 {
-                    var prev = FlatTasks[i];
-                    if (prev.Depth < changed.Depth) break;
-                    if (prev.Depth > changed.Depth) continue;
-                    if (!ReferenceEquals(prev.ParentViewModel, changed.ParentViewModel)) break;
-                    if (prev.IsSummary) continue;
-                    if (prev.Model.Resources.FirstOrDefault()?.ResourceId != changedResource) continue;
-
-                    var prevFinish = ProjectCalendarService.GetInclusiveFinishDate(prev.Model.Start, prev.Model.Finish);
-                    var newStart   = ProjectCalendarService.AddWorkingDays(prevFinish, 1);
-                    if (changed.Model.Start.Date != newStart.Date)
-                    {
-                        changed.Model.Start  = newStart;
-                        changed.Model.Finish = TaskScheduleService.CalculateFinishFromAssignments(changed.Model, newStart);
-                        changed.NotifyDatesChanged();
-                    }
-                    break;
+                    changed.Model.Start  = newStart.Value;
+                    changed.Model.Finish = TaskScheduleService.CalculateFinishFromAssignments(changed.Model, newStart.Value);
+                    changed.NotifyDatesChanged();
                 }
             }
 
@@ -1254,8 +1276,9 @@ namespace NXProject.ViewModels
                     continue;
                 }
 
-                // Data fixada (📌) ou tarefa já iniciada: não move o Start, encadeia a partir do fim atual.
-                if (sibling.Model.StartFixed || sibling.Model.PercentComplete > 0)
+                // Data fixada (📌) não move o Start; tarefa iniciada só é reposicionada
+                // quando o recálculo geral de predecessoras está normalizando o cronograma.
+                if (sibling.Model.StartFixed || (!allowStartedReposition && sibling.Model.PercentComplete > 0))
                 {
                     changedFinish = ProjectCalendarService.GetInclusiveFinishDate(sibling.Model.Start, sibling.Model.Finish);
                     continue;
@@ -1431,7 +1454,7 @@ namespace NXProject.ViewModels
                 var key = (parentId, resourceId.Value);
                 if (!processed.Add(key)) continue;
 
-                CascadeSuccessors(task);
+                CascadeSuccessors(task, allowStartedReposition: true);
             }
 
             // 2. Predecessoras explícitas: processa em ordem topológica.
@@ -1459,7 +1482,7 @@ namespace NXProject.ViewModels
 
                 foreach (var task in ready)
                 {
-                    task.MoveAfterLatestPredecessor(); // consulta todas predecessoras → pega maior data fim
+                    task.MoveAfterLatestPredecessor(allowStartedReposition: true); // consulta todas predecessoras → pega maior data fim
                     pending.Remove(task.Model.Id);
                 }
             }

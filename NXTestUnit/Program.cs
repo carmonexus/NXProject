@@ -45,6 +45,9 @@ internal static class Program
         ("Resumo: datas e percentual consolidam filhos", SummaryRollupUsesChildrenDatesAndHours),
         ("Predecessor virtual: aplica fila por mesmo recurso e recalcula fim", VirtualPredecessorQueuesSameResourceSiblings),
         ("Predecessor virtual: mudanca de duracao recalcula inicio e fim das seguintes", VirtualPredecessorDurationChangeCascadesFinish),
+        ("Predecessor virtual: recalculo geral reposiciona tarefa com andamento", VirtualPredecessorRecalcMovesStartedSibling),
+        ("Predecessor virtual: digitacao de HH usa anterior com predecessora explicita", DurationEditUsesPreviousSiblingEvenWhenPreviousHasExplicitPredecessor),
+        ("Predecessora explicita: recalculo geral reposiciona tarefa com andamento", ExplicitPredecessorRecalcMovesStartedTask),
         ("Setup update: sem baseline conhecida nao dispara reinstalacao", SetupUpdateNoBaselineDoesNotTrigger),
         ("Setup update: asset igual a baseline nao dispara reinstalacao", SetupUpdateSameTimestampDoesNotTrigger),
         ("Setup update: asset mais antigo que a baseline nao dispara reinstalacao", SetupUpdateOlderAssetDoesNotTrigger),
@@ -54,10 +57,14 @@ internal static class Program
         ("Alocacao: recalcular repetidamente NAO infla o fim (sem compounding)", ResourceAllocationRecalcDoesNotCompoundFinish),
         ("Alocacao: cronograma, import TFS e abertura produzem o MESMO fim", CentralizedFinishCalcIsIdenticalAcrossPaths),
         ("Duracao: tarefa so com HH Atual NAO conta as horas em dobro", EffectiveDurationDoesNotDoubleCountCurrentOnlyHours),
-        ("Sync conflito: gravacao do usuario atual libera", SyncConflictCurrentUserReleases),
-        ("Sync conflito: NXProject 100% e TFS abaixo de 100% libera (fechamento vence)", SyncConflictClosingOverridesWhenTfsBelow100),
-        ("Sync conflito: NXProject 100% e TFS ja Closed NAO libera automaticamente", SyncConflictClosingDoesNotOverrideWhenTfsClosed),
-        ("Sync conflito: NXProject abaixo de 100% e outro usuario NAO libera", SyncConflictBelow100OtherUserBlocks)
+        ("Sync conflito: gravacao do usuario atual libera se TFS aberto", SyncConflictCurrentUserOpenStateReleases),
+        ("Sync conflito: NXProject 100% e outro usuario NAO libera no Sync geral", SyncConflictLocal100OtherUserBlocks),
+        ("Sync conflito: NXProject 100% e TFS ja Closed NAO libera automaticamente", SyncConflictClosedOtherUserBlocks),
+        ("Sync conflito: mesmo usuario e TFS Closed NAO libera automaticamente", SyncConflictCurrentUserClosedStateBlocks),
+        ("Sync conflito: NXProject abaixo de 100% e outro usuario NAO libera", SyncConflictBelow100OtherUserBlocks),
+        ("Sync conflito: versao a frente sem alteracao nao registra conflito", SyncConflictVersionAheadWithoutPendingWritesDoesNotBlock),
+        ("Sync conflito: versao a frente em Feature/Epic nao bloqueia rollup", SyncConflictVersionAheadFeatureEpicDoesNotBlockRollup),
+        ("Sync conflito: resolucao manual permite sobrescrever item iniciado", SyncConflictManualOverwriteAllowsStartedItem)
     ];
 
     private static int Main(string[] args)
@@ -1270,6 +1277,66 @@ internal static class Program
         AssertEqual(new DateTime(2026, 7, 10), third.Finish, "A terceira deve recalcular o fim a partir do novo inicio.");
     }
 
+    private static void VirtualPredecessorRecalcMovesStartedSibling()
+    {
+        var resource = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 100 };
+        var (vm, first, second, _) = CreateVirtualPredecessorScenario(resource);
+
+        second.Start = new DateTime(2026, 7, 24);
+        second.Finish = new DateTime(2026, 7, 25);
+        second.CurrentHours = 4;
+        second.EstimatedHours = 4;
+        second.PercentComplete = 50;
+        second.Resources[0].EstimatedHours = 4;
+
+        vm.ApplyVirtualPredecessorsToAll();
+
+        AssertEqual(new DateTime(2026, 7, 6), first.Start, "A primeira tarefa deve manter o inicio original.");
+        AssertEqual(new DateTime(2026, 7, 7), second.Start, "O recalculo geral deve reposicionar a tarefa iniciada pela predecessora virtual.");
+        AssertEqual(new DateTime(2026, 7, 8), second.Finish, "O fim deve ser recalculado a partir do novo inicio da tarefa iniciada.");
+    }
+
+    private static void ExplicitPredecessorRecalcMovesStartedTask()
+    {
+        var resource = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 100 };
+        var (vm, first, second, _) = CreateVirtualPredecessorScenario(resource);
+
+        second.PredecessorIds.Add(first.Id);
+        second.Start = new DateTime(2026, 7, 24);
+        second.Finish = new DateTime(2026, 7, 25);
+        second.CurrentHours = 4;
+        second.EstimatedHours = 4;
+        second.PercentComplete = 50;
+        second.Resources[0].EstimatedHours = 4;
+
+        vm.ApplyVirtualPredecessorsToAll();
+
+        AssertEqual(new DateTime(2026, 7, 7), second.Start, "O recalculo geral deve reposicionar a tarefa iniciada pela predecessora explicita.");
+        AssertEqual(new DateTime(2026, 7, 8), second.Finish, "O fim da tarefa com predecessora explicita deve acompanhar o novo inicio.");
+    }
+
+    private static void DurationEditUsesPreviousSiblingEvenWhenPreviousHasExplicitPredecessor()
+    {
+        var resource = new Resource { Id = 1, Name = "Dev", AvailabilityPercent = 100 };
+        var (vm, first, second, third) = CreateVirtualPredecessorScenario(resource);
+
+        second.PredecessorIds.Add(first.Id);
+        vm.ApplyVirtualPredecessorsToAll();
+
+        third.Start = new DateTime(2026, 7, 24);
+        third.Finish = new DateTime(2026, 7, 25);
+        third.CurrentHours = 4;
+        third.EstimatedHours = 4;
+        third.PercentComplete = 50;
+        third.Resources[0].EstimatedHours = 4;
+
+        var thirdVm = vm.FlatTasks.First(t => ReferenceEquals(t.Model, third));
+        thirdVm.DurationHours = 8;
+
+        AssertEqual(new DateTime(2026, 7, 8), third.Start, "Ao digitar HH, a tarefa deve iniciar apos o fim da anterior do mesmo recurso.");
+        AssertEqual(new DateTime(2026, 7, 9), third.Finish, "O fim deve ser recalculado a partir do inicio reposicionado.");
+    }
+
     private static (MainViewModel Vm, ProjectTask First, ProjectTask Second, ProjectTask Third) CreateVirtualPredecessorScenario(Resource resource)
     {
         var parent = new ProjectTask
@@ -1431,25 +1498,32 @@ internal static class Program
     }
 
     // ── Sincronização: regra "fechamento vence" no conflito de versão ──────────────
-    private static void SyncConflictCurrentUserReleases()
+    private static void SyncConflictCurrentUserOpenStateReleases()
     {
-        // Última gravação foi do usuário atual → libera independentemente do %.
+        // Última gravação foi do usuário atual e TFS ainda aberto → libera.
         if (!TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: true, localPercentComplete: 40, tfsState: "Active"))
-            throw new InvalidOperationException("Conflito com última gravação do usuário atual deveria liberar.");
+            throw new InvalidOperationException("Conflito com última gravação do usuário atual e TFS aberto deveria liberar.");
     }
 
-    private static void SyncConflictClosingOverridesWhenTfsBelow100()
+    private static void SyncConflictLocal100OtherUserBlocks()
     {
-        // NXProject 100% e TFS abaixo de 100% (Active) → fechamento vence, libera.
-        if (!TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: false, localPercentComplete: 100, tfsState: "Active"))
-            throw new InvalidOperationException("NXProject 100% com TFS abaixo de 100% deveria liberar (fechamento vence).");
+        // Se a versao do TFS esta a frente e foi outro usuario, 100% local nao libera no Sync geral.
+        if (TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: false, localPercentComplete: 100, tfsState: "Active"))
+            throw new InvalidOperationException("NXProject 100% com TFS a frente deve registrar conflito no Sync geral.");
     }
 
-    private static void SyncConflictClosingDoesNotOverrideWhenTfsClosed()
+    private static void SyncConflictClosedOtherUserBlocks()
     {
-        // NXProject 100% mas TFS já Closed → não é caso de fechamento; NÃO libera automaticamente.
+        // NXProject 100% e TFS ja Closed tambem nao libera se a versao do TFS esta a frente.
         if (TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: false, localPercentComplete: 100, tfsState: "Closed"))
-            throw new InvalidOperationException("Com TFS já Closed, o conflito NÃO deveria liberar automaticamente.");
+            throw new InvalidOperationException("Com TFS 100%/Closed e versao a frente, o conflito deve ficar rosa para resolucao manual.");
+    }
+
+    private static void SyncConflictCurrentUserClosedStateBlocks()
+    {
+        // Mesmo usuario: se o TFS ja esta Closed/100% e a versao esta a frente, o Sync geral nao deve reabrir/sobrescrever.
+        if (TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: true, localPercentComplete: 40, tfsState: "Closed"))
+            throw new InvalidOperationException("Mesmo usuario com TFS Closed e versao a frente deve registrar conflito para resolucao manual.");
     }
 
     private static void SyncConflictBelow100OtherUserBlocks()
@@ -1457,6 +1531,77 @@ internal static class Program
         // NXProject abaixo de 100% e gravação de outro usuário → conflito real, bloqueia.
         if (TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: false, localPercentComplete: 60, tfsState: "Active"))
             throw new InvalidOperationException("NXProject abaixo de 100% com outro usuário NÃO deveria liberar (conflito real).");
+    }
+
+    private static void SyncConflictVersionAheadWithoutPendingWritesDoesNotBlock()
+    {
+        if (TfsImportService.ShouldRegisterSyncConflict(
+                tfsVersionAhead: true,
+                hasPendingWrites: false,
+                isStoryOrTask: true,
+                isCurrentSyncUser: false,
+                tfsState: "Active"))
+            throw new InvalidOperationException("Versao TFS a frente sem atributo diferente a gravar nao deve registrar conflito.");
+    }
+
+    private static void SyncConflictVersionAheadFeatureEpicDoesNotBlockRollup()
+    {
+        if (TfsImportService.ShouldRegisterSyncConflict(
+                tfsVersionAhead: true,
+                hasPendingWrites: true,
+                isStoryOrTask: false,
+                isCurrentSyncUser: false,
+                tfsState: "Active"))
+            throw new InvalidOperationException("Feature/Epic com rollup a gravar nao deve bloquear pela regra de conflito de Story/Task.");
+
+        if (!TfsImportService.ShouldRegisterSyncConflict(
+                tfsVersionAhead: true,
+                hasPendingWrites: true,
+                isStoryOrTask: true,
+                isCurrentSyncUser: false,
+                tfsState: "Active"))
+            throw new InvalidOperationException("Story/Task com versao a frente e atributo diferente deve registrar conflito.");
+    }
+
+    private static void SyncConflictManualOverwriteAllowsStartedItem()
+    {
+        var startedTask = new ProjectTask
+        {
+            Id = 1,
+            Name = "Story iniciada",
+            TfsId = 101,
+            PercentComplete = 100
+        };
+        var notStartedTask = new ProjectTask
+        {
+            Id = 2,
+            Name = "Story nao iniciada",
+            TfsId = 102,
+            PercentComplete = 0
+        };
+
+        var automaticStarted = new TfsImportService.SyncConflictItem
+        {
+            Task = startedTask,
+            AllowStartedOverwrite = false
+        };
+        var manualStarted = new TfsImportService.SyncConflictItem
+        {
+            Task = startedTask,
+            AllowStartedOverwrite = true
+        };
+        var automaticNotStarted = new TfsImportService.SyncConflictItem
+        {
+            Task = notStartedTask,
+            AllowStartedOverwrite = false
+        };
+
+        if (automaticStarted.CanOverwrite)
+            throw new InvalidOperationException("Fluxo automatico nao deve sobrescrever item iniciado.");
+        if (!manualStarted.CanOverwrite)
+            throw new InvalidOperationException("Resolucao manual deve permitir sobrescrever item iniciado/concluido.");
+        if (!automaticNotStarted.CanOverwrite)
+            throw new InvalidOperationException("Item nao iniciado deve continuar selecionavel no fluxo automatico.");
     }
 
     private static void AssertEqual(DateTime expected, DateTime actual, string message)

@@ -349,6 +349,7 @@
     <sys:String x:Key="PercAloc_CalcRightTip">Converts hours/day into allocation %</sys:String>
     <sys:String x:Key="PercAloc_ByFinishTotal">Calculate by finish date  ({0:0.#}h total):</sys:String>
     <sys:String x:Key="PercAloc_ByFinish">Calculate by finish date:</sys:String>
+    <sys:String x:Key="PercAloc_TotalHoursRule">Rule: the finish date uses Current HH + Remaining HH; Current HH stays as work already done.</sys:String>
     <sys:String x:Key="PercAloc_FinishTip">Desired finish date (MM/dd/yyyy). Computes the % needed to finish by that date.</sys:String>
     <sys:String x:Key="PercAloc_CalcLeft">← Calculate</sys:String>
     <sys:String x:Key="PercAloc_CalcLeftTip">Computes the allocation % based on the given finish date</sys:String>

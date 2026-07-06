@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource PercAloc_Title}"
         Width="360"
-        Height="340"
+        Height="370"
         MinWidth="320"
         MinHeight="320"
         ResizeMode="NoResize"
@@ -66,6 +66,11 @@
         <StackPanel Grid.Row="4" Orientation="Vertical" Margin="0,0,0,8">
             <TextBlock x:Name="FinishCalcLabel"
                        FontSize="11" Foreground="#777" Margin="0,0,0,4"/>
+            <TextBlock Text="{DynamicResource PercAloc_TotalHoursRule}"
+                       FontSize="10.5"
+                       Foreground="#777"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,6"/>
             <StackPanel Orientation="Horizontal">
                 <TextBox x:Name="FinishDateBox"
                          Width="100" Height="30" FontSize="13"

@@ -349,6 +349,7 @@
     <sys:String x:Key="PercAloc_CalcRightTip">Converte HH/dia em % de alocação</sys:String>
     <sys:String x:Key="PercAloc_ByFinishTotal">Calcular pela data fim  ({0:0.#}h total):</sys:String>
     <sys:String x:Key="PercAloc_ByFinish">Calcular pela data fim:</sys:String>
+    <sys:String x:Key="PercAloc_TotalHoursRule">Regra: a data fim considera HH Atual + HH Restante; o HH Atual continua como histórico já realizado.</sys:String>
     <sys:String x:Key="PercAloc_FinishTip">Data fim desejada (dd/MM/aaaa). Calcula o % necessário para concluir até essa data.</sys:String>
     <sys:String x:Key="PercAloc_CalcLeft">Calcular ←</sys:String>
     <sys:String x:Key="PercAloc_CalcLeftTip">Calcula o % de alocação com base na data fim informada</sys:String>

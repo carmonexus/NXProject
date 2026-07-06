@@ -293,6 +293,11 @@
                                                       Visibility="Collapsed"
                                                       ToolTip="Configura quais tipos DevOps usam campo de classificação e qual campo usar"/>
                                             <Separator/>
+                                            <MenuItem x:Name="ResolveManualConflictMenuItem"
+                                                      Header="{DynamicResource Ctx_ResolveManualConflict}"
+                                                      Click="OnResolveManualConflictClick"
+                                                      Visibility="Collapsed"/>
+                                            <Separator x:Name="ResolveManualConflictSeparator" Visibility="Collapsed"/>
                                             <MenuItem Header="{DynamicResource Ctx_EditDescription}"
                                                       Click="OnEditDescriptionClick"/>
                                         </ContextMenu>

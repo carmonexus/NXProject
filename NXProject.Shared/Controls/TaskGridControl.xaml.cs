@@ -211,6 +211,9 @@ namespace NXProject.Controls
         /// <summary>Disparado quando o usuário clica em "Editar Descrição..." no menu de contexto do nome.</summary>
         public event Action<TaskViewModel>? EditDescriptionRequested;
 
+        /// <summary>Disparado quando o usuário quer resolver manualmente um conflito de sincronização.</summary>
+        public event Action<TaskViewModel>? ResolveManualConflictRequested;
+
         /// <summary>Disparado quando o usuário clica em "Atualizar duração pelas Tasks" no menu da coluna Duração.</summary>
         public event Action<TaskViewModel>? FetchTaskHoursRequested;
 
@@ -301,6 +304,23 @@ namespace NXProject.Controls
             try
             {
                 _scrollViewer.ScrollToVerticalOffset(offset);
+            }
+            finally
+            {
+                _suppressScrollNotification = wasSuppressed;
+            }
+        }
+
+        public void ResetVerticalOffset()
+        {
+            _pendingVerticalOffset = null;
+            if (_scrollViewer == null) return;
+
+            var wasSuppressed = _suppressScrollNotification;
+            _suppressScrollNotification = true;
+            try
+            {
+                _scrollViewer.ScrollToVerticalOffset(0);
             }
             finally
             {
@@ -1469,6 +1489,16 @@ namespace NXProject.Controls
 
             if (configClassif != null)
                 configClassif.Visibility = Visibility.Collapsed;
+
+            var conflictItem = cm.Items.OfType<MenuItem>()
+                .FirstOrDefault(m => m.Name == "ResolveManualConflictMenuItem");
+            var conflictSep = cm.Items.OfType<Separator>()
+                .FirstOrDefault(s => s.Name == "ResolveManualConflictSeparator");
+            var canResolveConflict = vm.HasSyncConflict && vm.Model.TfsId is > 0;
+            if (conflictItem != null)
+                conflictItem.Visibility = canResolveConflict ? Visibility.Visible : Visibility.Collapsed;
+            if (conflictSep != null)
+                conflictSep.Visibility = canResolveConflict ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void OnToggleTaskBlockClick(object sender, RoutedEventArgs e)
@@ -1519,6 +1549,13 @@ namespace NXProject.Controls
             var vm = GetTaskViewModelFromContextSender(sender);
             if (vm != null)
                 EditDescriptionRequested?.Invoke(vm);
+        }
+
+        private void OnResolveManualConflictClick(object sender, RoutedEventArgs e)
+        {
+            var vm = GetTaskViewModelFromContextSender(sender);
+            if (vm != null)
+                ResolveManualConflictRequested?.Invoke(vm);
         }
 
         private void OnFetchChildTasksClick(object sender, RoutedEventArgs e)

@@ -306,6 +306,7 @@ namespace NXProject.Services
             public int TfsVersion { get; init; }
             public int LocalVersion { get; init; }
             public string ChangedBy { get; init; } = "";
+            public bool AllowStartedOverwrite { get; init; }
             // Snapshot dos valores TFS no momento do conflito
             public string TfsTitle  { get; init; } = "";
             public string TfsState  { get; init; } = "";
@@ -325,6 +326,7 @@ namespace NXProject.Services
             // Atividade já iniciada (% > 0) não deve ser sobrescrita automaticamente no merge.
             public double LocalPercentComplete => Task.PercentComplete;
             public bool IsStarted => Task.PercentComplete > 0.0001;
+            public bool CanOverwrite => AllowStartedOverwrite || !IsStarted;
         }
 
         public sealed class SyncReport
@@ -684,7 +686,11 @@ namespace NXProject.Services
 
                     // ── Controle de concorrência ────────────────────────────────────────
                     // Compara a versão que temos (importada) com a versão atual no TFS.
-                    // Se o TFS tem versão maior, outro usuário gravou depois de nós → conflito.
+                    // Se o TFS tem versão maior, só registra conflito depois de comparar
+                    // os atributos que realmente seriam gravados pelo NXProject.
+                    int? versionAheadTfsVersion = null;
+                    string? versionAheadSavedBy = null;
+                    bool versionAheadByCurrentUser = false;
                     if (syncVersionRef != null && task.SyncVersion.HasValue)
                     {
                         var tfsVersion = (int)(ReadDouble(wi, syncVersionRef) ?? 0);
@@ -692,45 +698,9 @@ namespace NXProject.Services
                         if (!forcedOverwrite && tfsVersion > task.SyncVersion.Value)
                         {
                             var whoSaved = ReadSyncUserName(wi, syncNameRef);
-                            bool isCurrentUser = IsCurrentSyncUser(whoSaved);
-                            // Fechamento vence (cirúrgico): se o NXProject marcou a story 100% (Closed)
-                            // e o TFS ainda está abaixo de 100% (não encerrado), o fechamento é
-                            // autoritativo e libera o conflito — mesmo que outra pessoa tenha gravado.
-                            bool closingOverride = task.PercentComplete >= 100 && !IsClosedState(wi.State);
-                            if (ShouldReleaseSyncConflict(isCurrentUser, task.PercentComplete, wi.State))
-                            {
-                                var previousLocalVersion = task.SyncVersion.Value;
-                                task.SyncVersion = tfsVersion;
-                                task.HasSyncConflict = false;
-                                report.LogWarning(closingOverride && !isCurrentUser
-                                    ? $"{TaskSyncLabel(task)} ({task.Name}): versão TFS={tfsVersion} > local={previousLocalVersion}, mas a story está 100% no NXProject e abaixo de 100% no TFS — fechamento tem prioridade; sincronização liberada."
-                                    : $"{TaskSyncLabel(task)} ({task.Name}): versão TFS={tfsVersion} > local={previousLocalVersion}, mas a última gravação foi do usuário atual ({whoSaved}); sincronização liberada.");
-                            }
-                            else
-                            {
-                                task.HasSyncConflict = true;
-                                report.Conflicts++;
-                                var by = string.IsNullOrWhiteSpace(whoSaved) ? "" : $" (por {whoSaved})";
-                                report.LogError($"⚠ CONFLITO {TaskSyncLabel(task)} ({task.Name}): versão TFS={tfsVersion} > local={task.SyncVersion.Value}{by}. Alterações descartadas — reimporte para atualizar.");
-                                var typeHoursRefConflict  = ResolveForType(task.TfsType, c => c.EffortField, hoursRef);
-                                var typeStartRefConflict  = ResolveForType(task.TfsType, c => c.StartField,  startRef);
-                                var typeFinishRefConflict = ResolveForType(task.TfsType, c => c.FinishField, finishRef);
-                                report.ConflictItems.Add(new SyncConflictItem
-                                {
-                                    Task         = task,
-                                    TfsVersion   = tfsVersion,
-                                    LocalVersion = task.SyncVersion.Value,
-                                    ChangedBy    = whoSaved ?? "",
-                                    TfsTitle     = wi.Title,
-                                    TfsState     = wi.State,
-                                    TfsTags      = wi.Tags,
-                                    TfsHours     = ReadDouble(wi, typeHoursRefConflict),
-                                    TfsStart     = ReadDate(wi, typeStartRefConflict),
-                                    TfsFinish    = ReadDate(wi, typeFinishRefConflict),
-                                });
-                                report.Skipped++;
-                                continue;
-                            }
+                            versionAheadTfsVersion = tfsVersion;
+                            versionAheadSavedBy = whoSaved;
+                            versionAheadByCurrentUser = IsCurrentSyncUser(whoSaved);
                         }
                         else if (task.HasSyncConflict)
                         {
@@ -1117,6 +1087,51 @@ namespace NXProject.Services
                             }
                         });
                         changes.Add($"pai→#{desiredParent}");
+                    }
+
+                    if (versionAheadTfsVersion.HasValue)
+                    {
+                        var isStoryOrTaskConflictType = isTask || IsStoryType(task.TfsType);
+                        if (ShouldRegisterSyncConflict(
+                                tfsVersionAhead: true,
+                                hasPendingWrites: ops.Count > 0,
+                                isStoryOrTask: isStoryOrTaskConflictType,
+                                isCurrentSyncUser: versionAheadByCurrentUser,
+                                tfsState: wi.State))
+                        {
+                            task.HasSyncConflict = true;
+                            report.Conflicts++;
+                            var by = string.IsNullOrWhiteSpace(versionAheadSavedBy) ? "" : $" (por {versionAheadSavedBy})";
+                            report.LogError($"⚠ CONFLITO {TaskSyncLabel(task)} ({task.Name}): versão TFS={versionAheadTfsVersion.Value} > local={task.SyncVersion!.Value}{by}. Alterações descartadas — reimporte para atualizar.");
+                            report.ConflictItems.Add(new SyncConflictItem
+                            {
+                                Task         = task,
+                                TfsVersion   = versionAheadTfsVersion.Value,
+                                LocalVersion = task.SyncVersion.Value,
+                                ChangedBy    = versionAheadSavedBy ?? "",
+                                TfsTitle     = wi.Title ?? "",
+                                TfsState     = wi.State ?? "",
+                                TfsTags      = wi.Tags ?? "",
+                                TfsHours     = ReadDouble(wi, typeHoursRef),
+                                TfsStart     = ReadDate(wi, typeStartRef),
+                                TfsFinish    = ReadDate(wi, typeFinishRef),
+                            });
+                            report.Skipped++;
+                            continue;
+                        }
+
+                        if (ops.Count == 0)
+                        {
+                            task.SyncVersion = versionAheadTfsVersion.Value;
+                            task.HasSyncConflict = false;
+                        }
+                        else if (versionAheadByCurrentUser && !IsClosedState(wi.State))
+                        {
+                            var previousLocalVersion = task.SyncVersion!.Value;
+                            task.SyncVersion = versionAheadTfsVersion.Value;
+                            task.HasSyncConflict = false;
+                            report.LogWarning($"{TaskSyncLabel(task)} ({task.Name}): versão TFS={versionAheadTfsVersion.Value} > local={previousLocalVersion}, mas a última gravação foi do usuário atual ({versionAheadSavedBy}); sincronização liberada.");
+                        }
                     }
 
                     // Sem mudanças reais → pula sem incrementar versão.
@@ -1999,11 +2014,109 @@ namespace NXProject.Services
         public static bool IsClosedStateName(string? state) => IsClosedState(state);
 
         /// <summary>Decisão pura (sem rede) de liberar um conflito de versão na sincronização.
-        /// Libera quando a última gravação foi do próprio usuário atual OU quando o NXProject
-        /// marcou a story 100% (Closed) e o TFS ainda está abaixo de 100% (não encerrado) —
-        /// nesse caso o fechamento é autoritativo e sobrescreve o TFS ("fechamento vence").</summary>
+        /// Esta decisão só é consultada quando a versão do TFS está à frente da versão local.
+        /// No Sync geral, só libera quando a última gravação foi do próprio usuário atual
+        /// e o item online ainda não está encerrado. Itens 100%/Closed com versão à frente
+        /// ficam em conflito e só podem ser sobrescritos pelo fluxo manual da linha rosa.</summary>
         public static bool ShouldReleaseSyncConflict(bool isCurrentSyncUser, double localPercentComplete, string? tfsState)
-            => isCurrentSyncUser || (localPercentComplete >= 100 && !IsClosedState(tfsState));
+            => isCurrentSyncUser && !IsClosedState(tfsState);
+
+        public static bool ShouldRegisterSyncConflict(
+            bool tfsVersionAhead,
+            bool hasPendingWrites,
+            bool isStoryOrTask,
+            bool isCurrentSyncUser,
+            string? tfsState)
+            => tfsVersionAhead
+               && hasPendingWrites
+               && isStoryOrTask
+               && !ShouldReleaseSyncConflict(isCurrentSyncUser, 0, tfsState);
+
+        public static async Task<SyncConflictItem> LoadManualConflictItemAsync(
+            ProjectTask task,
+            TfsConnectionOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            if (task == null) throw new ArgumentNullException(nameof(task));
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            if (task.TfsId is not > 0)
+                throw new InvalidOperationException("A atividade não está vinculada a um item do DevOps.");
+            if (string.IsNullOrWhiteSpace(options.OrganizationUrl) ||
+                string.IsNullOrWhiteSpace(options.TeamProject) ||
+                string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+                throw new InvalidOperationException("Conexão TFS incompleta: informe organização, projeto e PAT (use Importar → TFS para configurar).");
+
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue(
+                "Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+
+            var fieldMap = await LoadFieldMapAsync(orgBase, auth, cancellationToken);
+            var hoursRef = ResolveField(fieldMap, options.EffortFieldName, HoursFieldNames);
+            var startRef = ResolveField(fieldMap, options.StartFieldName, StartFieldNames);
+            var finishRef = ResolveField(fieldMap, options.FinishFieldName, FinishFieldNames);
+            var syncVersionRef = ResolveField(fieldMap, options.SyncVersionFieldName, new[] { "Sync_version", "SyncVersion", "Sync Version" });
+            var syncNameRef = ResolveField(fieldMap, options.SyncNameFieldName, new[] { "Sync_Name", "SyncName", "Sync Name" });
+
+            string? ResolveForType(string? tfsType, Func<TypeFieldConfig, string?> getter, string? globalRef)
+            {
+                if (tfsType != null &&
+                    options.TypeFieldMappings.TryGetValue(tfsType, out var cfg) &&
+                    !string.IsNullOrWhiteSpace(getter(cfg)))
+                    return ResolveField(fieldMap, getter(cfg), Array.Empty<string>()) ?? getter(cfg)!.Trim();
+                return globalRef;
+            }
+
+            var typeHoursRef = ResolveForType(task.TfsType, c => c.EffortField, hoursRef);
+            var typeStartRef = ResolveForType(task.TfsType, c => c.StartField, startRef);
+            var typeFinishRef = ResolveForType(task.TfsType, c => c.FinishField, finishRef);
+
+            var requested = new List<string>
+            {
+                "System.Id",
+                "System.Title",
+                "System.WorkItemType",
+                "System.State",
+                "System.Tags",
+                "System.ChangedBy"
+            };
+            if (typeHoursRef != null) requested.Add(typeHoursRef);
+            if (typeStartRef != null) requested.Add(typeStartRef);
+            if (typeFinishRef != null) requested.Add(typeFinishRef);
+            if (syncVersionRef != null) requested.Add(syncVersionRef);
+            if (syncNameRef != null) requested.Add(syncNameRef);
+
+            var items = await LoadWorkItemsAsync(
+                orgBase,
+                auth,
+                [task.TfsId.Value],
+                requested.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                cancellationToken,
+                expandRelations: false);
+
+            if (!items.TryGetValue(task.TfsId.Value, out var wi))
+                throw new InvalidOperationException($"Item #{task.TfsId.Value} não encontrado no DevOps.");
+
+            var syncUser = ReadSyncUserName(wi, syncNameRef);
+            var changedBy = string.IsNullOrWhiteSpace(syncUser)
+                ? ReadSyncUserName(wi, "System.ChangedBy") ?? ""
+                : syncUser!;
+
+            return new SyncConflictItem
+            {
+                Task = task,
+                TfsVersion = (int)(ReadDouble(wi, syncVersionRef) ?? 0),
+                LocalVersion = task.SyncVersion ?? 0,
+                ChangedBy = changedBy,
+                AllowStartedOverwrite = true,
+                TfsTitle = wi.Title,
+                TfsState = wi.State,
+                TfsTags = wi.Tags,
+                TfsHours = ReadDouble(wi, typeHoursRef),
+                TfsStart = ReadDate(wi, typeStartRef),
+                TfsFinish = ReadDate(wi, typeFinishRef)
+            };
+        }
 
         private static bool IsClosedState(string? state) =>
             state?.Trim().ToLowerInvariant() switch

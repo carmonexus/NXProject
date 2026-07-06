@@ -19,6 +19,7 @@ namespace NXProject.ViewModels
         // Callback fornecido pelo MainViewModel para recalcular o início quando
         // o usuário limpa o fix (digita "0"). Retorna a data de início calculada.
         public Func<DateTime>? GetSprintStart { get; set; }
+        public Func<TaskViewModel, DateTime?>? GetVirtualPredecessorStart { get; set; }
 
         // Retorna a data fim da sprint atribuída à tarefa (null se não houver sprint ou sprint não encontrada).
         public Func<string?, DateTime?>? GetSprintFinish { get; set; }
@@ -532,6 +533,7 @@ namespace NXProject.ViewModels
                         : value;
                     _task.EstimatedHours = remaining;
                     SyncAssignmentEstimatedHours(remaining);
+                    MoveToVirtualPredecessorStartIfNeeded(allowStartedReposition: true);
                     if (!_task.FinishFixed)
                     {
                         // Cálculo único e centralizado (mesma fórmula do import TFS e da abertura de arquivo).
@@ -554,6 +556,22 @@ namespace NXProject.ViewModels
                     ScheduleSuccessors?.Invoke(this);
                 }
             }
+        }
+
+        private void MoveToVirtualPredecessorStartIfNeeded(bool allowStartedReposition = false)
+        {
+            if (_task.StartFixed || _task.PredecessorIds.Count > 0)
+                return;
+            if (!allowStartedReposition && _task.PercentComplete > 0)
+                return;
+
+            var newStart = GetVirtualPredecessorStart?.Invoke(this);
+            if (!newStart.HasValue || _task.Start.Date == newStart.Value.Date)
+                return;
+
+            _task.Start = newStart.Value;
+            OnPropertyChanged(nameof(Start));
+            OnPropertyChanged(nameof(StartDisplay));
         }
 
         // Setter de texto aceita horas ("32") ou dias com sufixo "d" ("5d" → 5 × horas/dia).
@@ -1248,7 +1266,7 @@ namespace NXProject.ViewModels
 
         public bool CanEditPredecessors => _task.Children.Count == 0;
 
-        public void MoveAfterLatestPredecessor()
+        public void MoveAfterLatestPredecessor(bool allowStartedReposition = false)
         {
             if (_task.PredecessorIds.Count == 0 || FindByInternalId == null)
                 return;
@@ -1274,8 +1292,9 @@ namespace NXProject.ViewModels
                 return;
             }
 
-            // Data fixada pelo usuário (📌) ou tarefa já iniciada: não move o Start.
-            if (_task.StartFixed || _task.PercentComplete > 0)
+            // Data fixada pelo usuário (📌) não move o Start.
+            // Tarefas já iniciadas só são reposicionadas no recálculo geral de predecessoras.
+            if (_task.StartFixed || (!allowStartedReposition && _task.PercentComplete > 0))
             {
                 ScheduleSuccessors?.Invoke(this);
                 return;

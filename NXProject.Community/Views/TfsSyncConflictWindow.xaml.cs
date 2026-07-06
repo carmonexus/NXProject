@@ -149,13 +149,13 @@ namespace NXProject.Views
                 get => _isSelected;
                 set
                 {
-                    if (Item.IsStarted && value) return; // não pode selecionar iniciada
+                    if (!Item.CanOverwrite && value) return; // não pode selecionar iniciada no fluxo automático
                     _isSelected = value; OnPropertyChanged();
                 }
             }
 
             public bool IsStarted => Item.IsStarted;
-            public bool CanSelect => !Item.IsStarted;
+            public bool CanSelect => Item.CanOverwrite;
 
             public string TfsType      => Item.TfsType;
             public int    TfsId        => Item.TfsId;
@@ -163,7 +163,9 @@ namespace NXProject.Views
             public string VersionLabel => $"{Item.LocalVersion} → {Item.TfsVersion}";
             public string LocalTitle   => Item.LocalTitle;
             public string StartedLabel => Item.IsStarted
-                ? AppStrings.Get("Conf_StartedLabel", Item.LocalPercentComplete)
+                ? Item.AllowStartedOverwrite
+                    ? AppStrings.Get("Conf_StartedManualLabel", Item.LocalPercentComplete)
+                    : AppStrings.Get("Conf_StartedLabel", Item.LocalPercentComplete)
                 : "";
 
             public string DiffSummary
