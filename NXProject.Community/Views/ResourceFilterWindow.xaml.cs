@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Data;
 using NXProject.Models;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -61,7 +62,7 @@ namespace NXProject.Views
         private void RefreshCount()
         {
             var sel = Rows.Count(r => r.IsSelected);
-            CountLabel.Text = $"{sel} de {Rows.Count} selecionados";
+            CountLabel.Text = AppStrings.Get("RFilter_Count", sel, Rows.Count);
         }
 
         private void OnSearchChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)

@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.ResourceFilterWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Filtrar por Recurso"
+        Title="{DynamicResource RFilter_Title}"
         Width="420" Height="520"
         MinWidth="340" MinHeight="380"
         WindowStartupLocation="CenterOwner"
@@ -16,9 +16,9 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="Filtrar por Recurso"
+            <TextBlock Text="{DynamicResource RFilter_Title}"
                        FontSize="20" FontWeight="SemiBold" Foreground="#2B579A"/>
-            <TextBlock Text="Marque os recursos para exibir apenas suas atividades."
+            <TextBlock Text="{DynamicResource RFilter_Subtitle}"
                        Margin="0,4,0,0" Foreground="#666" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
 
@@ -31,8 +31,8 @@
             <TextBox x:Name="SearchBox" Height="30" Padding="8,4"
                      VerticalContentAlignment="Center"
                      TextChanged="OnSearchChanged"/>
-            <Button Grid.Column="1" Content="Todos" Width="60" Height="30" Margin="6,0,0,0" Click="OnSelectAllClick"/>
-            <Button Grid.Column="2" Content="Limpar" Width="60" Height="30" Margin="4,0,0,0" Click="OnClearAllClick"/>
+            <Button Grid.Column="1" Content="{DynamicResource RFilter_All}" Width="60" Height="30" Margin="6,0,0,0" Click="OnSelectAllClick"/>
+            <Button Grid.Column="2" Content="{DynamicResource RFilter_Clear}" Width="60" Height="30" Margin="4,0,0,0" Click="OnClearAllClick"/>
         </Grid>
 
         <Border Grid.Row="2" BorderBrush="#D9E1EA" BorderThickness="1" Background="White">
@@ -53,8 +53,8 @@
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
             <TextBlock x:Name="CountLabel" VerticalAlignment="Center" Margin="0,0,16,0" Foreground="#666" FontSize="11"/>
-            <Button Content="Cancelar" Width="90" Height="30" Margin="0,0,8,0" IsCancel="True"/>
-            <Button Content="Aplicar" Width="90" Height="30" IsDefault="True" Click="OnApplyClick"/>
+            <Button Content="{DynamicResource RFilter_Cancel}" Width="90" Height="30" Margin="0,0,8,0" IsCancel="True"/>
+            <Button Content="{DynamicResource RFilter_Apply}" Width="90" Height="30" IsDefault="True" Click="OnApplyClick"/>
         </StackPanel>
     </Grid>
 </Window>

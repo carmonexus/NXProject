@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Windows;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -21,7 +22,7 @@ namespace NXProject.Views
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog
             {
-                Title            = "Selecione a pasta para salvar o arquivo de custo",
+                Title            = AppStrings.Get("SaveCost_FolderDlgTitle"),
                 InitialDirectory = FolderBox.Text
             };
             if (dlg.ShowDialog() == true)
@@ -46,7 +47,7 @@ namespace NXProject.Views
         {
             if (PasswordBox1.Password.Length == 0)
             {
-                MessageBox.Show("Informe uma senha.", "Senha inválida",
+                MessageBox.Show(AppStrings.Get("SaveCost_PasswordRequired"), AppStrings.Get("SaveCost_InvalidPassword"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }

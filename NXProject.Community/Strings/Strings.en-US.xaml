@@ -492,4 +492,28 @@
     <sys:String x:Key="RAlloc_WorkDaySingular">{0} working day</sys:String>
     <sys:String x:Key="RAlloc_WorkDayPlural">{0} working days</sys:String>
 
+    <!-- Filter by Resource -->
+    <sys:String x:Key="RFilter_Title">Filter by Resource</sys:String>
+    <sys:String x:Key="RFilter_Subtitle">Check the resources to show only their activities.</sys:String>
+    <sys:String x:Key="RFilter_All">All</sys:String>
+    <sys:String x:Key="RFilter_Clear">Clear</sys:String>
+    <sys:String x:Key="RFilter_Cancel">Cancel</sys:String>
+    <sys:String x:Key="RFilter_Apply">Apply</sys:String>
+    <sys:String x:Key="RFilter_Count">{0} of {1} selected</sys:String>
+
+    <!-- Save cost configuration -->
+    <sys:String x:Key="SaveCost_Title">Save cost configuration</sys:String>
+    <sys:String x:Key="SaveCost_Header">💰 Save cost configuration</sys:String>
+    <sys:String x:Key="SaveCost_EncNote">The file is encrypted with AES-256-GCM. Keep the password — without it the file cannot be opened.</sys:String>
+    <sys:String x:Key="SaveCost_FileName">File name</sys:String>
+    <sys:String x:Key="SaveCost_Folder">Destination folder</sys:String>
+    <sys:String x:Key="SaveCost_Change">Change...</sys:String>
+    <sys:String x:Key="SaveCost_Password">Password</sys:String>
+    <sys:String x:Key="SaveCost_ConfirmPassword">Confirm password</sys:String>
+    <sys:String x:Key="SaveCost_Mismatch">The passwords do not match.</sys:String>
+    <sys:String x:Key="SaveCost_Cancel">Cancel</sys:String>
+    <sys:String x:Key="SaveCost_FolderDlgTitle">Select the folder to save the cost file</sys:String>
+    <sys:String x:Key="SaveCost_PasswordRequired">Enter a password.</sys:String>
+    <sys:String x:Key="SaveCost_InvalidPassword">Invalid password</sys:String>
+
 </ResourceDictionary>
