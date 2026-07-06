@@ -218,7 +218,7 @@ namespace NXProject.Views
 
             if (_projects.Count == 0)
             {
-                StatusText.Text = "Nenhum projeto selecionado. Use '📁 Selecionar Projetos' para adicionar.";
+                StatusText.Text = AppStrings.Get("PMap_NoProjectSelected");
                 return;
             }
 
@@ -684,7 +684,7 @@ namespace NXProject.Views
             // Título
             var header = new TextBlock
             {
-                Text       = $"Stories de {resName}  —  {monthStart:MMMM/yyyy}  —  {proj.Name}",
+                Text       = AppStrings.Get("PMap_StoriesTitle", resName, monthStart, proj.Name),
                 FontSize   = 13,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(43, 87, 154)),
@@ -703,7 +703,8 @@ namespace NXProject.Views
 
             // Cabeçalho da tabela
             panel.Children.Add(MakeStoryRow(
-                "Story / Tarefa", "HH Total", "HH Mês", "% Concl.", "Início", "Fim", "DevOps",
+                AppStrings.Get("PMap_ColStory"), AppStrings.Get("PMap_SrColHHTotal"), AppStrings.Get("PMap_SrColHHMonth"),
+                AppStrings.Get("PMap_SrColPctDone"), AppStrings.Get("PMap_SrColStart"), AppStrings.Get("PMap_SrColFinish"), AppStrings.Get("PMap_SrColDevOps"),
                 isHeader: true, devOpsUrl: null));
 
             double totalMonthHours = 0;
@@ -711,7 +712,7 @@ namespace NXProject.Views
             {
                 panel.Children.Add(new TextBlock
                 {
-                    Text    = "Nenhuma story encontrada para este período.",
+                    Text    = AppStrings.Get("PMap_NoStories"),
                     Margin  = new Thickness(8, 6, 8, 0),
                     FontSize = 12,
                     Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120))
@@ -760,7 +761,7 @@ namespace NXProject.Views
             };
             footer.Child = new TextBlock
             {
-                Text       = $"Total HH Mês:  {(totalMonthHours > 0.01 ? $"{totalMonthHours:0.#}h" : "–")}",
+                Text       = AppStrings.Get("PMap_TotalHHMonth", totalMonthHours > 0.01 ? $"{totalMonthHours:0.#}h" : "–"),
                 FontSize   = 12,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(20, 60, 140)),
@@ -1031,7 +1032,7 @@ namespace NXProject.Views
                     BorderThickness = new Thickness(0, 0, 2, 1),
                     Child           = new TextBlock
                     {
-                        Text                = "Total",
+                        Text                = AppStrings.Get("PMap_Total"),
                         FontSize            = 10,
                         FontWeight          = FontWeights.SemiBold,
                         Foreground          = new SolidColorBrush(Color.FromRgb(30, 60, 120)),
@@ -1287,7 +1288,7 @@ namespace NXProject.Views
             var visMi = Enumerable.Range(0, months.Count)
                 .Where(mi => allRes.Any(r => data[r].Any(row => row[mi] > 0.01)))
                 .ToList();
-            if (visMi.Count == 0) { StatusText.Text = "Sem dados no período."; return; }
+            if (visMi.Count == 0) { StatusText.Text = AppStrings.Get("PMap_NoData"); return; }
 
             // Larguras
             const double ResColW  = 160;
@@ -1304,11 +1305,11 @@ namespace NXProject.Views
 
             // Cabeçalho: [Recurso] [Projeto] [mês1] [mês2] ... [Total]
             var headerRow = new StackPanel { Orientation = Orientation.Horizontal };
-            headerRow.Children.Add(RateioMakeCell("Recurso",  ResColW,  RowH + 2, Colors.White, Color.FromRgb(43, 87, 154), bold: true));
-            headerRow.Children.Add(RateioMakeCell("Projeto",  ProjColW, RowH + 2, Colors.White, Color.FromRgb(43, 87, 154), bold: true));
+            headerRow.Children.Add(RateioMakeCell(AppStrings.Get("PMap_ColResource"),  ResColW,  RowH + 2, Colors.White, Color.FromRgb(43, 87, 154), bold: true));
+            headerRow.Children.Add(RateioMakeCell(AppStrings.Get("PMap_ColProject"),  ProjColW, RowH + 2, Colors.White, Color.FromRgb(43, 87, 154), bold: true));
             foreach (var mi in visMi)
                 headerRow.Children.Add(RateioMakeCell(months[mi].ToString("MMM/yy"), MonW, RowH + 2, Colors.White, Color.FromRgb(43, 87, 154), bold: true));
-            headerRow.Children.Add(RateioMakeCell("Total",    TotalW,   RowH + 2, Colors.White, Color.FromRgb(25, 60, 120), bold: true));
+            headerRow.Children.Add(RateioMakeCell(AppStrings.Get("PMap_Total"),    TotalW,   RowH + 2, Colors.White, Color.FromRgb(25, 60, 120), bold: true));
             RateioHeaderPanel.Items.Add(headerRow);
 
             // Horas úteis por mês (capacidade full = 8h × dias úteis)
@@ -1776,7 +1777,7 @@ namespace NXProject.Views
                         Width = SrStoryW, Height = SrRowH, Background = new SolidColorBrush(projTotalBg),
                         BorderBrush = new SolidColorBrush(Color.FromRgb(180, 200, 230)), BorderThickness = new Thickness(0,0,1,1),
                         Padding = new Thickness(4, 0, 4, 0),
-                        Child = new TextBlock { Text = "Subtotal", FontSize = 10, FontStyle = FontStyles.Italic,
+                        Child = new TextBlock { Text = AppStrings.Get("PMap_Subtotal"), FontSize = 10, FontStyle = FontStyles.Italic,
                             Foreground = new SolidColorBrush(Color.FromRgb(60, 90, 150)), VerticalAlignment = VerticalAlignment.Center }
                     });
                     SrLeftPanel.Items.Add(leftProjTotal);
@@ -2174,9 +2175,8 @@ namespace NXProject.Views
             if (devOpsList.Count == 0)
             {
                 MessageBox.Show(
-                    "Nenhum projeto DevOps cadastrado.\n\n" +
-                    "Acesse Visualizar → Portfólio de Projetos para configurar os projetos.",
-                    "Lista vazia", MessageBoxButton.OK, MessageBoxImage.Information);
+                    AppStrings.Get("PMap_EmptyListMsg"),
+                    AppStrings.Get("PMap_EmptyListTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -2209,7 +2209,7 @@ namespace NXProject.Views
             TfsConnectionStore.Save(opts, !string.IsNullOrEmpty(opts.PersonalAccessToken));
 
             int count = opts.PortfolioProjectConfigs.Count;
-            StatusText.Text = $"{count} projeto(s) selecionado(s). Clique em '☁ Importar do DevOps' para carregar os dados.";
+            StatusText.Text = AppStrings.Get("PMap_ProjectsSelected", count);
         }
 
         private async void OnImportFromDevOpsClick(object sender, RoutedEventArgs e)
@@ -2220,16 +2220,15 @@ namespace NXProject.Views
                 string.IsNullOrWhiteSpace(opts.PersonalAccessToken))
             {
                 MessageBox.Show(
-                    "Conexão com o Azure DevOps não configurada.\n\n" +
-                    "Acesse Exportar → Sincronizar para configurar o PAT e a URL da organização.",
-                    "Configuração necessária", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppStrings.Get("PMap_NoConnMsg"),
+                    AppStrings.Get("PMap_NoConnTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             if (opts.PortfolioProjectConfigs.Count == 0)
             {
-                MessageBox.Show("Nenhum projeto selecionado. Use '☑ Selecionar Projetos' primeiro.",
-                    "Sem projetos", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("PMap_NoProjSelMsg"),
+                    AppStrings.Get("PMap_NoProjSelTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -2251,9 +2250,8 @@ namespace NXProject.Views
             if (toImport.Count == 0)
             {
                 MessageBox.Show(
-                    "Nenhum projeto selecionado tem ID raiz configurado.\n\n" +
-                    "Edite o Portfólio de Projetos (Visualizar → Portfólio de Projetos) e informe o ID raiz de cada projeto.",
-                    "ID raiz não configurado", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    AppStrings.Get("PMap_NoRootMsg"),
+                    AppStrings.Get("PMap_NoRootTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -2264,7 +2262,7 @@ namespace NXProject.Views
             for (int i = 0; i < toImport.Count; i++)
             {
                 var (cfg, rootId) = toImport[i];
-                StatusText.Text = $"Importando {i + 1}/{toImport.Count}: {cfg.ProjectName}...";
+                StatusText.Text = AppStrings.Get("PMap_Importing", i + 1, toImport.Count, cfg.ProjectName);
                 await Task.Yield(); // permite atualizar a UI
 
                 var importOpts = new TfsConnectionOptions
@@ -2320,8 +2318,8 @@ namespace NXProject.Views
             StatusText.Text = sb.ToString();
 
             if (errors.Count > 0)
-                MessageBox.Show("Erros durante a importação:\n\n" + string.Join("\n", errors),
-                    "Importação parcial", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(AppStrings.Get("PMap_ImportErrors", string.Join("\n", errors)),
+                    AppStrings.Get("PMap_PartialImport"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private void OnPeriodChanged(object sender, SelectionChangedEventArgs e) { }
@@ -2332,18 +2330,18 @@ namespace NXProject.Views
         {
             if (_projects.Count == 0)
             {
-                MessageBox.Show("Nenhum dado para exportar. Importe os projetos primeiro.",
-                    "Exportar", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("PMap_NoDataToExport"),
+                    AppStrings.Get("PMap_Export"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             int tab = MainTabControl.SelectedIndex;
-            string[] tabNames  = ["Horas por Projeto", "Distribuição por Pessoa", "Stories por Recurso", "Rateio", "Interno"];
-            string defaultName = tab < tabNames.Length ? tabNames[tab] : "Mapa de Alocação";
+            string[] tabNames  = [AppStrings.Get("PMap_TabHours"), AppStrings.Get("PMap_TabDistribution"), AppStrings.Get("PMap_TabStories"), AppStrings.Get("PMap_TabRateio"), AppStrings.Get("PMap_TabInternal")];
+            string defaultName = tab < tabNames.Length ? tabNames[tab] : AppStrings.Get("PMap_DefaultMapName");
 
             var dlg = new SaveFileDialog
             {
-                Title      = $"Exportar — {defaultName}",
+                Title      = AppStrings.Get("PMap_ExportTitleFmt", defaultName),
                 Filter     = "Excel XML 2003 (*.xml)|*.xml",
                 DefaultExt = ".xml",
                 FileName   = defaultName
@@ -2361,11 +2359,11 @@ namespace NXProject.Views
                     case 4: ExportRateioToExcel(dlg.FileName, internalOnly: true); break;
                     default: ExportAllocationToExcel(dlg.FileName, onlyTab: 0); break;
                 }
-                StatusText.Text = $"Exportado: {dlg.FileName}";
+                StatusText.Text = AppStrings.Get("PMap_Exported", dlg.FileName);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao exportar:\n{ex.Message}", "Erro",
+                MessageBox.Show(AppStrings.Get("PMap_ExportError", ex.Message), AppStrings.Get("PMap_Error"),
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -2405,7 +2403,7 @@ namespace NXProject.Views
             var visMi = Enumerable.Range(0, months.Count)
                 .Where(mi => allRes.Any(r => data[r].Any(row => row[mi] > 0.01)))
                 .ToList();
-            if (visMi.Count == 0) { StatusText.Text = "Sem dados no período para exportar."; return; }
+            if (visMi.Count == 0) { StatusText.Text = AppStrings.Get("PMap_NoDataExportPeriod"); return; }
 
             var monthCapacity = visMi.Select(mi =>
             {
@@ -2436,10 +2434,10 @@ namespace NXProject.Views
 
             // Cabeçalho
             var hdr = new XElement(ns + "Row", new XAttribute(ss + "Height", "22"));
-            hdr.Add(ExStCell(ns, "Recurso",  "RHL"));
-            hdr.Add(ExStCell(ns, "Projeto",  "RHL"));
+            hdr.Add(ExStCell(ns, AppStrings.Get("PMap_ColResource"),  "RHL"));
+            hdr.Add(ExStCell(ns, AppStrings.Get("PMap_ColProject"),  "RHL"));
             foreach (var mi in visMi) hdr.Add(ExStCell(ns, months[mi].ToString("MMM/yyyy"), "RH"));
-            hdr.Add(ExStCell(ns, "Total", "RH"));
+            hdr.Add(ExStCell(ns, AppStrings.Get("PMap_Total"), "RH"));
             sheet.Add(hdr);
 
             foreach (var res in allRes)
@@ -2478,7 +2476,7 @@ namespace NXProject.Views
                     new XAttribute(XNamespace.Xmlns + "ss", ss),
                     styles,
                     new XElement(ns + "Worksheet",
-                        new XAttribute(ss + "Name", internalOnly ? "Interno" : "Rateio"),
+                        new XAttribute(ss + "Name", internalOnly ? AppStrings.Get("PMap_TabInternal") : AppStrings.Get("PMap_TabRateio")),
                         new XElement(ns + "Table", sheet))));
 
             workbook.Save(filePath);
@@ -2602,8 +2600,8 @@ namespace NXProject.Views
 
             // ── Cabeçalho linha 1: labels fixos + meses mesclados + totais ──
             var hdrRow1 = new XElement(ns + "Row", new XAttribute(ss + "Height", "22"));
-            hdrRow1.Add(ExStCell(ns, "Recurso", "H0"));
-            hdrRow1.Add(ExStCell(ns, "Projeto", "H0"));
+            hdrRow1.Add(ExStCell(ns, AppStrings.Get("PMap_ColResource"), "H0"));
+            hdrRow1.Add(ExStCell(ns, AppStrings.Get("PMap_ColProject"), "H0"));
             hdrRow1.Add(ExStCell(ns, "EPIC",    "H0"));
             hdrRow1.Add(ExStCell(ns, "Feature", "H0"));
             hdrRow1.Add(ExStCell(ns, "Story",   "H0"));
@@ -2696,7 +2694,7 @@ namespace NXProject.Views
                     pRow.Add(ExStCell(ns, projGroup.Key, "PL"));
                     pRow.Add(ExStCell(ns, "", "PL"));
                     pRow.Add(ExStCell(ns, "", "PL"));
-                    pRow.Add(ExStCell(ns, "Subtotal", "PL"));
+                    pRow.Add(ExStCell(ns, AppStrings.Get("PMap_Subtotal"), "PL"));
                     foreach (var mi in visMi)
                     {
                         double pC = projCapexByMonth[mi];
@@ -2760,7 +2758,7 @@ namespace NXProject.Views
                     new XAttribute(XNamespace.Xmlns + "ss", ss),
                     styles,
                     new XElement(ns + "Worksheet",
-                        new XAttribute(ss + "Name", "Stories por Recurso"),
+                        new XAttribute(ss + "Name", AppStrings.Get("PMap_TabStories")),
                         new XElement(ns + "Table", tableChildren))));
 
             workbook.Save(filePath);
@@ -2900,10 +2898,10 @@ namespace NXProject.Views
 
             // Cabeçalho
             var hdr1 = new XElement(ns + "Row", new XAttribute(ss + "Height", "22"));
-            hdr1.Add(ExStCell(ns, "Projeto",         "AHL"));
-            hdr1.Add(ExStCell(ns, "Recurso",         "AHL"));
-            hdr1.Add(ExStCell(ns, "Tipo",            "AH"));
-            hdr1.Add(ExStCell(ns, "Centro de Custo", "AHL"));
+            hdr1.Add(ExStCell(ns, AppStrings.Get("PMap_ColProject"),         "AHL"));
+            hdr1.Add(ExStCell(ns, AppStrings.Get("PMap_ColResource"),         "AHL"));
+            hdr1.Add(ExStCell(ns, AppStrings.Get("PMap_ColType"),            "AH"));
+            hdr1.Add(ExStCell(ns, AppStrings.Get("PMap_ColCostCenter"), "AHL"));
             foreach (var mi in visibleMonths) hdr1.Add(ExStCell(ns, months[mi].ToString("MMM/yyyy"), "AH"));
             hdr1.Add(ExStCell(ns, "TOTAL", "AH"));
             sheet1.Add(hdr1);
@@ -2984,7 +2982,7 @@ namespace NXProject.Views
 
             // Cabeçalho linha 1: nome do projeto mesclado sobre meses + total
             var hdr2a = new XElement(ns + "Row", new XAttribute(ss + "Height", "22"));
-            hdr2a.Add(ExStCell(ns, "Recurso", "AHL"));
+            hdr2a.Add(ExStCell(ns, AppStrings.Get("PMap_ColResource"), "AHL"));
             foreach (var pi in visibleProj2)
             {
                 var p = projResourceData[pi].Proj;
@@ -3000,7 +2998,7 @@ namespace NXProject.Views
             foreach (var pi in visibleProj2)
             {
                 foreach (var mi in visibleMonths) hdr2b.Add(ExStCell(ns, months[mi].ToString("MMM/yyyy"), "BH2"));
-                hdr2b.Add(ExStCell(ns, "Total", "BH2"));
+                hdr2b.Add(ExStCell(ns, AppStrings.Get("PMap_Total"), "BH2"));
             }
             hdr2b.Add(ExStCell(ns, "", "AHL"));
             sheet2.Add(hdr2b);
@@ -3055,11 +3053,11 @@ namespace NXProject.Views
             var worksheets = new List<XElement>();
             if (onlyTab == 0)
                 worksheets.Add(new XElement(ns + "Worksheet",
-                    new XAttribute(ss + "Name", "Horas por Projeto"),
+                    new XAttribute(ss + "Name", AppStrings.Get("PMap_TabHours")),
                     new XElement(ns + "Table", sheet1)));
             else
                 worksheets.Add(new XElement(ns + "Worksheet",
-                    new XAttribute(ss + "Name", "Distribuição por Pessoa"),
+                    new XAttribute(ss + "Name", AppStrings.Get("PMap_TabDistribution")),
                     new XElement(ns + "Table", sheet2)));
 
             var workbook = new XDocument(

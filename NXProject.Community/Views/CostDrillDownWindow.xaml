@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.CostDrillDownWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Detalhamento de Custo"
+        Title="{DynamicResource CostDD_Title}"
         Width="680" Height="480"
         MinWidth="480" MinHeight="300"
         WindowStartupLocation="CenterOwner"
@@ -37,14 +37,14 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="Feature" FontSize="11" FontWeight="SemiBold"
                                        Foreground="#2B579A" Padding="8,6" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="Story / Tarefa" FontSize="11" FontWeight="SemiBold"
+                            <TextBlock Grid.Column="1" Text="{DynamicResource CostDD_ColStory}" FontSize="11" FontWeight="SemiBold"
                                        Foreground="#2B579A" Padding="8,6" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="2" Text="Recurso" FontSize="11" FontWeight="SemiBold"
+                            <TextBlock Grid.Column="2" Text="{DynamicResource CostDD_ColResource}" FontSize="11" FontWeight="SemiBold"
                                        Foreground="#2B579A" Padding="8,6" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="3" Text="HH" FontSize="11" FontWeight="SemiBold"
                                        Foreground="#2B579A" Padding="8,6" HorizontalAlignment="Right"
                                        VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="4" Text="Custo (R$)" FontSize="11" FontWeight="SemiBold"
+                            <TextBlock Grid.Column="4" Text="{DynamicResource CostDD_ColCost}" FontSize="11" FontWeight="SemiBold"
                                        Foreground="#2B579A" Padding="8,6" HorizontalAlignment="Right"
                                        VerticalAlignment="Center"/>
                         </Grid>
@@ -100,7 +100,7 @@
                     <ColumnDefinition Width="80"/>
                     <ColumnDefinition Width="100"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Text="TOTAL" FontSize="12" FontWeight="Bold"
+                <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Text="{DynamicResource CostDD_Total}" FontSize="12" FontWeight="Bold"
                            Foreground="#193C78" Padding="8,6" VerticalAlignment="Center"/>
                 <TextBlock Grid.Column="3" x:Name="TotalHours" FontSize="12" FontWeight="Bold"
                            Foreground="#193C78" Padding="8,6" HorizontalAlignment="Right"

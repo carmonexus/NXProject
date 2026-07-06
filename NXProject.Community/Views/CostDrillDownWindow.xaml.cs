@@ -30,10 +30,10 @@ namespace NXProject.Views
             string tipo = isCapex ? "CAPEX" : "OPEX";
             string periodo = year.HasValue
                 ? new DateTime(year.Value, month!.Value, 1).ToString("MMMM/yyyy")
-                : "Total do período";
+                : AppStrings.Get("CostDD_TotalPeriod");
 
-            TitleText.Text    = $"{resource} — {feature}  [{tipo}]";
-            SubtitleText.Text = $"{epic}  •  {periodo}";
+            TitleText.Text    = AppStrings.Get("CostDD_TitleFormat", resource, feature, tipo);
+            SubtitleText.Text = AppStrings.Get("CostDD_SubtitleFormat", epic, periodo);
 
             // Agrupa por story (mesma story pode ter linhas em vários meses)
             var grouped = lines

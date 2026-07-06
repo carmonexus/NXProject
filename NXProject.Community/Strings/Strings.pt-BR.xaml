@@ -621,4 +621,70 @@
     <sys:String x:Key="RCost_ExportSuccess">Exportado com sucesso:&#10;{0}</sys:String>
     <sys:String x:Key="RCost_ExportError">Erro ao exportar:&#10;{0}</sys:String>
 
+    <!-- Detalhamento de Custo -->
+    <sys:String x:Key="CostDD_Title">Detalhamento de Custo</sys:String>
+    <sys:String x:Key="CostDD_ColStory">Story / Tarefa</sys:String>
+    <sys:String x:Key="CostDD_ColResource">Recurso</sys:String>
+    <sys:String x:Key="CostDD_ColCost">Custo (R$)</sys:String>
+    <sys:String x:Key="CostDD_Total">TOTAL</sys:String>
+    <sys:String x:Key="CostDD_TotalPeriod">Total do período</sys:String>
+    <sys:String x:Key="CostDD_TitleFormat">{0} — {1}  [{2}]</sys:String>
+    <sys:String x:Key="CostDD_SubtitleFormat">{0}  •  {1}</sys:String>
+
+    <!-- Mapa de Alocação para Projetos -->
+    <sys:String x:Key="PMap_Title">Mapa de Alocação para Projetos</sys:String>
+    <sys:String x:Key="PMap_SelectProjects">☑ Selecionar Projetos</sys:String>
+    <sys:String x:Key="PMap_ImportDevOps">☁ Importar do DevOps</sys:String>
+    <sys:String x:Key="PMap_StartMonth">Mês inicial:</sys:String>
+    <sys:String x:Key="PMap_EndMonth">Mês final:</sys:String>
+    <sys:String x:Key="PMap_HideZeroed">Ocultar linhas/colunas zeradas</sys:String>
+    <sys:String x:Key="PMap_CompletedHH">HH Concluídas (realizada e em aberto)</sys:String>
+    <sys:String x:Key="PMap_CompletedHHTip">Marcado: tarefas com HH lançado mostram o realizado; tarefas em aberto sem HH lançado mostram o estimado proporcional até o mês atual.</sys:String>
+    <sys:String x:Key="PMap_ExportExcel">📊 Exportar Excel</sys:String>
+    <sys:String x:Key="PMap_TabHours">Horas por Projeto</sys:String>
+    <sys:String x:Key="PMap_TabDistribution">Distribuição por Pessoa</sys:String>
+    <sys:String x:Key="PMap_TabStories">Stories por Recurso</sys:String>
+    <sys:String x:Key="PMap_TabRateio">Rateio</sys:String>
+    <sys:String x:Key="PMap_TabInternal">Interno</sys:String>
+    <sys:String x:Key="PMap_ColProject">Projeto</sys:String>
+    <sys:String x:Key="PMap_ColResource">Recurso</sys:String>
+    <sys:String x:Key="PMap_ColType">Tipo</sys:String>
+    <sys:String x:Key="PMap_ColCostCenter">Centro de Custo</sys:String>
+    <sys:String x:Key="PMap_ColResourcePerson">Recurso / Pessoa</sys:String>
+    <sys:String x:Key="PMap_ColStory">Story / Tarefa</sys:String>
+    <sys:String x:Key="PMap_InternalHeader">Recursos Internos — horas por story/tarefa</sys:String>
+    <sys:String x:Key="PMap_NoProjectSelected">Nenhum projeto selecionado. Use '☑ Selecionar Projetos' para adicionar.</sys:String>
+    <sys:String x:Key="PMap_StoriesTitle">Stories de {0}  —  {1:MMMM/yyyy}  —  {2}</sys:String>
+    <sys:String x:Key="PMap_SrColHHTotal">HH Total</sys:String>
+    <sys:String x:Key="PMap_SrColHHMonth">HH Mês</sys:String>
+    <sys:String x:Key="PMap_SrColPctDone">% Concl.</sys:String>
+    <sys:String x:Key="PMap_SrColStart">Início</sys:String>
+    <sys:String x:Key="PMap_SrColFinish">Fim</sys:String>
+    <sys:String x:Key="PMap_SrColDevOps">DevOps</sys:String>
+    <sys:String x:Key="PMap_NoStories">Nenhuma story encontrada para este período.</sys:String>
+    <sys:String x:Key="PMap_TotalHHMonth">Total HH Mês:  {0}</sys:String>
+    <sys:String x:Key="PMap_Total">Total</sys:String>
+    <sys:String x:Key="PMap_NoData">Sem dados no período.</sys:String>
+    <sys:String x:Key="PMap_NoDataExportPeriod">Sem dados no período para exportar.</sys:String>
+    <sys:String x:Key="PMap_Subtotal">Subtotal</sys:String>
+    <sys:String x:Key="PMap_EmptyListMsg">Nenhum projeto DevOps cadastrado.&#10;&#10;Acesse Visualizar → Portfólio de Projetos para configurar os projetos.</sys:String>
+    <sys:String x:Key="PMap_EmptyListTitle">Lista vazia</sys:String>
+    <sys:String x:Key="PMap_NoConnMsg">Conexão com o Azure DevOps não configurada.&#10;&#10;Acesse Exportar → Sincronizar para configurar o PAT e a URL da organização.</sys:String>
+    <sys:String x:Key="PMap_NoConnTitle">Configuração necessária</sys:String>
+    <sys:String x:Key="PMap_NoProjSelMsg">Nenhum projeto selecionado. Use '☑ Selecionar Projetos' primeiro.</sys:String>
+    <sys:String x:Key="PMap_NoProjSelTitle">Sem projetos</sys:String>
+    <sys:String x:Key="PMap_NoRootMsg">Nenhum projeto selecionado tem ID raiz configurado.&#10;&#10;Edite o Portfólio de Projetos (Visualizar → Portfólio de Projetos) e informe o ID raiz de cada projeto.</sys:String>
+    <sys:String x:Key="PMap_NoRootTitle">ID raiz não configurado</sys:String>
+    <sys:String x:Key="PMap_Importing">Importando {0}/{1}: {2}...</sys:String>
+    <sys:String x:Key="PMap_ImportErrors">Erros durante a importação:&#10;&#10;{0}</sys:String>
+    <sys:String x:Key="PMap_PartialImport">Importação parcial</sys:String>
+    <sys:String x:Key="PMap_NoDataToExport">Nenhum dado para exportar. Importe os projetos primeiro.</sys:String>
+    <sys:String x:Key="PMap_Export">Exportar</sys:String>
+    <sys:String x:Key="PMap_DefaultMapName">Mapa de Alocação</sys:String>
+    <sys:String x:Key="PMap_ExportTitleFmt">Exportar — {0}</sys:String>
+    <sys:String x:Key="PMap_Exported">Exportado: {0}</sys:String>
+    <sys:String x:Key="PMap_ExportError">Erro ao exportar:&#10;{0}</sys:String>
+    <sys:String x:Key="PMap_Error">Erro</sys:String>
+    <sys:String x:Key="PMap_ProjectsSelected">{0} projeto(s) selecionado(s). Clique em '☁ Importar do DevOps' para carregar os dados.</sys:String>
+
 </ResourceDictionary>

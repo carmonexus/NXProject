@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.ProjectAllocationMapWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Mapa de Alocação para Projetos"
+        Title="{DynamicResource PMap_Title}"
         Width="1200" Height="700"
         MinWidth="800" MinHeight="460"
         WindowStartupLocation="CenterOwner"
@@ -18,42 +18,42 @@
 
         <!-- Título -->
         <TextBlock Grid.Row="0"
-                   Text="Mapa de Alocação para Projetos"
+                   Text="{DynamicResource PMap_Title}"
                    FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"
                    Margin="0,0,0,10"/>
 
         <!-- Controles -->
         <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="☑ Selecionar Projetos"
+            <Button Content="{DynamicResource PMap_SelectProjects}"
                     Height="28" Padding="10,0" Margin="0,0,8,0"
                     Click="OnSelectProjectsClick"/>
             <Button x:Name="ImportBtn"
-                    Content="☁ Importar do DevOps"
+                    Content="{DynamicResource PMap_ImportDevOps}"
                     Height="28" Padding="10,0" Margin="0,0,16,0"
                     Click="OnImportFromDevOpsClick"/>
 
-            <TextBlock Text="Mês inicial:" VerticalAlignment="Center" Margin="0,0,4,0" FontSize="12"/>
+            <TextBlock Text="{DynamicResource PMap_StartMonth}" VerticalAlignment="Center" Margin="0,0,4,0" FontSize="12"/>
             <ComboBox x:Name="StartMonthBox" Width="110" Height="28" Margin="0,0,8,0" FontSize="12"
                       SelectionChanged="OnPeriodChanged"/>
 
-            <TextBlock Text="Mês final:" VerticalAlignment="Center" Margin="0,0,4,0" FontSize="12"/>
+            <TextBlock Text="{DynamicResource PMap_EndMonth}" VerticalAlignment="Center" Margin="0,0,4,0" FontSize="12"/>
             <ComboBox x:Name="EndMonthBox" Width="110" Height="28" Margin="0,0,12,0" FontSize="12"
                       SelectionChanged="OnPeriodChanged"/>
 
             <CheckBox x:Name="OnlyWithHoursBox"
-                      Content="Ocultar linhas/colunas zeradas"
+                      Content="{DynamicResource PMap_HideZeroed}"
                       VerticalAlignment="Center" Margin="0,0,12,0"
                       FontSize="12" IsChecked="True"
                       Click="OnFilterChanged"/>
 
             <CheckBox x:Name="OnlyCurrentHoursBox"
-                      Content="HH Concluídas (realizada e em aberto)"
+                      Content="{DynamicResource PMap_CompletedHH}"
                       VerticalAlignment="Center" Margin="0,0,12,0"
                       FontSize="12" IsChecked="False"
-                      ToolTip="Marcado: tarefas com HH lançado mostram o realizado; tarefas em aberto sem HH lançado mostram o estimado proporcional até o mês atual."
+                      ToolTip="{DynamicResource PMap_CompletedHHTip}"
                       Click="OnFilterChanged"/>
 
-            <Button Content="📊 Exportar Excel" Height="28" Padding="10,0"
+            <Button Content="{DynamicResource PMap_ExportExcel}" Height="28" Padding="10,0"
                     Click="OnExportExcelClick"/>
         </WrapPanel>
 
@@ -61,7 +61,7 @@
         <TabControl Grid.Row="2" x:Name="MainTabControl" SelectionChanged="OnTabChanged">
 
             <!-- ══ ABA 1: Horas por Projeto ══ -->
-            <TabItem Header="Horas por Projeto">
+            <TabItem Header="{DynamicResource PMap_TabHours}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="22"/>  <!-- Cabeçalho meses -->
@@ -78,19 +78,19 @@
 
                     <!-- Cabeçalho linha 1 -->
                     <Border Grid.Row="0" Grid.Column="0" Background="#2B579A" BorderBrush="#1D3F73" BorderThickness="0,0,1,1">
-                        <TextBlock Text="Projeto" Foreground="White" FontWeight="SemiBold" FontSize="12"
+                        <TextBlock Text="{DynamicResource PMap_ColProject}" Foreground="White" FontWeight="SemiBold" FontSize="12"
                                    VerticalAlignment="Center" Margin="6,0,0,0"/>
                     </Border>
                     <Border Grid.Row="0" Grid.Column="1" Background="#2B579A" BorderBrush="#1D3F73" BorderThickness="0,0,1,1">
-                        <TextBlock Text="Recurso" Foreground="White" FontWeight="SemiBold" FontSize="12"
+                        <TextBlock Text="{DynamicResource PMap_ColResource}" Foreground="White" FontWeight="SemiBold" FontSize="12"
                                    VerticalAlignment="Center" Margin="6,0,0,0"/>
                     </Border>
                     <Border Grid.Row="0" Grid.Column="2" Background="#2B579A" BorderBrush="#1D3F73" BorderThickness="0,0,1,1">
-                        <TextBlock Text="Tipo" Foreground="White" FontWeight="SemiBold" FontSize="12"
+                        <TextBlock Text="{DynamicResource PMap_ColType}" Foreground="White" FontWeight="SemiBold" FontSize="12"
                                    VerticalAlignment="Center" Margin="4,0,0,0"/>
                     </Border>
                     <Border Grid.Row="0" Grid.Column="3" Background="#2B579A" BorderBrush="#1D3F73" BorderThickness="0,0,1,1">
-                        <TextBlock Text="Centro de Custo" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                        <TextBlock Text="{DynamicResource PMap_ColCostCenter}" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                    VerticalAlignment="Center" Margin="4,0,0,0" TextWrapping="Wrap"/>
                     </Border>
                     <ScrollViewer x:Name="MonthHeaderScroll" Grid.Row="0" Grid.Column="4"
@@ -163,7 +163,7 @@
             </TabItem>
 
             <!-- ══ ABA 2: Distribuição por Pessoa ══ -->
-            <TabItem Header="Distribuição por Pessoa">
+            <TabItem Header="{DynamicResource PMap_TabDistribution}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="22"/>  <!-- Cabeçalho projetos -->
@@ -177,7 +177,7 @@
 
                     <!-- Cabeçalho fixo -->
                     <Border Grid.Row="0" Grid.Column="0" Background="#2B579A" BorderBrush="#1D3F73" BorderThickness="0,0,1,1">
-                        <TextBlock Text="Recurso / Pessoa" Foreground="White" FontWeight="SemiBold" FontSize="12"
+                        <TextBlock Text="{DynamicResource PMap_ColResourcePerson}" Foreground="White" FontWeight="SemiBold" FontSize="12"
                                    VerticalAlignment="Center" Margin="6,0,0,0"/>
                     </Border>
                     <Border Grid.Row="1" Grid.Column="0" Background="#E8EEF8" BorderBrush="#C5D0E0" BorderThickness="0,0,1,1"/>
@@ -225,7 +225,7 @@
             </TabItem>
 
             <!-- ══ ABA 3: Stories por Recurso ══ -->
-            <TabItem Header="Stories por Recurso">
+            <TabItem Header="{DynamicResource PMap_TabStories}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="44"/>  <!-- Cabeçalho meses (2 linhas) -->
@@ -244,15 +244,15 @@
                                 <RowDefinition Height="22"/>
                             </Grid.RowDefinitions>
                             <StackPanel Grid.Row="1" Orientation="Horizontal">
-                                <TextBlock Text="Recurso" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                                <TextBlock Text="{DynamicResource PMap_ColResource}" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            Width="130" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                                <TextBlock Text="Projeto" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                                <TextBlock Text="{DynamicResource PMap_ColProject}" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            Width="120" VerticalAlignment="Center"/>
                                 <TextBlock Text="EPIC" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            Width="140" VerticalAlignment="Center"/>
                                 <TextBlock Text="Feature" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            Width="140" VerticalAlignment="Center"/>
-                                <TextBlock Text="Story / Tarefa" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                                <TextBlock Text="{DynamicResource PMap_ColStory}" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </Grid>
@@ -293,7 +293,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Rateio">
+            <TabItem Header="{DynamicResource PMap_TabRateio}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -336,7 +336,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Interno">
+            <TabItem Header="{DynamicResource PMap_TabInternal}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="44"/>
@@ -353,18 +353,18 @@
                                 <RowDefinition Height="22"/>
                                 <RowDefinition Height="22"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="Recursos Internos — horas por story/tarefa"
+                            <TextBlock Grid.Row="0" Text="{DynamicResource PMap_InternalHeader}"
                                        Foreground="White" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"/>
                             <StackPanel Grid.Row="1" Orientation="Horizontal">
-                                <TextBlock Text="Recurso" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                                <TextBlock Text="{DynamicResource PMap_ColResource}" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            Width="130" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                                <TextBlock Text="Projeto" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                                <TextBlock Text="{DynamicResource PMap_ColProject}" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            Width="120" VerticalAlignment="Center"/>
                                 <TextBlock Text="EPIC" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            Width="140" VerticalAlignment="Center"/>
                                 <TextBlock Text="Feature" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            Width="140" VerticalAlignment="Center"/>
-                                <TextBlock Text="Story / Tarefa" Foreground="White" FontWeight="SemiBold" FontSize="11"
+                                <TextBlock Text="{DynamicResource PMap_ColStory}" Foreground="White" FontWeight="SemiBold" FontSize="11"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </Grid>

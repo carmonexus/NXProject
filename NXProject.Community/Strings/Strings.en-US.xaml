@@ -621,4 +621,70 @@
     <sys:String x:Key="RCost_ExportSuccess">Exported successfully:&#10;{0}</sys:String>
     <sys:String x:Key="RCost_ExportError">Error exporting:&#10;{0}</sys:String>
 
+    <!-- Cost breakdown -->
+    <sys:String x:Key="CostDD_Title">Cost Breakdown</sys:String>
+    <sys:String x:Key="CostDD_ColStory">Story / Task</sys:String>
+    <sys:String x:Key="CostDD_ColResource">Resource</sys:String>
+    <sys:String x:Key="CostDD_ColCost">Cost (R$)</sys:String>
+    <sys:String x:Key="CostDD_Total">TOTAL</sys:String>
+    <sys:String x:Key="CostDD_TotalPeriod">Period total</sys:String>
+    <sys:String x:Key="CostDD_TitleFormat">{0} — {1}  [{2}]</sys:String>
+    <sys:String x:Key="CostDD_SubtitleFormat">{0}  •  {1}</sys:String>
+
+    <!-- Project Allocation Map -->
+    <sys:String x:Key="PMap_Title">Project Allocation Map</sys:String>
+    <sys:String x:Key="PMap_SelectProjects">☑ Select Projects</sys:String>
+    <sys:String x:Key="PMap_ImportDevOps">☁ Import from DevOps</sys:String>
+    <sys:String x:Key="PMap_StartMonth">Start month:</sys:String>
+    <sys:String x:Key="PMap_EndMonth">End month:</sys:String>
+    <sys:String x:Key="PMap_HideZeroed">Hide zeroed rows/columns</sys:String>
+    <sys:String x:Key="PMap_CompletedHH">Completed HH (done and open)</sys:String>
+    <sys:String x:Key="PMap_CompletedHHTip">Checked: tasks with logged HH show the actual; open tasks without logged HH show the estimate prorated up to the current month.</sys:String>
+    <sys:String x:Key="PMap_ExportExcel">📊 Export Excel</sys:String>
+    <sys:String x:Key="PMap_TabHours">Hours by Project</sys:String>
+    <sys:String x:Key="PMap_TabDistribution">Distribution by Person</sys:String>
+    <sys:String x:Key="PMap_TabStories">Stories by Resource</sys:String>
+    <sys:String x:Key="PMap_TabRateio">Cost Sharing</sys:String>
+    <sys:String x:Key="PMap_TabInternal">Internal</sys:String>
+    <sys:String x:Key="PMap_ColProject">Project</sys:String>
+    <sys:String x:Key="PMap_ColResource">Resource</sys:String>
+    <sys:String x:Key="PMap_ColType">Type</sys:String>
+    <sys:String x:Key="PMap_ColCostCenter">Cost Center</sys:String>
+    <sys:String x:Key="PMap_ColResourcePerson">Resource / Person</sys:String>
+    <sys:String x:Key="PMap_ColStory">Story / Task</sys:String>
+    <sys:String x:Key="PMap_InternalHeader">Internal Resources — hours per story/task</sys:String>
+    <sys:String x:Key="PMap_NoProjectSelected">No project selected. Use '☑ Select Projects' to add.</sys:String>
+    <sys:String x:Key="PMap_StoriesTitle">Stories for {0}  —  {1:MMMM/yyyy}  —  {2}</sys:String>
+    <sys:String x:Key="PMap_SrColHHTotal">HH Total</sys:String>
+    <sys:String x:Key="PMap_SrColHHMonth">HH Month</sys:String>
+    <sys:String x:Key="PMap_SrColPctDone">% Done</sys:String>
+    <sys:String x:Key="PMap_SrColStart">Start</sys:String>
+    <sys:String x:Key="PMap_SrColFinish">Finish</sys:String>
+    <sys:String x:Key="PMap_SrColDevOps">DevOps</sys:String>
+    <sys:String x:Key="PMap_NoStories">No story found for this period.</sys:String>
+    <sys:String x:Key="PMap_TotalHHMonth">Total HH Month:  {0}</sys:String>
+    <sys:String x:Key="PMap_Total">Total</sys:String>
+    <sys:String x:Key="PMap_NoData">No data in the period.</sys:String>
+    <sys:String x:Key="PMap_NoDataExportPeriod">No data in the period to export.</sys:String>
+    <sys:String x:Key="PMap_Subtotal">Subtotal</sys:String>
+    <sys:String x:Key="PMap_EmptyListMsg">No DevOps project registered.&#10;&#10;Go to View → Project Portfolio to configure the projects.</sys:String>
+    <sys:String x:Key="PMap_EmptyListTitle">Empty list</sys:String>
+    <sys:String x:Key="PMap_NoConnMsg">Azure DevOps connection not configured.&#10;&#10;Go to Export → Sync to configure the PAT and the organization URL.</sys:String>
+    <sys:String x:Key="PMap_NoConnTitle">Configuration required</sys:String>
+    <sys:String x:Key="PMap_NoProjSelMsg">No project selected. Use '☑ Select Projects' first.</sys:String>
+    <sys:String x:Key="PMap_NoProjSelTitle">No projects</sys:String>
+    <sys:String x:Key="PMap_NoRootMsg">No selected project has a root ID configured.&#10;&#10;Edit the Project Portfolio (View → Project Portfolio) and enter each project's root ID.</sys:String>
+    <sys:String x:Key="PMap_NoRootTitle">Root ID not configured</sys:String>
+    <sys:String x:Key="PMap_Importing">Importing {0}/{1}: {2}...</sys:String>
+    <sys:String x:Key="PMap_ImportErrors">Errors during import:&#10;&#10;{0}</sys:String>
+    <sys:String x:Key="PMap_PartialImport">Partial import</sys:String>
+    <sys:String x:Key="PMap_NoDataToExport">No data to export. Import the projects first.</sys:String>
+    <sys:String x:Key="PMap_Export">Export</sys:String>
+    <sys:String x:Key="PMap_DefaultMapName">Allocation Map</sys:String>
+    <sys:String x:Key="PMap_ExportTitleFmt">Export — {0}</sys:String>
+    <sys:String x:Key="PMap_Exported">Exported: {0}</sys:String>
+    <sys:String x:Key="PMap_ExportError">Error exporting:&#10;{0}</sys:String>
+    <sys:String x:Key="PMap_Error">Error</sys:String>
+    <sys:String x:Key="PMap_ProjectsSelected">{0} project(s) selected. Click '☁ Import from DevOps' to load the data.</sys:String>
+
 </ResourceDictionary>
