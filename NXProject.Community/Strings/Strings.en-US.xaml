@@ -1066,4 +1066,33 @@
     <sys:String x:Key="SMap_Cancel">Cancel</sys:String>
     <sys:String x:Key="SMap_ReplaceConfirm">Replace the current mappings with the defaults?</sys:String>
 
+    <!-- Story and Incident Status (chart) -->
+    <sys:String x:Key="SChart_Title">Story and Incident Status</sys:String>
+    <sys:String x:Key="SChart_Configure">⚙ Configure Status</sys:String>
+    <sys:String x:Key="SChart_SubtitleProject">Project: {0}  ·  </sys:String>
+    <sys:String x:Key="SChart_SubtitleMapped">{0} mapping(s) configured  ·  unmapped states use the original TFS name</sys:String>
+    <sys:String x:Key="SChart_SubtitleUnmapped">No mappings configured · grouping by original TFS states  ·  tasks without TFS: 0%=New, &gt;0%=Active, 100%=Closed</sys:String>
+    <sys:String x:Key="SChart_SummaryTotal">Total: {0} stories  |  </sys:String>
+    <sys:String x:Key="SChart_BarLabel">{0}: {1}</sys:String>
+    <sys:String x:Key="SChart_NoStories">No story found in the schedule.</sys:String>
+    <sys:String x:Key="SChart_Tooltip">{0}&#10;Stories: {1}  ({2:0.#}%)</sys:String>
+
+    <!-- Activity Diagram -->
+    <sys:String x:Key="Diag_Title">Activity Diagram</sys:String>
+    <sys:String x:Key="Diag_ExpandLevels">Expand levels:</sys:String>
+    <sys:String x:Key="Diag_ResetZoom">↺ Reset zoom</sys:String>
+    <sys:String x:Key="Diag_SavePrefs">💾 Save preferences</sys:String>
+    <sys:String x:Key="Diag_Saved">✔ Saved</sys:String>
+    <sys:String x:Key="Diag_LevelEpic">Epic</sys:String>
+    <sys:String x:Key="Diag_LevelN">Level {0}</sys:String>
+    <sys:String x:Key="Diag_ResizeTip">Drag to resize all boxes at this level</sys:String>
+    <sys:String x:Key="Diag_RowType">Type</sys:String>
+    <sys:String x:Key="Diag_RowState">State</sys:String>
+    <sys:String x:Key="Diag_RowStart">Start</sys:String>
+    <sys:String x:Key="Diag_RowFinish">Finish</sys:String>
+    <sys:String x:Key="Diag_RowHHEst">Est. HH</sys:String>
+    <sys:String x:Key="Diag_RowDone">Done</sys:String>
+    <sys:String x:Key="Diag_RowResource">Resource</sys:String>
+    <sys:String x:Key="Diag_RowSprint">Sprint</sys:String>
+
 </ResourceDictionary>

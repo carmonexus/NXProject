@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.StoryStatusChartWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Status de Stories e Incidentes"
+        Title="{DynamicResource SChart_Title}"
         Width="700" Height="520"
         MinWidth="500" MinHeight="380"
         WindowStartupLocation="CenterOwner"
@@ -20,12 +20,12 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
-                <TextBlock Text="Status de Stories e Incidentes"
+                <TextBlock Text="{DynamicResource SChart_Title}"
                            FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"/>
                 <TextBlock x:Name="SubtitleText"
                            FontSize="11" Foreground="#666" Margin="0,2,0,0"/>
             </StackPanel>
-            <Button Grid.Column="1" Content="⚙ Configurar Status"
+            <Button Grid.Column="1" Content="{DynamicResource SChart_Configure}"
                     Height="28" Padding="10,0" VerticalAlignment="Top"
                     Click="OnConfigureClick"/>
         </Grid>

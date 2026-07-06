@@ -88,10 +88,10 @@ namespace NXProject.Views
         private void UpdateSubtitle(List<StoryStatusMapping> mappings)
         {
             var projectName = string.IsNullOrWhiteSpace(_vm.Project.Name) ? null : _vm.Project.Name.Trim();
-            var projectPart = projectName != null ? $"Projeto: {projectName}  ·  " : "";
+            var projectPart = projectName != null ? AppStrings.Get("SChart_SubtitleProject", projectName) : "";
             SubtitleText.Text = projectPart + (mappings.Count > 0
-                ? $"{mappings.Count} mapeamento(s) configurado(s)  ·  estados sem mapeamento usam o nome original do TFS"
-                : "Sem mapeamentos configurados · agrupando pelos estados originais do TFS  ·  tarefas sem TFS: 0%=Novo, >0%=Ativo, 100%=Fechado");
+                ? AppStrings.Get("SChart_SubtitleMapped", mappings.Count)
+                : AppStrings.Get("SChart_SubtitleUnmapped"));
         }
 
         private List<StatusBucket> ComputeBuckets(List<StoryStatusMapping> mappings)
@@ -185,9 +185,9 @@ namespace NXProject.Views
         {
             int total = _buckets.Sum(b => b.Count);
             SummaryText.Text = total > 0
-                ? $"Total: {total} stories  |  " +
-                  string.Join("  ·  ", _buckets.Select(b => $"{b.Label}: {b.Count}"))
-                : "Nenhuma story encontrada no cronograma.";
+                ? AppStrings.Get("SChart_SummaryTotal", total) +
+                  string.Join("  ·  ", _buckets.Select(b => AppStrings.Get("SChart_BarLabel", b.Label, b.Count)))
+                : AppStrings.Get("SChart_NoStories");
         }
 
         private void OnConfigureClick(object sender, RoutedEventArgs e)
@@ -355,7 +355,7 @@ namespace NXProject.Views
             if (sender is not Rectangle rect || rect.Tag is not StatusBucket b) return;
             int total = _buckets.Sum(x => x.Count);
             double pct = total > 0 ? b.Count * 100.0 / total : 0;
-            _tooltipText.Text = $"{b.Label}\nStories: {b.Count}  ({pct:0.#}%)";
+            _tooltipText.Text = AppStrings.Get("SChart_Tooltip", b.Label, b.Count, pct);
             _tooltip.Visibility = Visibility.Visible;
             MoveTooltip(e.GetPosition(ChartCanvas));
         }

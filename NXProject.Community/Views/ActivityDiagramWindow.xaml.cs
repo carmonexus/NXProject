@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using NXProject.Models;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -145,9 +146,9 @@ namespace NXProject.Views
                 _levelItems.Where(li => li.IsExpanded).Select(li => li.Depth.ToString()));
 
             _project.IsDirty = true;
-            SavePrefsBtn.Content = "✔ Salvo";
+            SavePrefsBtn.Content = AppStrings.Get("Diag_Saved");
             var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-            t.Tick += (_, _) => { SavePrefsBtn.Content = "💾 Salvar preferências"; t.Stop(); };
+            t.Tick += (_, _) => { SavePrefsBtn.Content = AppStrings.Get("Diag_SavePrefs"); t.Stop(); };
             t.Start();
         }
 
@@ -183,14 +184,14 @@ namespace NXProject.Views
 
         private static List<LevelItem> BuildLevelItems(int maxDepth)
         {
-            var labels = new[] { "Épico", "Feature", "Story", "Task" };
+            var labels = new[] { AppStrings.Get("Diag_LevelEpic"), "Feature", "Story", "Task" };
             var items  = new List<LevelItem>();
             for (int d = 0; d <= maxDepth; d++)
             {
                 items.Add(new LevelItem
                 {
                     Depth = d,
-                    Label = d < labels.Length ? labels[d] : $"Nível {d}"
+                    Label = d < labels.Length ? labels[d] : AppStrings.Get("Diag_LevelN", d)
                 });
             }
             return items;
@@ -425,7 +426,7 @@ namespace NXProject.Views
                 Fill    = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
                 Cursor  = Cursors.SizeWE,
                 RadiusX = 3, RadiusY = 3,
-                ToolTip = "Arraste para redimensionar todas as caixas deste nível"
+                ToolTip = AppStrings.Get("Diag_ResizeTip")
             };
             Canvas.SetLeft(handle, node.X + nw - HandleW);
             Canvas.SetTop(handle,  node.Y);
@@ -663,16 +664,16 @@ namespace NXProject.Views
             });
 
             AddRow("ID",       idKey);
-            AddRow("Tipo",     t.TfsType ?? "—");
-            AddRow("Estado",   estado);
-            AddRow("Início",   inicio);
-            AddRow("Fim",      fim);
-            AddRow("HH Est.",  hh);
-            AddRow("Concluído", pc);
-            AddRow("Recurso",  recurso);
+            AddRow(AppStrings.Get("Diag_RowType"),     t.TfsType ?? "—");
+            AddRow(AppStrings.Get("Diag_RowState"),   estado);
+            AddRow(AppStrings.Get("Diag_RowStart"),   inicio);
+            AddRow(AppStrings.Get("Diag_RowFinish"),      fim);
+            AddRow(AppStrings.Get("Diag_RowHHEst"),  hh);
+            AddRow(AppStrings.Get("Diag_RowDone"), pc);
+            AddRow(AppStrings.Get("Diag_RowResource"),  recurso);
 
             if (!string.IsNullOrWhiteSpace(t.TfsIterationPath))
-                AddRow("Sprint", t.TfsIterationPath.Split('\\').Last());
+                AddRow(AppStrings.Get("Diag_RowSprint"), t.TfsIterationPath.Split('\\').Last());
 
             return new ToolTip
             {

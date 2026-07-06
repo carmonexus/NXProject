@@ -1066,4 +1066,33 @@
     <sys:String x:Key="SMap_Cancel">Cancelar</sys:String>
     <sys:String x:Key="SMap_ReplaceConfirm">Substituir os mapeamentos atuais pelos padrões?</sys:String>
 
+    <!-- Status de Stories e Incidentes (gráfico) -->
+    <sys:String x:Key="SChart_Title">Status de Stories e Incidentes</sys:String>
+    <sys:String x:Key="SChart_Configure">⚙ Configurar Status</sys:String>
+    <sys:String x:Key="SChart_SubtitleProject">Projeto: {0}  ·  </sys:String>
+    <sys:String x:Key="SChart_SubtitleMapped">{0} mapeamento(s) configurado(s)  ·  estados sem mapeamento usam o nome original do TFS</sys:String>
+    <sys:String x:Key="SChart_SubtitleUnmapped">Sem mapeamentos configurados · agrupando pelos estados originais do TFS  ·  tarefas sem TFS: 0%=Novo, &gt;0%=Ativo, 100%=Fechado</sys:String>
+    <sys:String x:Key="SChart_SummaryTotal">Total: {0} stories  |  </sys:String>
+    <sys:String x:Key="SChart_BarLabel">{0}: {1}</sys:String>
+    <sys:String x:Key="SChart_NoStories">Nenhuma story encontrada no cronograma.</sys:String>
+    <sys:String x:Key="SChart_Tooltip">{0}&#10;Stories: {1}  ({2:0.#}%)</sys:String>
+
+    <!-- Diagrama de Atividades -->
+    <sys:String x:Key="Diag_Title">Diagrama de Atividades</sys:String>
+    <sys:String x:Key="Diag_ExpandLevels">Expandir níveis:</sys:String>
+    <sys:String x:Key="Diag_ResetZoom">↺ Resetar zoom</sys:String>
+    <sys:String x:Key="Diag_SavePrefs">💾 Salvar preferências</sys:String>
+    <sys:String x:Key="Diag_Saved">✔ Salvo</sys:String>
+    <sys:String x:Key="Diag_LevelEpic">Épico</sys:String>
+    <sys:String x:Key="Diag_LevelN">Nível {0}</sys:String>
+    <sys:String x:Key="Diag_ResizeTip">Arraste para redimensionar todas as caixas deste nível</sys:String>
+    <sys:String x:Key="Diag_RowType">Tipo</sys:String>
+    <sys:String x:Key="Diag_RowState">Estado</sys:String>
+    <sys:String x:Key="Diag_RowStart">Início</sys:String>
+    <sys:String x:Key="Diag_RowFinish">Fim</sys:String>
+    <sys:String x:Key="Diag_RowHHEst">HH Est.</sys:String>
+    <sys:String x:Key="Diag_RowDone">Concluído</sys:String>
+    <sys:String x:Key="Diag_RowResource">Recurso</sys:String>
+    <sys:String x:Key="Diag_RowSprint">Sprint</sys:String>
+
 </ResourceDictionary>
