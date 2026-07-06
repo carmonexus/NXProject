@@ -28,7 +28,7 @@ namespace NXProject.Views
                     Refresh();
                     if (focusCost)
                     {
-                        Title = "Pessoas — Configuração de Custo";
+                        Title = AppStrings.Get("People_TitleCost");
                         ColCostType.Visibility   = Visibility.Visible;
                         ColHourlyRate.Visibility = Visibility.Visible;
                         ColMonthlyRate.Visibility = Visibility.Visible;
@@ -44,7 +44,7 @@ namespace NXProject.Views
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Erro ao carregar pessoas:\n{ex.Message}", "Pessoas",
+                    MessageBox.Show(AppStrings.Get("People_LoadError", ex.Message), AppStrings.Get("People_Title"),
                         MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             };
@@ -66,7 +66,7 @@ namespace NXProject.Views
 
             PeopleGrid.ItemsSource = null;
             PeopleGrid.ItemsSource = _rows;
-            CountLabel.Text = $"{_rows.Count} pessoa(s)";
+            CountLabel.Text = AppStrings.Get("People_Count", _rows.Count);
             StatusText.Text = string.Empty;
         }
 
@@ -101,14 +101,14 @@ namespace NXProject.Views
 
             _vm.Project.Resources.Add(res);
             Refresh();
-            MarkDirty("Pessoa incluída.");
+            MarkDirty(AppStrings.Get("People_PersonAdded"));
         }
 
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
             if (PeopleGrid.SelectedItem is not PersonRow row)
             {
-                MessageBox.Show("Selecione uma pessoa para excluir.", "Pessoas",
+                MessageBox.Show(AppStrings.Get("People_SelectToDelete"), AppStrings.Get("People_Title"),
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -116,8 +116,8 @@ namespace NXProject.Views
             if (row.TaskCount > 0)
             {
                 var r = MessageBox.Show(
-                    $"\"{row.Name}\" está alocada em {row.TaskCount} atividade(s).\nDeseja excluir mesmo assim?",
-                    "Confirmar exclusão",
+                    AppStrings.Get("People_DeleteAllocated", row.Name, row.TaskCount),
+                    AppStrings.Get("People_ConfirmDelete"),
                     MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (r != MessageBoxResult.Yes)
                     return;
@@ -129,7 +129,7 @@ namespace NXProject.Views
             else
             {
                 var r = MessageBox.Show(
-                    $"Excluir \"{row.Name}\"?", "Confirmar exclusão",
+                    AppStrings.Get("People_DeleteConfirm", row.Name), AppStrings.Get("People_ConfirmDelete"),
                     MessageBoxButton.YesNo, MessageBoxImage.Question);
                 if (r != MessageBoxResult.Yes)
                     return;
@@ -137,14 +137,14 @@ namespace NXProject.Views
 
             _vm.Project.Resources.Remove(row.Resource);
             Refresh();
-            MarkDirty("Pessoa excluída.");
+            MarkDirty(AppStrings.Get("People_PersonDeleted"));
         }
 
         private void OnSaveLocalClick(object sender, RoutedEventArgs e)
         {
             CommitPendingEdits();
             ResourceKindConfigService.Save(_vm.Project.Resources);
-            StatusText.Text = "Configuração de Alocação salva localmente.";
+            StatusText.Text = AppStrings.Get("People_AllocSaved");
         }
 
         private void OnSaveCostConfigClick(object sender, RoutedEventArgs e)
@@ -158,11 +158,11 @@ namespace NXProject.Views
             {
                 NXProject.Services.ResourceCostConfigService.Save(
                     dlg.FilePath, _vm.Project.Resources, dlg.Password);
-                StatusText.Text = $"Config de custo salva em {System.IO.Path.GetFileName(dlg.FilePath)}.";
+                StatusText.Text = AppStrings.Get("People_CostSaved", System.IO.Path.GetFileName(dlg.FilePath));
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao salvar: {ex.Message}", "Erro",
+                MessageBox.Show(AppStrings.Get("People_SaveError", ex.Message), AppStrings.Get("People_Error"),
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -173,13 +173,13 @@ namespace NXProject.Views
 
             var fileDlg = new Microsoft.Win32.OpenFileDialog
             {
-                Title  = "Carregar configuração de custo",
+                Title  = AppStrings.Get("People_LoadCostTitle"),
                 Filter = NXProject.Services.ResourceCostConfigService.FileFilter
             };
             if (fileDlg.ShowDialog(this) != true) return;
 
             var pwdDlg = new PasswordDialog(
-                $"Digite a senha para descriptografar:\n{System.IO.Path.GetFileName(fileDlg.FileName)}",
+                AppStrings.Get("People_EnterPassword", System.IO.Path.GetFileName(fileDlg.FileName)),
                 confirmMode: false) { Owner = this };
             if (pwdDlg.ShowDialog() != true) return;
 
@@ -195,16 +195,16 @@ namespace NXProject.Views
                     row.HourlyRate    = r.CostPerHour;
                     row.MonthlyRate   = r.MonthlyRate;
                 }
-                StatusText.Text = $"Config de custo carregada: {n} recurso(s) atualizados.";
+                StatusText.Text = AppStrings.Get("People_CostLoaded", n);
             }
             catch (System.Security.Cryptography.CryptographicException)
             {
-                MessageBox.Show("Senha incorreta ou arquivo corrompido.", "Erro de descriptografia",
+                MessageBox.Show(AppStrings.Get("People_WrongPassword"), AppStrings.Get("People_DecryptError"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao carregar: {ex.Message}", "Erro",
+                MessageBox.Show(AppStrings.Get("People_LoadError2", ex.Message), AppStrings.Get("People_Error"),
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -220,7 +220,7 @@ namespace NXProject.Views
                 TaskScheduleService.RecalculateFinishFromAssignments(t);
                 count++;
             }
-            MarkDirty($"Cronograma recalculado ({count} atividades).");
+            MarkDirty(AppStrings.Get("People_Recalculated", count));
         }
 
         private void OnCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
@@ -233,7 +233,7 @@ namespace NXProject.Views
                 if (e.Row.Item is PersonRow row)
                     row.PushToModel();
 
-                MarkDirty("Alteração salva.");
+                MarkDirty(AppStrings.Get("People_ChangeSaved"));
             }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
@@ -505,7 +505,7 @@ namespace NXProject.Views
                         System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out decimal monthly) || monthly < 0)
                 {
-                    MessageBox.Show("Informe um valor mensal válido.", "Valor inválido",
+                    MessageBox.Show(AppStrings.Get("People_InvalidMonthly"), AppStrings.Get("People_InvalidValue"),
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
@@ -520,7 +520,7 @@ namespace NXProject.Views
                         System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture, out decimal hourly) || hourly < 0)
                 {
-                    MessageBox.Show("Informe um valor por hora válido.", "Valor inválido",
+                    MessageBox.Show(AppStrings.Get("People_InvalidHourly"), AppStrings.Get("People_InvalidValue"),
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
@@ -533,7 +533,7 @@ namespace NXProject.Views
             _editingRow.CostTypeLabel = isMonthly ? "Monthly" : "Hourly";
             PeopleGrid.Items.Refresh();
             CostAppliedText.Visibility = Visibility.Visible;
-            MarkDirty("Configuração de custo aplicada.");
+            MarkDirty(AppStrings.Get("People_CostApplied"));
         }
     }
 
@@ -551,14 +551,14 @@ namespace NXProject.Views
 
         public AddPersonDialog()
         {
-            Title = "Incluir Pessoa";
+            Title = AppStrings.Get("People_AddPersonTitle");
             Width = 340;
             SizeToContent = SizeToContent.Height;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             ResizeMode = ResizeMode.NoResize;
 
             var ok = new Button { Content = "OK", IsDefault = true, Width = 80, Height = 28, Margin = new Thickness(0, 0, 8, 0) };
-            var cancel = new Button { Content = "Cancelar", IsCancel = true, Width = 80, Height = 28 };
+            var cancel = new Button { Content = AppStrings.Get("People_Cancel"), IsCancel = true, Width = 80, Height = 28 };
             ok.Click += (_, _) => { if (_nameBox.Text.Trim().Length > 0) DialogResult = true; };
             cancel.Click += (_, _) => DialogResult = false;
 
@@ -567,9 +567,9 @@ namespace NXProject.Views
             buttons.Children.Add(cancel);
 
             var panel = new StackPanel { Margin = new Thickness(16) };
-            panel.Children.Add(new TextBlock { Text = "Nome *", FontSize = 12, Margin = new Thickness(0, 0, 0, 3) });
+            panel.Children.Add(new TextBlock { Text = AppStrings.Get("People_NameLabel"), FontSize = 12, Margin = new Thickness(0, 0, 0, 3) });
             panel.Children.Add(_nameBox);
-            panel.Children.Add(new TextBlock { Text = "E-mail", FontSize = 12, Margin = new Thickness(0, 0, 0, 3) });
+            panel.Children.Add(new TextBlock { Text = AppStrings.Get("People_ColEmail"), FontSize = 12, Margin = new Thickness(0, 0, 0, 3) });
             panel.Children.Add(_emailBox);
             panel.Children.Add(buttons);
 

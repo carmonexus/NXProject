@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.PeopleWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Pessoas"
+        Title="{DynamicResource People_Title}"
         Width="860" Height="560"
         MinWidth="640" MinHeight="380"
         WindowStartupLocation="CenterOwner"
@@ -17,33 +17,33 @@
 
         <!-- Cabeçalho -->
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="Pessoas" FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"/>
+            <TextBlock Text="{DynamicResource People_Title}" FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"/>
             <TextBlock FontSize="12" Foreground="#666" Margin="0,4,0,0" TextWrapping="Wrap">
-                <Run Text="% Disponibilidade"/>
-                <Run Text=" = quanto do dia útil a pessoa dedica a este projeto (ex.: 80% → 40 h estimadas levam 50 h no cronograma)."/>
+                <Run Text="{DynamicResource People_AvailRun1}"/>
+                <Run Text="{DynamicResource People_AvailRun2}"/>
             </TextBlock>
         </StackPanel>
 
         <!-- Barra de ferramentas -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="+ Incluir Pessoa" Width="130" Height="28" Click="OnAddClick"/>
-            <Button Content="Excluir Selecionada" Width="140" Height="28" Margin="8,0,0,0"
+            <Button Content="{DynamicResource People_Add}" Width="130" Height="28" Click="OnAddClick"/>
+            <Button Content="{DynamicResource People_DeleteSelected}" Width="140" Height="28" Margin="8,0,0,0"
                     Click="OnDeleteClick"/>
-            <Button Content="Recalcular Cronograma" Width="160" Height="28" Margin="8,0,0,0"
-                    Click="OnRecalcClick" ToolTip="Recalcula as datas-fim de todas as tarefas com base na disponibilidade atual"/>
-            <Button Content="💾 Salvar Local" Width="120" Height="28" Margin="16,0,0,0"
+            <Button Content="{DynamicResource People_Recalc}" Width="160" Height="28" Margin="8,0,0,0"
+                    Click="OnRecalcClick" ToolTip="{DynamicResource People_RecalcTip}"/>
+            <Button Content="{DynamicResource People_SaveLocal}" Width="120" Height="28" Margin="16,0,0,0"
                     Click="OnSaveLocalClick"
                     Background="#5B3270" Foreground="White"
-                    ToolTip="Salva a configuração de Alocação (Project/Internal) de cada pessoa localmente. Preservada ao re-importar do TFS."/>
+                    ToolTip="{DynamicResource People_SaveLocalTip}"/>
             <Separator x:Name="CostSeparator" Margin="12,4" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Visibility="Collapsed"/>
-            <Button x:Name="SaveCostBtn" Content="💰 Salvar config de custo..." Width="165" Height="28"
+            <Button x:Name="SaveCostBtn" Content="{DynamicResource People_SaveCost}" Width="165" Height="28"
                     Click="OnSaveCostConfigClick" Visibility="Collapsed"
                     Background="#1B5E20" Foreground="White"
-                    ToolTip="Salva os valores de custo (R$/hora e R$/mês) em arquivo separado do cronograma, para sigilo."/>
-            <Button x:Name="LoadCostBtn" Content="📂 Carregar config de custo..." Width="175" Height="28" Margin="6,0,0,0"
+                    ToolTip="{DynamicResource People_SaveCostTip}"/>
+            <Button x:Name="LoadCostBtn" Content="{DynamicResource People_LoadCost}" Width="175" Height="28" Margin="6,0,0,0"
                     Click="OnLoadCostConfigClick" Visibility="Collapsed"
                     Background="#0D47A1" Foreground="White"
-                    ToolTip="Carrega os valores de custo de um arquivo .nxcost."/>
+                    ToolTip="{DynamicResource People_LoadCostTip}"/>
             <TextBlock x:Name="CountLabel" VerticalAlignment="Center" Margin="16,0,0,0"
                        FontSize="12" Foreground="#666"/>
         </StackPanel>
@@ -72,15 +72,15 @@
 
             <DataGrid.Columns>
                 <!-- Nome -->
-                <DataGridTextColumn Header="Nome" Width="*" MinWidth="120"
+                <DataGridTextColumn Header="{DynamicResource People_ColName}" Width="*" MinWidth="120"
                                     Binding="{Binding Name, UpdateSourceTrigger=LostFocus}"/>
 
                 <!-- Email -->
-                <DataGridTextColumn Header="E-mail" Width="200"
+                <DataGridTextColumn Header="{DynamicResource People_ColEmail}" Width="200"
                                     Binding="{Binding Email, UpdateSourceTrigger=LostFocus}"/>
 
                 <!-- % Disponibilidade — coluna central da tela -->
-                <DataGridTemplateColumn Header="% Disponibilidade" Width="140">
+                <DataGridTemplateColumn Header="{DynamicResource People_ColAvailability}" Width="140">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Grid>
@@ -117,7 +117,7 @@
                 </DataGridTemplateColumn>
 
                 <!-- HH/dia -->
-                <DataGridTextColumn Header="HH/dia (cap.)" Width="90"
+                <DataGridTextColumn Header="{DynamicResource People_ColHhDay}" Width="90"
                                     Binding="{Binding MaxUnitsPerDay, UpdateSourceTrigger=LostFocus}">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -127,7 +127,7 @@
                 </DataGridTextColumn>
 
                 <!-- Alocação: Project ou Internal -->
-                <DataGridTemplateColumn Header="Alocação" Width="100">
+                <DataGridTemplateColumn Header="{DynamicResource People_ColAllocation}" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding KindLabel}" VerticalAlignment="Center"
@@ -145,7 +145,7 @@
                 </DataGridTemplateColumn>
 
                 <!-- Tipo -->
-                <DataGridTemplateColumn Header="Tipo" Width="90">
+                <DataGridTemplateColumn Header="{DynamicResource People_ColType}" Width="90">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding TypeLabel}" VerticalAlignment="Center"
@@ -162,7 +162,7 @@
                 </DataGridTemplateColumn>
 
                 <!-- Modelo de custo (somente leitura — editar no painel lateral) -->
-                <DataGridTextColumn x:Name="ColCostType" Header="Custo" Width="80" Visibility="Collapsed"
+                <DataGridTextColumn x:Name="ColCostType" Header="{DynamicResource People_ColCost}" Width="80" Visibility="Collapsed"
                                     IsReadOnly="True" Binding="{Binding CostTypeLabel}">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -173,7 +173,7 @@
                 </DataGridTextColumn>
 
                 <!-- Valor/hora (somente leitura) -->
-                <DataGridTextColumn x:Name="ColHourlyRate" Header="R$/hora" Width="80" Visibility="Collapsed"
+                <DataGridTextColumn x:Name="ColHourlyRate" Header="{DynamicResource People_ColHourly}" Width="80" Visibility="Collapsed"
                                     IsReadOnly="True" Binding="{Binding HourlyRate, StringFormat={}{0:N2}}">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -184,7 +184,7 @@
                 </DataGridTextColumn>
 
                 <!-- Valor/mês (somente leitura) -->
-                <DataGridTextColumn x:Name="ColMonthlyRate" Header="R$/mês" Width="90" Visibility="Collapsed"
+                <DataGridTextColumn x:Name="ColMonthlyRate" Header="{DynamicResource People_ColMonthly}" Width="90" Visibility="Collapsed"
                                     IsReadOnly="True" Binding="{Binding MonthlyRate, StringFormat={}{0:N2}}">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -195,7 +195,7 @@
                 </DataGridTextColumn>
 
                 <!-- Tarefas -->
-                <DataGridTextColumn Header="Atividades" Width="80"
+                <DataGridTextColumn Header="{DynamicResource People_ColActivities}" Width="80"
                                     Binding="{Binding TaskCount, Mode=OneWay}" IsReadOnly="True">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -215,7 +215,7 @@
                     Background="#FAFAFA" BorderBrush="#DDD" BorderThickness="1,0,0,0"
                     Margin="8,0,0,0">
                 <StackPanel Margin="16,12">
-                    <TextBlock Text="⚙ Configuração de Custo" FontSize="13" FontWeight="SemiBold"
+                    <TextBlock Text="{DynamicResource People_CostConfig}" FontSize="13" FontWeight="SemiBold"
                                Foreground="#1B5E20" Margin="0,0,0,12"/>
 
                     <TextBlock x:Name="CostPersonName" FontSize="12" FontWeight="SemiBold"
@@ -225,44 +225,44 @@
                     <Border x:Name="InternalNotice" Background="#FFF8E1" BorderBrush="#F9A825"
                             BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,0,0,12"
                             Visibility="Collapsed">
-                        <TextBlock Text="🔒 Recurso Interno — não possui custo de projeto."
+                        <TextBlock Text="{DynamicResource People_InternalNotice}"
                                    FontSize="11" Foreground="#795548" TextWrapping="Wrap"/>
                     </Border>
 
                     <!-- Tipo de custo -->
                     <StackPanel x:Name="CostFieldsPanel">
-                    <TextBlock Text="Tipo de custo" FontSize="11" Foreground="#555" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource People_CostType}" FontSize="11" Foreground="#555" Margin="0,0,0,4"/>
                     <ComboBox x:Name="CostTypeCombo" Height="30" FontSize="12"
                               SelectionChanged="OnCostTypeComboChanged">
-                        <ComboBoxItem Content="Por Hora (R$/hora)" Tag="Hourly"/>
-                        <ComboBoxItem Content="Mensal (R$/mês)"    Tag="Monthly"/>
+                        <ComboBoxItem Content="{DynamicResource People_CostHourly}" Tag="Hourly"/>
+                        <ComboBoxItem Content="{DynamicResource People_CostMonthly}"    Tag="Monthly"/>
                     </ComboBox>
 
                     <Border Height="1" Background="#E0E0E0" Margin="0,14,0,14"/>
 
                     <!-- R$/hora -->
                     <StackPanel x:Name="HourlyPanel">
-                        <TextBlock Text="Valor por hora (R$)" FontSize="11" Foreground="#555" Margin="0,0,0,4"/>
+                        <TextBlock Text="{DynamicResource People_HourlyValue}" FontSize="11" Foreground="#555" Margin="0,0,0,4"/>
                         <TextBox x:Name="HourlyRateBox" Height="32" FontSize="13" Padding="8,4"
                                  TextChanged="OnCostFieldChanged"/>
-                        <TextBlock Text="Ex: 150,00" FontSize="10" Foreground="#999" Margin="0,3,0,0"/>
+                        <TextBlock Text="{DynamicResource People_HourlyExample}" FontSize="10" Foreground="#999" Margin="0,3,0,0"/>
                     </StackPanel>
 
                     <!-- R$/mês -->
                     <StackPanel x:Name="MonthlyPanel" Visibility="Collapsed">
-                        <TextBlock Text="Valor mensal (R$)" FontSize="11" Foreground="#555" Margin="0,0,0,4"/>
+                        <TextBlock Text="{DynamicResource People_MonthlyValue}" FontSize="11" Foreground="#555" Margin="0,0,0,4"/>
                         <TextBox x:Name="MonthlyRateBox" Height="32" FontSize="13" Padding="8,4"
                                  TextChanged="OnCostFieldChanged"/>
                         <TextBlock FontSize="10" Foreground="#777" Margin="0,6,0,0" TextWrapping="Wrap"
-                                   Text="O custo total de todas as HH do recurso no projeto equivale a 1 salário mensal. O valor é rateado por feature proporcionalmente às horas."/>
+                                   Text="{DynamicResource People_MonthlyNote}"/>
                     </StackPanel>
 
                     <Border Height="1" Background="#E0E0E0" Margin="0,14,0,14"/>
 
-                    <Button x:Name="ApplyCostBtn" Content="✔ Aplicar" Height="32" FontSize="12"
+                    <Button x:Name="ApplyCostBtn" Content="{DynamicResource People_Apply}" Height="32" FontSize="12"
                             FontWeight="SemiBold" Background="#1B5E20" Foreground="White"
                             Click="OnApplyCostClick"/>
-                    <TextBlock x:Name="CostAppliedText" Text="Salvo." FontSize="11"
+                    <TextBlock x:Name="CostAppliedText" Text="{DynamicResource People_Saved}" FontSize="11"
                                Foreground="#2E7D32" Margin="0,6,0,0" Visibility="Collapsed"/>
                     </StackPanel>
                 </StackPanel>
@@ -273,7 +273,7 @@
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="0,0,16,0"
                        FontSize="12" Foreground="#2E7D32"/>
-            <Button Content="Fechar" Width="90" Height="30" IsCancel="True" Click="OnCloseClick"/>
+            <Button Content="{DynamicResource People_Close}" Width="90" Height="30" IsCancel="True" Click="OnCloseClick"/>
         </StackPanel>
     </Grid>
 </Window>
