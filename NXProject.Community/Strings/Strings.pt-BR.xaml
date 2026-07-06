@@ -581,4 +581,44 @@
     <sys:String x:Key="People_Cancel">Cancelar</sys:String>
     <sys:String x:Key="People_NameLabel">Nome *</sys:String>
 
+    <!-- Custo por Recurso -->
+    <sys:String x:Key="RCost_Title">Custo por Recurso</sys:String>
+    <sys:String x:Key="RCost_HeaderTitle">💰 Custo por Recurso — Feature</sys:String>
+    <sys:String x:Key="RCost_OnlyWithCost">Apenas com custo</sys:String>
+    <sys:String x:Key="RCost_OpenFile">📂 Abrir arquivo de custo</sys:String>
+    <sys:String x:Key="RCost_OpenFileTip">Carrega um arquivo .nxcost para simular custos diferentes</sys:String>
+    <sys:String x:Key="RCost_ExportExcel">📊 Exportar para Excel</sys:String>
+    <sys:String x:Key="RCost_SectionResources">Recursos</sys:String>
+    <sys:String x:Key="RCost_SectionFeatures">Features</sys:String>
+    <sys:String x:Key="RCost_ColResource">Recurso</sys:String>
+    <sys:String x:Key="RCost_ColType">Tipo</sys:String>
+    <sys:String x:Key="RCost_Close">Fechar</sys:String>
+    <sys:String x:Key="RCost_Total">TOTAL</sys:String>
+    <sys:String x:Key="RCost_CapexTot">CAPEX tot.</sys:String>
+    <sys:String x:Key="RCost_OpexTot">OPEX tot.</sys:String>
+    <sys:String x:Key="RCost_TotalRow">Total {0}</sys:String>
+    <sys:String x:Key="RCost_GrandTotal">TOTAL GERAL</sys:String>
+    <sys:String x:Key="RCost_HeaderTotal">  Total: R$ {0:N0}</sys:String>
+    <sys:String x:Key="RCost_Summary">{0} features | CAPEX: R$ {1:N0} | OPEX: R$ {2:N0} | Total: R$ {3:N0}</sys:String>
+    <sys:String x:Key="RCost_LineCount">{0} linhas</sys:String>
+    <sys:String x:Key="RCost_OpenFileTitle">Abrir arquivo de custo por recurso</sys:String>
+    <sys:String x:Key="RCost_FileLoaded">Arquivo carregado. {0} recurso(s) atualizado(s).</sys:String>
+    <sys:String x:Key="RCost_CostLoadedTitle">Custo carregado</sys:String>
+    <sys:String x:Key="RCost_WrongPassword">Senha incorreta ou arquivo corrompido.</sys:String>
+    <sys:String x:Key="RCost_Error">Erro</sys:String>
+    <sys:String x:Key="RCost_LoadError">Erro ao carregar arquivo:&#10;{0}</sys:String>
+    <sys:String x:Key="RCost_PasswordTitle">Senha do arquivo de custo</sys:String>
+    <sys:String x:Key="RCost_EnterPassword">Digite a senha para descriptografar o arquivo:</sys:String>
+    <sys:String x:Key="RCost_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="RCost_NoData">Nenhum dado para exportar.</sys:String>
+    <sys:String x:Key="RCost_Export">Exportar</sys:String>
+    <sys:String x:Key="RCost_ExportTitle">Exportar Custo por Recurso</sys:String>
+    <sys:String x:Key="RCost_ExcelTotal">TOTAL</sys:String>
+    <sys:String x:Key="RCost_ExcelCapexTotal">CAPEX total</sys:String>
+    <sys:String x:Key="RCost_ExcelOpexTotal">OPEX total</sys:String>
+    <sys:String x:Key="RCost_ExcelResTotal">TOTAL {0}</sys:String>
+    <sys:String x:Key="RCost_ExcelSheetName">Custo por Recurso</sys:String>
+    <sys:String x:Key="RCost_ExportSuccess">Exportado com sucesso:&#10;{0}</sys:String>
+    <sys:String x:Key="RCost_ExportError">Erro ao exportar:&#10;{0}</sys:String>
+
 </ResourceDictionary>

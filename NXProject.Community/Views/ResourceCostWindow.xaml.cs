@@ -163,9 +163,9 @@ namespace NXProject.Views
                 monthGrid.Children.Add(MakeHeaderCell("OPEX",  0, 2, MonOpxW, opexMonBg,  Color.FromRgb(20, 70, 20)));
                 HeaderPanel.Items.Add(monthGrid);
             }
-            HeaderPanel.Items.Add(MakeTotalHeader("TOTAL",      TotW,    Color.FromRgb(25,  60, 120)));
-            HeaderPanel.Items.Add(MakeTotalHeader("CAPEX tot.", CapTotW, Color.FromRgb(140, 70,  20)));
-            HeaderPanel.Items.Add(MakeTotalHeader("OPEX tot.",  OpxTotW, Color.FromRgb(43, 100,  43)));
+            HeaderPanel.Items.Add(MakeTotalHeader(AppStrings.Get("RCost_Total"),    TotW,    Color.FromRgb(25,  60, 120)));
+            HeaderPanel.Items.Add(MakeTotalHeader(AppStrings.Get("RCost_CapexTot"), CapTotW, Color.FromRgb(140, 70,  20)));
+            HeaderPanel.Items.Add(MakeTotalHeader(AppStrings.Get("RCost_OpexTot"),  OpxTotW, Color.FromRgb(43, 100,  43)));
 
             // ── Linhas por recurso ──
             var grandCapexByMonth = new decimal[_months.Count];
@@ -243,7 +243,7 @@ namespace NXProject.Views
                 decimal resTotCapex = resCapexByMonth.Sum();
                 decimal resTotOpex  = resOpexByMonth.Sum();
                 var (leftTot, dataTot) = MakeTotalRow(
-                    $"Total {resGroup.Key}", resCapexByMonth, resOpexByMonth, visMi,
+                    AppStrings.Get("RCost_TotalRow", resGroup.Key), resCapexByMonth, resOpexByMonth, visMi,
                     Color.FromRgb(220, 235, 255), Color.FromRgb(43, 87, 154));
                 LeftPanel.Items.Add(leftTot);
                 DataPanel.Items.Add(dataTot);
@@ -261,7 +261,7 @@ namespace NXProject.Views
             }
 
             // Grand total
-            var (gtLeft, gtData) = MakeTotalRow("TOTAL GERAL", grandCapexByMonth, grandOpexByMonth, visMi,
+            var (gtLeft, gtData) = MakeTotalRow(AppStrings.Get("RCost_GrandTotal"), grandCapexByMonth, grandOpexByMonth, visMi,
                 Color.FromRgb(43, 87, 154), Colors.White, fontSize: 12);
             LeftPanel.Items.Add(gtLeft);
             DataPanel.Items.Add(gtData);
@@ -408,9 +408,9 @@ namespace NXProject.Views
         private void UpdateSummary(List<FeatureRow> rows, decimal grandCapex = 0, decimal grandOpex = 0)
         {
             decimal total = grandCapex + grandOpex;
-            TotalText.Text   = $"  Total: R$ {total:N0}";
-            SummaryText.Text = $"{rows.Count} features | CAPEX: R$ {grandCapex:N0} | OPEX: R$ {grandOpex:N0} | Total: R$ {total:N0}";
-            CountText.Text   = $"{rows.Count} linhas";
+            TotalText.Text   = AppStrings.Get("RCost_HeaderTotal", total);
+            SummaryText.Text = AppStrings.Get("RCost_Summary", rows.Count, grandCapex, grandOpex, total);
+            CountText.Text   = AppStrings.Get("RCost_LineCount", rows.Count);
         }
 
         // ── Events ────────────────────────────────────────────────────────────
@@ -439,7 +439,7 @@ namespace NXProject.Views
         {
             var dlg = new OpenFileDialog
             {
-                Title            = "Abrir arquivo de custo por recurso",
+                Title            = AppStrings.Get("RCost_OpenFileTitle"),
                 Filter           = ResourceCostConfigService.FileFilter,
                 InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
             };
@@ -455,16 +455,16 @@ namespace NXProject.Views
                 _months   = _allLines.Select(l => new DateTime(l.Year, l.Month, 1)).Distinct().OrderBy(d => d).ToList();
                 _rows     = BuildFeatureRows(_allLines);
                 BuildGrid();
-                MessageBox.Show($"Arquivo carregado. {updated} recurso(s) atualizado(s).",
-                    "Custo carregado", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("RCost_FileLoaded", updated),
+                    AppStrings.Get("RCost_CostLoadedTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (System.Security.Cryptography.CryptographicException)
             {
-                MessageBox.Show("Senha incorreta ou arquivo corrompido.", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(AppStrings.Get("RCost_WrongPassword"), AppStrings.Get("RCost_Error"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao carregar arquivo:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(AppStrings.Get("RCost_LoadError", ex.Message), AppStrings.Get("RCost_Error"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -472,7 +472,7 @@ namespace NXProject.Views
         {
             var win = new Window
             {
-                Title                 = "Senha do arquivo de custo",
+                Title                 = AppStrings.Get("RCost_PasswordTitle"),
                 Width                 = 340,
                 Height                = 148,
                 ResizeMode            = ResizeMode.NoResize,
@@ -481,12 +481,12 @@ namespace NXProject.Views
                 Background            = System.Windows.Media.Brushes.White
             };
             var root = new StackPanel { Margin = new Thickness(16) };
-            root.Children.Add(new TextBlock { Text = "Digite a senha para descriptografar o arquivo:", Margin = new Thickness(0, 0, 0, 8) });
+            root.Children.Add(new TextBlock { Text = AppStrings.Get("RCost_EnterPassword"), Margin = new Thickness(0, 0, 0, 8) });
             var pb = new PasswordBox { Height = 28, Margin = new Thickness(0, 0, 0, 12) };
             root.Children.Add(pb);
             var btns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
             var ok     = new Button { Content = "OK",       Width = 80, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
-            var cancel = new Button { Content = "Cancelar", Width = 80, IsCancel  = true };
+            var cancel = new Button { Content = AppStrings.Get("RCost_Cancel"), Width = 80, IsCancel  = true };
             ok.Click     += (_, _) => { win.DialogResult = true;  win.Close(); };
             cancel.Click += (_, _) => { win.DialogResult = false; win.Close(); };
             btns.Children.Add(ok);
@@ -503,7 +503,7 @@ namespace NXProject.Views
         private void OnExportExcelClick(object sender, RoutedEventArgs e)
         {
             var filtered = ApplyFilters();
-            if (filtered.Count == 0) { MessageBox.Show("Nenhum dado para exportar.", "Exportar", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+            if (filtered.Count == 0) { MessageBox.Show(AppStrings.Get("RCost_NoData"), AppStrings.Get("RCost_Export"), MessageBoxButton.OK, MessageBoxImage.Information); return; }
 
             var visMi = Enumerable.Range(0, _months.Count)
                 .Where(mi => filtered.Any(r => r.CapexByMonth[mi] > 0 || r.OpexByMonth[mi] > 0))
@@ -511,7 +511,7 @@ namespace NXProject.Views
 
             var dlg = new SaveFileDialog
             {
-                Title            = "Exportar Custo por Recurso",
+                Title            = AppStrings.Get("RCost_ExportTitle"),
                 Filter           = "Excel XML 2003 (*.xml)|*.xml",
                 FileName         = $"custo-recurso-{DateTime.Today:yyyy-MM-dd}.xml",
                 InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
@@ -564,13 +564,13 @@ namespace NXProject.Views
 
                 // Cabeçalho linha 1
                 var hdr1 = new System.Xml.Linq.XElement(ns + "Row", new System.Xml.Linq.XAttribute(ss + "Height", "22"));
-                hdr1.Add(XCell(ns, "Recurso", "H0")); hdr1.Add(XCell(ns, "EPIC", "H0"));
-                hdr1.Add(XCell(ns, "Feature", "H0")); hdr1.Add(XCell(ns, "Tipo", "H0"));
+                hdr1.Add(XCell(ns, AppStrings.Get("RCost_ColResource"), "H0")); hdr1.Add(XCell(ns, "EPIC", "H0"));
+                hdr1.Add(XCell(ns, "Feature", "H0")); hdr1.Add(XCell(ns, AppStrings.Get("RCost_ColType"), "H0"));
                 foreach (var mi in visMi)
                     hdr1.Add(XCell(ns, _months[mi].ToString("MMM/yyyy"), "HM", mergeAcross: 1));
-                hdr1.Add(XCell(ns, "TOTAL",      "HT"));
-                hdr1.Add(XCell(ns, "CAPEX total","HT"));
-                hdr1.Add(XCell(ns, "OPEX total", "HT"));
+                hdr1.Add(XCell(ns, AppStrings.Get("RCost_ExcelTotal"),      "HT"));
+                hdr1.Add(XCell(ns, AppStrings.Get("RCost_ExcelCapexTotal"),"HT"));
+                hdr1.Add(XCell(ns, AppStrings.Get("RCost_ExcelOpexTotal"), "HT"));
                 tableChildren.Add(hdr1);
 
                 // Cabeçalho linha 2
@@ -617,7 +617,7 @@ namespace NXProject.Views
                     // Total recurso
                     decimal resTot = resCapex.Sum() + resOpex.Sum();
                     var rRow = new System.Xml.Linq.XElement(ns + "Row", new System.Xml.Linq.XAttribute(ss + "Height", "20"));
-                    rRow.Add(XCell(ns, $"TOTAL {resGroup.Key}", "RL"));
+                    rRow.Add(XCell(ns, AppStrings.Get("RCost_ExcelResTotal", resGroup.Key), "RL"));
                     rRow.Add(XCell(ns, "", "RL")); rRow.Add(XCell(ns, "", "RL")); rRow.Add(XCell(ns, "", "RL"));
                     foreach (var mi in visMi)
                     {
@@ -635,7 +635,7 @@ namespace NXProject.Views
                 // Grand total
                 decimal gTot = grandCapex.Sum() + grandOpex.Sum();
                 var gRow = new System.Xml.Linq.XElement(ns + "Row", new System.Xml.Linq.XAttribute(ss + "Height", "22"));
-                gRow.Add(XCell(ns, "TOTAL GERAL", "GL"));
+                gRow.Add(XCell(ns, AppStrings.Get("RCost_GrandTotal"), "GL"));
                 gRow.Add(XCell(ns, "", "GL")); gRow.Add(XCell(ns, "", "GL")); gRow.Add(XCell(ns, "", "GL"));
                 foreach (var mi in visMi)
                 {
@@ -653,15 +653,15 @@ namespace NXProject.Views
                         new System.Xml.Linq.XAttribute(System.Xml.Linq.XNamespace.Xmlns + "ss", ss),
                         styles,
                         new System.Xml.Linq.XElement(ns + "Worksheet",
-                            new System.Xml.Linq.XAttribute(ss + "Name", "Custo por Recurso"),
+                            new System.Xml.Linq.XAttribute(ss + "Name", AppStrings.Get("RCost_ExcelSheetName")),
                             new System.Xml.Linq.XElement(ns + "Table", tableChildren))));
 
                 workbook.Save(dlg.FileName);
-                MessageBox.Show($"Exportado com sucesso:\n{dlg.FileName}", "Exportar", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("RCost_ExportSuccess", dlg.FileName), AppStrings.Get("RCost_Export"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao exportar:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(AppStrings.Get("RCost_ExportError", ex.Message), AppStrings.Get("RCost_Error"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
