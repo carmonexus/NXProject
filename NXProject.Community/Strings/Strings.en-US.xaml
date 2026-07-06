@@ -190,6 +190,7 @@
     <sys:String x:Key="Ctx_AddStoryBlock">Add Story Block</sys:String>
     <sys:String x:Key="Ctx_ViewOnlineActivities">View Online Activities...</sys:String>
     <sys:String x:Key="Ctx_EditDescription">Edit Description...</sys:String>
+    <sys:String x:Key="Ctx_ResolveManualConflict">Resolve conflict manually...</sys:String>
 
     <!-- Context menus — start date cell -->
     <sys:String x:Key="Ctx_FixStartDate">Fix start date</sys:String>
@@ -775,8 +776,11 @@
     <sys:String x:Key="Conf_OverwriteError">Error overwriting:&#10;{0}</sys:String>
     <sys:String x:Key="Conf_Error">Error</sys:String>
     <sys:String x:Key="Conf_StartedLabel">Started ({0:0}%) — do not overwrite</sys:String>
+    <sys:String x:Key="Conf_StartedManualLabel">Started ({0:0}%) — manual overwrite allowed</sys:String>
     <sys:String x:Key="Conf_LocalTip">Local: {0}</sys:String>
     <sys:String x:Key="Conf_DevOpsTip">DevOps: {0}</sys:String>
+    <sys:String x:Key="Conf_LoadingManual">Loading DevOps conflict...</sys:String>
+    <sys:String x:Key="Conf_ManualError">Error loading manual conflict:&#10;{0}</sys:String>
 
     <!-- DevOps link (edit work item) -->
     <sys:String x:Key="WiEdit_Title">DevOps Link</sys:String>
@@ -929,5 +933,63 @@
     <sys:String x:Key="TLR_ZerarConfirm">Zero Estimated HH and Current HH of {0} unclosed task(s)?</sys:String>
     <sys:String x:Key="TLR_BlockLabelOn">🔴 Block</sys:String>
     <sys:String x:Key="TLR_BlockLabelOff">Block</sys:String>
+
+    <!-- Project Progress and S-Curve / Delays -->
+    <sys:String x:Key="Delay_Title">Project Progress and S-Curve</sys:String>
+    <sys:String x:Key="Delay_TabCurveS">Progress S-Curve</sys:String>
+    <sys:String x:Key="Delay_LegendPlanned">Original HH (Planned)</sys:String>
+    <sys:String x:Key="Delay_LegendActual">Duration HH (Current + Remaining)</sys:String>
+    <sys:String x:Key="Delay_TabByResource">Delays by Resource</sys:String>
+    <sys:String x:Key="Delay_Refresh">Refresh</sys:String>
+    <sys:String x:Key="Delay_SelectCell">Select a cell in the grid</sys:String>
+    <sys:String x:Key="Delay_TabDelayed">Delayed Activities</sys:String>
+    <sys:String x:Key="Delay_TabBlocked">Blocked</sys:String>
+    <sys:String x:Key="Delay_ColId">ID</sys:String>
+    <sys:String x:Key="Delay_ColName">Name</sys:String>
+    <sys:String x:Key="Delay_ColResource">Resource</sys:String>
+    <sys:String x:Key="Delay_ColRemaining">Remaining HH</sys:String>
+    <sys:String x:Key="Delay_ColStart">Start</sys:String>
+    <sys:String x:Key="Delay_ColFinish">Finish</sys:String>
+    <sys:String x:Key="Delay_ColFinishEst">Est. Finish</sys:String>
+    <sys:String x:Key="Delay_ColDelay">Delay</sys:String>
+    <sys:String x:Key="Delay_ColPredecessors">Predecessors</sys:String>
+    <sys:String x:Key="Delay_ColJustification">Justification</sys:String>
+    <sys:String x:Key="Delay_ColPercent">% Complete</sys:String>
+    <sys:String x:Key="Delay_ColSprint">Sprint</sys:String>
+    <sys:String x:Key="Delay_ColType">Type</sys:String>
+    <sys:String x:Key="Delay_ColTags">Tags</sys:String>
+    <sys:String x:Key="Delay_Bucket1d">Delay 1d</sys:String>
+    <sys:String x:Key="Delay_Bucket2d">Delay 2d</sys:String>
+    <sys:String x:Key="Delay_Bucket3d">Delay 3d</sys:String>
+    <sys:String x:Key="Delay_Bucket1w">Delay 1 wk</sys:String>
+    <sys:String x:Key="Delay_Bucket1Sprint">≥ 1 Sprint</sys:String>
+    <sys:String x:Key="Delay_NoDelayed">No delayed activity.</sys:String>
+    <sys:String x:Key="Delay_SummaryByResource">{0} delayed activity(ies) across {1} resource(s)</sys:String>
+    <sys:String x:Key="Delay_HeaderResource">Resource</sys:String>
+    <sys:String x:Key="Delay_Total">Total</sys:String>
+    <sys:String x:Key="Delay_NoResource">No resource</sys:String>
+    <sys:String x:Key="Delay_CellCount">{0} activity(ies) — {1}</sys:String>
+    <sys:String x:Key="Delay_NoDelayInBucket">No delays in this range</sys:String>
+    <sys:String x:Key="Delay_DetailsTitle">{0}  —  {1}</sys:String>
+    <sys:String x:Key="Delay_AllDelayedSummary">{0} delayed activity(ies)  |  Total remaining: {1:0.#} h</sys:String>
+    <sys:String x:Key="Delay_NoSprintsCurve">No sprints configured to generate the S-Curve.</sys:String>
+    <sys:String x:Key="Delay_NoHoursCurve">No estimated hours to generate the S-Curve.</sys:String>
+    <sys:String x:Key="Delay_CurveSummary">Duration HH: {0:0.#}%  |  Original HH: {1:0.#}%  |  Gap: {2:0.#}%</sys:String>
+    <sys:String x:Key="Delay_AxisProgress">% Progress</sys:String>
+    <sys:String x:Key="Delay_Today">Today</sys:String>
+    <sys:String x:Key="Delay_BlockedSummary">{0} blocked item(s)</sys:String>
+    <sys:String x:Key="Delay_NoBlocked">No blocked item.</sys:String>
+    <sys:String x:Key="Delay_TooltipPlanned">Original HH: {0:0.#}%</sys:String>
+    <sys:String x:Key="Delay_TooltipActual">Duration HH: {0:0.#}%</sys:String>
+    <sys:String x:Key="Delay_JustifyTitle">#{0} — {1}</sys:String>
+    <sys:String x:Key="Delay_JustifyLabel">Delay justification:</sys:String>
+    <sys:String x:Key="Delay_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Delay_OneDay">1 day</sys:String>
+    <sys:String x:Key="Delay_Days">{0:0} days</sys:String>
+    <sys:String x:Key="Delay_OneWeek">1 wk</sys:String>
+    <sys:String x:Key="Delay_Weeks">{0} wk</sys:String>
+    <sys:String x:Key="Delay_GapNeg">Gap: -{0:0.#}%</sys:String>
+    <sys:String x:Key="Delay_GapPos">Gap: +{0:0.#}%</sys:String>
+    <sys:String x:Key="Delay_NoGap">No gap</sys:String>
 
 </ResourceDictionary>

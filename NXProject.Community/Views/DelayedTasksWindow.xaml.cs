@@ -42,11 +42,11 @@ namespace NXProject.Views
 
         private static readonly (DelayBucket Bucket, string Header)[] BucketDefs =
         [
-            (DelayBucket.OneDay,    "Atraso 1d"),
-            (DelayBucket.TwoDays,   "Atraso 2d"),
-            (DelayBucket.ThreeDays, "Atraso 3d"),
-            (DelayBucket.OneWeek,   "Atraso 1 sem"),
-            (DelayBucket.OneSprint, "≥ 1 Sprint")
+            (DelayBucket.OneDay,    "Delay_Bucket1d"),
+            (DelayBucket.TwoDays,   "Delay_Bucket2d"),
+            (DelayBucket.ThreeDays, "Delay_Bucket3d"),
+            (DelayBucket.OneWeek,   "Delay_Bucket1w"),
+            (DelayBucket.OneSprint, "Delay_Bucket1Sprint")
         ];
 
         private DelayBucket ClassifyDelay(double workingDays, int sprintDays)
@@ -143,19 +143,19 @@ namespace NXProject.Views
             var resources = delayed.Select(d => d.Resource).Distinct().OrderBy(r => r).ToList();
             if (resources.Count == 0)
             {
-                SummaryText.Text = "Nenhuma atividade atrasada.";
+                SummaryText.Text = AppStrings.Get("Delay_NoDelayed");
                 return;
             }
-            SummaryText.Text = $"{delayed.Count} atividade(s) atrasada(s) em {resources.Count} recurso(s)";
+            SummaryText.Text = AppStrings.Get("Delay_SummaryByResource", delayed.Count, resources.Count);
 
             DelayGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
             foreach (var _ in BucketDefs)
                 DelayGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
 
             DelayGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(34) });
-            AddHeaderCell("Recurso", 0, 0);
+            AddHeaderCell(AppStrings.Get("Delay_HeaderResource"), 0, 0);
             for (int c = 0; c < BucketDefs.Length; c++)
-                AddHeaderCell(BucketDefs[c].Header, 0, c + 1);
+                AddHeaderCell(AppStrings.Get(BucketDefs[c].Header), 0, c + 1);
 
             for (int r = 0; r < resources.Count; r++)
             {
@@ -172,7 +172,7 @@ namespace NXProject.Views
 
             var totalRow = resources.Count + 1;
             DelayGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
-            AddHeaderCell("Total", totalRow, 0, HorizontalAlignment.Left);
+            AddHeaderCell(AppStrings.Get("Delay_Total"), totalRow, 0, HorizontalAlignment.Left);
             for (int c = 0; c < BucketDefs.Length; c++)
             {
                 var b = BucketDefs[c].Bucket;
@@ -194,7 +194,7 @@ namespace NXProject.Views
                     var days = rawH / Math.Max(1, ProjectCalendarService.WorkingHoursPerDay);
                     return (Task: t,
                             Bucket: ClassifyDelay(days, sprintDays),
-                            Resource: t.Model.Resources.FirstOrDefault()?.Resource?.Name ?? "Sem recurso");
+                            Resource: t.Model.Resources.FirstOrDefault()?.Resource?.Name ?? AppStrings.Get("Delay_NoResource"));
                 })
                 .ToList();
         }
@@ -246,8 +246,8 @@ namespace NXProject.Views
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 ToolTip = hasItems
-                    ? $"{count} atividade(s) — {BucketDefs.First(b => b.Bucket == bucket).Header}"
-                    : "Sem atrasos nesta faixa"
+                    ? AppStrings.Get("Delay_CellCount", count, AppStrings.Get(BucketDefs.First(b => b.Bucket == bucket).Header))
+                    : AppStrings.Get("Delay_NoDelayInBucket")
             };
             btn.Click += OnCountCellClick;
             var border = MakeBorder(false);
@@ -284,7 +284,7 @@ namespace NXProject.Views
         {
             _selectedResource = resourceName;
             _selectedBucket = bucket;
-            DetailsTitle.Text = $"{resourceName}  —  {BucketDefs.First(b => b.Bucket == bucket).Header}";
+            DetailsTitle.Text = AppStrings.Get("Delay_DetailsTitle", resourceName, AppStrings.Get(BucketDefs.First(b => b.Bucket == bucket).Header));
 
             var today = DateTime.Today;
             var sprintDays = Math.Max(5, _vm.Project.SprintDurationDays);
@@ -310,9 +310,8 @@ namespace NXProject.Views
 
             AllDelayedGrid.ItemsSource = rows;
             AllDelayedSummary.Text = rows.Count > 0
-                ? $"{rows.Count} atividade(s) atrasada(s)  |  " +
-                  $"Total faltante: {rows.Sum(r => r.RemainingHours):0.#} h"
-                : "Nenhuma atividade atrasada.";
+                ? AppStrings.Get("Delay_AllDelayedSummary", rows.Count, rows.Sum(r => r.RemainingHours))
+                : AppStrings.Get("Delay_NoDelayed");
         }
 
         // ── ABA 3: Curva S ───────────────────────────────────────────────────
@@ -337,7 +336,7 @@ namespace NXProject.Views
             var sprints = GetOrderedSprints();
             if (sprints.Count == 0)
             {
-                DrawNoDataMessage("Sem sprints configuradas para gerar a Curva S.");
+                DrawNoDataMessage(AppStrings.Get("Delay_NoSprintsCurve"));
                 return;
             }
 
@@ -351,7 +350,7 @@ namespace NXProject.Views
             var totalOriginalHours = tasksWithSprint.Sum(t => GetOriginalHours(t.Model));
             if (totalOriginalHours < 0.01)
             {
-                DrawNoDataMessage("Sem horas estimadas para gerar a Curva S.");
+                DrawNoDataMessage(AppStrings.Get("Delay_NoHoursCurve"));
                 return;
             }
 
@@ -389,8 +388,7 @@ namespace NXProject.Views
                 ?? points.LastOrDefault();
             var gap = currentPoint != null ? currentPoint.PlannedPct - currentPoint.ActualPct : 0;
             CurveSummary.Text = currentPoint != null
-                ? $"HH Duração: {currentPoint.ActualPct:0.#}%  |  HH Original: {currentPoint.PlannedPct:0.#}%  |  " +
-                  $"Gap: {gap:0.#}%"
+                ? AppStrings.Get("Delay_CurveSummary", currentPoint.ActualPct, currentPoint.PlannedPct, gap)
                 : string.Empty;
         }
 
@@ -549,7 +547,7 @@ namespace NXProject.Views
             }
 
             // Eixo Y título
-            var yTitle = MakeText("% Progresso", 10, "#555");
+            var yTitle = MakeText(AppStrings.Get("Delay_AxisProgress"), 10, "#555");
             yTitle.RenderTransform = new RotateTransform(-90);
             yTitle.RenderTransformOrigin = new Point(0.5, 0.5);
             System.Windows.Controls.Canvas.SetLeft(yTitle, 2);
@@ -574,7 +572,7 @@ namespace NXProject.Views
                 Opacity = 0.7
             };
             CurveCanvas.Children.Add(line);
-            var lbl = MakeText("Hoje", 9, "#6060AA");
+            var lbl = MakeText(AppStrings.Get("Delay_Today"), 9, "#6060AA");
             System.Windows.Controls.Canvas.SetLeft(lbl, x + 3);
             System.Windows.Controls.Canvas.SetTop(lbl, pt + 2);
             CurveCanvas.Children.Add(lbl);
@@ -703,8 +701,8 @@ namespace NXProject.Views
 
             BlockedGrid.ItemsSource = rows;
             BlockedSummary.Text = rows.Count > 0
-                ? $"{rows.Count} item(ns) em bloqueio"
-                : "Nenhum item em bloqueio.";
+                ? AppStrings.Get("Delay_BlockedSummary", rows.Count)
+                : AppStrings.Get("Delay_NoBlocked");
         }
 
         public sealed class BlockedTaskRow
@@ -721,7 +719,7 @@ namespace NXProject.Views
             public string TfsType     => _vm.Model.TfsType ?? "—";
             public string Name        => _vm.Model.Name;
             public string ResourceName =>
-                _vm.Model.Resources.FirstOrDefault()?.Resource?.Name ?? "Sem recurso";
+                _vm.Model.Resources.FirstOrDefault()?.Resource?.Name ?? AppStrings.Get("Delay_NoResource");
             public string PercentText => $"{_vm.Model.PercentComplete:0}%";
             public string StartText   => _vm.Model.Start.ToString("dd/MM/yy");
             public string FinishText  => ProjectCalendarService
@@ -769,12 +767,12 @@ namespace NXProject.Views
             }
 
             TooltipSprint.Text = nearest.Label;
-            TooltipPlanned.Text = $"HH Original: {nearest.PlannedPct:0.#}%";
-            TooltipActual.Text = $"HH Duração: {nearest.ActualPct:0.#}%";
+            TooltipPlanned.Text = AppStrings.Get("Delay_TooltipPlanned", nearest.PlannedPct);
+            TooltipActual.Text = AppStrings.Get("Delay_TooltipActual", nearest.ActualPct);
             var gap = nearest.PlannedPct - nearest.ActualPct;
-            TooltipGap.Text = gap > 0.1  ? $"Gap: -{gap:0.#}%"
-                            : gap < -0.1 ? $"Gap: +{-gap:0.#}%"
-                            : "Sem gap";
+            TooltipGap.Text = gap > 0.1  ? AppStrings.Get("Delay_GapNeg", gap)
+                            : gap < -0.1 ? AppStrings.Get("Delay_GapPos", -gap)
+                            : AppStrings.Get("Delay_NoGap");
 
             CurveTooltip.Visibility = Visibility.Visible;
             var tx = pos.X + 14;
@@ -795,7 +793,7 @@ namespace NXProject.Views
 
             var dlg = new Window
             {
-                Title = $"#{row.DisplayId} — {row.Name}",
+                Title = AppStrings.Get("Delay_JustifyTitle", row.DisplayId, row.Name),
                 Owner = this,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ResizeMode = ResizeMode.CanResize,
@@ -807,7 +805,7 @@ namespace NXProject.Views
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            var lbl = new TextBlock { Text = "Justificativa do atraso:",
+            var lbl = new TextBlock { Text = AppStrings.Get("Delay_JustifyLabel"),
                 FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 6) };
             Grid.SetRow(lbl, 0); root.Children.Add(lbl);
 
@@ -823,7 +821,7 @@ namespace NXProject.Views
             var btns = new StackPanel { Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right };
             var ok     = new Button { Content = "OK",       Width = 80, IsDefault = true, Margin = new Thickness(0,0,8,0) };
-            var cancel = new Button { Content = "Cancelar", Width = 80, IsCancel = true };
+            var cancel = new Button { Content = AppStrings.Get("Delay_Cancel"), Width = 80, IsCancel = true };
             ok.Click += (_, _) => { dlg.DialogResult = true; dlg.Close(); };
             btns.Children.Add(ok); btns.Children.Add(cancel);
             Grid.SetRow(btns, 2); root.Children.Add(btns);
@@ -854,7 +852,7 @@ namespace NXProject.Views
             public string DisplayId => _vm.DisplayId;
             public string Name      => _vm.Model.Name;
             public string ResourceName =>
-                _vm.Model.Resources.FirstOrDefault()?.Resource?.Name ?? "Sem recurso";
+                _vm.Model.Resources.FirstOrDefault()?.Resource?.Name ?? AppStrings.Get("Delay_NoResource");
             public double RemainingHours =>
                 Math.Max(0, TaskScheduleService.GetEffectiveDurationHours(_vm.Model)
                             * (1.0 - _vm.Model.PercentComplete / 100.0));
@@ -872,10 +870,10 @@ namespace NXProject.Views
                 {
                     var d = DelayDays;
                     if (d < 0.5) return "—";
-                    if (d < 1.5) return "1 dia";
-                    if (d < 7)   return $"{d:0} dias";
+                    if (d < 1.5) return AppStrings.Get("Delay_OneDay");
+                    if (d < 7)   return AppStrings.Get("Delay_Days", d);
                     var weeks = (int)(d / 5);
-                    return weeks == 1 ? "1 sem" : $"{weeks} sem";
+                    return weeks == 1 ? AppStrings.Get("Delay_OneWeek") : AppStrings.Get("Delay_Weeks", weeks);
                 }
             }
             public string SprintLabel => GetSprintLabel();

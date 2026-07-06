@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.DelayedTasksWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Progresso do Projeto e Curva S"
+        Title="{DynamicResource Delay_Title}"
         Width="1100" Height="720"
         MinWidth="860" MinHeight="520"
         WindowStartupLocation="CenterOwner"
@@ -14,14 +14,14 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,10">
-            <TextBlock Text="Progresso do Projeto e Curva S"
+            <TextBlock Text="{DynamicResource Delay_Title}"
                        FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"/>
         </StackPanel>
 
         <TabControl Grid.Row="1" SelectionChanged="OnTabChanged">
 
             <!-- ══════════════════ ABA 1: CURVA S ══════════════════ -->
-            <TabItem Header="Curva S de Progresso">
+            <TabItem Header="{DynamicResource Delay_TabCurveS}">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -31,9 +31,9 @@
                     <!-- Legenda -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
                         <Rectangle Width="28" Height="4" Fill="#1F4EA1" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="HH Original (Planejado)" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="12"/>
+                        <TextBlock Text="{DynamicResource Delay_LegendPlanned}" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="12"/>
                         <Rectangle Width="28" Height="4" Fill="#E65100" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="HH Duração (Atual + Restante)" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="12"/>
+                        <TextBlock Text="{DynamicResource Delay_LegendActual}" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="12"/>
                         <TextBlock x:Name="CurveSummary" VerticalAlignment="Center"
                                    FontSize="12" Foreground="#555" FontStyle="Italic"/>
                     </StackPanel>
@@ -62,7 +62,7 @@
             </TabItem>
 
             <!-- ══════════════════ ABA 2: ATRASOS POR RECURSO ══════════════════ -->
-            <TabItem Header="Atrasos por Recurso">
+            <TabItem Header="{DynamicResource Delay_TabByResource}">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -72,7 +72,7 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button x:Name="RefreshButton" Content="Atualizar" Width="90" Height="28"
+                        <Button x:Name="RefreshButton" Content="{DynamicResource Delay_Refresh}" Width="90" Height="28"
                                 Click="OnRefreshClick"/>
                         <TextBlock x:Name="SummaryText" Margin="16,0,0,0"
                                    VerticalAlignment="Center" FontSize="12" Foreground="#666"/>
@@ -92,7 +92,7 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <TextBlock x:Name="DetailsTitle" Grid.Row="0"
-                                   Text="Selecione uma célula da grade"
+                                   Text="{DynamicResource Delay_SelectCell}"
                                    FontWeight="SemiBold" Margin="0,4,0,6" Foreground="#2B579A"/>
                         <DataGrid x:Name="DetailsGrid" Grid.Row="1"
                                   AutoGenerateColumns="False" CanUserAddRows="False"
@@ -100,7 +100,7 @@
                                   SelectionMode="Single" GridLinesVisibility="Horizontal"
                                   HeadersVisibility="Column" RowHeight="28" FontSize="12">
                             <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="ID" Width="70" IsReadOnly="True">
+                                <DataGridTemplateColumn Header="{DynamicResource Delay_ColId}" Width="70" IsReadOnly="True">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Button Content="{Binding DisplayId}" Tag="{Binding}"
@@ -111,9 +111,9 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Nome" Width="*" Binding="{Binding Name}" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="Recurso" Width="130" Binding="{Binding ResourceName}" IsReadOnly="True"/>
-                                <DataGridTextColumn Header="HH Faltante" Width="90" Binding="{Binding RemainingHoursText}" IsReadOnly="True">
+                                <DataGridTextColumn Header="{DynamicResource Delay_ColName}" Width="*" Binding="{Binding Name}" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="{DynamicResource Delay_ColResource}" Width="130" Binding="{Binding ResourceName}" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="{DynamicResource Delay_ColRemaining}" Width="90" Binding="{Binding RemainingHoursText}" IsReadOnly="True">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -121,17 +121,17 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTextColumn Header="Início" Width="80" Binding="{Binding StartText}" IsReadOnly="True">
+                                <DataGridTextColumn Header="{DynamicResource Delay_ColStart}" Width="80" Binding="{Binding StartText}" IsReadOnly="True">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTextColumn Header="Fim" Width="80" Binding="{Binding FinishText}" IsReadOnly="True">
+                                <DataGridTextColumn Header="{DynamicResource Delay_ColFinish}" Width="80" Binding="{Binding FinishText}" IsReadOnly="True">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTextColumn Header="Atraso" Width="80" Binding="{Binding DelayText}" IsReadOnly="True">
+                                <DataGridTextColumn Header="{DynamicResource Delay_ColDelay}" Width="80" Binding="{Binding DelayText}" IsReadOnly="True">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -139,12 +139,12 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTextColumn Header="Predecessoras" Width="90" Binding="{Binding Predecessors}" IsReadOnly="True">
+                                <DataGridTextColumn Header="{DynamicResource Delay_ColPredecessors}" Width="90" Binding="{Binding Predecessors}" IsReadOnly="True">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
-                                <DataGridTemplateColumn Header="Justificativa" Width="240">
+                                <DataGridTemplateColumn Header="{DynamicResource Delay_ColJustification}" Width="240">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Justificativa}" TextTrimming="CharacterEllipsis"
@@ -164,7 +164,7 @@
             </TabItem>
 
             <!-- ══════════════════ ABA 2: TODAS AS ATIVIDADES ATRASADAS ══════════════════ -->
-            <TabItem Header="Atividades Atrasadas">
+            <TabItem Header="{DynamicResource Delay_TabDelayed}">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -183,7 +183,7 @@
                               HeadersVisibility="Column" RowHeight="28" FontSize="12"
                               CanUserSortColumns="True">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="ID" Width="70" IsReadOnly="True">
+                            <DataGridTemplateColumn Header="{DynamicResource Delay_ColId}" Width="70" IsReadOnly="True">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Button Content="{Binding DisplayId}" Tag="{Binding}"
@@ -194,14 +194,14 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Nome" Width="*" Binding="{Binding Name}" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Recurso" Width="130" Binding="{Binding ResourceName}" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="% Completo" Width="90" Binding="{Binding PercentText}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColName}" Width="*" Binding="{Binding Name}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColResource}" Width="130" Binding="{Binding ResourceName}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColPercent}" Width="90" Binding="{Binding PercentText}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="HH Faltante" Width="90" Binding="{Binding RemainingHoursText}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColRemaining}" Width="90" Binding="{Binding RemainingHoursText}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -209,17 +209,17 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Início" Width="80" Binding="{Binding StartText}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColStart}" Width="80" Binding="{Binding StartText}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Fim Prev." Width="80" Binding="{Binding FinishText}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColFinishEst}" Width="80" Binding="{Binding FinishText}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Atraso" Width="80"
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColDelay}" Width="80"
                                                 Binding="{Binding DelayText}" IsReadOnly="True"
                                                 SortMemberPath="DelayDays">
                                 <DataGridTextColumn.ElementStyle>
@@ -230,17 +230,17 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Sprint" Width="90" Binding="{Binding SprintLabel}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColSprint}" Width="90" Binding="{Binding SprintLabel}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Predecessoras" Width="90" Binding="{Binding Predecessors}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColPredecessors}" Width="90" Binding="{Binding Predecessors}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTemplateColumn Header="Justificativa" Width="240">
+                            <DataGridTemplateColumn Header="{DynamicResource Delay_ColJustification}" Width="240">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Justificativa}" TextTrimming="CharacterEllipsis"
@@ -259,7 +259,7 @@
             </TabItem>
 
             <!-- ══════════════════ ABA 4: EM BLOQUEIO ══════════════════ -->
-            <TabItem Header="Em Bloqueio">
+            <TabItem Header="{DynamicResource Delay_TabBlocked}">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -278,7 +278,7 @@
                               HeadersVisibility="Column" RowHeight="28" FontSize="12"
                               CanUserSortColumns="True">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="ID" Width="70" IsReadOnly="True">
+                            <DataGridTemplateColumn Header="{DynamicResource Delay_ColId}" Width="70" IsReadOnly="True">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Button Content="{Binding DisplayId}" Tag="{Binding}"
@@ -289,30 +289,30 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Tipo" Width="80" Binding="{Binding TfsType}" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Nome" Width="*" Binding="{Binding Name}" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Recurso" Width="130" Binding="{Binding ResourceName}" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="% Completo" Width="90" Binding="{Binding PercentText}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColType}" Width="80" Binding="{Binding TfsType}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColName}" Width="*" Binding="{Binding Name}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColResource}" Width="130" Binding="{Binding ResourceName}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColPercent}" Width="90" Binding="{Binding PercentText}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Início" Width="80" Binding="{Binding StartText}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColStart}" Width="80" Binding="{Binding StartText}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Fim Prev." Width="80" Binding="{Binding FinishText}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColFinishEst}" Width="80" Binding="{Binding FinishText}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Sprint" Width="100" Binding="{Binding SprintLabel}" IsReadOnly="True">
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColSprint}" Width="100" Binding="{Binding SprintLabel}" IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Center"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Tags" Width="160" Binding="{Binding Tags}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="{DynamicResource Delay_ColTags}" Width="160" Binding="{Binding Tags}" IsReadOnly="True"/>
                         </DataGrid.Columns>
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
