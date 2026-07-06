@@ -46,8 +46,8 @@ namespace NXProject.Views
         private void OnLoadDefaultsClick(object sender, RoutedEventArgs e)
         {
             var result = MessageBox.Show(
-                "Substituir os mapeamentos atuais pelos padrões?",
-                "Pré-definidos", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                AppStrings.Get("SMap_ReplaceConfirm"),
+                AppStrings.Get("SMap_Defaults"), MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
             _rows.Clear();

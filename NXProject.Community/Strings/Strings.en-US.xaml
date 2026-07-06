@@ -1050,4 +1050,20 @@
     <sys:String x:Key="Sprint_AddButton">Add</sys:String>
     <sys:String x:Key="Sprint_Cancel">Cancel</sys:String>
 
+    <!-- Configure Chart Status (mapping) -->
+    <sys:String x:Key="SMap_Title">Configure Chart Status</sys:String>
+    <sys:String x:Key="SMap_Header">TFS Status → Chart Mapping</sys:String>
+    <sys:String x:Key="SMap_Hint">Map each DevOps state to a display label on the chart. States with the same label are grouped into a single bar. Color in hex RGB (e.g.: 4A90D9). Leave empty to use the automatic color.</sys:String>
+    <sys:String x:Key="SMap_ColTfsState">TFS State (exact)</sys:String>
+    <sys:String x:Key="SMap_ColChartLabel">Chart Label</sys:String>
+    <sys:String x:Key="SMap_ColColor">Color (hex)</sys:String>
+    <sys:String x:Key="SMap_ColOrder">Order</sys:String>
+    <sys:String x:Key="SMap_Add">+ Add</sys:String>
+    <sys:String x:Key="SMap_Remove">Remove</sys:String>
+    <sys:String x:Key="SMap_Defaults">Presets</sys:String>
+    <sys:String x:Key="SMap_DefaultsTip">Loads the default states as a starting point</sys:String>
+    <sys:String x:Key="SMap_Save">Save</sys:String>
+    <sys:String x:Key="SMap_Cancel">Cancel</sys:String>
+    <sys:String x:Key="SMap_ReplaceConfirm">Replace the current mappings with the defaults?</sys:String>
+
 </ResourceDictionary>

@@ -1050,4 +1050,20 @@
     <sys:String x:Key="Sprint_AddButton">Incluir</sys:String>
     <sys:String x:Key="Sprint_Cancel">Cancelar</sys:String>
 
+    <!-- Configurar Status do Gráfico (mapeamento) -->
+    <sys:String x:Key="SMap_Title">Configurar Status do Gráfico</sys:String>
+    <sys:String x:Key="SMap_Header">Mapeamento de Status TFS → Gráfico</sys:String>
+    <sys:String x:Key="SMap_Hint">Associe cada estado do DevOps a um label de exibição no gráfico. Estados com o mesmo label são agrupados em uma única barra. Cor em hex RGB (ex.: 4A90D9). Deixe vazio para usar a cor automática.</sys:String>
+    <sys:String x:Key="SMap_ColTfsState">Estado TFS (exato)</sys:String>
+    <sys:String x:Key="SMap_ColChartLabel">Label no Gráfico</sys:String>
+    <sys:String x:Key="SMap_ColColor">Cor (hex)</sys:String>
+    <sys:String x:Key="SMap_ColOrder">Ordem</sys:String>
+    <sys:String x:Key="SMap_Add">+ Adicionar</sys:String>
+    <sys:String x:Key="SMap_Remove">Remover</sys:String>
+    <sys:String x:Key="SMap_Defaults">Pré-definidos</sys:String>
+    <sys:String x:Key="SMap_DefaultsTip">Carrega os estados padrão como ponto de partida</sys:String>
+    <sys:String x:Key="SMap_Save">Salvar</sys:String>
+    <sys:String x:Key="SMap_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="SMap_ReplaceConfirm">Substituir os mapeamentos atuais pelos padrões?</sys:String>
+
 </ResourceDictionary>
