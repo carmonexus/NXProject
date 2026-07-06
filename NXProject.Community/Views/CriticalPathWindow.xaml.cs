@@ -72,7 +72,7 @@ namespace NXProject.Views
                     EFText     = e.EF.ToString("dd/MM/yy"),
                     DurText    = $"{dur:0}d",
                     FloatDaysText = $"{e.TotalFloat:0.#}d",
-                    StatusText = critical ? "Crítica" : risk ? "Em risco" : "Normal",
+                    StatusText = critical ? AppStrings.Get("CPath_StatusCritical") : risk ? AppStrings.Get("CPath_StatusRisk") : AppStrings.Get("CPath_StatusNormal"),
                     PredText   = predNames.Count > 0 ? string.Join(", ", predNames) : "—",
                     IsCritical = critical,
                     IsRisk     = risk,
@@ -88,8 +88,8 @@ namespace NXProject.Views
             int critCount = _allRows.Count(r => r.IsCritical);
             int riskCount = _allRows.Count(r => r.IsRisk);
             SubtitleText.Text = riskSlackDays > 0.0
-                ? $"{_allRows.Count} atividades analisadas — {critCount} críticas, {riskCount} em risco ({criticalSlackDays:0.#}d/{riskSlackDays:0.#}d)"
-                : $"{_allRows.Count} atividades analisadas — {critCount} críticas";
+                ? AppStrings.Get("CPath_SubtitleFull", _allRows.Count, critCount, riskCount, criticalSlackDays, riskSlackDays)
+                : AppStrings.Get("CPath_Subtitle", _allRows.Count, critCount);
 
             _view = CollectionViewSource.GetDefaultView(_allRows);
             _view.Filter = FilterRow;
@@ -117,7 +117,7 @@ namespace NXProject.Views
         private void UpdateCount()
         {
             int visible = _allRows.Count(r => FilterRow(r));
-            CountText.Text = $"{visible} exibidas";
+            CountText.Text = AppStrings.Get("CPath_CountShown", visible);
         }
 
         private void OnConfigureSlackClick(object sender, RoutedEventArgs e)

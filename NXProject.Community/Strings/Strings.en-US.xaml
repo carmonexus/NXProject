@@ -992,4 +992,27 @@
     <sys:String x:Key="Delay_GapPos">Gap: +{0:0.#}%</sys:String>
     <sys:String x:Key="Delay_NoGap">No gap</sys:String>
 
+    <!-- Critical Path -->
+    <sys:String x:Key="CPath_Title">Critical Path</sys:String>
+    <sys:String x:Key="CPath_Header">⬛ Critical Path</sys:String>
+    <sys:String x:Key="CPath_Filter">Filter:</sys:String>
+    <sys:String x:Key="CPath_OnlyCritical">Critical only</sys:String>
+    <sys:String x:Key="CPath_ConfigSlack">Configure slack...</sys:String>
+    <sys:String x:Key="CPath_ColId">ID</sys:String>
+    <sys:String x:Key="CPath_ColType">Type</sys:String>
+    <sys:String x:Key="CPath_ColName">Name</sys:String>
+    <sys:String x:Key="CPath_ColStart">Start</sys:String>
+    <sys:String x:Key="CPath_ColFinish">Finish</sys:String>
+    <sys:String x:Key="CPath_ColDuration">Duration</sys:String>
+    <sys:String x:Key="CPath_ColFloat">Slack (d)</sys:String>
+    <sys:String x:Key="CPath_ColStatus">Status</sys:String>
+    <sys:String x:Key="CPath_ColPredecessors">Predecessors</sys:String>
+    <sys:String x:Key="CPath_Close">Close</sys:String>
+    <sys:String x:Key="CPath_StatusCritical">Critical</sys:String>
+    <sys:String x:Key="CPath_StatusRisk">At risk</sys:String>
+    <sys:String x:Key="CPath_StatusNormal">Normal</sys:String>
+    <sys:String x:Key="CPath_SubtitleFull">{0} activities analyzed — {1} critical, {2} at risk ({3:0.#}d/{4:0.#}d)</sys:String>
+    <sys:String x:Key="CPath_Subtitle">{0} activities analyzed — {1} critical</sys:String>
+    <sys:String x:Key="CPath_CountShown">{0} shown</sys:String>
+
 </ResourceDictionary>
