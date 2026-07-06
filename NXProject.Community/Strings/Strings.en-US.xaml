@@ -806,4 +806,38 @@
     <sys:String x:Key="WiEdit_InvalidId">Enter a valid ID: DevOps number, 0 to create on sync, or empty to unlink.</sys:String>
     <sys:String x:Key="WiEdit_SelectTypeToCreate">To create (ID = 0), select the DevOps Type (Epic, Feature or Story).</sys:String>
 
+    <!-- Online Activities (child Tasks in DevOps) -->
+    <sys:String x:Key="Online_Title">Online Activities</sys:String>
+    <sys:String x:Key="Online_ColId">ID</sys:String>
+    <sys:String x:Key="Online_ColType">Type</sys:String>
+    <sys:String x:Key="Online_ColName">Name</sys:String>
+    <sys:String x:Key="Online_ColStatus">Status</sys:String>
+    <sys:String x:Key="Online_ColTags">Tags</sys:String>
+    <sys:String x:Key="Online_ColDescription">Description</sys:String>
+    <sys:String x:Key="Online_ColLastHistory">Last update</sys:String>
+    <sys:String x:Key="Online_ColActions">Actions</sys:String>
+    <sys:String x:Key="Online_Edit">Edit</sys:String>
+    <sys:String x:Key="Online_Delete">Delete</sys:String>
+    <sys:String x:Key="Online_NewActivity">New activity:</sys:String>
+    <sys:String x:Key="Online_AddPending">+ Add (pending)</sys:String>
+    <sys:String x:Key="Online_Legend">⬜ Online   🟡 Pending (will be created/deleted on the next sync)</sys:String>
+    <sys:String x:Key="Online_Close">Close</sys:String>
+    <sys:String x:Key="Online_TitleFormat">Activities of #{0} - {1}</sys:String>
+    <sys:String x:Key="Online_Loading">Loading online activities...</sys:String>
+    <sys:String x:Key="Online_Pending">PENDING</sys:String>
+    <sys:String x:Key="Online_OneFound">1 activity found</sys:String>
+    <sys:String x:Key="Online_CountFound">{0} activities found ({1} pending)</sys:String>
+    <sys:String x:Key="Online_FetchError">Error fetching activities: {0}</sys:String>
+    <sys:String x:Key="Online_NameRequired">Enter the name of the new activity.</sys:String>
+    <sys:String x:Key="Online_NameRequiredTitle">Name required</sys:String>
+    <sys:String x:Key="Online_AddedPending">Activity "{0}" added as pending. It will be created on the next sync.</sys:String>
+    <sys:String x:Key="Online_EditPendingTitle">Edit pending activity</sys:String>
+    <sys:String x:Key="Online_NameLabel">Name:</sys:String>
+    <sys:String x:Key="Online_Save">Save</sys:String>
+    <sys:String x:Key="Online_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Online_Renamed">Name updated to "{0}". It will be synced on the next Export.</sys:String>
+    <sys:String x:Key="Online_DeleteConfirm">Delete "{0}" (pending creation)?&#10;This action removes the activity from the local project.</sys:String>
+    <sys:String x:Key="Online_DeleteConfirmTitle">Confirm deletion</sys:String>
+    <sys:String x:Key="Online_Deleted">"{0}" deleted.</sys:String>
+
 </ResourceDictionary>

@@ -806,4 +806,38 @@
     <sys:String x:Key="WiEdit_InvalidId">Informe um ID válido: número do DevOps, 0 para criar na sincronização, ou vazio para desvincular.</sys:String>
     <sys:String x:Key="WiEdit_SelectTypeToCreate">Para criar (ID = 0), selecione o Tipo DevOps (Epic, Feature ou Story).</sys:String>
 
+    <!-- Atividades Online (Tasks filhas no DevOps) -->
+    <sys:String x:Key="Online_Title">Atividades Online</sys:String>
+    <sys:String x:Key="Online_ColId">ID</sys:String>
+    <sys:String x:Key="Online_ColType">Tipo</sys:String>
+    <sys:String x:Key="Online_ColName">Nome</sys:String>
+    <sys:String x:Key="Online_ColStatus">Status</sys:String>
+    <sys:String x:Key="Online_ColTags">Tags</sys:String>
+    <sys:String x:Key="Online_ColDescription">Descrição</sys:String>
+    <sys:String x:Key="Online_ColLastHistory">Último trâmite</sys:String>
+    <sys:String x:Key="Online_ColActions">Ações</sys:String>
+    <sys:String x:Key="Online_Edit">Editar</sys:String>
+    <sys:String x:Key="Online_Delete">Excluir</sys:String>
+    <sys:String x:Key="Online_NewActivity">Nova atividade:</sys:String>
+    <sys:String x:Key="Online_AddPending">+ Adicionar (pendente)</sys:String>
+    <sys:String x:Key="Online_Legend">⬜ Online   🟡 Pendente (será criado/excluído na próxima sincronização)</sys:String>
+    <sys:String x:Key="Online_Close">Fechar</sys:String>
+    <sys:String x:Key="Online_TitleFormat">Atividades de #{0} - {1}</sys:String>
+    <sys:String x:Key="Online_Loading">Carregando atividades online...</sys:String>
+    <sys:String x:Key="Online_Pending">PENDENTE</sys:String>
+    <sys:String x:Key="Online_OneFound">1 atividade encontrada</sys:String>
+    <sys:String x:Key="Online_CountFound">{0} atividades encontradas ({1} pendentes)</sys:String>
+    <sys:String x:Key="Online_FetchError">Erro ao buscar atividades: {0}</sys:String>
+    <sys:String x:Key="Online_NameRequired">Informe o nome da nova atividade.</sys:String>
+    <sys:String x:Key="Online_NameRequiredTitle">Nome obrigatório</sys:String>
+    <sys:String x:Key="Online_AddedPending">Atividade "{0}" adicionada como pendente. Será criada na próxima sincronização.</sys:String>
+    <sys:String x:Key="Online_EditPendingTitle">Editar atividade pendente</sys:String>
+    <sys:String x:Key="Online_NameLabel">Nome:</sys:String>
+    <sys:String x:Key="Online_Save">Salvar</sys:String>
+    <sys:String x:Key="Online_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="Online_Renamed">Nome atualizado para "{0}". Será sincronizado no próximo Export.</sys:String>
+    <sys:String x:Key="Online_DeleteConfirm">Excluir "{0}" (pendente de criação)?&#10;Esta ação remove a atividade do projeto local.</sys:String>
+    <sys:String x:Key="Online_DeleteConfirmTitle">Confirmar exclusão</sys:String>
+    <sys:String x:Key="Online_Deleted">"{0}" excluída.</sys:String>
+
 </ResourceDictionary>

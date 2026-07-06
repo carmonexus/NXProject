@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.TfsOnlineChildTasksWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Atividades Online"
+        Title="{DynamicResource Online_Title}"
         Width="1020" Height="600"
         MinWidth="800" MinHeight="440"
         WindowStartupLocation="CenterOwner"
@@ -44,24 +44,24 @@
                   SelectionMode="Single"
                   TextElement.FontSize="12">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Width="80" Binding="{Binding IdDisplay}"/>
-                <DataGridTextColumn Header="Tipo" Width="90" Binding="{Binding Type}"/>
-                <DataGridTextColumn Header="Nome" Width="240" Binding="{Binding Name}"/>
-                <DataGridTextColumn Header="Status" Width="110" Binding="{Binding State}"/>
-                <DataGridTextColumn Header="Tags" Width="140" Binding="{Binding Tags}"/>
-                <DataGridTextColumn Header="Descrição" Width="200" Binding="{Binding Description}"/>
-                <DataGridTextColumn Header="Último trâmite" Width="*" Binding="{Binding LastHistory}"/>
-                <DataGridTemplateColumn Header="Ações" Width="130">
+                <DataGridTextColumn Header="{DynamicResource Online_ColId}" Width="80" Binding="{Binding IdDisplay}"/>
+                <DataGridTextColumn Header="{DynamicResource Online_ColType}" Width="90" Binding="{Binding Type}"/>
+                <DataGridTextColumn Header="{DynamicResource Online_ColName}" Width="240" Binding="{Binding Name}"/>
+                <DataGridTextColumn Header="{DynamicResource Online_ColStatus}" Width="110" Binding="{Binding State}"/>
+                <DataGridTextColumn Header="{DynamicResource Online_ColTags}" Width="140" Binding="{Binding Tags}"/>
+                <DataGridTextColumn Header="{DynamicResource Online_ColDescription}" Width="200" Binding="{Binding Description}"/>
+                <DataGridTextColumn Header="{DynamicResource Online_ColLastHistory}" Width="*" Binding="{Binding LastHistory}"/>
+                <DataGridTemplateColumn Header="{DynamicResource Online_ColActions}" Width="130">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal"
                                         Visibility="{Binding IsPending, Converter={StaticResource BoolToVis}}">
-                                <Button Content="Editar"
+                                <Button Content="{DynamicResource Online_Edit}"
                                         Width="56" Height="22"
                                         Margin="2,0"
                                         Click="OnEditPendingClick"
                                         Tag="{Binding}"/>
-                                <Button Content="Excluir"
+                                <Button Content="{DynamicResource Online_Delete}"
                                         Width="56" Height="22"
                                         Margin="2,0"
                                         Foreground="#A4262C"
@@ -97,7 +97,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
-                           Text="Nova atividade:"
+                           Text="{DynamicResource Online_NewActivity}"
                            VerticalAlignment="Center"
                            Margin="0,0,8,0"/>
                 <TextBox x:Name="NewNameBox"
@@ -107,7 +107,7 @@
                          Padding="4,0"
                          KeyDown="OnNewNameKeyDown"/>
                 <Button Grid.Column="2"
-                        Content="+ Adicionar (pendente)"
+                        Content="{DynamicResource Online_AddPending}"
                         Height="28"
                         Margin="8,0,0,0"
                         Padding="10,0"
@@ -118,12 +118,12 @@
         <!-- Rodapé -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
             <TextBlock x:Name="LegendText"
-                       Text="⬜ Online   🟡 Pendente (será criado/excluído na próxima sincronização)"
+                       Text="{DynamicResource Online_Legend}"
                        VerticalAlignment="Center"
                        FontSize="10"
                        Foreground="#666"
                        Margin="0,0,16,0"/>
-            <Button Content="Fechar" Width="90" Height="30" IsCancel="True"/>
+            <Button Content="{DynamicResource Online_Close}" Width="90" Height="30" IsCancel="True"/>
         </StackPanel>
     </Grid>
 </Window>

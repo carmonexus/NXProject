@@ -48,8 +48,8 @@ namespace NXProject.Views
             _mainVm = mainVm;
 
             ItemsGrid.ItemsSource = _rows;
-            TitleText.Text = $"Atividades de #{parent.TfsId} - {parent.Name}";
-            StatusText.Text = "Carregando atividades online...";
+            TitleText.Text = AppStrings.Get("Online_TitleFormat", parent.TfsId, parent.Name);
+            StatusText.Text = AppStrings.Get("Online_Loading");
 
             Loaded += async (_, _) =>
             {
@@ -91,7 +91,7 @@ namespace NXProject.Views
                     _rows.Add(new ChildRow
                     {
                         TfsId       = 0,
-                        IdDisplay   = "PENDENTE",
+                        IdDisplay   = AppStrings.Get("Online_Pending"),
                         Type        = local.TfsType ?? ChildType,
                         Name        = local.Name,
                         State       = local.TfsState ?? "New",
@@ -100,12 +100,12 @@ namespace NXProject.Views
                     });
 
                 StatusText.Text = _rows.Count == 1
-                    ? "1 atividade encontrada"
-                    : $"{_rows.Count} atividades encontradas ({_rows.Count(r => r.IsPending)} pendentes)";
+                    ? AppStrings.Get("Online_OneFound")
+                    : AppStrings.Get("Online_CountFound", _rows.Count, _rows.Count(r => r.IsPending));
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Erro ao buscar atividades: {ex.Message}";
+                StatusText.Text = AppStrings.Get("Online_FetchError", ex.Message);
             }
         }
 
@@ -115,7 +115,7 @@ namespace NXProject.Views
             var name = NewNameBox.Text.Trim();
             if (string.IsNullOrEmpty(name))
             {
-                MessageBox.Show("Informe o nome da nova atividade.", "Nome obrigatório",
+                MessageBox.Show(AppStrings.Get("Online_NameRequired"), AppStrings.Get("Online_NameRequiredTitle"),
                     MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK,
                     MessageBoxOptions.None);
                 NewNameBox.Focus();
@@ -148,7 +148,7 @@ namespace NXProject.Views
             _rows.Add(new ChildRow
             {
                 TfsId     = 0,
-                IdDisplay = "PENDENTE",
+                IdDisplay = AppStrings.Get("Online_Pending"),
                 Type      = ChildType,
                 Name      = name,
                 State     = "New",
@@ -157,7 +157,7 @@ namespace NXProject.Views
             });
 
             NewNameBox.Clear();
-            StatusText.Text = $"Atividade \"{name}\" adicionada como pendente. Será criada na próxima sincronização.";
+            StatusText.Text = AppStrings.Get("Online_AddedPending", name);
         }
 
         private void OnEditPendingClick(object sender, RoutedEventArgs e)
@@ -168,7 +168,7 @@ namespace NXProject.Views
 
             var dialog = new Window
             {
-                Title = "Editar atividade pendente",
+                Title = AppStrings.Get("Online_EditPendingTitle"),
                 Width = 420, Height = 150,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
@@ -176,7 +176,7 @@ namespace NXProject.Views
             };
 
             var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(16) };
-            panel.Children.Add(new System.Windows.Controls.TextBlock { Text = "Nome:", Margin = new Thickness(0, 0, 0, 4) });
+            panel.Children.Add(new System.Windows.Controls.TextBlock { Text = AppStrings.Get("Online_NameLabel"), Margin = new Thickness(0, 0, 0, 4) });
             var tb = new System.Windows.Controls.TextBox { Text = row.Name, Height = 26, Padding = new Thickness(4, 0, 4, 0) };
             panel.Children.Add(tb);
             var btnPanel = new System.Windows.Controls.StackPanel
@@ -185,8 +185,8 @@ namespace NXProject.Views
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Margin = new Thickness(0, 12, 0, 0)
             };
-            var btnOk = new System.Windows.Controls.Button { Content = "Salvar", Width = 80, Height = 28, IsDefault = true };
-            var btnCancel = new System.Windows.Controls.Button { Content = "Cancelar", Width = 80, Height = 28, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
+            var btnOk = new System.Windows.Controls.Button { Content = AppStrings.Get("Online_Save"), Width = 80, Height = 28, IsDefault = true };
+            var btnCancel = new System.Windows.Controls.Button { Content = AppStrings.Get("Online_Cancel"), Width = 80, Height = 28, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
             btnOk.Click += (_, _) => { dialog.DialogResult = true; dialog.Close(); };
             btnPanel.Children.Add(btnOk);
             btnPanel.Children.Add(btnCancel);
@@ -209,7 +209,7 @@ namespace NXProject.Views
                 _rows[idx] = new ChildRow
                 {
                     TfsId     = 0,
-                    IdDisplay = "PENDENTE",
+                    IdDisplay = AppStrings.Get("Online_Pending"),
                     Type      = row.Type,
                     Name      = newName,
                     State     = row.State,
@@ -217,7 +217,7 @@ namespace NXProject.Views
                     LocalTask = row.LocalTask
                 };
             }
-            StatusText.Text = $"Nome atualizado para \"{newName}\". Será sincronizado no próximo Export.";
+            StatusText.Text = AppStrings.Get("Online_Renamed", newName);
         }
 
         private void OnDeletePendingClick(object sender, RoutedEventArgs e)
@@ -227,8 +227,8 @@ namespace NXProject.Views
                 return;
 
             var result = MessageBox.Show(
-                $"Excluir \"{row.Name}\" (pendente de criação)?\nEsta ação remove a atividade do projeto local.",
-                "Confirmar exclusão",
+                AppStrings.Get("Online_DeleteConfirm", row.Name),
+                AppStrings.Get("Online_DeleteConfirmTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
@@ -241,7 +241,7 @@ namespace NXProject.Views
             _changed = true;
 
             _rows.Remove(row);
-            StatusText.Text = $"\"{row.Name}\" excluída.";
+            StatusText.Text = AppStrings.Get("Online_Deleted", row.Name);
         }
 
         private void OnNewNameKeyDown(object sender, KeyEventArgs e)
