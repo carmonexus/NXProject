@@ -692,12 +692,19 @@ namespace NXProject.Services
                         if (!forcedOverwrite && tfsVersion > task.SyncVersion.Value)
                         {
                             var whoSaved = ReadSyncUserName(wi, syncNameRef);
-                            if (IsCurrentSyncUser(whoSaved))
+                            bool isCurrentUser = IsCurrentSyncUser(whoSaved);
+                            // Fechamento vence (cirúrgico): se o NXProject marcou a story 100% (Closed)
+                            // e o TFS ainda está abaixo de 100% (não encerrado), o fechamento é
+                            // autoritativo e libera o conflito — mesmo que outra pessoa tenha gravado.
+                            bool closingOverride = task.PercentComplete >= 100 && !IsClosedState(wi.State);
+                            if (ShouldReleaseSyncConflict(isCurrentUser, task.PercentComplete, wi.State))
                             {
                                 var previousLocalVersion = task.SyncVersion.Value;
                                 task.SyncVersion = tfsVersion;
                                 task.HasSyncConflict = false;
-                                report.LogWarning($"{TaskSyncLabel(task)} ({task.Name}): versão TFS={tfsVersion} > local={previousLocalVersion}, mas a última gravação foi do usuário atual ({whoSaved}); sincronização liberada.");
+                                report.LogWarning(closingOverride && !isCurrentUser
+                                    ? $"{TaskSyncLabel(task)} ({task.Name}): versão TFS={tfsVersion} > local={previousLocalVersion}, mas a story está 100% no NXProject e abaixo de 100% no TFS — fechamento tem prioridade; sincronização liberada."
+                                    : $"{TaskSyncLabel(task)} ({task.Name}): versão TFS={tfsVersion} > local={previousLocalVersion}, mas a última gravação foi do usuário atual ({whoSaved}); sincronização liberada.");
                             }
                             else
                             {
@@ -1990,6 +1997,13 @@ namespace NXProject.Services
         }
 
         public static bool IsClosedStateName(string? state) => IsClosedState(state);
+
+        /// <summary>Decisão pura (sem rede) de liberar um conflito de versão na sincronização.
+        /// Libera quando a última gravação foi do próprio usuário atual OU quando o NXProject
+        /// marcou a story 100% (Closed) e o TFS ainda está abaixo de 100% (não encerrado) —
+        /// nesse caso o fechamento é autoritativo e sobrescreve o TFS ("fechamento vence").</summary>
+        public static bool ShouldReleaseSyncConflict(bool isCurrentSyncUser, double localPercentComplete, string? tfsState)
+            => isCurrentSyncUser || (localPercentComplete >= 100 && !IsClosedState(tfsState));
 
         private static bool IsClosedState(string? state) =>
             state?.Trim().ToLowerInvariant() switch

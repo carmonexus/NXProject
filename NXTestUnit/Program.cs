@@ -53,7 +53,11 @@ internal static class Program
         ("Arquivo: AvailabilityPercent do recurso sobrevive a salvar/abrir", XmlRoundTripPreservesResourceAvailabilityPercent),
         ("Alocacao: recalcular repetidamente NAO infla o fim (sem compounding)", ResourceAllocationRecalcDoesNotCompoundFinish),
         ("Alocacao: cronograma, import TFS e abertura produzem o MESMO fim", CentralizedFinishCalcIsIdenticalAcrossPaths),
-        ("Duracao: tarefa so com HH Atual NAO conta as horas em dobro", EffectiveDurationDoesNotDoubleCountCurrentOnlyHours)
+        ("Duracao: tarefa so com HH Atual NAO conta as horas em dobro", EffectiveDurationDoesNotDoubleCountCurrentOnlyHours),
+        ("Sync conflito: gravacao do usuario atual libera", SyncConflictCurrentUserReleases),
+        ("Sync conflito: NXProject 100% e TFS abaixo de 100% libera (fechamento vence)", SyncConflictClosingOverridesWhenTfsBelow100),
+        ("Sync conflito: NXProject 100% e TFS ja Closed NAO libera automaticamente", SyncConflictClosingDoesNotOverrideWhenTfsClosed),
+        ("Sync conflito: NXProject abaixo de 100% e outro usuario NAO libera", SyncConflictBelow100OtherUserBlocks)
     ];
 
     private static int Main(string[] args)
@@ -1424,6 +1428,35 @@ internal static class Program
         var result = UpdateService.ShouldTriggerSetupUpdate(known, remote);
         if (!result)
             throw new InvalidOperationException("Asset mais novo que a baseline deveria disparar reinstalacao.");
+    }
+
+    // ── Sincronização: regra "fechamento vence" no conflito de versão ──────────────
+    private static void SyncConflictCurrentUserReleases()
+    {
+        // Última gravação foi do usuário atual → libera independentemente do %.
+        if (!TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: true, localPercentComplete: 40, tfsState: "Active"))
+            throw new InvalidOperationException("Conflito com última gravação do usuário atual deveria liberar.");
+    }
+
+    private static void SyncConflictClosingOverridesWhenTfsBelow100()
+    {
+        // NXProject 100% e TFS abaixo de 100% (Active) → fechamento vence, libera.
+        if (!TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: false, localPercentComplete: 100, tfsState: "Active"))
+            throw new InvalidOperationException("NXProject 100% com TFS abaixo de 100% deveria liberar (fechamento vence).");
+    }
+
+    private static void SyncConflictClosingDoesNotOverrideWhenTfsClosed()
+    {
+        // NXProject 100% mas TFS já Closed → não é caso de fechamento; NÃO libera automaticamente.
+        if (TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: false, localPercentComplete: 100, tfsState: "Closed"))
+            throw new InvalidOperationException("Com TFS já Closed, o conflito NÃO deveria liberar automaticamente.");
+    }
+
+    private static void SyncConflictBelow100OtherUserBlocks()
+    {
+        // NXProject abaixo de 100% e gravação de outro usuário → conflito real, bloqueia.
+        if (TfsImportService.ShouldReleaseSyncConflict(isCurrentSyncUser: false, localPercentComplete: 60, tfsState: "Active"))
+            throw new InvalidOperationException("NXProject abaixo de 100% com outro usuário NÃO deveria liberar (conflito real).");
     }
 
     private static void AssertEqual(DateTime expected, DateTime actual, string message)
