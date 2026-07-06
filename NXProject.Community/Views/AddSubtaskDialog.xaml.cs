@@ -1,4 +1,5 @@
 using System.Windows;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -11,7 +12,7 @@ namespace NXProject.Views
         public AddSubtaskDialog(string storyName, bool hasDevOpsLink)
         {
             InitializeComponent();
-            SubtitleText.Text = $"Story: {storyName}";
+            SubtitleText.Text = AppStrings.Get("AddSub_Story", storyName);
             // Oculta "Buscar Tasks" se não tiver vínculo DevOps
             BtnFetch.Visibility = hasDevOpsLink ? Visibility.Visible : Visibility.Collapsed;
             BtnTask.Visibility  = hasDevOpsLink ? Visibility.Visible : Visibility.Collapsed;

@@ -19,7 +19,7 @@ namespace NXProject.Views
         {
             InitializeComponent();
             _task = task;
-            TitleText.Text = $"Descrição — {task.Name}";
+            TitleText.Text = AppStrings.Get("Desc_TitleFormat", task.Name);
             _html = task.Description ?? string.Empty;
 
             if (task.TfsId is not > 0)
@@ -114,7 +114,7 @@ namespace NXProject.Views
         private void LoadHtmlInWebView(string html)
         {
             var page = string.IsNullOrWhiteSpace(html)
-                ? "<html><body style='font-family:Segoe UI,sans-serif;color:#666;background:#ffffff;padding:16px'><i>Sem descrição.</i></body></html>"
+                ? "<html><body style='font-family:Segoe UI,sans-serif;color:#666;background:#ffffff;padding:16px'><i>" + AppStrings.Get("Desc_NoDescription") + "</i></body></html>"
                 : $"<html><head><meta charset='utf-8'/><style>{BuildCss()}</style></head><body>{html}</body></html>";
 
             WebView.CoreWebView2.NavigateToString(page);
@@ -135,7 +135,7 @@ namespace NXProject.Views
         private async void OnFetchFromDevOpsClick(object sender, RoutedEventArgs e)
         {
             FetchBtn.IsEnabled = false;
-            FetchStatus.Text = "Buscando...";
+            FetchStatus.Text = AppStrings.Get("Desc_Fetching");
             try
             {
                 var options = TfsConnectionStore.Load("NXProject.Community");
@@ -143,8 +143,8 @@ namespace NXProject.Views
                     options, _task.TfsId!.Value);
                 _html = html ?? string.Empty;
                 FetchStatus.Text = string.IsNullOrWhiteSpace(_html)
-                    ? "Descrição vazia no DevOps."
-                    : "Descrição carregada do DevOps.";
+                    ? AppStrings.Get("Desc_Empty")
+                    : AppStrings.Get("Desc_Loaded");
 
                 if (_webViewReady)
                 {
@@ -156,7 +156,7 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
-                FetchStatus.Text = $"Erro: {ex.Message}";
+                FetchStatus.Text = AppStrings.Get("Desc_FetchError", ex.Message);
             }
             finally
             {

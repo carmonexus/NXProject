@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.AddSubtaskDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Adicionar Subtarefa"
+        Title="{DynamicResource AddSub_Title}"
         Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
@@ -19,8 +19,8 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="📥" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Buscar Tasks do DevOps" FontWeight="SemiBold" FontSize="13"/>
-                    <TextBlock Text="Baixa as Tasks existentes desta Story no DevOps" FontSize="11" Foreground="#666"/>
+                    <TextBlock Text="{DynamicResource AddSub_Fetch}" FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Text="{DynamicResource AddSub_FetchDesc}" FontSize="11" Foreground="#666"/>
                 </StackPanel>
             </StackPanel>
         </Button>
@@ -31,8 +31,8 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="➕" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Criar Task (DevOps)" FontWeight="SemiBold" FontSize="13"/>
-                    <TextBlock Text="Nova tarefa vinculada e sincronizável com o DevOps" FontSize="11" Foreground="#666"/>
+                    <TextBlock Text="{DynamicResource AddSub_CreateTask}" FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Text="{DynamicResource AddSub_CreateTaskDesc}" FontSize="11" Foreground="#666"/>
                 </StackPanel>
             </StackPanel>
         </Button>
@@ -43,15 +43,15 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="📌" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Criar Atividade Interna" FontWeight="SemiBold" FontSize="13"/>
-                    <TextBlock Text="Apenas no NXProject, sem vínculo com DevOps" FontSize="11" Foreground="#666"/>
+                    <TextBlock Text="{DynamicResource AddSub_CreateInternal}" FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Text="{DynamicResource AddSub_CreateInternalDesc}" FontSize="11" Foreground="#666"/>
                 </StackPanel>
             </StackPanel>
         </Button>
 
         <Separator Margin="0,10,0,10"/>
 
-        <Button Content="Cancelar" Height="32" Width="90"
+        <Button Content="{DynamicResource AddSub_Cancel}" Height="32" Width="90"
                 HorizontalAlignment="Right"
                 Click="OnCancelClick"/>
     </StackPanel>

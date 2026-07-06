@@ -1096,4 +1096,37 @@
     <sys:String x:Key="Diag_RowResource">Recurso</sys:String>
     <sys:String x:Key="Diag_RowSprint">Sprint</sys:String>
 
+    <!-- Diálogo de senha -->
+    <sys:String x:Key="Pwd_Title">Senha de criptografia</sys:String>
+    <sys:String x:Key="Pwd_Password">Senha:</sys:String>
+    <sys:String x:Key="Pwd_ConfirmPassword">Confirmar senha:</sys:String>
+    <sys:String x:Key="Pwd_Mismatch">As senhas não conferem.</sys:String>
+    <sys:String x:Key="Pwd_Cancel">Cancelar</sys:String>
+
+    <!-- Adicionar Subtarefa -->
+    <sys:String x:Key="AddSub_Title">Adicionar Subtarefa</sys:String>
+    <sys:String x:Key="AddSub_Story">Story: {0}</sys:String>
+    <sys:String x:Key="AddSub_Fetch">Buscar Tasks do DevOps</sys:String>
+    <sys:String x:Key="AddSub_FetchDesc">Baixa as Tasks existentes desta Story no DevOps</sys:String>
+    <sys:String x:Key="AddSub_CreateTask">Criar Task (DevOps)</sys:String>
+    <sys:String x:Key="AddSub_CreateTaskDesc">Nova tarefa vinculada e sincronizável com o DevOps</sys:String>
+    <sys:String x:Key="AddSub_CreateInternal">Criar Atividade Interna</sys:String>
+    <sys:String x:Key="AddSub_CreateInternalDesc">Apenas no NXProject, sem vínculo com DevOps</sys:String>
+    <sys:String x:Key="AddSub_Cancel">Cancelar</sys:String>
+
+    <!-- Editar Descrição -->
+    <sys:String x:Key="Desc_Title">Descrição</sys:String>
+    <sys:String x:Key="Desc_TitleFormat">Descrição — {0}</sys:String>
+    <sys:String x:Key="Desc_Subtitle">A descrição será gravada no DevOps na próxima sincronização.</sys:String>
+    <sys:String x:Key="Desc_Preview">Visualizar</sys:String>
+    <sys:String x:Key="Desc_Edit">Editar</sys:String>
+    <sys:String x:Key="Desc_Fetch">⬇ Buscar Descrição Atualizada</sys:String>
+    <sys:String x:Key="Desc_Save">Salvar</sys:String>
+    <sys:String x:Key="Desc_Cancel">Cancelar</sys:String>
+    <sys:String x:Key="Desc_Fetching">Buscando...</sys:String>
+    <sys:String x:Key="Desc_Empty">Descrição vazia no DevOps.</sys:String>
+    <sys:String x:Key="Desc_Loaded">Descrição carregada do DevOps.</sys:String>
+    <sys:String x:Key="Desc_FetchError">Erro: {0}</sys:String>
+    <sys:String x:Key="Desc_NoDescription">Sem descrição.</sys:String>
+
 </ResourceDictionary>

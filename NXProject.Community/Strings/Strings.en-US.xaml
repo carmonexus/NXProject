@@ -1096,4 +1096,37 @@
     <sys:String x:Key="Diag_RowResource">Resource</sys:String>
     <sys:String x:Key="Diag_RowSprint">Sprint</sys:String>
 
+    <!-- Password dialog -->
+    <sys:String x:Key="Pwd_Title">Encryption password</sys:String>
+    <sys:String x:Key="Pwd_Password">Password:</sys:String>
+    <sys:String x:Key="Pwd_ConfirmPassword">Confirm password:</sys:String>
+    <sys:String x:Key="Pwd_Mismatch">The passwords do not match.</sys:String>
+    <sys:String x:Key="Pwd_Cancel">Cancel</sys:String>
+
+    <!-- Add Subtask -->
+    <sys:String x:Key="AddSub_Title">Add Subtask</sys:String>
+    <sys:String x:Key="AddSub_Story">Story: {0}</sys:String>
+    <sys:String x:Key="AddSub_Fetch">Fetch DevOps Tasks</sys:String>
+    <sys:String x:Key="AddSub_FetchDesc">Downloads the existing Tasks of this Story from DevOps</sys:String>
+    <sys:String x:Key="AddSub_CreateTask">Create Task (DevOps)</sys:String>
+    <sys:String x:Key="AddSub_CreateTaskDesc">New task linked and syncable with DevOps</sys:String>
+    <sys:String x:Key="AddSub_CreateInternal">Create Internal Activity</sys:String>
+    <sys:String x:Key="AddSub_CreateInternalDesc">Only in NXProject, no link to DevOps</sys:String>
+    <sys:String x:Key="AddSub_Cancel">Cancel</sys:String>
+
+    <!-- Edit Description -->
+    <sys:String x:Key="Desc_Title">Description</sys:String>
+    <sys:String x:Key="Desc_TitleFormat">Description — {0}</sys:String>
+    <sys:String x:Key="Desc_Subtitle">The description will be saved to DevOps on the next sync.</sys:String>
+    <sys:String x:Key="Desc_Preview">Preview</sys:String>
+    <sys:String x:Key="Desc_Edit">Edit</sys:String>
+    <sys:String x:Key="Desc_Fetch">⬇ Fetch Updated Description</sys:String>
+    <sys:String x:Key="Desc_Save">Save</sys:String>
+    <sys:String x:Key="Desc_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Desc_Fetching">Fetching...</sys:String>
+    <sys:String x:Key="Desc_Empty">Empty description in DevOps.</sys:String>
+    <sys:String x:Key="Desc_Loaded">Description loaded from DevOps.</sys:String>
+    <sys:String x:Key="Desc_FetchError">Error: {0}</sys:String>
+    <sys:String x:Key="Desc_NoDescription">No description.</sys:String>
+
 </ResourceDictionary>

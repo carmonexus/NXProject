@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        Title="Descrição"
+        Title="{DynamicResource Desc_Title}"
         Width="760" Height="560"
         MinWidth="520" MinHeight="360"
         WindowStartupLocation="CenterOwner"
@@ -20,15 +20,15 @@
         <!-- Cabeçalho -->
         <StackPanel Grid.Row="0" Margin="0,0,0,8">
             <TextBlock x:Name="TitleText" FontSize="14" FontWeight="SemiBold" Foreground="#2B579A"/>
-            <TextBlock Text="A descrição será gravada no DevOps na próxima sincronização."
+            <TextBlock Text="{DynamicResource Desc_Subtitle}"
                        FontSize="10" Foreground="#888" Margin="0,2,0,0"/>
         </StackPanel>
 
         <!-- Barra de modo -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
-            <Button x:Name="PreviewModeBtn" Content="Visualizar" Height="26" Padding="10,0"
+            <Button x:Name="PreviewModeBtn" Content="{DynamicResource Desc_Preview}" Height="26" Padding="10,0"
                     Click="OnPreviewMode"/>
-            <Button x:Name="EditModeBtn" Content="Editar" Height="26" Padding="10,0"
+            <Button x:Name="EditModeBtn" Content="{DynamicResource Desc_Edit}" Height="26" Padding="10,0"
                     Margin="6,0,0,0" Click="OnEditMode"/>
         </StackPanel>
 
@@ -41,7 +41,7 @@
 <!-- Barra inferior esquerda -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
             <Button x:Name="FetchBtn"
-                    Content="⬇ Buscar Descrição Atualizada"
+                    Content="{DynamicResource Desc_Fetch}"
                     Height="28" Padding="10,0"
                     Click="OnFetchFromDevOpsClick"/>
             <TextBlock x:Name="FetchStatus"
@@ -53,9 +53,9 @@
 
         <!-- Botões -->
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Salvar" Width="90" Height="30" IsDefault="True"
+            <Button Content="{DynamicResource Desc_Save}" Width="90" Height="30" IsDefault="True"
                     Click="OnSaveClick"/>
-            <Button Content="Cancelar" Width="90" Height="30" IsCancel="True" Margin="8,0,0,0"/>
+            <Button Content="{DynamicResource Desc_Cancel}" Width="90" Height="30" IsCancel="True" Margin="8,0,0,0"/>
         </StackPanel>
     </Grid>
 </Window>
