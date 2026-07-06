@@ -73,8 +73,8 @@ namespace NXProject.Views
             if (AvailableResources.Any(r => string.Equals(r.Name, normalizedName, StringComparison.OrdinalIgnoreCase)))
             {
                 MessageBox.Show(
-                    "Ja existe um recurso com esse nome.",
-                    "Incluir recurso",
+                    AppStrings.Get("RAlloc_DupNameMsg"),
+                    AppStrings.Get("RAlloc_AddResourceTitle"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -98,8 +98,8 @@ namespace NXProject.Views
             if (_selectedResource == null)
             {
                 MessageBox.Show(
-                    "Selecione uma celula do recurso que deseja excluir.",
-                    "Excluir recurso",
+                    AppStrings.Get("RAlloc_SelectToDelete"),
+                    AppStrings.Get("RAlloc_DeleteResourceTitle"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;
@@ -109,9 +109,9 @@ namespace NXProject.Views
             var assignmentCount = _vm.FlatTasks.Count(t => t.Model.Resources.Any(r => r.ResourceId == resource.Id));
             var confirm = MessageBox.Show(
                 assignmentCount > 0
-                    ? $"Excluir {resource.DisplayName} e remover {assignmentCount} alocacao(oes)?"
-                    : $"Excluir {resource.DisplayName}?",
-                "Excluir recurso",
+                    ? AppStrings.Get("RAlloc_DeleteWithAssignments", resource.DisplayName, assignmentCount)
+                    : AppStrings.Get("RAlloc_DeleteConfirm", resource.DisplayName),
+                AppStrings.Get("RAlloc_DeleteResourceTitle"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes)
@@ -123,7 +123,7 @@ namespace NXProject.Views
             AvailableResources.Remove(resource);
             _selectedResource = null;
             SelectedDetails.Clear();
-            DetailsTitle.Text = "Selecione uma celula da grade";
+            DetailsTitle.Text = AppStrings.Get("RAlloc_SelectCell");
             _vm.Project.IsDirty = true;
             _vm.RefreshTasks();
             BuildMatrix();
@@ -143,8 +143,8 @@ namespace NXProject.Views
                 AllocationGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) });
 
             AllocationGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(46) });
-            AddCell("Recurso", 0, 0, true);
-            AddCell("Liberação", 0, 1, true);
+            AddCell(AppStrings.Get("RAlloc_CellResource"), 0, 0, true);
+            AddCell(AppStrings.Get("RAlloc_CellRelease"), 0, 1, true);
             for (int i = 0; i < sprints.Count; i++)
                 AddSprintHeaderCell(sprints[i], 0, i + 2);
 
@@ -278,7 +278,7 @@ namespace NXProject.Views
             var menu = new ContextMenu();
             var toggleItem = new MenuItem
             {
-                Header = isInternal ? "Mudar para Project (PRJ)" : "Mudar para Internal (INT)"
+                Header = isInternal ? AppStrings.Get("RAlloc_SwitchToProject") : AppStrings.Get("RAlloc_SwitchToInternal")
             };
             toggleItem.Click += (_, _) =>
             {
@@ -352,9 +352,9 @@ namespace NXProject.Views
                 VerticalContentAlignment = VerticalAlignment.Center,
                 ToolTip = hours > 0
                     ? isOverAllocated
-                        ? $"Sobrealocado: {hours:0.##} h de {capacityHours:0.##} h disponiveis"
-                        : $"Ver atividades desta alocacao ({hours:0.##} h de {capacityHours:0.##} h disponiveis)"
-                    : "Sem atividades"
+                        ? AppStrings.Get("RAlloc_Overallocated", hours, capacityHours)
+                        : AppStrings.Get("RAlloc_ViewActivities", hours, capacityHours)
+                    : AppStrings.Get("RAlloc_NoActivities")
             };
             button.Click += OnHoursCellClick;
 
@@ -380,7 +380,7 @@ namespace NXProject.Views
         {
             _selectedResource = resource;
             _selectedSprint = sprint;
-            DetailsTitle.Text = $"{resource.DisplayName} - {sprint.Header}";
+            DetailsTitle.Text = AppStrings.Get("RAlloc_DetailsTitle", resource.DisplayName, sprint.Header);
             if (DetailsGrid.Columns.Count > 7)
                 DetailsGrid.Columns[7].Header = sprint.Header;
             SelectedDetails.Clear();
@@ -404,7 +404,7 @@ namespace NXProject.Views
                     System.Globalization.CultureInfo.CurrentCulture, out var h) ? h : 0);
             if (SelectedDetails.Count > 0)
             {
-                DetailsTotalText.Text = $"Total {sprint.Header}: {total:0.##} h";
+                DetailsTotalText.Text = AppStrings.Get("RAlloc_SprintTotal", sprint.Header, total);
                 DetailsTotalText.Visibility = System.Windows.Visibility.Visible;
             }
             else
@@ -713,7 +713,7 @@ namespace NXProject.Views
         {
             var dialog = new Window
             {
-                Title = "Incluir recurso",
+                Title = AppStrings.Get("RAlloc_AddResourceTitle"),
                 Owner = this,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ResizeMode = ResizeMode.NoResize,
@@ -729,7 +729,7 @@ namespace NXProject.Views
 
             var label = new TextBlock
             {
-                Text = "Nome do recurso",
+                Text = AppStrings.Get("RAlloc_ResourceNameLabel"),
                 FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(0, 0, 0, 6)
             };
@@ -750,7 +750,7 @@ namespace NXProject.Views
                 HorizontalAlignment = HorizontalAlignment.Right
             };
             var ok = new Button { Content = "OK", Width = 82, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
-            var cancel = new Button { Content = "Cancelar", Width = 82, IsCancel = true };
+            var cancel = new Button { Content = AppStrings.Get("RAlloc_Cancel"), Width = 82, IsCancel = true };
             ok.Click += (_, _) =>
             {
                 dialog.DialogResult = true;
@@ -840,7 +840,8 @@ namespace NXProject.Views
 
             var header = new TextBlock
             {
-                Text = $"{resourceName}  ·  {gapStart:dd/MM/yy} – {gapEnd:dd/MM/yy}  ({workDays} dia{(workDays != 1 ? "s" : "")} útil{(workDays != 1 ? "eis" : "")})",
+                Text = AppStrings.Get("RAlloc_GapHeader", resourceName, gapStart, gapEnd,
+                    AppStrings.Get(workDays != 1 ? "RAlloc_WorkDayPlural" : "RAlloc_WorkDaySingular", workDays)),
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(31, 78, 161)),
                 Margin = new Thickness(0, 0, 0, 8),
@@ -849,7 +850,7 @@ namespace NXProject.Views
             Grid.SetRow(header, 0);
             root.Children.Add(header);
 
-            var label = new TextBlock { Text = "Justificativa:", Margin = new Thickness(0, 0, 0, 4) };
+            var label = new TextBlock { Text = AppStrings.Get("RAlloc_JustificationLabel"), Margin = new Thickness(0, 0, 0, 4) };
             Grid.SetRow(label, 1);
             root.Children.Add(label);
 
@@ -871,8 +872,8 @@ namespace NXProject.Views
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right
             };
-            var ok = new Button { Content = "Salvar", Width = 90, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
-            var cancel = new Button { Content = "Cancelar", Width = 90, IsCancel = true };
+            var ok = new Button { Content = AppStrings.Get("RAlloc_Save"), Width = 90, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+            var cancel = new Button { Content = AppStrings.Get("RAlloc_Cancel"), Width = 90, IsCancel = true };
             ok.Click += (_, _) => { dlg.DialogResult = true; dlg.Close(); };
             buttons.Children.Add(ok);
             buttons.Children.Add(cancel);
@@ -978,7 +979,7 @@ namespace NXProject.Views
 
                 var todayLbl = new TextBlock
                 {
-                    Text = "hoje",
+                    Text = AppStrings.Get("RAlloc_TodayMark"),
                     FontSize = 9,
                     Foreground = new SolidColorBrush(Color.FromRgb(229, 57, 53)),
                     FontWeight = FontWeights.SemiBold
@@ -1110,8 +1111,8 @@ namespace NXProject.Views
                         },
                         Tag = new GapBarTag(capturedRes, capturedStart, capturedEnd, capturedWd),
                         ToolTip = hasJust
-                            ? $"Gap: {gapStart:dd/MM/yy} - {gapEnd:dd/MM/yy} ({workDays}d)\n[Justificado] Clique para editar"
-                            : $"Gap: {gapStart:dd/MM/yy} - {gapEnd:dd/MM/yy} ({workDays}d)\nClique para justificar",
+                            ? AppStrings.Get("RAlloc_GapTipJustified", gapStart, gapEnd, workDays)
+                            : AppStrings.Get("RAlloc_GapTipUnjustified", gapStart, gapEnd, workDays),
                         Cursor = System.Windows.Input.Cursors.Hand
                     };
                     gapButton.Click += OnGapBarClick;
@@ -1132,7 +1133,7 @@ namespace NXProject.Views
                 BorderThickness = new Thickness(0, 0, 1, 1),
                 Child = new TextBlock
                 {
-                    Text = "Recurso",
+                    Text = AppStrings.Get("RAlloc_ColResource"),
                     FontWeight = FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(8, 0, 0, 0)
