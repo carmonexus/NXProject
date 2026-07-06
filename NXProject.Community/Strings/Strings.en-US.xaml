@@ -1015,4 +1015,39 @@
     <sys:String x:Key="CPath_Subtitle">{0} activities analyzed — {1} critical</sys:String>
     <sys:String x:Key="CPath_CountShown">{0} shown</sys:String>
 
+    <!-- Manage Sprints -->
+    <sys:String x:Key="Sprint_Title">Manage Sprints</sys:String>
+    <sys:String x:Key="Sprint_Subtitle">Configure the project sprints. Sprints imported from DevOps have the path filled in.</sys:String>
+    <sys:String x:Key="Sprint_InitialSprint">Initial sprint:</sys:String>
+    <sys:String x:Key="Sprint_DaysPerSprint">Days per sprint:</sys:String>
+    <sys:String x:Key="Sprint_Numbering">Numbering:</sys:String>
+    <sys:String x:Key="Sprint_Apply">Apply</sys:String>
+    <sys:String x:Key="Sprint_CriticalConfig">Activity Critical Path Configuration</sys:String>
+    <sys:String x:Key="Sprint_YellowUntil">Yellow up to:</sys:String>
+    <sys:String x:Key="Sprint_RedBelow">Red &lt;:</sys:String>
+    <sys:String x:Key="Sprint_SlackHint">Suggested start: 2d for attention and 1d for critical; adjust to your company's velocity.</sys:String>
+    <sys:String x:Key="Sprint_Add">+ Add Sprint</sys:String>
+    <sys:String x:Key="Sprint_DeleteSelected">Delete Selected</sys:String>
+    <sys:String x:Key="Sprint_ColNumber">#</sys:String>
+    <sys:String x:Key="Sprint_ColName">Name</sys:String>
+    <sys:String x:Key="Sprint_ColStart">Start</sys:String>
+    <sys:String x:Key="Sprint_ColEnd">Finish</sys:String>
+    <sys:String x:Key="Sprint_ColDuration">Duration (days)</sys:String>
+    <sys:String x:Key="Sprint_ColActivities">Activities</sys:String>
+    <sys:String x:Key="Sprint_ColDevOpsPath">DevOps Path</sys:String>
+    <sys:String x:Key="Sprint_Close">Close</sys:String>
+    <sys:String x:Key="Sprint_Count">{0} sprint(s)</sys:String>
+    <sys:String x:Key="Sprint_SettingsApplied">Settings applied.</sys:String>
+    <sys:String x:Key="Sprint_Added">Sprint "{0}" added.</sys:String>
+    <sys:String x:Key="Sprint_SelectToDelete">Select a sprint to delete.</sys:String>
+    <sys:String x:Key="Sprint_DeleteTitle">Delete sprint</sys:String>
+    <sys:String x:Key="Sprint_DeleteConfirmWithTasks">Delete "{0}"?&#10;&#10;{1} activity(ies) will lose their link to this sprint.</sys:String>
+    <sys:String x:Key="Sprint_DeleteConfirm">Delete "{0}"?</sys:String>
+    <sys:String x:Key="Sprint_Deleted">Sprint "{0}" deleted.</sys:String>
+    <sys:String x:Key="Sprint_AddTitle">Add Sprint</sys:String>
+    <sys:String x:Key="Sprint_NameLabel">Sprint name</sys:String>
+    <sys:String x:Key="Sprint_StartLabel">Start</sys:String>
+    <sys:String x:Key="Sprint_AddButton">Add</sys:String>
+    <sys:String x:Key="Sprint_Cancel">Cancel</sys:String>
+
 </ResourceDictionary>

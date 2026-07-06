@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using NXProject.Models;
+using NXProject.Services;
 using NXProject.ViewModels;
 
 namespace NXProject.Views
@@ -46,7 +47,7 @@ namespace NXProject.Views
 
         private void UpdateCountLabel()
         {
-            CountLabel.Text = $"{Rows.Count} sprint(s)";
+            CountLabel.Text = AppStrings.Get("Sprint_Count", Rows.Count);
         }
 
         // ── Aplicar configurações gerais ─────────────────────────────────────
@@ -67,7 +68,7 @@ namespace NXProject.Views
             RiskSlackBox.Text = _vm.CriticalPathRiskSlackDays.ToString("0.#", CultureInfo.CurrentCulture);
             CriticalSlackBox.Text = _vm.CriticalPathCriticalSlackDays.ToString("0.#", CultureInfo.CurrentCulture);
 
-            ShowStatus("Configurações aplicadas.");
+            ShowStatus(AppStrings.Get("Sprint_SettingsApplied"));
         }
 
         private static bool TryParseDays(string? text, out double value)
@@ -109,7 +110,7 @@ namespace NXProject.Views
             _vm.Project.IsDirty = true;
             _vm.RebuildSprintCollections();
             RebuildRows();
-            ShowStatus($"Sprint \"{sprint.Name}\" incluída.");
+            ShowStatus(AppStrings.Get("Sprint_Added", sprint.Name));
         }
 
         // ── Excluir sprint ────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ namespace NXProject.Views
         {
             if (SprintGrid.SelectedItem is not SprintRow row)
             {
-                MessageBox.Show("Selecione uma sprint para excluir.", "Excluir sprint",
+                MessageBox.Show(AppStrings.Get("Sprint_SelectToDelete"), AppStrings.Get("Sprint_DeleteTitle"),
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -126,10 +127,10 @@ namespace NXProject.Views
             var sprint = row.Sprint;
             var count = row.TaskCount;
             var msg = count > 0
-                ? $"Excluir \"{sprint.Name}\"?\n\n{count} atividade(s) perderão o vínculo com esta sprint."
-                : $"Excluir \"{sprint.Name}\"?";
+                ? AppStrings.Get("Sprint_DeleteConfirmWithTasks", sprint.Name, count)
+                : AppStrings.Get("Sprint_DeleteConfirm", sprint.Name);
 
-            if (MessageBox.Show(msg, "Excluir sprint", MessageBoxButton.YesNo, MessageBoxImage.Warning)
+            if (MessageBox.Show(msg, AppStrings.Get("Sprint_DeleteTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning)
                 != MessageBoxResult.Yes)
                 return;
 
@@ -146,7 +147,7 @@ namespace NXProject.Views
             _vm.Project.IsDirty = true;
             _vm.RebuildSprintCollections();
             RebuildRows();
-            ShowStatus($"Sprint \"{sprint.Name}\" excluída.");
+            ShowStatus(AppStrings.Get("Sprint_Deleted", sprint.Name));
         }
 
         // ── Fechar ────────────────────────────────────────────────────────────
@@ -263,7 +264,7 @@ namespace NXProject.Views
 
         public AddSprintDialog(int nextNumber, DateTime suggestStart, DateTime suggestEnd)
         {
-            Title = "Incluir Sprint";
+            Title = AppStrings.Get("Sprint_AddTitle");
             Width = 380;
             Height = 230;
             ResizeMode = ResizeMode.NoResize;
@@ -279,7 +280,7 @@ namespace NXProject.Views
 
             // Nome
             var namePanel = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
-            namePanel.Children.Add(new TextBlock { Text = "Nome da sprint", FontWeight = FontWeights.SemiBold,
+            namePanel.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_NameLabel"), FontWeight = FontWeights.SemiBold,
                 FontSize = 12, Margin = new Thickness(0, 0, 0, 4) });
             _nameBox = new TextBox { FontSize = 12, Padding = new Thickness(6, 4, 6, 4) };
             namePanel.Children.Add(_nameBox);
@@ -293,7 +294,7 @@ namespace NXProject.Views
             datePanel.ColumnDefinitions.Add(new ColumnDefinition());
 
             var startStack = new StackPanel();
-            startStack.Children.Add(new TextBlock { Text = "Início", FontWeight = FontWeights.SemiBold,
+            startStack.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_StartLabel"), FontWeight = FontWeights.SemiBold,
                 FontSize = 12, Margin = new Thickness(0, 0, 0, 4) });
             _startPicker = new DatePicker { SelectedDate = suggestStart, FontSize = 12 };
             startStack.Children.Add(_startPicker);
@@ -314,9 +315,9 @@ namespace NXProject.Views
             // Botões
             var btns = new StackPanel { Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right };
-            var ok = new Button { Content = "Incluir", Width = 80, IsDefault = true,
+            var ok = new Button { Content = AppStrings.Get("Sprint_AddButton"), Width = 80, IsDefault = true,
                 Margin = new Thickness(0, 0, 8, 0) };
-            var cancel = new Button { Content = "Cancelar", Width = 80, IsCancel = true };
+            var cancel = new Button { Content = AppStrings.Get("Sprint_Cancel"), Width = 80, IsCancel = true };
             ok.Click += OnOk;
             btns.Children.Add(ok);
             btns.Children.Add(cancel);
