@@ -687,4 +687,37 @@
     <sys:String x:Key="PMap_Error">Error</sys:String>
     <sys:String x:Key="PMap_ProjectsSelected">{0} project(s) selected. Click '☁ Import from DevOps' to load the data.</sys:String>
 
+    <!-- Import Result -->
+    <sys:String x:Key="ImpRes_Title">Import Result</sys:String>
+    <sys:String x:Key="ImpRes_Header">Result — Azure DevOps Import</sys:String>
+    <sys:String x:Key="ImpRes_StatesFixed">States fixed</sys:String>
+    <sys:String x:Key="ImpRes_ExtPred">External pred.</sys:String>
+    <sys:String x:Key="ImpRes_WarnErr">Warnings/Errors</sys:String>
+    <sys:String x:Key="ImpRes_Show">Show:</sys:String>
+    <sys:String x:Key="ImpRes_Info">✔ Info</sys:String>
+    <sys:String x:Key="ImpRes_Warn">⚠ Warning</sys:String>
+    <sys:String x:Key="ImpRes_Error">✖ Error</sys:String>
+    <sys:String x:Key="ImpRes_CopyLog">Copy log</sys:String>
+    <sys:String x:Key="ImpRes_Close">Close</sys:String>
+    <sys:String x:Key="ImpRes_LogInfo">[INFO] </sys:String>
+    <sys:String x:Key="ImpRes_LogWarn">[WARN] </sys:String>
+    <sys:String x:Key="ImpRes_LogErr">[ERR]  </sys:String>
+
+    <!-- Sync Result -->
+    <sys:String x:Key="SyncRes_Title">Sync Result</sys:String>
+    <sys:String x:Key="SyncRes_Header">Result — Azure DevOps Sync</sys:String>
+    <sys:String x:Key="SyncRes_Updated">Updated</sys:String>
+    <sys:String x:Key="SyncRes_Created">Created</sys:String>
+    <sys:String x:Key="SyncRes_NoChange">No change</sys:String>
+    <sys:String x:Key="SyncRes_Warnings">Warnings</sys:String>
+    <sys:String x:Key="SyncRes_Errors">Errors</sys:String>
+    <sys:String x:Key="SyncRes_Conflicts">Conflicts</sys:String>
+    <sys:String x:Key="SyncRes_ConflictBold">⚠ Concurrency conflict detected.</sys:String>
+    <sys:String x:Key="SyncRes_ConflictText"> The changes marked in red were discarded because another user saved a newer version in DevOps. Re-import the project to get the current version before syncing again.</sys:String>
+    <sys:String x:Key="SyncRes_Success">✔ Success</sys:String>
+    <sys:String x:Key="SyncRes_NoSprint">No sprint: {0}</sys:String>
+    <sys:String x:Key="SyncRes_LogOk">[OK]  </sys:String>
+    <sys:String x:Key="SyncRes_LogWarn">[WARN]</sys:String>
+    <sys:String x:Key="SyncRes_LogErr">[ERR] </sys:String>
+
 </ResourceDictionary>

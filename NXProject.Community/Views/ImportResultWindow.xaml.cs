@@ -55,9 +55,9 @@ namespace NXProject.Views
                 if (!include) continue;
                 var prefix = e.Level switch
                 {
-                    TfsImportService.SyncLogLevel.Success => "[INFO] ",
-                    TfsImportService.SyncLogLevel.Warning => "[AVS]  ",
-                    TfsImportService.SyncLogLevel.Error   => "[ERR]  ",
+                    TfsImportService.SyncLogLevel.Success => AppStrings.Get("ImpRes_LogInfo"),
+                    TfsImportService.SyncLogLevel.Warning => AppStrings.Get("ImpRes_LogWarn"),
+                    TfsImportService.SyncLogLevel.Error   => AppStrings.Get("ImpRes_LogErr"),
                     _ => "       "
                 };
                 sb.AppendLine(prefix + (e.Message ?? string.Empty));

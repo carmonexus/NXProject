@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.ImportResultWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Resultado da Importação"
+        Title="{DynamicResource ImpRes_Title}"
         Width="680" Height="500"
         MinWidth="480" MinHeight="300"
         WindowStartupLocation="CenterOwner"
@@ -41,7 +41,7 @@
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0"
-                       Text="Resultado — Importação Azure DevOps"
+                       Text="{DynamicResource ImpRes_Header}"
                        FontSize="15" FontWeight="SemiBold" Foreground="#2B579A"
                        Margin="0,0,0,14"/>
 
@@ -49,19 +49,19 @@
                 <Border Style="{StaticResource CardBorder}" Background="#FFF8E1">
                     <StackPanel>
                         <TextBlock x:Name="StateFixedNum" Style="{StaticResource CardNum}" Foreground="#E65100"/>
-                        <TextBlock Text="States corrigidos" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource ImpRes_StatesFixed}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource CardBorder}" Background="#EDE7F6">
                     <StackPanel>
                         <TextBlock x:Name="ExtPredNum" Style="{StaticResource CardNum}" Foreground="#4527A0"/>
-                        <TextBlock Text="Predec. externas" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource ImpRes_ExtPred}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource CardBorder}" Background="#FFEBEE" Margin="0">
                     <StackPanel>
                         <TextBlock x:Name="WarningNum" Style="{StaticResource CardNum}" Foreground="#C62828"/>
-                        <TextBlock Text="Avisos/Erros" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource ImpRes_WarnErr}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
             </UniformGrid>
@@ -72,18 +72,18 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Mostrar:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#555" FontSize="12"/>
-                    <ToggleButton x:Name="ShowSuccess" Content="✔ Info" IsChecked="True"
+                    <TextBlock Text="{DynamicResource ImpRes_Show}" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#555" FontSize="12"/>
+                    <ToggleButton x:Name="ShowSuccess" Content="{DynamicResource ImpRes_Info}" IsChecked="True"
                                   Style="{StaticResource FilterBtn}"
                                   Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
-                    <ToggleButton x:Name="ShowWarning" Content="⚠ Aviso" IsChecked="True"
+                    <ToggleButton x:Name="ShowWarning" Content="{DynamicResource ImpRes_Warn}" IsChecked="True"
                                   Style="{StaticResource FilterBtn}"
                                   Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
-                    <ToggleButton x:Name="ShowError" Content="✖ Erro" IsChecked="True"
+                    <ToggleButton x:Name="ShowError" Content="{DynamicResource ImpRes_Error}" IsChecked="True"
                                   Style="{StaticResource FilterBtn}"
                                   Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
                 </StackPanel>
-                <Button Grid.Column="1" Content="Copiar log" Padding="8,3"
+                <Button Grid.Column="1" Content="{DynamicResource ImpRes_CopyLog}" Padding="8,3"
                         Click="OnCopyClick" Cursor="Hand"/>
             </Grid>
 
@@ -103,7 +103,7 @@
 
             <StackPanel Grid.Row="4" Orientation="Horizontal"
                         HorizontalAlignment="Right" Margin="0,12,0,0">
-                <Button Content="Fechar" Width="100" Height="28"
+                <Button Content="{DynamicResource ImpRes_Close}" Width="100" Height="28"
                         IsDefault="True" IsCancel="True"
                         Click="OnCloseClick"/>
             </StackPanel>

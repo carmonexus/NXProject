@@ -31,7 +31,7 @@ namespace NXProject.Views
             foreach (var name in report.WithoutSprint)
                 _allEntries.Add(new TfsImportService.SyncLogEntry(
                     TfsImportService.SyncLogLevel.Warning,
-                    $"Sem sprint: {name}"));
+                    AppStrings.Get("SyncRes_NoSprint", name)));
 
             // Com problemas → ocultar sucesso por padrão para destacar erros/avisos.
             if (_allEntries.Any(e => e.Level != TfsImportService.SyncLogLevel.Success))
@@ -79,9 +79,9 @@ namespace NXProject.Views
 
                 var prefix = e.Level switch
                 {
-                    TfsImportService.SyncLogLevel.Success => "[OK]  ",
-                    TfsImportService.SyncLogLevel.Warning => "[AVS] ",
-                    TfsImportService.SyncLogLevel.Error   => "[ERR] ",
+                    TfsImportService.SyncLogLevel.Success => AppStrings.Get("SyncRes_LogOk"),
+                    TfsImportService.SyncLogLevel.Warning => AppStrings.Get("SyncRes_LogWarn"),
+                    TfsImportService.SyncLogLevel.Error   => AppStrings.Get("SyncRes_LogErr"),
                     _ => "      "
                 };
                 sb.AppendLine(prefix + (e.Message ?? string.Empty));

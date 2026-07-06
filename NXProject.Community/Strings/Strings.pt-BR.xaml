@@ -687,4 +687,37 @@
     <sys:String x:Key="PMap_Error">Erro</sys:String>
     <sys:String x:Key="PMap_ProjectsSelected">{0} projeto(s) selecionado(s). Clique em '☁ Importar do DevOps' para carregar os dados.</sys:String>
 
+    <!-- Resultado da Importação -->
+    <sys:String x:Key="ImpRes_Title">Resultado da Importação</sys:String>
+    <sys:String x:Key="ImpRes_Header">Resultado — Importação Azure DevOps</sys:String>
+    <sys:String x:Key="ImpRes_StatesFixed">States corrigidos</sys:String>
+    <sys:String x:Key="ImpRes_ExtPred">Predec. externas</sys:String>
+    <sys:String x:Key="ImpRes_WarnErr">Avisos/Erros</sys:String>
+    <sys:String x:Key="ImpRes_Show">Mostrar:</sys:String>
+    <sys:String x:Key="ImpRes_Info">✔ Info</sys:String>
+    <sys:String x:Key="ImpRes_Warn">⚠ Aviso</sys:String>
+    <sys:String x:Key="ImpRes_Error">✖ Erro</sys:String>
+    <sys:String x:Key="ImpRes_CopyLog">Copiar log</sys:String>
+    <sys:String x:Key="ImpRes_Close">Fechar</sys:String>
+    <sys:String x:Key="ImpRes_LogInfo">[INFO] </sys:String>
+    <sys:String x:Key="ImpRes_LogWarn">[AVS]  </sys:String>
+    <sys:String x:Key="ImpRes_LogErr">[ERR]  </sys:String>
+
+    <!-- Resultado da Sincronização -->
+    <sys:String x:Key="SyncRes_Title">Resultado da Sincronização</sys:String>
+    <sys:String x:Key="SyncRes_Header">Resultado — Sincronização Azure DevOps</sys:String>
+    <sys:String x:Key="SyncRes_Updated">Atualizados</sys:String>
+    <sys:String x:Key="SyncRes_Created">Criados</sys:String>
+    <sys:String x:Key="SyncRes_NoChange">Sem alteração</sys:String>
+    <sys:String x:Key="SyncRes_Warnings">Avisos</sys:String>
+    <sys:String x:Key="SyncRes_Errors">Erros</sys:String>
+    <sys:String x:Key="SyncRes_Conflicts">Conflitos</sys:String>
+    <sys:String x:Key="SyncRes_ConflictBold">⚠ Conflito de concorrência detectado.</sys:String>
+    <sys:String x:Key="SyncRes_ConflictText"> As alterações marcadas em vermelho foram descartadas porque outro usuário gravou uma versão mais recente no DevOps. Reimporte o projeto para obter a versão atual antes de sincronizar novamente.</sys:String>
+    <sys:String x:Key="SyncRes_Success">✔ Sucesso</sys:String>
+    <sys:String x:Key="SyncRes_NoSprint">Sem sprint: {0}</sys:String>
+    <sys:String x:Key="SyncRes_LogOk">[OK]  </sys:String>
+    <sys:String x:Key="SyncRes_LogWarn">[AVS] </sys:String>
+    <sys:String x:Key="SyncRes_LogErr">[ERR] </sys:String>
+
 </ResourceDictionary>

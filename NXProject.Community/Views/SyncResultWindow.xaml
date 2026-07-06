@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.SyncResultWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Resultado da Sincronização"
+        Title="{DynamicResource SyncRes_Title}"
         Width="680" Height="500"
         MinWidth="480" MinHeight="300"
         WindowStartupLocation="CenterOwner"
@@ -43,7 +43,7 @@
 
             <!-- Título -->
             <TextBlock Grid.Row="0"
-                       Text="Resultado — Sincronização Azure DevOps"
+                       Text="{DynamicResource SyncRes_Header}"
                        FontSize="15" FontWeight="SemiBold" Foreground="#2B579A"
                        Margin="0,0,0,14"/>
 
@@ -52,37 +52,37 @@
                 <Border Style="{StaticResource CardBorder}" Background="#E8F5E9">
                     <StackPanel>
                         <TextBlock x:Name="UpdatedNum" Style="{StaticResource CardNum}" Foreground="#2E7D32"/>
-                        <TextBlock Text="Atualizados" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource SyncRes_Updated}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource CardBorder}" Background="#E3F2FD">
                     <StackPanel>
                         <TextBlock x:Name="CreatedNum" Style="{StaticResource CardNum}" Foreground="#1565C0"/>
-                        <TextBlock Text="Criados" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource SyncRes_Created}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource CardBorder}" Background="#F5F5F5">
                     <StackPanel>
                         <TextBlock x:Name="SkippedNum" Style="{StaticResource CardNum}" Foreground="#757575"/>
-                        <TextBlock Text="Sem alteração" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource SyncRes_NoChange}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource CardBorder}" Background="#FFF8E1">
                     <StackPanel>
                         <TextBlock x:Name="WarningNum" Style="{StaticResource CardNum}" Foreground="#E65100"/>
-                        <TextBlock Text="Avisos" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource SyncRes_Warnings}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource CardBorder}" Background="#FFEBEE">
                     <StackPanel>
                         <TextBlock x:Name="ErrorNum" Style="{StaticResource CardNum}" Foreground="#C62828"/>
-                        <TextBlock Text="Erros" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource SyncRes_Errors}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource CardBorder}" Background="#FCE4EC" Margin="0">
                     <StackPanel>
                         <TextBlock x:Name="ConflictNum" Style="{StaticResource CardNum}" Foreground="#880E4F"/>
-                        <TextBlock Text="Conflitos" Style="{StaticResource CardLbl}"/>
+                        <TextBlock Text="{DynamicResource SyncRes_Conflicts}" Style="{StaticResource CardLbl}"/>
                     </StackPanel>
                 </Border>
             </UniformGrid>
@@ -93,8 +93,8 @@
                     CornerRadius="4" Padding="10,6" Margin="0,0,0,8"
                     Visibility="Collapsed">
                 <TextBlock TextWrapping="Wrap" Foreground="#880E4F" FontSize="12">
-                    <Run FontWeight="Bold">⚠ Conflito de concorrência detectado.</Run>
-                    <Run> As alterações marcadas em vermelho foram descartadas porque outro usuário gravou uma versão mais recente no DevOps. Reimporte o projeto para obter a versão atual antes de sincronizar novamente.</Run>
+                    <Run FontWeight="Bold" Text="{DynamicResource SyncRes_ConflictBold}"/>
+                    <Run Text="{DynamicResource SyncRes_ConflictText}"/>
                 </TextBlock>
             </Border>
 
@@ -105,18 +105,18 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Mostrar:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#555" FontSize="12"/>
-                    <ToggleButton x:Name="ShowSuccess" Content="✔ Sucesso" IsChecked="True"
+                    <TextBlock Text="{DynamicResource ImpRes_Show}" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#555" FontSize="12"/>
+                    <ToggleButton x:Name="ShowSuccess" Content="{DynamicResource SyncRes_Success}" IsChecked="True"
                                   Style="{StaticResource FilterBtn}"
                                   Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
-                    <ToggleButton x:Name="ShowWarning" Content="⚠ Aviso" IsChecked="True"
+                    <ToggleButton x:Name="ShowWarning" Content="{DynamicResource ImpRes_Warn}" IsChecked="True"
                                   Style="{StaticResource FilterBtn}"
                                   Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
-                    <ToggleButton x:Name="ShowError" Content="✖ Erro" IsChecked="True"
+                    <ToggleButton x:Name="ShowError" Content="{DynamicResource ImpRes_Error}" IsChecked="True"
                                   Style="{StaticResource FilterBtn}"
                                   Checked="OnFilterChanged" Unchecked="OnFilterChanged"/>
                 </StackPanel>
-                <Button Grid.Column="1" Content="Copiar log" Padding="8,3"
+                <Button Grid.Column="1" Content="{DynamicResource ImpRes_CopyLog}" Padding="8,3"
                         Click="OnCopyClick" Cursor="Hand"/>
             </Grid>
 
@@ -138,7 +138,7 @@
             <!-- Botão fechar -->
             <StackPanel Grid.Row="5" Orientation="Horizontal"
                         HorizontalAlignment="Right" Margin="0,12,0,0">
-                <Button Content="Fechar" Width="100" Height="28"
+                <Button Content="{DynamicResource ImpRes_Close}" Width="100" Height="28"
                         IsDefault="True" IsCancel="True"
                         Click="OnCloseClick"/>
             </StackPanel>
