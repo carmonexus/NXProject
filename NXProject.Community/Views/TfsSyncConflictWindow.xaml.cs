@@ -40,8 +40,8 @@ namespace NXProject.Views
         {
             var sel = _rows.Count(r => r.IsSelected);
             SummaryText.Text = sel == 0
-                ? "Nenhum item selecionado."
-                : $"{sel} item(ns) selecionado(s) para sobrescrever.";
+                ? AppStrings.Get("Conf_NoneSelected")
+                : AppStrings.Get("Conf_SelectedCount", sel);
             OverwriteButton.IsEnabled = sel > 0;
         }
 
@@ -50,11 +50,11 @@ namespace NXProject.Views
             if (ConflictGrid.SelectedItem is not ConflictRow row)
             {
                 DiffList.ItemsSource = null;
-                DetailHeader.Text = "Selecione um item acima para ver a comparação de atributos";
+                DetailHeader.Text = AppStrings.Get("Conf_SelectToCompare");
                 return;
             }
 
-            DetailHeader.Text = $"Comparação: {row.TfsType} #{row.TfsId} — {row.LocalTitle}";
+            DetailHeader.Text = AppStrings.Get("Conf_CompareHeader", row.TfsType, row.TfsId, row.LocalTitle);
             DiffList.ItemsSource = BuildDiffRows(row.Item);
         }
 
@@ -62,12 +62,12 @@ namespace NXProject.Views
         {
             var rows = new List<DiffRow>();
 
-            rows.Add(DiffRow.Build("Título",   item.LocalTitle,                      item.TfsTitle));
-            rows.Add(DiffRow.Build("Estado",   item.LocalState,                      item.TfsState));
-            rows.Add(DiffRow.Build("Tags",     item.LocalTags,                       item.TfsTags));
-            rows.Add(DiffRow.Build("HH Est.",  FormatHours(item.LocalHours),         FormatHours(item.TfsHours)));
-            rows.Add(DiffRow.Build("Início",   FormatDate(item.LocalStart),          FormatDate(item.TfsStart)));
-            rows.Add(DiffRow.Build("Fim",      FormatDate(item.LocalFinish),         FormatDate(item.TfsFinish)));
+            rows.Add(DiffRow.Build(AppStrings.Get("Conf_AttrTitle"),   item.LocalTitle,                      item.TfsTitle));
+            rows.Add(DiffRow.Build(AppStrings.Get("Conf_AttrState"),   item.LocalState,                      item.TfsState));
+            rows.Add(DiffRow.Build(AppStrings.Get("Conf_AttrTags"),     item.LocalTags,                       item.TfsTags));
+            rows.Add(DiffRow.Build(AppStrings.Get("Conf_AttrHours"),  FormatHours(item.LocalHours),         FormatHours(item.TfsHours)));
+            rows.Add(DiffRow.Build(AppStrings.Get("Conf_AttrStart"),   FormatDate(item.LocalStart),          FormatDate(item.TfsStart)));
+            rows.Add(DiffRow.Build(AppStrings.Get("Conf_AttrFinish"),      FormatDate(item.LocalFinish),         FormatDate(item.TfsFinish)));
 
             return rows;
         }
@@ -91,7 +91,7 @@ namespace NXProject.Views
             if (ids.Count == 0) return;
 
             OverwriteButton.IsEnabled = false;
-            OverwriteButton.Content = "Sincronizando...";
+            OverwriteButton.Content = AppStrings.Get("Conf_Syncing");
 
             try
             {
@@ -101,8 +101,8 @@ namespace NXProject.Views
                 await TfsImportService.SyncAsync(_project, _options, forceOverwriteIds: ids);
 
                 MessageBox.Show(
-                    $"{ids.Count} item(ns) sobrescrito(s) com sucesso no DevOps.",
-                    "Sobrescrever", MessageBoxButton.OK, MessageBoxImage.Information);
+                    AppStrings.Get("Conf_OverwriteSuccess", ids.Count),
+                    AppStrings.Get("Conf_OverwriteTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
 
                 foreach (var id in ids)
                 {
@@ -111,7 +111,7 @@ namespace NXProject.Views
                 }
 
                 DiffList.ItemsSource = null;
-                DetailHeader.Text = "Selecione um item acima para ver a comparação de atributos";
+                DetailHeader.Text = AppStrings.Get("Conf_SelectToCompare");
 
                 if (_rows.Count == 0)
                 {
@@ -121,13 +121,13 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao sobrescrever:\n{ex.Message}", "Erro",
+                MessageBox.Show(AppStrings.Get("Conf_OverwriteError", ex.Message), AppStrings.Get("Conf_Error"),
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
                 OverwriteButton.IsEnabled = true;
-                OverwriteButton.Content = "Sobrescrever selecionados no DevOps";
+                OverwriteButton.Content = AppStrings.Get("Conf_Overwrite");
                 UpdateSummary();
             }
         }
@@ -163,7 +163,7 @@ namespace NXProject.Views
             public string VersionLabel => $"{Item.LocalVersion} → {Item.TfsVersion}";
             public string LocalTitle   => Item.LocalTitle;
             public string StartedLabel => Item.IsStarted
-                ? $"Iniciada ({Item.LocalPercentComplete:0}%) — não sobrescrever"
+                ? AppStrings.Get("Conf_StartedLabel", Item.LocalPercentComplete)
                 : "";
 
             public string DiffSummary
@@ -171,12 +171,12 @@ namespace NXProject.Views
                 get
                 {
                     var diffs = new List<string>();
-                    if (Item.LocalTitle  != Item.TfsTitle)  diffs.Add("Título");
-                    if (Item.LocalState  != Item.TfsState)  diffs.Add("Estado");
-                    if (Item.LocalTags   != Item.TfsTags)   diffs.Add("Tags");
-                    if (!HoursEqual(Item.LocalHours, Item.TfsHours)) diffs.Add("HH");
-                    if (Item.LocalStart  != Item.TfsStart)  diffs.Add("Início");
-                    if (Item.LocalFinish != Item.TfsFinish) diffs.Add("Fim");
+                    if (Item.LocalTitle  != Item.TfsTitle)  diffs.Add(AppStrings.Get("Conf_AttrTitle"));
+                    if (Item.LocalState  != Item.TfsState)  diffs.Add(AppStrings.Get("Conf_AttrState"));
+                    if (Item.LocalTags   != Item.TfsTags)   diffs.Add(AppStrings.Get("Conf_AttrTags"));
+                    if (!HoursEqual(Item.LocalHours, Item.TfsHours)) diffs.Add(AppStrings.Get("Conf_DiffHours"));
+                    if (Item.LocalStart  != Item.TfsStart)  diffs.Add(AppStrings.Get("Conf_AttrStart"));
+                    if (Item.LocalFinish != Item.TfsFinish) diffs.Add(AppStrings.Get("Conf_AttrFinish"));
                     return diffs.Count == 0 ? "—" : string.Join(", ", diffs);
                 }
             }
@@ -196,8 +196,8 @@ namespace NXProject.Views
             public string TfsValue     { get; init; } = "";
             public bool   IsDifferent  { get; init; }
 
-            public string LocalTooltip => IsDifferent ? $"Local: {LocalValue}" : "";
-            public string TfsTooltip   => IsDifferent ? $"DevOps: {TfsValue}"  : "";
+            public string LocalTooltip => IsDifferent ? AppStrings.Get("Conf_LocalTip", LocalValue) : "";
+            public string TfsTooltip   => IsDifferent ? AppStrings.Get("Conf_DevOpsTip", TfsValue)  : "";
 
             private static readonly SolidColorBrush _diffBg = new(Color.FromRgb(0xFF, 0xEB, 0xEB));
             private static readonly SolidColorBrush _normBg = Brushes.Transparent;

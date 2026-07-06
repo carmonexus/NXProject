@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.TfsSyncConflictWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Conflitos de Sincronização"
+        Title="{DynamicResource Conf_Title}"
         Width="860" Height="580"
         MinWidth="640" MinHeight="420"
         WindowStartupLocation="CenterOwner"
@@ -34,9 +34,9 @@
 
             <!-- Cabeçalho -->
             <StackPanel Grid.Row="0" Margin="0,0,0,10">
-                <TextBlock Text="⚠ Conflitos de Concorrência"
+                <TextBlock Text="{DynamicResource Conf_Header}"
                            FontSize="15" FontWeight="SemiBold" Foreground="#B00020"/>
-                <TextBlock Text="Outro usuário alterou estes itens no DevOps. Selecione os que deseja sobrescrever com os valores locais."
+                <TextBlock Text="{DynamicResource Conf_Subtitle}"
                            FontSize="12" Foreground="#555" Margin="0,3,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
@@ -64,12 +64,12 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Tipo"        Binding="{Binding TfsType}"     Width="70"  IsReadOnly="True"/>
-                    <DataGridTextColumn Header="ID"          Binding="{Binding TfsId}"        Width="65"  IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Alterado por" Binding="{Binding ChangedBy}"   Width="110" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Ver. Local→TFS" Binding="{Binding VersionLabel}" Width="100" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Nome"        Binding="{Binding LocalTitle}"   Width="*"   IsReadOnly="True"/>
-                    <DataGridTemplateColumn Header="Diferenças" Width="90" IsReadOnly="True">
+                    <DataGridTextColumn Header="{DynamicResource Conf_ColType}"        Binding="{Binding TfsType}"     Width="70"  IsReadOnly="True"/>
+                    <DataGridTextColumn Header="{DynamicResource Conf_ColId}"          Binding="{Binding TfsId}"        Width="65"  IsReadOnly="True"/>
+                    <DataGridTextColumn Header="{DynamicResource Conf_ColChangedBy}" Binding="{Binding ChangedBy}"   Width="110" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="{DynamicResource Conf_ColVersion}" Binding="{Binding VersionLabel}" Width="100" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="{DynamicResource Conf_ColName}"        Binding="{Binding LocalTitle}"   Width="*"   IsReadOnly="True"/>
+                    <DataGridTemplateColumn Header="{DynamicResource Conf_ColDiffs}" Width="90" IsReadOnly="True">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding DiffSummary}" FontSize="11"
@@ -78,7 +78,7 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Status" Width="150" IsReadOnly="True">
+                    <DataGridTemplateColumn Header="{DynamicResource Conf_ColStatus}" Width="150" IsReadOnly="True">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding StartedLabel}" FontSize="11"
@@ -109,7 +109,7 @@
             <Border Grid.Row="2" Background="#F0F4FA" BorderBrush="#C5D5EA" BorderThickness="0,1,0,1"
                     Padding="10,5" Margin="0,10,0,0">
                 <TextBlock x:Name="DetailHeader"
-                           Text="Selecione um item acima para ver a comparação de atributos"
+                           Text="{DynamicResource Conf_SelectToCompare}"
                            FontSize="11" FontWeight="SemiBold" Foreground="#2B579A"/>
             </Border>
 
@@ -123,9 +123,9 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Atributo"       Foreground="White" FontWeight="SemiBold" FontSize="11" Padding="6,4"/>
-                        <TextBlock Grid.Column="1" Text="Local (seu)"    Foreground="White" FontWeight="SemiBold" FontSize="11" Padding="6,4"/>
-                        <TextBlock Grid.Column="2" Text="DevOps (deles)" Foreground="White" FontWeight="SemiBold" FontSize="11" Padding="6,4"/>
+                        <TextBlock Grid.Column="0" Text="{DynamicResource Conf_Attribute}"       Foreground="White" FontWeight="SemiBold" FontSize="11" Padding="6,4"/>
+                        <TextBlock Grid.Column="1" Text="{DynamicResource Conf_LocalYours}"    Foreground="White" FontWeight="SemiBold" FontSize="11" Padding="6,4"/>
+                        <TextBlock Grid.Column="2" Text="{DynamicResource Conf_DevOpsTheirs}" Foreground="White" FontWeight="SemiBold" FontSize="11" Padding="6,4"/>
                     </Grid>
                 </Border>
 
@@ -180,18 +180,18 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Content="Marcar não iniciadas" Padding="8,3" FontSize="11" Margin="0,0,6,0" Click="OnSelectAll"/>
-                <Button Grid.Column="1" Content="Desmarcar todos" Padding="8,3" FontSize="11" Click="OnDeselectAll"/>
+                <Button Grid.Column="0" Content="{DynamicResource Conf_SelectNotStarted}" Padding="8,3" FontSize="11" Margin="0,0,6,0" Click="OnSelectAll"/>
+                <Button Grid.Column="1" Content="{DynamicResource Conf_DeselectAll}" Padding="8,3" FontSize="11" Click="OnDeselectAll"/>
                 <TextBlock Grid.Column="2" x:Name="SummaryText"
                            FontSize="11" Foreground="#555" VerticalAlignment="Center" Margin="12,0,0,0"/>
                 <Button Grid.Column="3" x:Name="OverwriteButton"
-                        Content="Sobrescrever selecionados no DevOps"
+                        Content="{DynamicResource Conf_Overwrite}"
                         Height="30" Padding="14,0" Margin="0,0,10,0"
                         Background="#C62828" Foreground="White"
                         BorderThickness="0" FontWeight="SemiBold"
                         Cursor="Hand" IsEnabled="False"
                         Click="OnOverwriteClick"/>
-                <Button Grid.Column="4" Content="Fechar" Width="90" Height="30" IsCancel="True"/>
+                <Button Grid.Column="4" Content="{DynamicResource Conf_Close}" Width="90" Height="30" IsCancel="True"/>
             </Grid>
         </Grid>
     </Border>

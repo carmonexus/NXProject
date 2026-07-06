@@ -740,4 +740,42 @@
     <sys:String x:Key="CustomDO_DateTip">Date for {0}</sys:String>
     <sys:String x:Key="CustomDO_ValueTip">Value for {0}</sys:String>
 
+    <!-- Sync Conflicts -->
+    <sys:String x:Key="Conf_Title">Sync Conflicts</sys:String>
+    <sys:String x:Key="Conf_Header">⚠ Concurrency Conflicts</sys:String>
+    <sys:String x:Key="Conf_Subtitle">Another user changed these items in DevOps. Select the ones you want to overwrite with local values.</sys:String>
+    <sys:String x:Key="Conf_ColType">Type</sys:String>
+    <sys:String x:Key="Conf_ColId">ID</sys:String>
+    <sys:String x:Key="Conf_ColChangedBy">Changed by</sys:String>
+    <sys:String x:Key="Conf_ColVersion">Ver. Local→TFS</sys:String>
+    <sys:String x:Key="Conf_ColName">Name</sys:String>
+    <sys:String x:Key="Conf_ColDiffs">Differences</sys:String>
+    <sys:String x:Key="Conf_ColStatus">Status</sys:String>
+    <sys:String x:Key="Conf_SelectToCompare">Select an item above to see the attribute comparison</sys:String>
+    <sys:String x:Key="Conf_Attribute">Attribute</sys:String>
+    <sys:String x:Key="Conf_LocalYours">Local (yours)</sys:String>
+    <sys:String x:Key="Conf_DevOpsTheirs">DevOps (theirs)</sys:String>
+    <sys:String x:Key="Conf_SelectNotStarted">Select not started</sys:String>
+    <sys:String x:Key="Conf_DeselectAll">Deselect all</sys:String>
+    <sys:String x:Key="Conf_Overwrite">Overwrite selected in DevOps</sys:String>
+    <sys:String x:Key="Conf_Close">Close</sys:String>
+    <sys:String x:Key="Conf_NoneSelected">No item selected.</sys:String>
+    <sys:String x:Key="Conf_SelectedCount">{0} item(s) selected to overwrite.</sys:String>
+    <sys:String x:Key="Conf_CompareHeader">Comparison: {0} #{1} — {2}</sys:String>
+    <sys:String x:Key="Conf_AttrTitle">Title</sys:String>
+    <sys:String x:Key="Conf_AttrState">State</sys:String>
+    <sys:String x:Key="Conf_AttrTags">Tags</sys:String>
+    <sys:String x:Key="Conf_AttrHours">Est. HH</sys:String>
+    <sys:String x:Key="Conf_AttrStart">Start</sys:String>
+    <sys:String x:Key="Conf_AttrFinish">Finish</sys:String>
+    <sys:String x:Key="Conf_DiffHours">HH</sys:String>
+    <sys:String x:Key="Conf_Syncing">Syncing...</sys:String>
+    <sys:String x:Key="Conf_OverwriteSuccess">{0} item(s) overwritten successfully in DevOps.</sys:String>
+    <sys:String x:Key="Conf_OverwriteTitle">Overwrite</sys:String>
+    <sys:String x:Key="Conf_OverwriteError">Error overwriting:&#10;{0}</sys:String>
+    <sys:String x:Key="Conf_Error">Error</sys:String>
+    <sys:String x:Key="Conf_StartedLabel">Started ({0:0}%) — do not overwrite</sys:String>
+    <sys:String x:Key="Conf_LocalTip">Local: {0}</sys:String>
+    <sys:String x:Key="Conf_DevOpsTip">DevOps: {0}</sys:String>
+
 </ResourceDictionary>
