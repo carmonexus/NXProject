@@ -3,7 +3,8 @@ param(
     [string]$Configuration = "Release",
 
     [switch]$Run,
-    [switch]$Clean
+    [switch]$Clean,
+    [switch]$Sign
 )
 
 $SolutionDir = $PSScriptRoot
@@ -92,12 +93,16 @@ Write-Host ""
 Write-Host "Build Community concluido com sucesso!" -ForegroundColor Green
 Write-Host "  Saida: $OutputDir" -ForegroundColor DarkGray
 
-# Assina os binarios apos o build para que run-community.ps1 nao precise recriar cert a cada execucao.
-Write-Step "Assinando binarios..."
-$signScript = Join-Path $SolutionDir "sign-nxproject.ps1"
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $signScript
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Aviso: assinatura falhou (codigo $LASTEXITCODE). run-community.ps1 tentara novamente ao iniciar." -ForegroundColor Yellow
+if ($Sign) {
+    Write-Step "Assinando binarios..."
+    $signScript = Join-Path $SolutionDir "sign-nxproject.ps1"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $signScript
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Aviso: assinatura falhou (codigo $LASTEXITCODE). run-community.ps1 tentara novamente ao iniciar." -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Host "Assinatura ignorada. Use -Sign para assinar os binarios e configurar o certificado local." -ForegroundColor DarkGray
 }
 
 if ($Run) {
