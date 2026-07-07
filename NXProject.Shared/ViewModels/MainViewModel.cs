@@ -791,6 +791,7 @@ namespace NXProject.ViewModels
                     RecalcIdCounters();
                     RebuildFlatTasks();
                     ApplyVirtualPredecessorsToAll();
+                    RecalculateProjectPercent();
                     var opts = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
                     if (opts.AutoLoadBaseline && project.BaselineActive)
                         BaselineService.Load(dlg.FileName, FlatTasks.Select(t => t.Model));
@@ -819,6 +820,7 @@ namespace NXProject.ViewModels
                 ApplyProjectSprintSettingsToViewModel(project);
                 RecalcIdCounters();
                 RebuildFlatTasks();
+                RecalculateProjectPercent();
                 StatusMessage = $"OpenProj importado: {dlg.FileName}";
             }
             catch (Exception ex)
@@ -859,6 +861,7 @@ namespace NXProject.ViewModels
             _nextId = AllTasks().Select(t => t.Id).DefaultIfEmpty(0).Max() + 1;
             RebuildFlatTasks();
             ApplyVirtualPredecessorsToAll();
+            RecalculateProjectPercent();
             Project.IsDirty = true;
             StatusMessage = statusMessage ?? "Projeto importado.";
         }
