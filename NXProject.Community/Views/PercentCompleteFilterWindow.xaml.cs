@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -41,7 +42,7 @@ namespace NXProject.Views
 
             if (!double.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var parsed))
             {
-                ErrorText.Text = $"{label}: informe um numero entre 0 e 100.";
+                ErrorText.Text = AppStrings.Get("PctFilter_NotANumber", label);
                 box.Focus();
                 box.SelectAll();
                 return false;
@@ -49,7 +50,7 @@ namespace NXProject.Views
 
             if (parsed < 0 || parsed > 100)
             {
-                ErrorText.Text = $"{label}: o valor deve ficar entre 0 e 100.";
+                ErrorText.Text = AppStrings.Get("PctFilter_OutOfRange", label);
                 box.Focus();
                 box.SelectAll();
                 return false;
@@ -85,13 +86,13 @@ namespace NXProject.Views
                 return;
             }
 
-            if (!TryReadPercent(MinBox, "Minimo", out var min) ||
-                !TryReadPercent(MaxBox, "Maximo", out var max))
+            if (!TryReadPercent(MinBox, AppStrings.Get("PctFilter_Min"), out var min) ||
+                !TryReadPercent(MaxBox, AppStrings.Get("PctFilter_Max"), out var max))
                 return;
 
             if (min.HasValue && max.HasValue && min.Value > max.Value)
             {
-                ErrorText.Text = "O minimo nao pode ser maior que o maximo.";
+                ErrorText.Text = AppStrings.Get("PctFilter_MinGtMax");
                 MinBox.Focus();
                 MinBox.SelectAll();
                 return;
@@ -155,7 +156,7 @@ namespace NXProject.Views
             var text = ReferenceDateBox.Text?.Trim();
             if (!DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out var parsed))
             {
-                ErrorText.Text = "Data de referência: informe uma data válida.";
+                ErrorText.Text = AppStrings.Get("PctFilter_InvalidDate");
                 ReferenceDateBox.Focus();
                 ReferenceDateBox.SelectAll();
                 return false;

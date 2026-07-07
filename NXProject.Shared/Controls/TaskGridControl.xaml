@@ -203,13 +203,13 @@
                                     </Border.Style>
                                     <Border.ContextMenu>
                                         <ContextMenu>
-                                            <MenuItem Header="Retirar Block da Story"
+                                            <MenuItem Header="{DynamicResource Grid_RemoveBlock}"
                                                       Click="OnToggleStoryBlockClick"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
-                                    <TextBlock Text="⛔ BLOCK" FontSize="9" FontWeight="SemiBold"
+                                    <TextBlock Text="{DynamicResource Grid_BlockedStoryLabel}" FontSize="9" FontWeight="SemiBold"
                                                Foreground="#A4262C" VerticalAlignment="Center"
-                                               ToolTip="Bloqueado (tag Block na Story)"/>
+                                               ToolTip="{DynamicResource Grid_BlockedStory}"/>
                                 </Border>
                                 <!-- BLOCK de Task filha — só mostra se Story NÃO tem Block -->
                                 <Border Margin="0,0,5,0" Padding="4,0" CornerRadius="3"
@@ -229,9 +229,9 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <TextBlock Text="🔴 BLOCK" FontSize="9" FontWeight="SemiBold"
+                                    <TextBlock Text="{DynamicResource Grid_BlockedByChildLabel}" FontSize="9" FontWeight="SemiBold"
                                                Foreground="#7A5200" VerticalAlignment="Center"
-                                               ToolTip="Bloqueado por Task filha"/>
+                                               ToolTip="{DynamicResource Grid_BlockedByChild}"/>
                                 </Border>
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
                                            FontSize="{Binding NameTextFontSize, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -257,41 +257,41 @@
                                             <MenuItem x:Name="FetchChildTasksMenuItem"
                                                       Header="📋 Grid de Tasks (DevOps)"
                                                       Click="OnFetchChildTasksClick"
-                                                      ToolTip="Abre a grid de Tasks desta Story para editar e incluir no cronograma"/>
+                                                      ToolTip="{DynamicResource Grid_OpenTasksGridTip}"/>
                                             <MenuItem x:Name="ExpandChildTasksMenuItem"
                                                       Header="📂 Expandir Tasks no cronograma"
                                                       Click="OnExpandChildTasksClick"
-                                                      ToolTip="Inclui as Tasks desta Story diretamente no cronograma"/>
+                                                      ToolTip="{DynamicResource Grid_IncludeTasksTip}"/>
                                             <MenuItem x:Name="ReleaseStoryMenuItem"
                                                       Header="✅ Liberar Atividade (folha editável)"
                                                       Click="OnReleaseStoryClick"
-                                                      ToolTip="Mantém a Story sem Tasks no cronograma — duração e HH passam a ser editáveis diretamente"/>
+                                                      ToolTip="{DynamicResource Grid_KeepStoryNoTasksTip}"/>
                                             <MenuItem x:Name="SuppressChildTasksMenuItem"
                                                       Header="🗑 Suprimir Tasks do cronograma"
                                                       Click="OnSuppressChildTasksClick"
-                                                      ToolTip="Remove todas as Tasks filhas desta Story do cronograma (não apaga no DevOps)"/>
+                                                      ToolTip="{DynamicResource Grid_RemoveChildTasksTip}"/>
                                             <Separator x:Name="AddTaskSeparator" Visibility="Collapsed"/>
                                             <MenuItem x:Name="AddDevOpsTaskMenuItem"
                                                       Header="➕ Nova Task (DevOps)"
                                                       Click="OnAddDevOpsTaskClick"
                                                       Visibility="Collapsed"
-                                                      ToolTip="Cria uma nova Task vinculada ao DevOps"/>
+                                                      ToolTip="{DynamicResource Grid_NewDevOpsTaskTip}"/>
                                             <MenuItem x:Name="AddInternalTaskMenuItem"
                                                       Header="📌 Nova Atividade Interna"
                                                       Click="OnAddInternalTaskClick"
                                                       Visibility="Collapsed"
-                                                      ToolTip="Cria uma atividade interna sem vínculo com DevOps"/>
+                                                      ToolTip="{DynamicResource Grid_NewInternalTaskTip}"/>
                                             <Separator x:Name="ClassificationSeparator" Visibility="Collapsed"/>
                                             <MenuItem x:Name="EditClassificationMenuItem"
                                                       Header="🏷 Alterar Classificação..."
                                                       Click="OnEditClassificationClick"
                                                       Visibility="Collapsed"
-                                                      ToolTip="Altera o valor do campo de classificação (picklist obrigatório na criação no DevOps)"/>
+                                                      ToolTip="{DynamicResource Grid_ChangeClassifTip}"/>
                                             <MenuItem x:Name="ConfigureClassificationMenuItem"
                                                       Header="⚙ Mapeamento de classificação..."
                                                       Click="OnConfigureClassificationClick"
                                                       Visibility="Collapsed"
-                                                      ToolTip="Configura quais tipos DevOps usam campo de classificação e qual campo usar"/>
+                                                      ToolTip="{DynamicResource Grid_ConfigClassifTip}"/>
                                             <Separator/>
                                             <MenuItem x:Name="ResolveManualConflictMenuItem"
                                                       Header="{DynamicResource Ctx_ResolveManualConflict}"
@@ -345,7 +345,7 @@
                                               Header="🔄 Atualizar duração pelas Tasks (DevOps)"
                                               Visibility="{Binding HasDevOpsLink, Converter={StaticResource BoolToVis}}"
                                               Click="OnFetchTaskHoursClick"
-                                              ToolTip="Soma os HH Estimados das Tasks filhas no DevOps e atualiza a duração desta atividade"/>
+                                              ToolTip="{DynamicResource Grid_SumChildHoursTip}"/>
                                     <Separator/>
                                     <MenuItem x:Name="ToggleOrgHMenuItem"
                                               Click="OnToggleOrgHColumnClick"/>
@@ -590,7 +590,7 @@
                                    TextAlignment="Center"
                                    FontSize="11"
                                    Foreground="#555"
-                                   ToolTip="Dias uteis (calendario) entre inicio e fim"/>
+                                   ToolTip="{DynamicResource Grid_WorkingDaysTip}"/>
                     </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
@@ -739,7 +739,7 @@
                                 Cursor="Hand"
                                 Visibility="{Binding TksButtonVisibility}"
                                 Click="OnTksClick"
-                                ToolTip="Abrir Grid de Tasks (DevOps)"/>
+                                ToolTip="{DynamicResource Grid_OpenTasksGridDevOpsTip}"/>
                     </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
@@ -780,7 +780,7 @@
             </DataGridTemplateColumn>
 
             <!-- Sprint: mostra o NOME da sprint do DevOps; editável via dropdown -->
-            <DataGridTemplateColumn x:Name="SprintColumn" Header="Sprint" Width="90">
+            <DataGridTemplateColumn x:Name="SprintColumn" Header="{DynamicResource Grid_SprintHeader}" Width="90">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Border x:Name="SprintBorder" Background="Transparent">

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using NXProject.Services;
 using PdfSharp;
 
 namespace NXProject.Views
@@ -30,8 +31,8 @@ namespace NXProject.Views
         private void OnExportClick(object sender, RoutedEventArgs e)
         {
             ErrorText.Text = string.Empty;
-            if (!TryReadNonNegativeDays(DaysBeforeBox, "Dias antes", out var daysBefore) ||
-                !TryReadNonNegativeDays(DaysAfterBox, "Dias apos", out var daysAfter))
+            if (!TryReadNonNegativeDays(DaysBeforeBox, AppStrings.Get("Pdf_DaysBefore"), out var daysBefore) ||
+                !TryReadNonNegativeDays(DaysAfterBox, AppStrings.Get("Pdf_DaysAfter"), out var daysAfter))
                 return;
 
             LayoutMode = RadioTwoPages.IsChecked == true
@@ -56,7 +57,7 @@ namespace NXProject.Views
 
             if (!int.TryParse(text, out var parsed) || parsed < 0)
             {
-                ErrorText.Text = $"{label}: informe um numero inteiro maior ou igual a zero.";
+                ErrorText.Text = AppStrings.Get("Pdf_NotAnInt", label);
                 box.Focus();
                 box.SelectAll();
                 return false;
@@ -64,7 +65,7 @@ namespace NXProject.Views
 
             if (parsed > 3650)
             {
-                ErrorText.Text = $"{label}: use no maximo 3650 dias.";
+                ErrorText.Text = AppStrings.Get("Pdf_MaxDays", label);
                 box.Focus();
                 box.SelectAll();
                 return false;

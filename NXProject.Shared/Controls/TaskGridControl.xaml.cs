@@ -217,6 +217,9 @@ namespace NXProject.Controls
         /// <summary>Disparado quando o usuário clica em "Atualizar duração pelas Tasks" no menu da coluna Duração.</summary>
         public event Action<TaskViewModel>? FetchTaskHoursRequested;
 
+        /// <summary>Disparado antes de aplicar manualmente 100% na coluna % Compl.</summary>
+        public event Func<TaskViewModel, double, System.Threading.Tasks.Task<bool>>? ManualPercentCompleteCommitRequested;
+
         /// <summary>Disparado quando o usuário clica em "Buscar Tasks (DevOps)" no menu do nome da tarefa.</summary>
         public event Action<TaskViewModel>? FetchChildTasksRequested;
         public event Action<TaskViewModel>? TksClickRequested;
@@ -344,7 +347,7 @@ namespace NXProject.Controls
         };
         private static readonly HashSet<string> DefaultVisibleColumnsExpanded = new()
         {
-            "ID", "T·E (DevOps)", "Dur.(h)", "OrgH", "HH Atual", "HH Restante",
+            "ID", "T·E (DevOps)", "Dur.(h)", "DU", "OrgH", "HH Atual", "HH Restante",
             "Início", "Fim", "% Compl.", "Predecessoras", "Recursos", "Sprint", "TKs"
         };
 
@@ -394,6 +397,7 @@ namespace NXProject.Controls
             ("Predecessoras", PredecessorColumn),
             ("Recursos",      ResourcesColumn),
             ("Sprint",        SprintColumn),
+            ("DU",            WorkingDaysColumn),
         ];
 
         public void ShowColumnCustomizer(string hiddenDefault, string hiddenExpanded)
@@ -513,8 +517,8 @@ namespace NXProject.Controls
             EstimatedHoursColumn.Width = new DataGridLength(expanded ? 80 : 80);
             StartColumn.Width = new DataGridLength(expanded ? 124 : 90);
             FinishColumn.Width = new DataGridLength(expanded ? 118 : 76);
-            // DU (dias uteis) so aparece na visao completa — evita o calculo mental do fim de semana.
-            WorkingDaysColumn.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+            // DU (dias uteis) e coluna customizavel: visivel por padrao na visao completa,
+            // oculta na inicial; a visibilidade e definida por ApplyHiddenColumns.
             PercentColumn.Width = new DataGridLength(expanded ? 88 : 62);
             PredecessorColumn.Width = new DataGridLength(expanded ? 111 : 80);
             ResourcesColumn.Width = new DataGridLength(expanded ? 160 : 94);
@@ -932,6 +936,29 @@ namespace NXProject.Controls
                     return;
                 }
 
+                if (e.Column == PercentColumn
+                    && e.Row?.Item is TaskViewModel task
+                    && TryGetPercentEditValue(e.EditingElement as FrameworkElement, out var requestedPercent)
+                    && Math.Clamp(requestedPercent, 0, 100) >= 100
+                    && task.Model.PercentComplete < 100
+                    && ManualPercentCompleteCommitRequested is { } requestCommit)
+                {
+                    e.Cancel = true;
+                    ClearEditSnapshot();
+                    var manualSelectedItem = e.Row.Item;
+                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(async () =>
+                    {
+                        CancelCurrentEdit();
+                        var normalized = Math.Clamp(requestedPercent, 0, 100);
+                        if (await requestCommit(task, normalized))
+                        {
+                            task.PercentComplete = normalized;
+                            RefreshGridPreservingSelection(manualSelectedItem, PercentColumn);
+                        }
+                    }));
+                    return;
+                }
+
                 var selectedItem = e.Row?.Item ?? TaskGrid.SelectedItem;
                 var selectedColumn = e.Column;
                 Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
@@ -1081,6 +1108,26 @@ namespace NXProject.Controls
             }
 
             return text;
+        }
+
+        private static bool TryGetPercentEditValue(FrameworkElement? editor, out double value)
+        {
+            value = 0;
+            var textBox = editor switch
+            {
+                TextBox direct => direct,
+                null => null,
+                _ => FindChild<TextBox>(editor)
+            };
+
+            var raw = textBox?.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+                return false;
+
+            return double.TryParse(raw, System.Globalization.NumberStyles.Any,
+                       System.Globalization.CultureInfo.CurrentCulture, out value)
+                   || double.TryParse(raw, System.Globalization.NumberStyles.Any,
+                       System.Globalization.CultureInfo.InvariantCulture, out value);
         }
 
         private static string NormalizeEditText(string? value) => (value ?? string.Empty).Trim();

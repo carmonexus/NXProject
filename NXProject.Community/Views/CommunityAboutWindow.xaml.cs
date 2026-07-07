@@ -18,8 +18,8 @@ namespace NXProject.Views
 
             var v = Assembly.GetExecutingAssembly().GetName().Version;
             var ver = v != null ? $"{v.Major}.{v.Minor}.{v.Build} build({v.Revision})" : "?";
-            Title = $"Sobre o NXProject Community {ver}";
-            VersionText.Text = $"Versao {ver}";
+            Title = $"{AppStrings.Get("About_Title")} {ver}";
+            VersionText.Text = AppStrings.Get("About_VersionLabel", ver);
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e)
@@ -36,8 +36,8 @@ namespace NXProject.Views
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Nao foi possivel abrir o cliente de e-mail.\n\n{ex.Message}",
-                    "Contato",
+                    AppStrings.Get("About_EmailError", ex.Message),
+                    AppStrings.Get("About_ContactTitle"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -52,8 +52,8 @@ namespace NXProject.Views
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Nao foi possivel abrir o endereco de novas versoes.\n\n{NxStoreUrl}\n\n{ex.Message}",
-                    "NXStore",
+                    AppStrings.Get("About_NxStoreError", NxStoreUrl, ex.Message),
+                    AppStrings.Get("About_NxStoreTitle"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }

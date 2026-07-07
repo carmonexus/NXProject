@@ -10,8 +10,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="Calendario de trabalho"
-                       FontSize="18"
+            <TextBlock Text="{DynamicResource Calendar_Title}"
                        FontWeight="SemiBold"
                        Foreground="#1F4EA1"/>
             <TextBlock Text="{Binding CalendarPath}"
@@ -29,19 +28,19 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
-                <TextBlock Text="Horas uteis por dia"
+                <TextBlock Text="{DynamicResource Calendar_WorkingHoursLabel}"
                            FontWeight="SemiBold"
                            Margin="0,0,0,4"/>
                 <TextBox Text="{Binding Calendar.WorkingHoursPerDay, UpdateSourceTrigger=PropertyChanged}"
                          Height="28"
                          Padding="6,4"/>
             </StackPanel>
-            <CheckBox Content="Sabado como dia util"
+            <CheckBox Content="{DynamicResource Calendar_SaturdayWorkday}"
                       Grid.Column="2"
                       IsChecked="{Binding Calendar.TreatSaturdayAsWorkday}"
                       VerticalAlignment="Bottom"
                       Margin="0,0,0,5"/>
-            <CheckBox Content="Domingo como dia util"
+            <CheckBox Content="{DynamicResource Calendar_SundayWorkday}"
                       Grid.Column="4"
                       IsChecked="{Binding Calendar.TreatSundayAsWorkday}"
                       VerticalAlignment="Bottom"
@@ -58,10 +57,10 @@
                   BorderBrush="#D0D7E2"
                   BorderThickness="1">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Data"
+                <DataGridTextColumn Header="{DynamicResource Calendar_Holiday_Date_Header}"
                                     Binding="{Binding Date, StringFormat=dd/MM/yyyy}"
                                     Width="130"/>
-                <DataGridTextColumn Header="Feriado"
+                <DataGridTextColumn Header="{DynamicResource Calendar_Holiday_Name_Header}"
                                     Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                     Width="*"/>
             </DataGrid.Columns>
@@ -69,21 +68,21 @@
 
         <DockPanel Grid.Row="3" Margin="0,14,0,0">
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                <Button Content="Adicionar hoje"
+                <Button Content="{DynamicResource Calendar_AddToday}"
                         Width="120"
                         Margin="0,0,8,0"
                         Click="OnAddTodayClick"/>
-                <Button Content="Remover selecionado"
+                <Button Content="{DynamicResource Calendar_RemoveSelected}"
                         Width="140"
                         Click="OnRemoveSelectedClick"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Salvar"
+                <Button Content="{DynamicResource Calendar_Save}"
                         Width="110"
                         Margin="0,0,8,0"
                         IsDefault="True"
                         Click="OnSaveClick"/>
-                <Button Content="Cancelar"
+                <Button Content="{DynamicResource Calendar_Cancel}"
                         Width="110"
                         IsCancel="True"/>
             </StackPanel>

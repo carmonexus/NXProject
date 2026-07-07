@@ -2,6 +2,175 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
+    <!-- Localizacao adicionada em paralelo (paridade com pt-BR) -->
+    <sys:String x:Key="Settings_Diagnostics_Title">Diagnostics</sys:String>
+    <sys:String x:Key="Settings_EnableDebugLog">Enable diagnostic log</sys:String>
+    <sys:String x:Key="Settings_DebugLogInfo">Records sprint alert details in %LocalAppData%\NXProject.Community\sprint_alert_debug.log. Enable only when requested by support and send the generated file.</sys:String>
+    <sys:String x:Key="Settings_OpenLogFolder">Open log folder</sys:String>
+    <sys:String x:Key="Settings_TaskCategories_Title">Task categories (Activity)</sys:String>
+    <sys:String x:Key="Settings_TaskCategories_Desc">List of options shown in the Category column of the Tasks Grid. One category per line. Syncs the Activity field in DevOps.</sys:String>
+    <sys:String x:Key="Settings_TaskCategory_Tooltip">One category per line. E.g.: Development, Design, Testing</sys:String>
+
+    <sys:String x:Key="Sprint_InitialSprintHint">Number shown on the first sprint band of the Gantt.</sys:String>
+    <sys:String x:Key="Sprint_DaysPerSprintHint">Number of days used to automatically advance the sprint in the schedule.</sys:String>
+    <sys:String x:Key="Sprint_NumberingHint">Chooses whether the schedule advances sprints sequentially, only even or only odd.</sys:String>
+    <sys:String x:Key="Sprint_SaveAsDefault">Save configuration for new projects</sys:String>
+    <sys:String x:Key="Sprint_SaveAsDefaultDesc">Keeps the current configuration as the local default for the next projects.</sys:String>
+    <sys:String x:Key="Sprint_CriticalHint">Critical limit according to the company's velocity. Suggested start: use 1d; the yellow band sits between this limit and the attention limit.</sys:String>
+
+    <sys:String x:Key="SFP_Title">SFP</sys:String>
+    <sys:String x:Key="SFP_Subtitle">Separately configure the parameters used to convert Simple Function Point ranges into estimated activity duration.</sys:String>
+    <sys:String x:Key="SFP_LowLabel">Low up to 3 SFP</sys:String>
+    <sys:String x:Key="SFP_LowDesc">Value used when the activity has up to 3 SFP.</sys:String>
+    <sys:String x:Key="SFP_MediumLabel">Medium greater than 3 and less than 6</sys:String>
+    <sys:String x:Key="SFP_MediumDesc">Value used when the activity has more than 3 and less than 6 SFP.</sys:String>
+    <sys:String x:Key="SFP_HighLabel">High greater than or equal to 6</sys:String>
+    <sys:String x:Key="SFP_HighDesc">Value used when the activity has 6 SFP or more.</sys:String>
+    <sys:String x:Key="SFP_OrgH_Title">Original Estimate (OrgH)</sys:String>
+    <sys:String x:Key="SFP_ShowOrgH">Show OrgH column in the schedule</sys:String>
+    <sys:String x:Key="SFP_OrgH_Desc">When enabled, shows a small column (OrgH) next to SFP with each task's original estimate. Useful to compare the original plan with the current remaining.</sys:String>
+    <sys:String x:Key="SFP_WhatIs_Title">What is SFP?</sys:String>
+    <sys:String x:Key="SFP_WhatIs_Part1">SFP stands for </sys:String>
+    <sys:String x:Key="SFP_WhatIs_Part2">. It is a way to measure the functional size of software from the features delivered to the user, helping to estimate effort and duration.</sys:String>
+    <sys:String x:Key="SFP_RangesIntro">Ranges used in the system: </sys:String>
+    <sys:String x:Key="SFP_And">and</sys:String>
+    <sys:String x:Key="SFP_LearnMore">See the SFP concept on the web</sys:String>
+
+    <sys:String x:Key="Calendar_Title">Work calendar</sys:String>
+    <sys:String x:Key="Calendar_WorkingHoursLabel">Working hours per day</sys:String>
+    <sys:String x:Key="Calendar_SaturdayWorkday">Saturday as a workday</sys:String>
+    <sys:String x:Key="Calendar_SundayWorkday">Sunday as a workday</sys:String>
+    <sys:String x:Key="Calendar_Holiday_Date_Header">Date</sys:String>
+    <sys:String x:Key="Calendar_Holiday_Name_Header">Holiday</sys:String>
+    <sys:String x:Key="Calendar_AddToday">Add today</sys:String>
+    <sys:String x:Key="Calendar_RemoveSelected">Remove selected</sys:String>
+    <sys:String x:Key="Calendar_Save">Save</sys:String>
+    <sys:String x:Key="Calendar_Cancel">Cancel</sys:String>
+
+    <sys:String x:Key="AI_WindowTitle">Project AI Assistant</sys:String>
+    <sys:String x:Key="AI_Title">AI Assistant for project tasks</sys:String>
+    <sys:String x:Key="AI_Intro">Use an AI token to ask for help creating tasks, schedule and work distribution. This screen comes configured by default for OpenRouter Free. If there are LGPD terms, personal data or content outside the expected context, the system only warns that responsibility for the submission is the user's and records the acknowledgement in a local log.</sys:String>
+    <sys:String x:Key="AI_SecretNote">The token you enter is stored only on this computer and kept locally in encrypted form for use of this direct API integration.</sys:String>
+    <sys:String x:Key="AI_PromptLabel">Request to the AI</sys:String>
+    <sys:String x:Key="AI_ResultLabel">AI response</sys:String>
+    <sys:String x:Key="AI_CopyResult">Copy result</sys:String>
+    <sys:String x:Key="AI_TabResultHeader">AI response</sys:String>
+    <sys:String x:Key="AI_DefaultProvider_Label">Default AI provider</sys:String>
+    <sys:String x:Key="AI_DefaultProvider_Desc">Choose which provider is used when generating suggestions. Configure each one in its tab.</sys:String>
+    <sys:String x:Key="AI_ScheduleMode_Label">Devops schedule (hierarchical)</sys:String>
+    <sys:String x:Key="AI_ScheduleMode_Desc">The 'Fazer Cronograma Devops' action builds the Epic-Feature-Story hierarchy. Check below to go down to Task.</sys:String>
+    <sys:String x:Key="AI_CreateTaskCheck">Create Task? (checked: goes down to Task; unchecked: stops at Story)</sys:String>
+    <sys:String x:Key="AI_ContextRules">Context and rules</sys:String>
+    <sys:String x:Key="AI_ProjectContextLabel">Current project context</sys:String>
+    <sys:String x:Key="AI_AllowedScope">Allowed scope</sys:String>
+    <sys:String x:Key="AI_AllowedScope_Desc">Only requests about activities, tasks, schedule, dependencies, estimates and work distribution by person or resource.</sys:String>
+    <sys:String x:Key="AI_ActionType_Label">AI action type</sys:String>
+    <sys:String x:Key="AI_ActionType_Desc">The type's prompt works as a guard-rail and is joined to your question text. 'Fazer Cronograma' creates tasks in the Gantt; free types only reply in text, without creating tasks.</sys:String>
+    <sys:String x:Key="AI_NewAction">New</sys:String>
+    <sys:String x:Key="AI_DeleteAction">Delete</sys:String>
+    <sys:String x:Key="AI_RestoreDefaults">Restore defaults</sys:String>
+    <sys:String x:Key="AI_ActionNameLabel">Name</sys:String>
+    <sys:String x:Key="AI_ActionCreatesTasks">Creates tasks (schedule mode)</sys:String>
+    <sys:String x:Key="AI_ActionPromptLabel">Prompt (guard-rail joined to the question)</sys:String>
+    <sys:String x:Key="AI_AnalysisTaskLimitLabel">Tasks in the analysis context (limit)</sys:String>
+    <sys:String x:Key="AI_AnalysisTaskLimitDesc">Number of tasks sent to the 'Analisar Cronograma' action. Default 30.</sys:String>
+    <sys:String x:Key="AI_TabAssistant">Assistant</sys:String>
+    <sys:String x:Key="AI_TabGeneral">General</sys:String>
+    <sys:String x:Key="AI_OpenAIConfig">OpenAI configuration</sys:String>
+    <sys:String x:Key="AI_Auth">Authentication</sys:String>
+    <sys:String x:Key="AI_TokenApiKey">Token (API Key)</sys:String>
+    <sys:String x:Key="AI_OpenAIKeyLinkPre">To generate your OpenAI key: </sys:String>
+    <sys:String x:Key="AI_OpenAIKeyLink">open the OpenAI panel</sys:String>
+    <sys:String x:Key="AI_OpenAIKeyNote">Paste your sk-... key from the OpenAI platform here. The token is stored only on this computer, encrypted.</sys:String>
+    <sys:String x:Key="AI_Endpoint">Endpoint</sys:String>
+    <sys:String x:Key="AI_Model">Model</sys:String>
+    <sys:String x:Key="AI_TimeoutSeconds">Timeout (seconds)</sys:String>
+    <sys:String x:Key="AI_WorkIQConfig">Work IQ configuration</sys:String>
+    <sys:String x:Key="AI_WorkIQNote">Integration in OpenAI-compatible format (POST chat/completions + Bearer). Enter the endpoint and model of your Work IQ environment.</sys:String>
+    <sys:String x:Key="AI_OpenRouterConfig">OpenRouter configuration</sys:String>
+    <sys:String x:Key="AI_Token">Token</sys:String>
+    <sys:String x:Key="AI_OpenRouterKeyLinkPre">To generate your OpenRouter token: </sys:String>
+    <sys:String x:Key="AI_OpenRouterKeyLink">open the official guide</sys:String>
+    <sys:String x:Key="AI_ReadyStatus">Ready to generate suggestions.</sys:String>
+    <sys:String x:Key="AI_SaveConfig">Save configuration</sys:String>
+    <sys:String x:Key="AI_Execute">Run with AI</sys:String>
+    <sys:String x:Key="AI_Apply">Apply to project</sys:String>
+    <sys:String x:Key="AI_Close">Close</sys:String>
+    <sys:String x:Key="AI_InvalidRequestTitle">Invalid request</sys:String>
+    <sys:String x:Key="AI_AckBody">By continuing, you declare awareness that responsibility for the information sent to the AI belongs to the user who submitted it.</sys:String>
+    <sys:String x:Key="AI_AckTitle">Responsibility notice</sys:String>
+    <sys:String x:Key="AI_SendCanceled">Submission to the AI canceled by the user.</sys:String>
+    <sys:String x:Key="AI_ExecutingFmt">Running '{0}' with {1}...</sys:String>
+    <sys:String x:Key="AI_AnalysisReceived">Schedule analysis received.</sys:String>
+    <sys:String x:Key="AI_FreeReceived">Free response received (does not create tasks).</sys:String>
+    <sys:String x:Key="AI_IntegrationErrorTitle">AI integration error</sys:String>
+    <sys:String x:Key="AI_QueryFailed">Failed to query the AI.</sys:String>
+    <sys:String x:Key="AI_RequestRefused">Request refused by the safety rules.</sys:String>
+    <sys:String x:Key="AI_TasksSuggestedFmt">{0} task(s) suggested by the AI.</sys:String>
+    <sys:String x:Key="AI_DeleteActionConfirmFmt">Delete the action '{0}'?</sys:String>
+    <sys:String x:Key="AI_DeleteActionTitle">Delete action</sys:String>
+    <sys:String x:Key="AI_RestoreConfirm">Restore default actions? The default actions will be recreated/reset; your custom actions will be kept.</sys:String>
+    <sys:String x:Key="AI_RestoreConfirmTitle">Restore default actions</sys:String>
+    <sys:String x:Key="AI_RestoreDone">Default actions restored.</sys:String>
+    <sys:String x:Key="AI_ScheduleGeneratedFmt">Schedule generated: {0} top item(s), {1} leaf/leaves.</sys:String>
+    <sys:String x:Key="AI_AlreadyApplied">These activities were already applied to the project.</sys:String>
+    <sys:String x:Key="AI_NothingApplied">Nothing was applied.</sys:String>
+    <sys:String x:Key="AI_NoValidTasks">No valid task was applied.</sys:String>
+    <sys:String x:Key="AI_NoteDevops">DevOps mode: sync in Export to publish</sys:String>
+    <sys:String x:Key="AI_NoteLocal">local only</sys:String>
+    <sys:String x:Key="AI_SchedAppliedFmt">{0} item(s) applied to the Gantt ({1}).</sys:String>
+    <sys:String x:Key="AI_TasksAppliedFmt">{0} task(s) applied to the project and shown in the Gantt (local only).</sys:String>
+    <sys:String x:Key="AI_ResultCopied">Result copied to the clipboard.</sys:String>
+    <sys:String x:Key="AI_ConfigSaved">Configuration saved.</sys:String>
+    <sys:String x:Key="AI_SaveConfigErrorTitle">Error saving configuration</sys:String>
+    <sys:String x:Key="AI_TimeRemainingFmt">Estimated time remaining: {0}s</sys:String>
+    <sys:String x:Key="AI_WarningsPrefix">Warnings: </sys:String>
+    <sys:String x:Key="AI_RefusedSummary">The request was refused by the integration's safety rules.</sys:String>
+    <sys:String x:Key="AI_TasksReadyHeader">The activities below are ready to be added to the Gantt:</sys:String>
+    <sys:String x:Key="AI_PredNone">none</sys:String>
+    <sys:String x:Key="AI_PredAutoFmt">{0} (automatic)</sys:String>
+    <sys:String x:Key="AI_TaskLineFmt">- {0} | duration: {1} h | predecessor: {2}</sys:String>
+    <sys:String x:Key="AI_ClickApplyHint">Click 'Apply to project' to add these activities.</sys:String>
+
+    <sys:String x:Key="Main_OpenInDevOps">Open in DevOps ↗</sys:String>
+    <sys:String x:Key="Main_CustomizeColumns">Customize columns...</sys:String>
+    <sys:String x:Key="Main_CriticalPath">Critical Path — View critical activities...</sys:String>
+    <sys:String x:Key="Main_DisableBaseline">Disable Baseline</sys:String>
+    <sys:String x:Key="Main_Clear">Clear</sys:String>
+    <sys:String x:Key="Main_ImportTip">Import from Azure DevOps — builds the schedule from Epics, Features and Stories</sys:String>
+    <sys:String x:Key="Main_SyncTip">Sync with Azure DevOps — sends changes and updates dates/states</sys:String>
+    <sys:String x:Key="Main_CreateMilestone">Create milestone</sys:String>
+    <sys:String x:Key="Main_CreateMilestoneClick">Click: creates a sibling milestone below the selected activity.</sys:String>
+    <sys:String x:Key="Main_CreateMilestoneCtrl">Ctrl+click: creates a child milestone of the selected activity, unless it is already a milestone.</sys:String>
+    <sys:String x:Key="Main_CreateMilestoneDevOpsHint">If the selected activity is DevOps, creates a DevOps milestone.</sys:String>
+    <sys:String x:Key="Main_ViewOnlineChildrenTip">View / edit the selected task's online work items</sys:String>
+    <sys:String x:Key="Main_PaletteTip">Colors by hierarchy level (Epic / Feature / Story)</sys:String>
+    <sys:String x:Key="Main_SearchTip">Search activity in the schedule (Ctrl+F)</sys:String>
+    <sys:String x:Key="Main_GanttLensTip">Gantt magnifier (zooms the area under the cursor)</sys:String>
+    <sys:String x:Key="Main_GanttOrgHTip">Show Gantt by Original Estimate</sys:String>
+    <sys:String x:Key="Main_TechLeadTip">Task Review (Tech Lead) — fetches all Tasks of all Stories in DevOps</sys:String>
+    <sys:String x:Key="Main_CostPeople">👥 Cost — People...</sys:String>
+    <sys:String x:Key="Main_CostByResource">💰 Cost by Resource...</sys:String>
+    <sys:String x:Key="Main_EnableBaseline">Enable Baseline</sys:String>
+
+    <sys:String x:Key="Grid_RemoveBlock">Remove Block from Story</sys:String>
+    <sys:String x:Key="Grid_BlockedStory">Blocked (Block tag on Story)</sys:String>
+    <sys:String x:Key="Grid_BlockedStoryLabel">⛔ BLOCK</sys:String>
+    <sys:String x:Key="Grid_BlockedByChild">Blocked by child Task</sys:String>
+    <sys:String x:Key="Grid_BlockedByChildLabel">🔴 BLOCK</sys:String>
+    <sys:String x:Key="Grid_OpenTasksGridTip">Opens this Story's Tasks grid to edit and add to the schedule</sys:String>
+    <sys:String x:Key="Grid_IncludeTasksTip">Adds this Story's Tasks directly to the schedule</sys:String>
+    <sys:String x:Key="Grid_KeepStoryNoTasksTip">Keeps the Story without Tasks in the schedule — duration and HH become directly editable</sys:String>
+    <sys:String x:Key="Grid_RemoveChildTasksTip">Removes all this Story's child Tasks from the schedule (does not delete in DevOps)</sys:String>
+    <sys:String x:Key="Grid_NewDevOpsTaskTip">Creates a new Task linked to DevOps</sys:String>
+    <sys:String x:Key="Grid_NewInternalTaskTip">Creates an internal activity with no DevOps link</sys:String>
+    <sys:String x:Key="Grid_ChangeClassifTip">Changes the classification field value (picklist required when creating in DevOps)</sys:String>
+    <sys:String x:Key="Grid_ConfigClassifTip">Configures which DevOps types use a classification field and which field to use</sys:String>
+    <sys:String x:Key="Grid_SumChildHoursTip">Sums the Estimated HH of child Tasks in DevOps and updates this activity's duration</sys:String>
+    <sys:String x:Key="Grid_WorkingDaysTip">Working days (calendar) between start and finish</sys:String>
+    <sys:String x:Key="Grid_OpenTasksGridDevOpsTip">Open Tasks Grid (DevOps)</sys:String>
+    <sys:String x:Key="Grid_SprintHeader">Sprint</sys:String>
+
     <!-- File Menu -->
     <sys:String x:Key="Menu_File">_File</sys:String>
     <sys:String x:Key="Menu_File_New">_New Project</sys:String>
@@ -419,6 +588,7 @@
     <sys:String x:Key="Cfg_PercAlocField">Allocation % field (Perc_Aloc)</sys:String>
     <sys:String x:Key="Cfg_FixedStartTag">Negotiated date tag (fixed start)</sys:String>
     <sys:String x:Key="Cfg_SyncPredLinks">Sync predecessor links in DevOps</sys:String>
+    <sys:String x:Key="Cfg_EnforceStoryCompletionWithTasks">Close Story only with Task</sys:String>
     <sys:String x:Key="Cfg_FutureSprints">Future sprints in the dropdown (days from today)</sys:String>
     <sys:String x:Key="Cfg_FutureSprintsHint">  (0 = only sprints with items)</sys:String>
     <sys:String x:Key="Cfg_RequiredFieldsHint">Required fields on creation (when DevOps requires fields that NXProject does not fill automatically):</sys:String>
@@ -644,10 +814,10 @@
     <sys:String x:Key="PMap_CompletedHHTip">Checked: tasks with logged HH show the actual; open tasks without logged HH show the estimate prorated up to the current month.</sys:String>
     <sys:String x:Key="PMap_ExportExcel">📊 Export Excel</sys:String>
     <sys:String x:Key="PMap_TabHours">Hours by Project</sys:String>
-    <sys:String x:Key="PMap_TabDistribution">Distribution by Person</sys:String>
+    <sys:String x:Key="PMap_TabDistribution">Project by Person</sys:String>
     <sys:String x:Key="PMap_TabStories">Stories by Resource</sys:String>
-    <sys:String x:Key="PMap_TabRateio">Cost Sharing</sys:String>
-    <sys:String x:Key="PMap_TabInternal">Internal</sys:String>
+    <sys:String x:Key="PMap_TabRateio">Calendar HH Allocation</sys:String>
+    <sys:String x:Key="PMap_TabInternal">Internal Control</sys:String>
     <sys:String x:Key="PMap_ColProject">Project</sys:String>
     <sys:String x:Key="PMap_ColResource">Resource</sys:String>
     <sys:String x:Key="PMap_ColType">Type</sys:String>
@@ -782,6 +952,14 @@
     <sys:String x:Key="Conf_DevOpsTip">DevOps: {0}</sys:String>
     <sys:String x:Key="Conf_LoadingManual">Loading DevOps conflict...</sys:String>
     <sys:String x:Key="Conf_ManualError">Error loading manual conflict:&#10;{0}</sys:String>
+    <sys:String x:Key="Pct100_Title">Story Completion</sys:String>
+    <sys:String x:Key="Pct100_BlockMessage">Story {0} - {1} has TKs = 0.&#10;&#10;To type 100% completion, the TKs column must be greater than 0. If someone created Tasks in DevOps, click Recount DevOps activities.</sys:String>
+    <sys:String x:Key="Pct100_RecountButton">Recount DevOps activities</sys:String>
+    <sys:String x:Key="Pct100_CancelButton">Cancel</sys:String>
+    <sys:String x:Key="Pct100_RecountFound">{0} Task(s) were found in DevOps. The 100% will be applied.</sys:String>
+    <sys:String x:Key="Pct100_RecountNone">No child Task was found in DevOps. The Story cannot be set to 100% with TKs = 0.</sys:String>
+    <sys:String x:Key="Pct100_RecountNoResponse">DevOps did not return the Task list</sys:String>
+    <sys:String x:Key="Pct100_RecountError">Could not recount DevOps activities:&#10;{0}</sys:String>
 
     <!-- DevOps link (edit work item) -->
     <sys:String x:Key="WiEdit_Title">DevOps Link</sys:String>
@@ -1128,5 +1306,256 @@
     <sys:String x:Key="Desc_Loaded">Description loaded from DevOps.</sys:String>
     <sys:String x:Key="Desc_FetchError">Error: {0}</sys:String>
     <sys:String x:Key="Desc_NoDescription">No description.</sys:String>
+
+    <!-- Select predecessors -->
+    <sys:String x:Key="Pred_Title">Select predecessors</sys:String>
+    <sys:String x:Key="Pred_Header">Predecessors</sys:String>
+    <sys:String x:Key="Pred_Marked">Marked</sys:String>
+    <sys:String x:Key="Pred_ClearSearch">Clear search</sys:String>
+    <sys:String x:Key="Pred_ClearPreds">Clear predecessors</sys:String>
+    <sys:String x:Key="Pred_Remove">✕ Remove</sys:String>
+    <sys:String x:Key="Pred_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Pred_TargetTask">Activity: {0} - {1}</sys:String>
+    <sys:String x:Key="Pred_ExternalLabel">{0} - outside the filtered list</sys:String>
+    <sys:String x:Key="Pred_RowLabel">{0} - {1}</sys:String>
+    <sys:String x:Key="Pred_NoneMarked">No predecessor marked.</sys:String>
+    <sys:String x:Key="Pred_CountMarked">{0} marked</sys:String>
+
+    <!-- Filter by % complete -->
+    <sys:String x:Key="PctFilter_Title">Filter by % complete</sys:String>
+    <sys:String x:Key="PctFilter_Subtitle">Enter a range between 0 and 100. Empty fields leave the end open.</sys:String>
+    <sys:String x:Key="PctFilter_Min">Minimum</sys:String>
+    <sys:String x:Key="PctFilter_Max">Maximum</sys:String>
+    <sys:String x:Key="PctFilter_ActiveOnly">Active only (below 100%)</sys:String>
+    <sys:String x:Key="PctFilter_RefDate">Reference date</sys:String>
+    <sys:String x:Key="PctFilter_NoDateFilter">Do not filter by date</sys:String>
+    <sys:String x:Key="PctFilter_StartAfter">Start after the reference date</sys:String>
+    <sys:String x:Key="PctFilter_FinishBefore">Finish before the reference date</sys:String>
+    <sys:String x:Key="PctFilter_Clear">Clear</sys:String>
+    <sys:String x:Key="PctFilter_Cancel">Cancel</sys:String>
+    <sys:String x:Key="PctFilter_Apply">Apply</sys:String>
+    <sys:String x:Key="PctFilter_NotANumber">{0}: enter a number between 0 and 100.</sys:String>
+    <sys:String x:Key="PctFilter_OutOfRange">{0}: the value must be between 0 and 100.</sys:String>
+    <sys:String x:Key="PctFilter_MinGtMax">The minimum cannot be greater than the maximum.</sys:String>
+    <sys:String x:Key="PctFilter_InvalidDate">Reference date: enter a valid date.</sys:String>
+
+    <sys:String x:Key="ProjPick_Title">Select Portfolio Projects</sys:String>
+    <sys:String x:Key="ProjPick_Intro">Check the projects to include in the Allocation Map. The OPEX/CAPEX type and Cost Center are configured in the Project Portfolio.</sys:String>
+    <sys:String x:Key="ProjPick_Clear">Clear</sys:String>
+    <sys:String x:Key="ProjPick_ColProject">DevOps Project</sys:String>
+    <sys:String x:Key="ProjPick_ColType">Type</sys:String>
+    <sys:String x:Key="ProjPick_ColCostCenter">Cost Center</sys:String>
+    <sys:String x:Key="ProjPick_ColRootId">Root ID</sys:String>
+    <sys:String x:Key="ProjPick_Empty">No projects registered. Configure in View → Project Portfolio.</sys:String>
+    <sys:String x:Key="ProjPick_OK">OK</sys:String>
+    <sys:String x:Key="ProjPick_Cancel">Cancel</sys:String>
+    <sys:String x:Key="ProjPick_RootIdTip">Root ID: {0}</sys:String>
+    <sys:String x:Key="ProjPick_NoRootIdTip">Root ID not configured — edit in View → Project Portfolio</sys:String>
+    <sys:String x:Key="ProjPick_Summary">{0} project(s) selected</sys:String>
+    <sys:String x:Key="ProjPick_SummaryNoId">  ·  {0} without Root ID (will not be imported)</sys:String>
+
+    <sys:String x:Key="Upd_Title">Updating NXProject</sys:String>
+    <sys:String x:Key="Upd_Downloading">Downloading update...</sys:String>
+    <sys:String x:Key="Upd_Applying">Applying update...</sys:String>
+    <sys:String x:Key="Upd_Failed">Failed to download the update.
+
+{0}</sys:String>
+    <sys:String x:Key="Upd_MsgTitle">Update</sys:String>
+
+    <sys:String x:Key="Pdf_Title">Export PDF — Options</sys:String>
+    <sys:String x:Key="Pdf_LayoutHeader">PDF layout</sys:String>
+    <sys:String x:Key="Pdf_Together">All together (table + Gantt on the same page)</sys:String>
+    <sys:String x:Key="Pdf_TogetherHint">Available in A3 or A2 for better readability.</sys:String>
+    <sys:String x:Key="Pdf_PageSize">Page size:</sys:String>
+    <sys:String x:Key="Pdf_A3">A3 landscape</sys:String>
+    <sys:String x:Key="Pdf_A3Desc"> — 420 × 297 mm  (A3 printer)</sys:String>
+    <sys:String x:Key="Pdf_A2">A2 landscape</sys:String>
+    <sys:String x:Key="Pdf_A2Desc"> — 594 × 420 mm  (plotter / print shop)</sys:String>
+    <sys:String x:Key="Pdf_TwoPages">Two separate pages (A4 landscape)</sys:String>
+    <sys:String x:Key="Pdf_TwoPagesHint">Default for office printers: page 1 table, page 2 Gantt.</sys:String>
+    <sys:String x:Key="Pdf_TimelineHeader">Timeline range</sys:String>
+    <sys:String x:Key="Pdf_TimelineHint">Use 0 and 0 to print the full Gantt. To focus on a period, enter how many days before and after today should appear.</sys:String>
+    <sys:String x:Key="Pdf_DaysBefore">Days before</sys:String>
+    <sys:String x:Key="Pdf_DaysAfter">Days after</sys:String>
+    <sys:String x:Key="Pdf_Export">Export</sys:String>
+    <sys:String x:Key="Pdf_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Pdf_NotAnInt">{0}: enter an integer greater than or equal to zero.</sys:String>
+    <sys:String x:Key="Pdf_MaxDays">{0}: use at most 3650 days.</sys:String>
+
+    <sys:String x:Key="Pal_Title">Color Palette — Schedule Hierarchy</sys:String>
+    <sys:String x:Key="Pal_Enable">Enable colors by hierarchy level</sys:String>
+    <sys:String x:Key="Pal_ColLevel">Level</sys:String>
+    <sys:String x:Key="Pal_ColHex">Hex</sys:String>
+    <sys:String x:Key="Pal_ColColor">Color</sys:String>
+    <sys:String x:Key="Pal_Level0">Level 0 — Root / Project</sys:String>
+    <sys:String x:Key="Pal_Level1">Level 1 — Epic</sys:String>
+    <sys:String x:Key="Pal_Level2">Level 2 — Feature</sys:String>
+    <sys:String x:Key="Pal_Level3">Level 3 — Story</sys:String>
+    <sys:String x:Key="Pal_Level4">Level 4+ — Task</sys:String>
+    <sys:String x:Key="Pal_SwatchTip">Click to choose the color</sys:String>
+    <sys:String x:Key="Pal_Restore">Restore Default</sys:String>
+    <sys:String x:Key="Pal_RestoreTip">Restores colors saved as default (or factory default)</sys:String>
+    <sys:String x:Key="Pal_SaveDefault">Save as Default</sys:String>
+    <sys:String x:Key="Pal_SaveDefaultTip">Saves current colors as the new default for new projects</sys:String>
+    <sys:String x:Key="Pal_Cancel">Cancel</sys:String>
+    <sys:String x:Key="Pal_OK">OK</sys:String>
+    <sys:String x:Key="Pal_Saved">Color default saved successfully.</sys:String>
+    <sys:String x:Key="Pal_SaveTitle">Save Default</sys:String>
+    <sys:String x:Key="Pal_SaveError">Error saving default: {0}</sys:String>
+    <sys:String x:Key="Pal_ErrorTitle">Error</sys:String>
+
+    <sys:String x:Key="About_Title">About NXProject Community</sys:String>
+    <sys:String x:Key="About_Tagline">Community edition of NXProject for task management, Gantt and import/export.</sys:String>
+    <sys:String x:Key="About_VersioningHeader">How versioning works</sys:String>
+    <sys:String x:Key="About_VersioningFormat">The format used is version.release.bugs.</sys:String>
+    <sys:String x:Key="About_VersioningExample">Example: 1.0.0 = main version 1, release 0 and bug fix 0.</sys:String>
+    <sys:String x:Key="About_Company">Company</sys:String>
+    <sys:String x:Key="About_LicenseHeader">License (Open Core)</sys:String>
+    <sys:String x:Key="About_LicenseText">Community edition free for individuals and companies. Commercial/Enterprise edition with support is sold separately. Paid features are not part of this edition.</sys:String>
+    <sys:String x:Key="About_NewVersionsHeader">New versions (NXStore)</sys:String>
+    <sys:String x:Key="About_NewVersionsText">Download updates and the latest Community package at:</sys:String>
+    <sys:String x:Key="About_ContactHeader">Contact</sys:String>
+    <sys:String x:Key="About_ContactEmail">E-mail: comercial.nexus.xdata@gmail.com</sys:String>
+    <sys:String x:Key="About_Close">Close</sys:String>
+    <sys:String x:Key="About_VersionLabel">Version {0}</sys:String>
+    <sys:String x:Key="About_EmailError">Could not open the e-mail client.
+
+{0}</sys:String>
+    <sys:String x:Key="About_ContactTitle">Contact</sys:String>
+    <sys:String x:Key="About_NxStoreError">Could not open the new versions address.
+
+{0}
+
+{1}</sys:String>
+    <sys:String x:Key="About_NxStoreTitle">NXStore</sys:String>
+
+    <sys:String x:Key="Lic_Title">License - Community</sys:String>
+    <sys:String x:Key="Lic_Header">NXProject Community License</sys:String>
+    <sys:String x:Key="Lic_Subtitle">Open Core model: the Community edition is free for any individual or company. The Commercial/Enterprise edition with support is sold separately.</sys:String>
+    <sys:String x:Key="Lic_Company">Company: Nexus XData Tecnologia Ltda</sys:String>
+    <sys:String x:Key="Lic_Contact">Sales contact: comercial.nexus.xdata@gmail.com</sys:String>
+    <sys:String x:Key="Lic_SummaryHeader">Community license summary (Open Core)</sys:String>
+    <sys:String x:Key="Lic_P1">This Community edition is free for any individual or company, including internal commercial use (running your own company's projects), with no limit on the number of users.</sys:String>
+    <sys:String x:Key="Lic_P2">You may use, study, modify for internal use and redistribute the Software free of charge, as long as you keep the credit to Nexus XData Tecnologia Ltda and this license notice.</sys:String>
+    <sys:String x:Key="Lic_P3">Rights reserved to Nexus XData: selling, renting or charging for the Software, offering it as a paid service (SaaS) or providing paid support requires a commercial license. Permitted redistribution is free of charge only.</sys:String>
+    <sys:String x:Key="Lic_P4">Commercial / Enterprise edition (paid): Nexus XData offers, upon contracting, a commercial license without these restrictions, official support, SLA, warranties and exclusive modules (for example printing/PDF, advanced calendar and AI integrations such as OpenAI and Claude).</sys:String>
+    <sys:String x:Key="Lic_P5">This edition is provided as is, without warranties, without support obligation and without liability for defects, failures or damages arising from its use.</sys:String>
+    <sys:String x:Key="Lic_P6">Nexus XData Tecnologia Ltda may change, limit, evolve or discontinue the Community edition and its features at any time.</sys:String>
+    <sys:String x:Key="Lic_P7">Anyone wishing to contract support, the commercial license or the Enterprise edition may get in touch by e-mail at comercial.nexus.xdata@gmail.com. The full license text is in the LICENSE.txt file.</sys:String>
+    <sys:String x:Key="Lic_AcceptNote">By clicking "Accept and continue", you declare awareness of and agreement with the terms of this Community license.</sys:String>
+    <sys:String x:Key="Lic_Exit">Exit</sys:String>
+    <sys:String x:Key="Lic_AcceptBtn">Accept and continue</sys:String>
+
+    <sys:String x:Key="SU_Title">How to use the schedule</sys:String>
+    <sys:String x:Key="SU_Sub">Use the grid and the Gantt to plan dates, duration, progress, resources and sprints. NXProject recalculates activity finish dates from the work calendar.</sys:String>
+    <sys:String x:Key="SU_1H">1. Duration (Dur.(h))</sys:String>
+    <sys:String x:Key="SU_1P">The Dur.(h) column works in real effort hours, not calendar time. Enter 8 for 8 hours, 16.5 for 16 hours and 30 minutes.</sys:String>
+    <sys:String x:Key="SU_1a">- To convert working days into hours, use the d suffix: 2d becomes 2 working days.</sys:String>
+    <sys:String x:Key="SU_1b">- Changing Dur.(h) recalculates the Finish date, keeping the Start date and applying the resource allocation %.</sys:String>
+    <sys:String x:Key="SU_1c">- When Current HH is greater than 0, the displayed duration is Current HH + Remaining HH.</sys:String>
+    <sys:String x:Key="SU_1d">- The allocation % does not change the HH: 40h stays 40h. It changes how many calendar days those hours span.</sys:String>
+    <sys:String x:Key="SU_1e">- Duration editing is locked when the activity is 100% complete.</sys:String>
+    <sys:String x:Key="SU_2H">2. Current HH and Remaining HH</sys:String>
+    <sys:String x:Key="SU_2P">Current HH is the effort already done on the activity. Remaining HH is the effort still needed to complete it.</sys:String>
+    <sys:String x:Key="SU_2a">- Total duration = Current HH + Remaining HH (when Current HH is filled in).</sys:String>
+    <sys:String x:Key="SU_2b">- When you change % Compl., NXProject automatically recalculates Current HH and Remaining HH.</sys:String>
+    <sys:String x:Key="SU_2c">- These fields are synced with Azure DevOps (HH_Atual_float and HH_Restante_float fields).</sys:String>
+    <sys:String x:Key="SU_2d">- To view the columns, use View, Customize columns and enable Current HH and Remaining HH.</sys:String>
+    <sys:String x:Key="SU_3H">3. Completion percentage (% Compl.)</sys:String>
+    <sys:String x:Key="SU_3P">When you type the completion percentage, NXProject recalculates Current HH and Remaining HH proportionally to the activity's total duration.</sys:String>
+    <sys:String x:Key="SU_3a">- With % = 100, Current HH takes the total duration and Remaining HH becomes zero; if Start + duration falls in the future, Finish is capped at today. Exception: if Start is fixed in the future, Finish equals the fixed Start.</sys:String>
+    <sys:String x:Key="SU_3b">- When registering the first progress (% 0 to above 0): if the Start date is in the future, it is moved to today, anchoring the activity start.</sys:String>
+    <sys:String x:Key="SU_3c">- Once the activity has started (% above 0), the Start date is no longer changed by the cascade — only the following activities of the same resource are repositioned.</sys:String>
+    <sys:String x:Key="SU_3d">- Any % change that moves the Finish date triggers the virtual predecessor cascade for the following activities.</sys:String>
+    <sys:String x:Key="SU_3e">- Activities in the Closed state with % other than 100 still have editable duration.</sys:String>
+    <sys:String x:Key="SU_4H">4. Start and Finish dates</sys:String>
+    <sys:String x:Key="SU_4P">The Finish date is calculated automatically: Start + real HH converted by the allocation %, respecting the calendar (weekends and holidays are skipped).</sys:String>
+    <sys:String x:Key="SU_4a">- Changing the Finish date changes the duration; the system asks for confirmation before accepting.</sys:String>
+    <sys:String x:Key="SU_4b">- Typing 0 in the Start field removes the pin and repositions by sprint or predecessor.</sys:String>
+    <sys:String x:Key="SU_4c">- The calendar setup is under View, Calendar.</sys:String>
+    <sys:String x:Key="SU_5H">5. Explicit predecessors</sys:String>
+    <sys:String x:Key="SU_5P">The Pred. column defines which activities must finish before the current activity starts.</sys:String>
+    <sys:String x:Key="SU_5a">- Click the Pred. field to open the selection window.</sys:String>
+    <sys:String x:Key="SU_5b">- Use search to find by name or ID.</sys:String>
+    <sys:String x:Key="SU_5c">- You can check multiple predecessors with the checkboxes.</sys:String>
+    <sys:String x:Key="SU_5d">- The start date is calculated automatically as the next working day after the latest finish date among all predecessors.</sys:String>
+    <sys:String x:Key="SU_5e">- When a predecessor's finish date changes, all dependents are recalculated in cascade.</sys:String>
+    <sys:String x:Key="SU_5f">- The recalculation uses topological sorting: an activity is only recalculated after all its predecessors are positioned. Cross references (A depends on B which depends on A) are detected and interrupted automatically.</sys:String>
+    <sys:String x:Key="SU_6H">6. Schedule milestones</sys:String>
+    <sys:String x:Key="SU_6P">Milestones are zero-duration activities used to record an important date in the schedule.</sys:String>
+    <sys:String x:Key="SU_6a">- For a local milestone that does not go to Azure DevOps, use Type = No DevOps and Dur.(h) = 0.</sys:String>
+    <sys:String x:Key="SU_6b">- For a milestone that syncs to Azure DevOps, use Type = Marco-Devops and Dur.(h) = 0; it is created as a Task with the MARCO-PROJECT tag.</sys:String>
+    <sys:String x:Key="SU_6c">- Marco-Devops only accepts zero duration. Regular DevOps activities do not accept zero duration as a milestone.</sys:String>
+    <sys:String x:Key="SU_6d">- If the milestone has explicit predecessors, the start date uses the latest finish date among them, as with other activities.</sys:String>
+    <sys:String x:Key="SU_6e">- If the Marco-Devops has no predecessor set, the system automatically uses the previous sibling activity; if there is no previous sibling, it uses the parent.</sys:String>
+    <sys:String x:Key="SU_6f">- On Azure DevOps import, the Marco-Devops is positioned by the predecessor that makes sense in the hierarchy: a sibling activity or the parent itself.</sys:String>
+    <sys:String x:Key="SU_6g">- Predecessors outside the hierarchy may exist as a DevOps dependency, but are ignored when positioning the milestone visually within the list.</sys:String>
+    <sys:String x:Key="SU_7H">7. Gantt</sys:String>
+    <sys:String x:Key="SU_7P">The Gantt shows duration bars, milestones, sprints and dependency arrows.</sys:String>
+    <sys:String x:Key="SU_7a">- The light blue bar represents the activity's total planned duration.</sys:String>
+    <sys:String x:Key="SU_7b">- The dark central band represents the % complete, reading similarly to MS Project.</sys:String>
+    <sys:String x:Key="SU_7c">- The subtle dark line at the base represents Current HH proportional to the total of Current HH + Remaining HH.</sys:String>
+    <sys:String x:Key="SU_7d">- The light gray-blue bar represents groupings such as Feature or Epic.</sys:String>
+    <sys:String x:Key="SU_7e">- Enable the magnifier button on the toolbar and move the mouse over the Gantt to analyze the chart up close.</sys:String>
+    <sys:String x:Key="SU_7f">- When moving an activity in the Gantt, dependents may follow the shift.</sys:String>
+    <sys:String x:Key="SU_8H">8. Columns and display modes</sys:String>
+    <sys:String x:Key="SU_8P">Use the View, Customize columns button to choose which columns appear in each view mode.</sys:String>
+    <sys:String x:Key="SU_8a">- Standard view: compact setup, ideal for smaller monitors.</sys:String>
+    <sys:String x:Key="SU_8b">- Expanded view: full setup with Current HH, Remaining HH, OrgH, SFP and Predecessors.</sys:String>
+    <sys:String x:Key="SU_8c">- The setup is saved in the project file and restored when reopened.</sys:String>
+    <sys:String x:Key="SU_9H">9. Project Progress and S-Curve</sys:String>
+    <sys:String x:Key="SU_9P">Access via View, Project Progress and S-Curve to track the project's overall progress.</sys:String>
+    <sys:String x:Key="SU_9a">- Blue line: Original HH (Planned) accumulated per sprint.</sys:String>
+    <sys:String x:Key="SU_9b">- Solid orange line: accumulated Current HH (completed or ongoing sprints).</sys:String>
+    <sys:String x:Key="SU_9c">- Dashed orange line: projected Remaining HH (future sprints).</sys:String>
+    <sys:String x:Key="SU_9d">- The calculation considers only activities at the story level (the shallowest level with an assigned sprint).</sys:String>
+    <sys:String x:Key="SU_10H">10. Virtual Predecessor (same resource and hierarchy)</sys:String>
+    <sys:String x:Key="SU_10P">Activities at the same hierarchy level with the same assigned resource are chained automatically, as if the previous activity were the predecessor of the next — without registering explicit predecessors.</sys:String>
+    <sys:String x:Key="SU_10a">- The chaining follows the order of activities in the list within the same level and same parent.</sys:String>
+    <sys:String x:Key="SU_10b">- When an activity's finish date changes, the following ones of the same resource and level are recalculated in cascade.</sys:String>
+    <sys:String x:Key="SU_10c">- The recalculation happens when changing duration, start date, finish date, completion percentage, explicit predecessor or resource.</sys:String>
+    <sys:String x:Key="SU_10d">- When changing the resource, the activity is repositioned after the last activity of the new resource at the same level; the previous resource's activities are also readjusted.</sys:String>
+    <sys:String x:Key="SU_10e">- When dragging an activity to another position, dates are recalculated at both the source and destination positions.</sys:String>
+    <sys:String x:Key="SU_10f">- Activities with explicit predecessors are not moved by the virtual predecessor.</sys:String>
+    <sys:String x:Key="SU_10g">- When opening or importing the project, virtual chaining and explicit predecessors are applied automatically across the whole hierarchy.</sys:String>
+    <sys:String x:Key="SU_11H">11. Sprint</sys:String>
+    <sys:String x:Key="SU_11P">The Sprint column links the activity to an Azure DevOps iteration (or to a synthetic schedule sprint number).</sys:String>
+    <sys:String x:Key="SU_11a">- When changing the sprint of an activity with no progress (% = 0), the start date is moved to the start of the selected sprint and the finish is recalculated by duration.</sys:String>
+    <sys:String x:Key="SU_11b">- If the activity already has progress (% above 0), the start date is preserved; only the finish is recalculated keeping the current duration.</sys:String>
+    <sys:String x:Key="SU_11c">- When changing the sprint, the ancestors' dates (Feature, Epic, Project) are recalculated automatically to reflect the new range of the set of child activities.</sys:String>
+    <sys:String x:Key="SU_11d">- Changing the sprint does not cause a full grid refresh: only the activity's row and its ancestors are updated, preserving scroll position and selection.</sys:String>
+    <sys:String x:Key="SU_Tip">Quick tip: enter Start and Dur.(h) — the Finish is computed from the calendar. Activities of the same resource and level chain automatically. Update % Compl. to record progress; Current HH and Remaining HH are computed and synced with Azure DevOps.</sys:String>
+    <sys:String x:Key="SU_Close">Close</sys:String>
+
+    <sys:String x:Key="ADO_Title">Azure DevOps Backlog Integration</sys:String>
+    <sys:String x:Key="ADO_Header">Integration with Azure DevOps Backlog</sys:String>
+    <sys:String x:Key="ADO_Sub">Use Azure DevOps as the backlog source and NXProject as support for schedule, Gantt, sprints, capacity and deadline tracking.</sys:String>
+    <sys:String x:Key="ADO_1H">1. Prepare the backlog in Azure DevOps</sys:String>
+    <sys:String x:Key="ADO_1P">The root work item entered in NXProject must represent the project and contain the backlog hierarchy below it.</sys:String>
+    <sys:String x:Key="ADO_1a">- Project - the planning root item.</sys:String>
+    <sys:String x:Key="ADO_1b">- Epic and Feature - group larger deliverables.</sys:String>
+    <sys:String x:Key="ADO_1c">- Story - becomes the plannable schedule row.</sys:String>
+    <sys:String x:Key="ADO_2H">2. Configure fields used in the schedule</sys:String>
+    <sys:String x:Key="ADO_2P">In the File, Import, TFS / Azure DevOps window, enter the organization, the Team Project, the root ID and the Personal Access Token. In the advanced fields area, adjust the names used by your process.</sys:String>
+    <sys:String x:Key="ADO_2a">- HH Estimado: the Story estimate in hours.</sys:String>
+    <sys:String x:Key="ADO_2b">- Data_Inicio: start date when the Story already has an agreed start.</sys:String>
+    <sys:String x:Key="ADO_2c">- Data_Fim: finish date when the deadline is already set in DevOps.</sys:String>
+    <sys:String x:Key="ADO_2d">- System.AssignedTo: assignee imported as a project resource.</sys:String>
+    <sys:String x:Key="ADO_3H">3. Work with sprints and backlog order</sys:String>
+    <sys:String x:Key="ADO_3P">NXProject reads Azure DevOps iterations and uses System.IterationPath to associate Features and Stories to sprints. The order among sibling items respects Microsoft.VSTS.Common.StackRank, keeping the backlog sense for planning.</sys:String>
+    <sys:String x:Key="ADO_3P2">After import, changing the sprint in the grid can be synced back to Azure DevOps.</sys:String>
+    <sys:String x:Key="ADO_4H">4. Track agile projects with NXProject</sys:String>
+    <sys:String x:Key="ADO_4a">- Gantt to see dates, dependencies and impact among Stories.</sys:String>
+    <sys:String x:Key="ADO_4b">- Allocation by resource and sprint to assess team capacity.</sys:String>
+    <sys:String x:Key="ADO_4c">- Health Check to identify delays and follow the S-Curve.</sys:String>
+    <sys:String x:Key="ADO_4d">- Block tags on child Tasks indicate a visual block in planning.</sys:String>
+    <sys:String x:Key="ADO_5H">5. Sync carefully</sys:String>
+    <sys:String x:Key="ADO_5P">In File, Export, Sync TFS / Azure DevOps, NXProject updates linked work items according to the integration rules.</sys:String>
+    <sys:String x:Key="ADO_5a">- Can send title, description, hours, dates, state, tags and sprint.</sys:String>
+    <sys:String x:Key="ADO_5b">- Can create new items when the DevOps ID is 0 and a type is defined.</sys:String>
+    <sys:String x:Key="ADO_5c">- Can sync predecessor links if the option is enabled.</sys:String>
+    <sys:String x:Key="ADO_5d">- Before syncing, review assignees, 100% complete items and Stories without a sprint.</sys:String>
+    <sys:String x:Key="ADO_Tip">Summary: the backlog stays in Azure DevOps; NXProject complements it with visual planning, capacity, dates and dependencies to support agile projects.</sys:String>
+    <sys:String x:Key="ADO_Close">Close</sys:String>
 
 </ResourceDictionary>

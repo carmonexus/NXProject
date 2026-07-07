@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.AzureDevOpsBacklogHelpWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Integracao Azure DevOps Backlog"
+        Title="{DynamicResource ADO_Title}"
         Width="820"
         Height="640"
         MinWidth="680"
@@ -17,108 +17,58 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="Integracao com Azure DevOps Backlog"
-                       FontSize="24"
-                       FontWeight="SemiBold"
-                       Foreground="#2B579A"/>
-            <TextBlock Text="Use o Azure DevOps como origem do backlog e o NXProject como apoio para cronograma, Gantt, sprints, capacidade e acompanhamento de prazo."
-                       Margin="0,8,0,0"
-                       TextWrapping="Wrap"
-                       Foreground="#444"/>
+            <TextBlock Text="{DynamicResource ADO_Header}"
+                       FontSize="24" FontWeight="SemiBold" Foreground="#2B579A"/>
+            <TextBlock Text="{DynamicResource ADO_Sub}"
+                       Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#444"/>
         </StackPanel>
 
         <Border Grid.Row="1"
-                BorderBrush="#D9E1EA"
-                BorderThickness="1"
-                CornerRadius="8"
-                Background="#F8FAFC"
-                Padding="16">
+                BorderBrush="#D9E1EA" BorderThickness="1" CornerRadius="8"
+                Background="#F8FAFC" Padding="16">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <TextBlock Text="1. Prepare o backlog no Azure DevOps"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="#2B579A"
-                               Margin="0,0,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6">
-O work item raiz informado no NXProject deve representar o projeto e conter a hierarquia de backlog abaixo dele.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Project - item raiz do planejamento."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Epic e Feature - agrupam entregas maiores."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Story - vira a linha planejavel do cronograma."/>
+                    <TextBlock Text="{DynamicResource ADO_1H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource ADO_1P}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <TextBlock Text="{DynamicResource ADO_1a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_1b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_1c}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <TextBlock Text="2. Configure campos usados no cronograma"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="#2B579A"
-                               Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6">
-Na janela Arquivo > Importar > TFS / Azure DevOps, informe a organizacao, o Team Project, o ID raiz e o Personal Access Token. Na area de campos avancados, ajuste os nomes usados pelo seu processo.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- HH Estimado: estimativa da Story em horas."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Data_Inicio: data inicial quando a Story ja tem inicio combinado."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Data_Fim: data final quando o prazo ja foi definido no DevOps."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- System.AssignedTo: responsavel importado como recurso do projeto."/>
+                    <TextBlock Text="{DynamicResource ADO_2H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource ADO_2P}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <TextBlock Text="{DynamicResource ADO_2a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_2b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_2c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_2d}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <TextBlock Text="3. Trabalhe com sprints e ordem do backlog"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="#2B579A"
-                               Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6">
-O NXProject le as iterations do Azure DevOps e usa System.IterationPath para associar Features e Stories as sprints. A ordem entre itens irmaos respeita Microsoft.VSTS.Common.StackRank, mantendo o sentido do backlog para o planejamento.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,12">
-Depois da importacao, a troca de sprint na grade pode ser sincronizada de volta para o Azure DevOps.
-                    </TextBlock>
+                    <TextBlock Text="{DynamicResource ADO_3H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource ADO_3P}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <TextBlock Text="{DynamicResource ADO_3P2}" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
-                    <TextBlock Text="4. Acompanhe projetos ageis pelo NXProject"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="#2B579A"
-                               Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Gantt para enxergar datas, dependencias e impacto entre Stories."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Alocacao por recurso e sprint para avaliar capacidade do time."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Health Check para identificar atrasos e acompanhar a Curva S."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Tags Block em Tasks filhas indicam bloqueio visual no planejamento."/>
+                    <TextBlock Text="{DynamicResource ADO_4H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource ADO_4a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_4b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_4c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_4d}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <TextBlock Text="5. Sincronize com cuidado"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="#2B579A"
-                               Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6">
-Em Arquivo > Exportar > Sincronizar TFS / Azure DevOps, o NXProject atualiza work items vinculados conforme as regras da integracao.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Pode enviar titulo, descricao, horas, datas, estado, tags e sprint."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Pode criar novos itens quando o ID DevOps for 0 e houver tipo definido."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Pode sincronizar links de predecessora se a opcao estiver habilitada."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Antes de sincronizar, revise responsaveis, itens 100% concluidos e Stories sem sprint."/>
+                    <TextBlock Text="{DynamicResource ADO_5H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource ADO_5P}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <TextBlock Text="{DynamicResource ADO_5a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_5b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_5c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource ADO_5d}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <Border Background="#FFF7E8"
-                            BorderBrush="#E8D39A"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="12"
-                            Margin="0,8,0,0">
-                        <TextBlock TextWrapping="Wrap"
-                                   Foreground="#444"
-                                   Text="Resumo: o backlog permanece no Azure DevOps; o NXProject complementa com planejamento visual, capacidade, datas e dependencias para apoiar projetos ageis."/>
+                    <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1"
+                            CornerRadius="6" Padding="12" Margin="0,8,0,0">
+                        <TextBlock Text="{DynamicResource ADO_Tip}" TextWrapping="Wrap" Foreground="#444"/>
                     </Border>
                 </StackPanel>
             </ScrollViewer>
         </Border>
 
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Margin="0,16,0,0">
-            <Button Content="Fechar"
-                    Width="100"
-                    Height="30"
-                    IsDefault="True"
-                    IsCancel="True"
-                    Click="OnCloseClick"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="{DynamicResource ADO_Close}" Width="100" Height="30"
+                    IsDefault="True" IsCancel="True" Click="OnCloseClick"/>
         </StackPanel>
     </Grid>
 </Window>

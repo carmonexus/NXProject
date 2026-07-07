@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Data;
+using NXProject.Services;
 using NXProject.ViewModels;
 
 namespace NXProject.Views
@@ -20,7 +21,7 @@ namespace NXProject.Views
             InitializeComponent();
             DataContext = this;
 
-            TargetTaskText.Text = $"Atividade: {targetTask.DisplayId} - {targetTask.Name}";
+            TargetTaskText.Text = AppStrings.Get("Pred_TargetTask", targetTask.DisplayId, targetTask.Name);
 
             var selectedIds = targetTask.PredecessorsText
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -51,7 +52,7 @@ namespace NXProject.Views
                 selectedIds
                     .Where(id => !candidateIds.Contains(id))
                     .OrderBy(id => id)
-                    .Select(id => $"{id} - fora da lista filtrada"));
+                    .Select(id => AppStrings.Get("Pred_ExternalLabel", id)));
 
             ExternalPredsList.ItemsSource = _externalIds;
             ExternalPredsList.Visibility = _externalIds.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -99,19 +100,19 @@ namespace NXProject.Views
             var selected = CandidateRows
                 .Where(r => r.IsSelected)
                 .OrderBy(r => r.Name)
-                .Select(r => $"{r.DisplayId} - {r.Name}")
+                .Select(r => AppStrings.Get("Pred_RowLabel", r.DisplayId, r.Name))
                 .ToList();
 
             var allLines = selected.ToList();
 
             SelectedSummaryText.Text = allLines.Count == 0 && _externalIds.Count == 0
-                ? "Nenhuma predecessora marcada."
+                ? AppStrings.Get("Pred_NoneMarked")
                 : allLines.Count == 0
                     ? string.Empty
                     : string.Join(Environment.NewLine, allLines);
 
             int total = selected.Count + _externalIds.Count;
-            CountText.Text = $"{total} marcada(s)";
+            CountText.Text = AppStrings.Get("Pred_CountMarked", total);
         }
 
         private void OnClearPredecessorsClick(object sender, RoutedEventArgs e)

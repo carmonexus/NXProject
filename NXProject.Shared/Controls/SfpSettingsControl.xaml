@@ -16,11 +16,11 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0">
-                <TextBlock Text="SPF"
+                <TextBlock Text="{DynamicResource SFP_Title}"
                            FontSize="24"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource PrimaryBrush}"/>
-                <TextBlock Text="Configure em separado os parametros usados para converter faixas de Simple Function Point em duracao estimada das atividades."
+                <TextBlock Text="{DynamicResource SFP_Subtitle}"
                            Margin="0,8,0,0"
                            FontSize="13"
                            Foreground="{StaticResource SecondaryTextBrush}"
@@ -51,7 +51,7 @@
 
                     <TextBlock Grid.Row="0"
                                Grid.Column="0"
-                               Text="Baixa ate 3 SPF"
+                               Text="{DynamicResource SFP_LowLabel}"
                                VerticalAlignment="Center"
                                FontSize="13"
                                FontWeight="SemiBold"/>
@@ -62,7 +62,7 @@
                              VerticalContentAlignment="Center"/>
                     <TextBlock Grid.Row="0"
                                Grid.Column="2"
-                               Text="Valor usado quando a atividade tem ate 3 SPF."
+                               Text="{DynamicResource SFP_LowDesc}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"
@@ -71,7 +71,7 @@
 
                     <TextBlock Grid.Row="2"
                                Grid.Column="0"
-                               Text="Media maior que 3 e menor que 6"
+                               Text="{DynamicResource SFP_MediumLabel}"
                                VerticalAlignment="Center"
                                FontSize="13"
                                FontWeight="SemiBold"/>
@@ -82,7 +82,7 @@
                              VerticalContentAlignment="Center"/>
                     <TextBlock Grid.Row="2"
                                Grid.Column="2"
-                               Text="Valor usado quando a atividade tem mais de 3 e menos de 6 SPF."
+                               Text="{DynamicResource SFP_MediumDesc}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"
@@ -91,7 +91,7 @@
 
                     <TextBlock Grid.Row="4"
                                Grid.Column="0"
-                               Text="Alta maior ou igual a 6"
+                               Text="{DynamicResource SFP_HighLabel}"
                                VerticalAlignment="Center"
                                FontSize="13"
                                FontWeight="SemiBold"/>
@@ -102,7 +102,7 @@
                              VerticalContentAlignment="Center"/>
                     <TextBlock Grid.Row="4"
                                Grid.Column="2"
-                               Text="Valor usado quando a atividade tem 6 SPF ou mais."
+                               Text="{DynamicResource SFP_HighDesc}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"
@@ -120,18 +120,18 @@
                     MaxWidth="620"
                     HorizontalAlignment="Left">
                 <StackPanel>
-                    <TextBlock Text="Estimativa Original (OrgH)"
+                    <TextBlock Text="{DynamicResource SFP_OrgH_Title}"
                                FontSize="14"
                                FontWeight="SemiBold"
                                Margin="0,0,0,8"/>
-                    <CheckBox Content="Exibir coluna OrgH no cronograma"
+                    <CheckBox Content="{DynamicResource SFP_ShowOrgH}" 
                               IsChecked="{Binding ShowOriginalHoursColumn, Mode=TwoWay}"
                               FontSize="13"/>
                     <TextBlock Margin="20,4,0,0"
                                FontSize="12"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                TextWrapping="Wrap"
-                               Text="Quando ativa, exibe uma coluna pequena (OrgH) ao lado do SPF com a estimativa original de cada tarefa. Util para comparar o planejado original com o restante atual."/>
+                               Text="{DynamicResource SFP_OrgH_Desc}"/>
                 </StackPanel>
             </Border>
 
@@ -144,7 +144,7 @@
                     MaxWidth="620"
                     HorizontalAlignment="Left">
                 <StackPanel>
-                    <TextBlock Text="O que e SPF?"
+                    <TextBlock Text="{DynamicResource SFP_WhatIs_Title}"
                                FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="{StaticResource PrimaryBrush}"/>
@@ -152,20 +152,20 @@
                                FontSize="12"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                TextWrapping="Wrap">
-                        <Run Text="SPF significa "/>
+                        <Run Text="{DynamicResource SFP_WhatIs_Part1}"/>
                         <Run Text="Simple Function Point" FontWeight="SemiBold"/>
-                        <Run Text=". E uma forma de medir o tamanho funcional do software a partir das funcionalidades entregues ao usuario, ajudando na estimativa de esforco e duracao."/>
+                        <Run Text="{DynamicResource SFP_WhatIs_Part2}"/>
                     </TextBlock>
                     <TextBlock Margin="0,8,0,0"
                                FontSize="12"
                                Foreground="{StaticResource SecondaryTextBrush}"
                                TextWrapping="Wrap">
-                        <Run Text="Faixas usadas no sistema: "/>
-                        <Run Text="Baixa ate 3 SPF" FontWeight="SemiBold"/>
+                        <Run Text="{DynamicResource SFP_RangesIntro}"/>
+                        <Run Text="{DynamicResource SFP_LowLabel}" FontWeight="SemiBold"/>
                         <Run Text=", "/>
-                        <Run Text="Media maior que 3 e menor que 6" FontWeight="SemiBold"/>
-                        <Run Text=" e "/>
-                        <Run Text="Alta maior ou igual a 6" FontWeight="SemiBold"/>
+                        <Run Text="{DynamicResource SFP_MediumLabel}" FontWeight="SemiBold"/>
+                        <Run Text="{DynamicResource SFP_And}"/>
+                        <Run Text="{DynamicResource SFP_HighLabel}" FontWeight="SemiBold"/>
                         <Run Text="."/>
                     </TextBlock>
                     <TextBlock Margin="0,8,0,0"
@@ -174,7 +174,7 @@
                                TextWrapping="Wrap">
                         <Hyperlink NavigateUri="https://handwiki.org/wiki/The_Simple_Function_Point_%28SFP%29_method"
                                    RequestNavigate="OnRequestNavigate">
-                            Ver conceito de SPF na web
+                            <Run Text="{DynamicResource SFP_LearnMore}"/>
                         </Hyperlink>
                     </TextBlock>
                 </StackPanel>

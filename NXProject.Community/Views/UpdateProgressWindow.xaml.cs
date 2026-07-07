@@ -34,7 +34,7 @@ public partial class UpdateProgressWindow : Window
 
             _extractedDir = await UpdateService.DownloadAndExtractAsync(_downloadUrl, progress);
 
-            StatusText.Text = "Aplicando atualização...";
+            StatusText.Text = AppStrings.Get("Upd_Applying");
             await Task.Delay(600);
 
             UpdateService.LaunchUpdaterAndExit(_extractedDir);
@@ -42,8 +42,8 @@ public partial class UpdateProgressWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"Falha ao baixar a atualização.\n\n{ex.Message}",
-                "Atualização",
+                AppStrings.Get("Upd_Failed", ex.Message),
+                AppStrings.Get("Upd_MsgTitle"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Close();

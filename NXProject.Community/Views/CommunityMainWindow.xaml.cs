@@ -83,7 +83,13 @@ namespace NXProject.Views
                     UpdateEpicHours(vm);
             };
 
-            LanguageService.LanguageChanged += () => TaskGridCtrl.RefreshColumnHeaders();
+            LanguageService.LanguageChanged += () =>
+            {
+                TaskGridCtrl.RefreshColumnHeaders();
+                if (DataContext is MainViewModel vm)
+                    ZoomLabel.Text = FormatZoomLabel(vm.SelectedZoom);
+                GanttCtrl.ForceRender();
+            };
 
             var syncingVerticalScroll = false;
 
@@ -123,6 +129,7 @@ namespace NXProject.Views
             TaskGridCtrl.EditDescriptionRequested += OnEditDescription;
             TaskGridCtrl.ResolveManualConflictRequested += OnResolveManualConflict;
             TaskGridCtrl.FetchTaskHoursRequested += OnFetchTaskHoursFromDevOps;
+            TaskGridCtrl.ManualPercentCompleteCommitRequested += OnManualPercentCompleteCommitRequested;
             TaskGridCtrl.FetchChildTasksRequested    += OnFetchChildTasksFromDevOps;
             TaskGridCtrl.TksClickRequested           += OpenTaskReviewForStory;
             TaskGridCtrl.ExpandChildTasksRequested   += OnExpandChildTasks;
@@ -184,7 +191,7 @@ namespace NXProject.Views
                 {
                     Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
                     {
-                        ZoomLabel.Text = vm.SelectedZoom;
+                        ZoomLabel.Text = FormatZoomLabel(vm.SelectedZoom);
                         GanttCtrl.ZoomLevel = vm.SelectedZoom;
                         GanttCtrl.ForceRender();
                         GanttCtrl.ScrollToProjectStart();
@@ -192,7 +199,7 @@ namespace NXProject.Views
                 }
             };
 
-            ZoomLabel.Text = vm.SelectedZoom;
+            ZoomLabel.Text = FormatZoomLabel(vm.SelectedZoom);
 
             GanttCtrl.TaskClicked += task =>
             {
@@ -713,6 +720,139 @@ namespace NXProject.Views
 
         private void OnFetchChildTasksFromDevOps(TaskViewModel storyVm) =>
             OpenTaskReviewForStory(storyVm);
+
+        private async System.Threading.Tasks.Task<bool> OnManualPercentCompleteCommitRequested(TaskViewModel storyVm, double requestedPercent)
+        {
+            var savedOptions = Services.TfsConnectionStore.Load("NXProject.Community");
+            if (!Services.TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(
+                    storyVm.Model,
+                    requestedPercent,
+                    savedOptions.EnforceStoryCompletionWithTasks))
+                return true;
+
+            if (ShowManualStoryCompletionBlockedDialog(storyVm) != ManualStoryCompletionChoice.RecountDevOpsTasks)
+                return false;
+
+            try
+            {
+                var tasks = await Services.TfsImportService.FetchChildTasksFromDevOpsAsync(savedOptions, storyVm.Model.TfsId!.Value);
+                if (tasks == null)
+                {
+                    MessageBox.Show(
+                        AppStrings.Get("Pct100_RecountError", AppStrings.Get("Pct100_RecountNoResponse")),
+                        AppStrings.Get("Pct100_Title"),
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return false;
+                }
+
+                storyVm.Model.DevopsTaskCount = tasks.Count;
+                storyVm.NotifyTksChanged();
+
+                if (tasks.Count > 0)
+                {
+                    MessageBox.Show(
+                        AppStrings.Get("Pct100_RecountFound", tasks.Count),
+                        AppStrings.Get("Pct100_Title"),
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return true;
+                }
+
+                MessageBox.Show(
+                    AppStrings.Get("Pct100_RecountNone"),
+                    AppStrings.Get("Pct100_Title"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    AppStrings.Get("Pct100_RecountError", ex.Message),
+                    AppStrings.Get("Pct100_Title"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+        private enum ManualStoryCompletionChoice
+        {
+            Cancel,
+            RecountDevOpsTasks
+        }
+
+        private ManualStoryCompletionChoice ShowManualStoryCompletionBlockedDialog(TaskViewModel storyVm)
+        {
+            var dialog = new Window
+            {
+                Title = AppStrings.Get("Pct100_Title"),
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                ResizeMode = ResizeMode.NoResize,
+                MinWidth = 430,
+                Background = System.Windows.Media.Brushes.White,
+                ShowInTaskbar = false
+            };
+
+            var root = new Grid { Margin = new Thickness(18) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var text = new TextBlock
+            {
+                Text = AppStrings.Get("Pct100_BlockMessage", storyVm.DisplayId, storyVm.Name),
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 560,
+                Margin = new Thickness(0, 0, 0, 18)
+            };
+            Grid.SetRow(text, 0);
+            root.Children.Add(text);
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            Grid.SetRow(buttons, 1);
+
+            var recount = new Button
+            {
+                Content = AppStrings.Get("Pct100_RecountButton"),
+                MinWidth = 180,
+                Height = 32,
+                Margin = new Thickness(0, 0, 8, 0),
+                IsDefault = true
+            };
+            recount.Click += (_, _) =>
+            {
+                dialog.Tag = ManualStoryCompletionChoice.RecountDevOpsTasks;
+                dialog.DialogResult = true;
+            };
+            buttons.Children.Add(recount);
+
+            var cancel = new Button
+            {
+                Content = AppStrings.Get("Pct100_CancelButton"),
+                MinWidth = 90,
+                Height = 32,
+                IsCancel = true
+            };
+            cancel.Click += (_, _) =>
+            {
+                dialog.Tag = ManualStoryCompletionChoice.Cancel;
+                dialog.DialogResult = false;
+            };
+            buttons.Children.Add(cancel);
+
+            root.Children.Add(buttons);
+            dialog.Content = root;
+            return dialog.ShowDialog() == true && dialog.Tag is ManualStoryCompletionChoice choice
+                ? choice
+                : ManualStoryCompletionChoice.Cancel;
+        }
 
         private async void OnExpandChildTasks(TaskViewModel storyVm)
         {
@@ -1673,7 +1813,7 @@ namespace NXProject.Views
         {
             if (DataContext is not MainViewModel vm) return;
             vm.SelectedZoom = zoom;
-            ZoomLabel.Text = zoom;
+            ZoomLabel.Text = FormatZoomLabel(zoom);
             GanttCtrl.ZoomLevel = zoom;
 
             // Dia, Semana, Trimestre e Semestre mostram header por dia; Sprint e Mês usam view por sprint
@@ -1684,6 +1824,17 @@ namespace NXProject.Views
 
             GanttCtrl.ForceRender();
         }
+
+        private static string FormatZoomLabel(string zoom) => zoom switch
+        {
+            "Dia" => "Day",
+            "Semana" => "Week",
+            "Sprint" => "Sprint",
+            "Mês" => "Month",
+            "Trimestre" => "Quarter",
+            "Semestre" => "Semester",
+            _ => zoom
+        };
 
         private void OnGanttOriginalToggleChecked(object sender, RoutedEventArgs e)
             => ApplyGanttOriginalView(true);
@@ -2117,7 +2268,7 @@ namespace NXProject.Views
 
                     var label = new TextBlock
                     {
-                        Text = cursor.ToString("MMM/yy"),
+                        Text = cursor.ToString("MMM/yy", CultureInfo.CurrentCulture),
                         FontSize = 10,
                         Foreground = new SolidColorBrush(Color.FromRgb(95, 105, 120)),
                         TextAlignment = TextAlignment.Center,
@@ -2649,7 +2800,7 @@ namespace NXProject.Views
         private void OnBaselineMenuOpened(object sender, RoutedEventArgs e)
         {
             if (DataContext is MainViewModel vm && vm.Project != null)
-                BaselineToggleItem.Header = vm.Project.BaselineActive ? "Desativar Baseline" : "Ativar Baseline";
+                BaselineToggleItem.Header = vm.Project.BaselineActive ? AppStrings.Get("Main_DisableBaseline") : AppStrings.Get("Main_EnableBaseline");
 
             BaselineToggleItem.IsEnabled = DataContext is MainViewModel v && v.Project != null
                 && BaselineService.HasBaseline(v.Project.FilePath ?? "");

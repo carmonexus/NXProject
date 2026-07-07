@@ -743,8 +743,8 @@ namespace NXProject.Controls
                     {
                         "Dia" => date.ToString("d", CultureInfo.CurrentCulture),
                         "Semana" => date.ToString("d", CultureInfo.CurrentCulture),
-                        "Mês" => date.ToString("MMM/yy"),
-                        "Trimestre" => $"T{(date.Month - 1) / 3 + 1}/{date.Year}",
+                        "Mês" => date.ToString("MMM/yy", CultureInfo.CurrentCulture),
+                        "Trimestre" => $"{GetQuarterPrefix()}{(date.Month - 1) / 3 + 1}/{date.Year}",
                         _ => date.ToString("dd/MM")
                     },
                     FontSize = 10,
@@ -921,6 +921,13 @@ namespace NXProject.Controls
 
             // Bottom border
             HeaderCanvas.Children.Add(new Line { X1 = 0, Y1 = HeaderHeight - 1, X2 = canvasW, Y2 = HeaderHeight - 1, Stroke = Brushes.LightGray, StrokeThickness = 1 });
+        }
+
+        private static string GetQuarterPrefix()
+        {
+            return CultureInfo.CurrentCulture.TwoLetterISOLanguageName.Equals("pt", StringComparison.OrdinalIgnoreCase)
+                ? "T"
+                : "Q";
         }
 
         private void RenderCompactDayHeader(double scrollOffset)

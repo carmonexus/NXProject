@@ -131,8 +131,8 @@ namespace NXProject.Views
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Margin              = new Thickness(4, 4, 6, 4),
                 ToolTip             = entry.RootWorkItemId > 0
-                    ? $"ID raiz: {entry.RootWorkItemId}"
-                    : "ID raiz não configurado — edite em Visualizar → Portfólio de Projetos"
+                    ? AppStrings.Get("ProjPick_RootIdTip", entry.RootWorkItemId)
+                    : AppStrings.Get("ProjPick_NoRootIdTip")
             };
             Grid.SetColumn(idBlock, 4);
 
@@ -154,8 +154,8 @@ namespace NXProject.Views
         {
             int selected = _all.Count(e => e.IsSelected);
             int semId    = _all.Count(e => e.IsSelected && e.RootWorkItemId <= 0);
-            SummaryText.Text = $"{selected} projeto(s) selecionado(s)" +
-                               (semId > 0 ? $"  ·  {semId} sem ID raiz (não será importado)" : "");
+            SummaryText.Text = AppStrings.Get("ProjPick_Summary", selected) +
+                               (semId > 0 ? AppStrings.Get("ProjPick_SummaryNoId", semId) : "");
         }
 
         private void OnSearchChanged(object sender, TextChangedEventArgs e)

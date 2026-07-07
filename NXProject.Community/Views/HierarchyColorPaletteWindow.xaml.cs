@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using NXProject.Models;
+using NXProject.Services;
 
 namespace NXProject.Community.Views
 {
@@ -135,12 +136,12 @@ namespace NXProject.Community.Views
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(DefaultsFile)!);
                 File.WriteAllText(DefaultsFile, JsonSerializer.Serialize(colors, new JsonSerializerOptions { WriteIndented = true }));
-                MessageBox.Show("Padrão de cores salvo com sucesso.", "Salvar Padrão",
+                MessageBox.Show(AppStrings.Get("Pal_Saved"), AppStrings.Get("Pal_SaveTitle"),
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao salvar padrão: {ex.Message}", "Erro",
+                MessageBox.Show(AppStrings.Get("Pal_SaveError", ex.Message), AppStrings.Get("Pal_ErrorTitle"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }

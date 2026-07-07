@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Community.Views.HierarchyColorPaletteWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Paleta de Cores — Hierarquia do Cronograma"
+        Title="{DynamicResource Pal_Title}"
         Width="400" Height="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
@@ -26,7 +26,7 @@
     <StackPanel Margin="20">
 
         <!-- Checkbox de ativação -->
-        <CheckBox x:Name="EnabledCheckBox" Content="Ativar cores por nível de hierarquia"
+        <CheckBox x:Name="EnabledCheckBox" Content="{DynamicResource Pal_Enable}"
                   FontSize="13" FontWeight="SemiBold" Foreground="#2B579A"
                   Checked="OnEnabledChanged" Unchecked="OnEnabledChanged"
                   Margin="0,0,0,16"/>
@@ -50,53 +50,53 @@
                 </Grid.RowDefinitions>
 
                 <!-- Cabeçalho -->
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Nível" FontWeight="SemiBold" FontSize="11" Foreground="#666"/>
-                <TextBlock Grid.Row="0" Grid.Column="1" Text="Hex" FontWeight="SemiBold" FontSize="11" Foreground="#666"/>
-                <TextBlock Grid.Row="0" Grid.Column="2" Text="Cor" FontWeight="SemiBold" FontSize="11" Foreground="#666" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource Pal_ColLevel}" FontWeight="SemiBold" FontSize="11" Foreground="#666"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{DynamicResource Pal_ColHex}" FontWeight="SemiBold" FontSize="11" Foreground="#666"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="{DynamicResource Pal_ColColor}" FontWeight="SemiBold" FontSize="11" Foreground="#666" HorizontalAlignment="Center"/>
 
                 <!-- Nível 0: Raiz/Projeto -->
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Nível 0 — Raiz / Projeto" Style="{StaticResource LabelStyle}"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource Pal_Level0}" Style="{StaticResource LabelStyle}"/>
                 <TextBox   Grid.Row="2" Grid.Column="1" x:Name="Color0Box" Style="{StaticResource HexBox}" TextChanged="OnColorChanged"/>
                 <Border    Grid.Row="2" Grid.Column="2" x:Name="Preview0" Width="28" Height="28" BorderBrush="#AAA" BorderThickness="1" CornerRadius="3"
-                           Cursor="Hand" ToolTip="Clique para escolher a cor" MouseLeftButtonUp="OnSwatchClick" Tag="0"/>
+                           Cursor="Hand" ToolTip="{DynamicResource Pal_SwatchTip}" MouseLeftButtonUp="OnSwatchClick" Tag="0"/>
 
                 <!-- Nível 1: Epic -->
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Nível 1 — Epic" Style="{StaticResource LabelStyle}"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource Pal_Level1}" Style="{StaticResource LabelStyle}"/>
                 <TextBox   Grid.Row="3" Grid.Column="1" x:Name="Color1Box" Style="{StaticResource HexBox}" TextChanged="OnColorChanged"/>
                 <Border    Grid.Row="3" Grid.Column="2" x:Name="Preview1" Width="28" Height="28" BorderBrush="#AAA" BorderThickness="1" CornerRadius="3"
-                           Cursor="Hand" ToolTip="Clique para escolher a cor" MouseLeftButtonUp="OnSwatchClick" Tag="1"/>
+                           Cursor="Hand" ToolTip="{DynamicResource Pal_SwatchTip}" MouseLeftButtonUp="OnSwatchClick" Tag="1"/>
 
                 <!-- Nível 2: Feature -->
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Nível 2 — Feature" Style="{StaticResource LabelStyle}"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource Pal_Level2}" Style="{StaticResource LabelStyle}"/>
                 <TextBox   Grid.Row="4" Grid.Column="1" x:Name="Color2Box" Style="{StaticResource HexBox}" TextChanged="OnColorChanged"/>
                 <Border    Grid.Row="4" Grid.Column="2" x:Name="Preview2" Width="28" Height="28" BorderBrush="#AAA" BorderThickness="1" CornerRadius="3"
-                           Cursor="Hand" ToolTip="Clique para escolher a cor" MouseLeftButtonUp="OnSwatchClick" Tag="2"/>
+                           Cursor="Hand" ToolTip="{DynamicResource Pal_SwatchTip}" MouseLeftButtonUp="OnSwatchClick" Tag="2"/>
 
                 <!-- Nível 3: Story -->
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="Nível 3 — Story" Style="{StaticResource LabelStyle}"/>
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="{DynamicResource Pal_Level3}" Style="{StaticResource LabelStyle}"/>
                 <TextBox   Grid.Row="5" Grid.Column="1" x:Name="Color3Box" Style="{StaticResource HexBox}" TextChanged="OnColorChanged"/>
                 <Border    Grid.Row="5" Grid.Column="2" x:Name="Preview3" Width="28" Height="28" BorderBrush="#AAA" BorderThickness="1" CornerRadius="3"
-                           Cursor="Hand" ToolTip="Clique para escolher a cor" MouseLeftButtonUp="OnSwatchClick" Tag="3"/>
+                           Cursor="Hand" ToolTip="{DynamicResource Pal_SwatchTip}" MouseLeftButtonUp="OnSwatchClick" Tag="3"/>
 
                 <!-- Nível 4+: Task -->
-                <TextBlock Grid.Row="6" Grid.Column="0" Text="Nível 4+ — Task" Style="{StaticResource LabelStyle}"/>
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="{DynamicResource Pal_Level4}" Style="{StaticResource LabelStyle}"/>
                 <TextBox   Grid.Row="6" Grid.Column="1" x:Name="Color4Box" Style="{StaticResource HexBox}" TextChanged="OnColorChanged"/>
                 <Border    Grid.Row="6" Grid.Column="2" x:Name="Preview4" Width="28" Height="28" BorderBrush="#AAA" BorderThickness="1" CornerRadius="3"
-                           Cursor="Hand" ToolTip="Clique para escolher a cor" MouseLeftButtonUp="OnSwatchClick" Tag="4"/>
+                           Cursor="Hand" ToolTip="{DynamicResource Pal_SwatchTip}" MouseLeftButtonUp="OnSwatchClick" Tag="4"/>
             </Grid>
         </Border>
 
         <!-- Botões -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="Restaurar Padrão" Width="120" Height="30" Margin="0,0,8,0"
+            <Button Content="{DynamicResource Pal_Restore}" Width="120" Height="30" Margin="0,0,8,0"
                     Click="OnRestoreDefaults" Background="#F0F4FF" BorderBrush="#AAC" FontSize="12"
-                    ToolTip="Restaura as cores salvas como padrão (ou padrão de fábrica)"/>
-            <Button Content="Salvar como Padrão" Width="130" Height="30" Margin="0,0,8,0"
+                    ToolTip="{DynamicResource Pal_RestoreTip}"/>
+            <Button Content="{DynamicResource Pal_SaveDefault}" Width="130" Height="30" Margin="0,0,8,0"
                     Click="OnSaveAsDefault" Background="#E8F4E8" BorderBrush="#8AC" FontSize="12"
-                    ToolTip="Salva as cores atuais como novo padrão para novos projetos"/>
-            <Button Content="Cancelar" Width="80" Height="30" Margin="0,0,8,0"
+                    ToolTip="{DynamicResource Pal_SaveDefaultTip}"/>
+            <Button Content="{DynamicResource Pal_Cancel}" Width="80" Height="30" Margin="0,0,8,0"
                     IsCancel="True" FontSize="12"/>
-            <Button Content="OK" Width="80" Height="30" IsDefault="True"
+            <Button Content="{DynamicResource Pal_OK}" Width="80" Height="30" IsDefault="True"
                     Click="OnOkClick" Background="#2B579A" Foreground="White"
                     BorderBrush="#1D3F73" FontSize="12"/>
         </StackPanel>

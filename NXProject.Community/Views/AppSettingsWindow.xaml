@@ -76,27 +76,27 @@
         </Border>
 
         <!-- ══ DIAGNÓSTICO ══ -->
-        <TextBlock Text="Diagnóstico" FontSize="13" FontWeight="Bold"
-                   Foreground="#2B579A" Margin="0,0,0,8"/>
-        <CheckBox x:Name="DebugLogCheck" Content="Habilitar log de diagnóstico"
-                  Margin="0,0,0,4" FontSize="12"/>
+        <TextBlock Text="{DynamicResource Settings_Diagnostics_Title}" FontSize="13" FontWeight="Bold"
+               Foreground="#2B579A" Margin="0,0,0,8"/>
+        <CheckBox x:Name="DebugLogCheck" Content="{DynamicResource Settings_EnableDebugLog}"
+              Margin="0,0,0,4" FontSize="12"/>
         <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#666" Margin="20,0,0,4"
-                   Text="Grava detalhes de alertas de sprint em %LocalAppData%\NXProject.Community\sprint_alert_debug.log. Ative somente quando solicitado pelo suporte e envie o arquivo gerado."/>
-        <Button x:Name="OpenLogBtn" Content="Abrir pasta do log"
-                HorizontalAlignment="Left" Height="24" Padding="10,0"
-                FontSize="11" Margin="20,0,0,20"
-                Click="OnOpenLogFolderClick"/>
+               Text="{DynamicResource Settings_DebugLogInfo}"/>
+        <Button x:Name="OpenLogBtn" Content="{DynamicResource Settings_OpenLogFolder}"
+            HorizontalAlignment="Left" Height="24" Padding="10,0"
+            FontSize="11" Margin="20,0,0,20"
+            Click="OnOpenLogFolderClick"/>
 
         <!-- ══ CATEGORIAS DE TASK (Activity) ══ -->
-        <TextBlock Text="Categorias de Task (Activity)" FontSize="13" FontWeight="Bold"
-                   Foreground="#2B579A" Margin="0,0,0,6"/>
+        <TextBlock Text="{DynamicResource Settings_TaskCategories_Title}" FontSize="13" FontWeight="Bold"
+               Foreground="#2B579A" Margin="0,0,0,6"/>
         <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#666" Margin="0,0,0,6"
-                   Text="Lista de opções exibidas na coluna Categoria da Grid de Tasks. Uma categoria por linha. Sincroniza o campo Activity no DevOps."/>
+               Text="{DynamicResource Settings_TaskCategories_Desc}"/>
         <TextBox x:Name="ActivityListBox" FontSize="12" Height="120" Padding="6,4"
-                 AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
-                 TextWrapping="NoWrap" Margin="0,0,0,20"
-                 FontFamily="Consolas"
-                 ToolTip="Uma categoria por linha. Ex: Development, Design, Testing"/>
+             AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+             TextWrapping="NoWrap" Margin="0,0,0,20"
+             FontFamily="Consolas"
+             ToolTip="{DynamicResource Settings_TaskCategory_Tooltip}"/>
 
         <!-- ══ BOTÕES ══ -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

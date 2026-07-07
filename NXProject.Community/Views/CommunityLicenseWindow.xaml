@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.CommunityLicenseWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Licenca de Uso - Community"
+        Title="{DynamicResource Lic_Title}"
         Width="700"
         Height="540"
         WindowStartupLocation="CenterOwner"
@@ -17,11 +17,11 @@
         </Grid.RowDefinitions>
 
         <StackPanel Margin="0,0,0,16">
-            <TextBlock Text="Licenca de Uso do NXProject Community"
+            <TextBlock Text="{DynamicResource Lic_Header}"
                        FontSize="24"
                        FontWeight="SemiBold"
                        Foreground="#2B579A"/>
-            <TextBlock Text="Modelo Open Core: a edicao Community e gratuita para qualquer pessoa ou empresa. A edicao Comercial/Enterprise com suporte e vendida separadamente."
+            <TextBlock Text="{DynamicResource Lic_Subtitle}"
                        Margin="0,8,0,0"
                        TextWrapping="Wrap"
                        Foreground="#444"/>
@@ -35,48 +35,25 @@
                 Padding="14">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <TextBlock Text="Empresa: Nexus XData Tecnologia Ltda"
+                    <TextBlock Text="{DynamicResource Lic_Company}"
                                FontWeight="SemiBold"
                                Margin="0,0,0,10"/>
-                    <TextBlock Text="Contato comercial: comercial.nexus.xdata@gmail.com"
+                    <TextBlock Text="{DynamicResource Lic_Contact}"
                                Margin="0,0,0,16"/>
 
-                    <TextBlock Text="Resumo da licenca Community (Open Core)"
+                    <TextBlock Text="{DynamicResource Lic_SummaryHeader}"
                                FontSize="15"
                                FontWeight="SemiBold"
                                Margin="0,0,0,8"/>
 
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Esta edicao Community e gratuita para qualquer pessoa fisica ou empresa, inclusive para uso comercial interno (rodar projetos da sua propria empresa), sem limite de numero de usuarios.
-                    </TextBlock>
-
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Voce pode usar, estudar, modificar para uso interno e redistribuir gratuitamente o Software, desde que mantenha o credito a Nexus XData Tecnologia Ltda e este aviso de licenca.
-                    </TextBlock>
-
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Direitos reservados a Nexus XData: vender, alugar ou cobrar pelo Software, oferece-lo como servico pago (SaaS) ou prestar suporte pago sobre ele exige uma licenca comercial. A redistribuicao permitida e apenas gratuita.
-                    </TextBlock>
-
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Edicao Comercial / Enterprise (via paga): a Nexus XData oferece, mediante contratacao, licenca comercial sem essas restricoes, suporte oficial, SLA, garantias e modulos exclusivos (por exemplo impressao/PDF, calendario avancado e integracoes com IA como OpenAI e Claude).
-                    </TextBlock>
-
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Esta edicao e fornecida no estado em que se encontra, sem garantias, sem obrigacao de suporte e sem responsabilidade por defeitos, falhas ou prejuizos decorrentes do uso.
-                    </TextBlock>
-
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-A Nexus XData Tecnologia Ltda podera alterar, limitar, evoluir ou descontinuar a edicao Community e seus recursos a qualquer tempo.
-                    </TextBlock>
-
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
-Quem desejar contratar suporte, a licenca comercial ou a edicao Enterprise podera entrar em contato pelo e-mail comercial.nexus.xdata@gmail.com. O texto completo da licenca esta no arquivo LICENSE.txt.
-                    </TextBlock>
-
-                    <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" FontStyle="Italic" Foreground="#555">
-Ao clicar em "Aceitar e continuar", voce declara ciencia e concordancia com os termos desta licenca Community.
-                    </TextBlock>
+                    <TextBlock Text="{DynamicResource Lic_P1}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_P2}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_P3}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_P4}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_P5}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_P6}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_P7}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_AcceptNote}" TextWrapping="Wrap" Margin="0,8,0,0" FontStyle="Italic" Foreground="#555"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -85,12 +62,12 @@ Ao clicar em "Aceitar e continuar", voce declara ciencia e concordancia com os t
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,16,0,0">
-            <Button Content="Sair"
+            <Button Content="{DynamicResource Lic_Exit}"
                     Width="100"
                     Height="32"
                     Margin="0,0,8,0"
                     Click="OnDeclineClick"/>
-            <Button Content="Aceitar e continuar"
+            <Button Content="{DynamicResource Lic_AcceptBtn}"
                     Width="160"
                     Height="32"
                     IsDefault="True"

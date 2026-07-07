@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.ProjectPickerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Selecionar Projetos do Portfólio"
+        Title="{DynamicResource ProjPick_Title}"
         Width="560" Height="520"
         MinWidth="420" MinHeight="320"
         WindowStartupLocation="CenterOwner"
@@ -18,15 +18,13 @@
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
-                   Text="Selecionar Projetos do Portfólio"
+                   Text="{DynamicResource ProjPick_Title}"
                    FontSize="16" FontWeight="SemiBold" Foreground="#2B579A"
                    Margin="0,0,0,4"/>
 
-        <TextBlock Grid.Row="1" TextWrapping="Wrap" FontSize="11" Foreground="#666"
-                   Margin="0,0,0,10">
-            Marque os projetos a incluir no Mapa de Alocação.
-            O tipo OPEX/CAPEX e Centro de Custo são configurados no Portfólio de Projetos.
-        </TextBlock>
+        <TextBlock Grid.Row="1" Text="{DynamicResource ProjPick_Intro}"
+                   TextWrapping="Wrap" FontSize="11" Foreground="#666"
+                   Margin="0,0,0,10"/>
 
         <!-- Busca -->
         <Grid Grid.Row="2" Margin="0,0,0,8">
@@ -37,7 +35,7 @@
             <TextBox x:Name="SearchBox" Grid.Column="0"
                      Height="28" Padding="6,0" VerticalContentAlignment="Center" FontSize="12"
                      TextChanged="OnSearchChanged"/>
-            <Button Grid.Column="1" Content="Limpar" Width="60" Height="28" Margin="6,0,0,0"
+            <Button Grid.Column="1" Content="{DynamicResource ProjPick_Clear}" Width="60" Height="28" Margin="6,0,0,0"
                     Click="OnClearSearchClick"/>
         </Grid>
 
@@ -58,13 +56,13 @@
                         <ColumnDefinition Width="120"/>
                         <ColumnDefinition Width="55"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="1" Text="Projeto DevOps" FontWeight="SemiBold" FontSize="11"
+                    <TextBlock Grid.Column="1" Text="{DynamicResource ProjPick_ColProject}" FontWeight="SemiBold" FontSize="11"
                                Margin="4,4,0,4" Foreground="#333"/>
-                    <TextBlock Grid.Column="2" Text="Tipo" FontWeight="SemiBold" FontSize="11"
+                    <TextBlock Grid.Column="2" Text="{DynamicResource ProjPick_ColType}" FontWeight="SemiBold" FontSize="11"
                                Margin="4,4,0,4" Foreground="#333"/>
-                    <TextBlock Grid.Column="3" Text="Centro de Custo" FontWeight="SemiBold" FontSize="11"
+                    <TextBlock Grid.Column="3" Text="{DynamicResource ProjPick_ColCostCenter}" FontWeight="SemiBold" FontSize="11"
                                Margin="4,4,0,4" Foreground="#333"/>
-                    <TextBlock Grid.Column="4" Text="ID raiz" FontWeight="SemiBold" FontSize="11"
+                    <TextBlock Grid.Column="4" Text="{DynamicResource ProjPick_ColRootId}" FontWeight="SemiBold" FontSize="11"
                                Margin="4,4,0,4" Foreground="#333"/>
                 </Grid>
 

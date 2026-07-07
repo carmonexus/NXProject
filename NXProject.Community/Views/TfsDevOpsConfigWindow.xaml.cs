@@ -43,6 +43,7 @@ namespace NXProject.Views
             PercAlocFieldBox.Text = saved.PercAlocFieldName;
             FixedStartTagBox.Text = saved.FixedStartTagName;
             SyncPredecessorLinksCheck.IsChecked = saved.SyncPredecessorLinks;
+            EnforceStoryCompletionWithTasksCheck.IsChecked = saved.EnforceStoryCompletionWithTasks;
             FutureSprintDaysBox.Text = saved.FutureSprintDays.ToString(CultureInfo.InvariantCulture);
 
             foreach (var f in saved.ExtraCreateFields)
@@ -85,7 +86,7 @@ namespace NXProject.Views
 
         private void OnManageListClick(object sender, RoutedEventArgs e)
         {
-            var dlg = new DevOpsProjectListWindow(_devOpsProjectListPath) { Owner = this };
+            var dlg = new DevOpsProjectListWindow(_devOpsProjectListPath, BuildOptions()) { Owner = this };
             if (dlg.ShowDialog() == true)
             {
                 _devOpsProjectListPath = dlg.ResultFilePath ?? string.Empty;
@@ -162,6 +163,7 @@ namespace NXProject.Views
             PercAlocFieldName   = string.IsNullOrWhiteSpace(PercAlocFieldBox.Text)  ? "Perc_Alocação" : PercAlocFieldBox.Text.Trim(),
             FixedStartTagName   = string.IsNullOrWhiteSpace(FixedStartTagBox.Text)  ? "DT-INI-NEG"   : FixedStartTagBox.Text.Trim(),
             SyncPredecessorLinks = SyncPredecessorLinksCheck.IsChecked == true,
+            EnforceStoryCompletionWithTasks = EnforceStoryCompletionWithTasksCheck.IsChecked == true,
             FutureSprintDays    = int.TryParse(FutureSprintDaysBox.Text?.Trim(), out var fsd) && fsd >= 0 ? fsd : 90,
             DevOpsProjectListPath = _devOpsProjectListPath,
             ExtraCreateFields   = [.. _extraFields.Where(f => !string.IsNullOrWhiteSpace(f.Ref))],

@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -9,6 +11,7 @@ namespace NXProject.Services
 {
     public static class AISettingsStore
     {
+        // ── Formato legado (arquivo unico OpenRouter) ────────────────────
         private sealed class StoredAISettings
         {
             public string Provider { get; set; } = "OpenRouter";
@@ -18,76 +21,269 @@ namespace NXProject.Services
             public int TimeoutSeconds { get; set; } = 120;
         }
 
-        public static AISettings Load(string storageKey = "NXProject.Community")
+        // ── Formato multi-provedor ───────────────────────────────────────
+        private sealed class StoredProviderProfile
         {
-            var settingsFile = GetSettingsFile(storageKey);
-            if (!File.Exists(settingsFile))
-            {
-                return new AISettings
-                {
-                    Provider = AIProvider.OpenRouter,
-                    Endpoint = AIProviderDefaults.GetDefaultEndpoint(AIProvider.OpenRouter),
-                    Model = AIProviderDefaults.GetDefaultModel(AIProvider.OpenRouter),
-                    TimeoutSeconds = 120
-                };
-            }
-
-            try
-            {
-                var json = File.ReadAllText(settingsFile);
-                var stored = JsonSerializer.Deserialize<StoredAISettings>(json);
-                if (stored == null)
-                    throw new InvalidOperationException("Configuracao de IA invalida.");
-
-                var settings = new AISettings
-                {
-                    Provider = AIProvider.OpenRouter,
-                    ApiKey = Decrypt(stored.EncryptedApiKey),
-                    Endpoint = stored.Endpoint,
-                    Model = stored.Model,
-                    TimeoutSeconds = stored.TimeoutSeconds <= 0 ? 120 : stored.TimeoutSeconds
-                };
-
-                if (string.IsNullOrWhiteSpace(settings.Endpoint) ||
-                    string.Equals(settings.Endpoint.Trim(), AIProviderDefaults.GetDefaultEndpoint(AIProvider.OpenAI), StringComparison.OrdinalIgnoreCase))
-                    settings.Endpoint = AIProviderDefaults.GetDefaultEndpoint(AIProvider.OpenRouter);
-
-                if (string.IsNullOrWhiteSpace(settings.Model) ||
-                    string.Equals(settings.Model.Trim(), AIProviderDefaults.GetDefaultModel(AIProvider.OpenAI), StringComparison.OrdinalIgnoreCase))
-                    settings.Model = AIProviderDefaults.GetDefaultModel(AIProvider.OpenRouter);
-
-                settings.Provider = AIProvider.OpenRouter;
-                return settings;
-            }
-            catch
-            {
-                return new AISettings
-                {
-                    Provider = AIProvider.OpenRouter,
-                    Endpoint = AIProviderDefaults.GetDefaultEndpoint(AIProvider.OpenRouter),
-                    Model = AIProviderDefaults.GetDefaultModel(AIProvider.OpenRouter),
-                    TimeoutSeconds = 120
-                };
-            }
+            public string Provider { get; set; } = "OpenRouter";
+            public string AuthMode { get; set; } = "ApiKey";
+            public string EncryptedApiKey { get; set; } = string.Empty;
+            public string Endpoint { get; set; } = string.Empty;
+            public string Model { get; set; } = string.Empty;
+            public string LoginUrl { get; set; } = string.Empty;
+            public int SessionExpirationHours { get; set; } = 24;
+            public int TimeoutSeconds { get; set; } = 120;
         }
 
-        public static void Save(AISettings settings, string storageKey = "NXProject.Community")
+        private sealed class StoredActionType
         {
-            var settingsDirectory = GetSettingsDirectory(storageKey);
-            var settingsFile = GetSettingsFile(storageKey);
-            Directory.CreateDirectory(settingsDirectory);
-            var sanitizedApiKey = SanitizeSecret(settings.ApiKey);
-            var payload = new StoredAISettings
+            public string Name { get; set; } = string.Empty;
+            public string Prompt { get; set; } = string.Empty;
+            public bool CreatesTasks { get; set; }
+        }
+
+        private sealed class StoredWorkspace
+        {
+            public string DefaultProvider { get; set; } = "OpenRouter";
+            public string ScheduleMode { get; set; } = "DevOps";
+            public bool CreateTasks { get; set; }
+            public int AnalysisTaskLimit { get; set; } = 30;
+            public List<StoredProviderProfile> Providers { get; set; } = new();
+            public List<StoredActionType> ActionTypes { get; set; } = new();
+            public string SelectedAction { get; set; } = "Fazer Cronograma Devops";
+            public int ActionsSchemaVersion { get; set; }
+        }
+
+        // Versao atual do schema de acoes (v2 introduziu "Fazer Cronograma Devops").
+        private const int CurrentActionsSchemaVersion = 2;
+
+        /// <summary>Prompt do modo livre: responde no dominio de projeto, sem gerar tarefas.</summary>
+        private const string FreeActionPrompt =
+            "Voce e um assistente do NXProject Community. Ajude com planejamento e execucao de projetos " +
+            "(cronograma, atividades, dependencias, estimativas, distribuicao de trabalho). Responda em texto " +
+            "claro e objetivo, sem formato JSON. Nao gere tarefas automaticamente; apenas responda ao pedido.";
+
+        /// <summary>Ações padrão do assistente (usadas no 1º uso e no botão "Restaurar padrão").</summary>
+        public static List<AIActionType> GetDefaultActions() => new()
+        {
+            new AIActionType
             {
-                Provider = nameof(AIProvider.OpenRouter),
-                EncryptedApiKey = Encrypt(sanitizedApiKey),
-                Endpoint = settings.Endpoint?.Trim() ?? AIProviderDefaults.GetDefaultEndpoint(AIProvider.OpenRouter),
-                Model = settings.Model?.Trim() ?? AIProviderDefaults.GetDefaultModel(AIProvider.OpenRouter),
-                TimeoutSeconds = settings.TimeoutSeconds <= 0 ? 120 : settings.TimeoutSeconds
+                Name = AIActionType.ScheduleDevOpsActionName,
+                Prompt = ProjectAIAssistantService.BuildScheduleDeveloperPrompt(false),
+                CreatesTasks = true
+            },
+            new AIActionType
+            {
+                Name = AIActionType.ScheduleNoDevOpsActionName,
+                Prompt = ProjectAIAssistantService.BuildScheduleDeveloperPrompt(false),
+                CreatesTasks = true
+            },
+            new AIActionType
+            {
+                Name = AIActionType.FreeActionName,
+                Prompt = FreeActionPrompt,
+                CreatesTasks = false
+            },
+            new AIActionType
+            {
+                Name = AIActionType.AnalysisActionName,
+                Prompt = ProjectAIAssistantService.ScheduleAnalysisPrompt,
+                CreatesTasks = false
+            },
+        };
+
+        private static void SeedDefaultActions(AIWorkspaceSettings workspace)
+        {
+            // Migra o nome legado "Fazer Cronograma" -> "Cronograma NoDevops".
+            var legacyName = workspace.SelectedAction == AIActionType.ScheduleActionName;
+            var legacy = workspace.ActionTypes.FirstOrDefault(a => a.Name == AIActionType.ScheduleActionName);
+            if (legacy != null) legacy.Name = AIActionType.ScheduleNoDevOpsActionName;
+
+            // Primeiro uso (lista vazia): popula todos os padrões.
+            if (workspace.ActionTypes.Count == 0)
+            {
+                workspace.ActionTypes.AddRange(GetDefaultActions());
+                workspace.SelectedAction = AIActionType.ScheduleDevOpsActionName;
+            }
+            // Migracao unica para v2: garante a acao "Fazer Cronograma Devops" e a torna padrao.
+            else if (workspace.ActionsSchemaVersion < CurrentActionsSchemaVersion)
+            {
+                if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.ScheduleDevOpsActionName))
+                {
+                    var devops = GetDefaultActions().First(a => a.Name == AIActionType.ScheduleDevOpsActionName);
+                    workspace.ActionTypes.Insert(0, devops);
+                }
+                if (legacyName || string.IsNullOrWhiteSpace(workspace.SelectedAction))
+                    workspace.SelectedAction = AIActionType.ScheduleDevOpsActionName;
+            }
+
+            workspace.ActionsSchemaVersion = CurrentActionsSchemaVersion;
+
+            if (string.IsNullOrWhiteSpace(workspace.SelectedAction) ||
+                !workspace.ActionTypes.Any(a => a.Name == workspace.SelectedAction))
+                workspace.SelectedAction = workspace.ActionTypes.FirstOrDefault()?.Name ?? AIActionType.ScheduleDevOpsActionName;
+        }
+
+        /// <summary>Carrega a configuracao completa (perfis + padrao + modo de cronograma).</summary>
+        public static AIWorkspaceSettings LoadWorkspace(string storageKey = "NXProject.Community")
+        {
+            var workspaceFile = GetWorkspaceFile(storageKey);
+            if (File.Exists(workspaceFile))
+            {
+                try
+                {
+                    var stored = JsonSerializer.Deserialize<StoredWorkspace>(File.ReadAllText(workspaceFile));
+                    if (stored != null)
+                        return FromStored(stored);
+                }
+                catch { /* cai no default abaixo */ }
+            }
+
+            // Migracao do formato legado (ai-settings.json = OpenRouter unico).
+            var legacy = TryLoadLegacy(storageKey);
+            if (legacy != null)
+                return legacy;
+
+            return DefaultWorkspace();
+        }
+
+        /// <summary>Salva a configuracao completa (todas as chaves cifradas por perfil).</summary>
+        public static void SaveWorkspace(AIWorkspaceSettings workspace, string storageKey = "NXProject.Community")
+        {
+            var dir = GetSettingsDirectory(storageKey);
+            Directory.CreateDirectory(dir);
+
+            var payload = new StoredWorkspace
+            {
+                DefaultProvider = workspace.DefaultProvider.ToString(),
+                ScheduleMode = workspace.ScheduleMode.ToString(),
+                CreateTasks = workspace.CreateTasks,
+                AnalysisTaskLimit = workspace.AnalysisTaskLimit <= 0 ? 30 : workspace.AnalysisTaskLimit,
+                Providers = workspace.Providers.Select(p => new StoredProviderProfile
+                {
+                    Provider = p.Provider.ToString(),
+                    AuthMode = p.AuthMode.ToString(),
+                    EncryptedApiKey = Encrypt(SanitizeSecret(p.ApiKey)),
+                    Endpoint = p.Endpoint?.Trim() ?? string.Empty,
+                    Model = p.Model?.Trim() ?? string.Empty,
+                    LoginUrl = p.LoginUrl?.Trim() ?? string.Empty,
+                    SessionExpirationHours = p.SessionExpirationHours <= 0 ? 24 : p.SessionExpirationHours,
+                    TimeoutSeconds = p.TimeoutSeconds <= 0 ? 120 : p.TimeoutSeconds
+                }).ToList(),
+                ActionTypes = workspace.ActionTypes.Select(a => new StoredActionType
+                {
+                    Name = a.Name,
+                    Prompt = a.Prompt,
+                    CreatesTasks = a.CreatesTasks
+                }).ToList(),
+                SelectedAction = workspace.SelectedAction,
+                ActionsSchemaVersion = workspace.ActionsSchemaVersion
             };
 
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(settingsFile, json);
+            File.WriteAllText(GetWorkspaceFile(storageKey), json);
+        }
+
+        private static AIWorkspaceSettings FromStored(StoredWorkspace stored)
+        {
+            var workspace = new AIWorkspaceSettings
+            {
+                DefaultProvider = ParseProvider(stored.DefaultProvider, AIProvider.OpenRouter),
+                ScheduleMode = Enum.TryParse<ScheduleCreationMode>(stored.ScheduleMode, out var sm) ? sm : ScheduleCreationMode.DevOps,
+                CreateTasks = stored.CreateTasks,
+                AnalysisTaskLimit = stored.AnalysisTaskLimit <= 0 ? 30 : stored.AnalysisTaskLimit,
+                Providers = (stored.Providers ?? new()).Select(p => new AIProviderProfile
+                {
+                    Provider = ParseProvider(p.Provider, AIProvider.OpenRouter),
+                    AuthMode = Enum.TryParse<AIAuthMode>(p.AuthMode, out var am) ? am : AIAuthMode.ApiKey,
+                    ApiKey = Decrypt(p.EncryptedApiKey),
+                    Endpoint = p.Endpoint ?? string.Empty,
+                    Model = p.Model ?? string.Empty,
+                    LoginUrl = p.LoginUrl ?? string.Empty,
+                    SessionExpirationHours = p.SessionExpirationHours <= 0 ? 24 : p.SessionExpirationHours,
+                    TimeoutSeconds = p.TimeoutSeconds <= 0 ? 120 : p.TimeoutSeconds
+                }).ToList()
+            };
+
+            workspace.ActionTypes = (stored.ActionTypes ?? new()).Select(a => new AIActionType
+            {
+                Name = a.Name ?? string.Empty,
+                Prompt = a.Prompt ?? string.Empty,
+                CreatesTasks = a.CreatesTasks
+            }).Where(a => !string.IsNullOrWhiteSpace(a.Name)).ToList();
+            workspace.SelectedAction = stored.SelectedAction ?? AIActionType.ScheduleDevOpsActionName;
+            workspace.ActionsSchemaVersion = stored.ActionsSchemaVersion;
+
+            // Garante que os provedores configuraveis sempre existam.
+            foreach (var provider in AIWorkspaceSettings.ConfigurableProviders)
+                workspace.GetOrCreate(provider);
+            SeedDefaultActions(workspace);
+
+            return workspace;
+        }
+
+        private static AIWorkspaceSettings DefaultWorkspace()
+        {
+            var workspace = new AIWorkspaceSettings
+            {
+                DefaultProvider = AIProvider.OpenRouter,
+                ScheduleMode = ScheduleCreationMode.DevOps
+            };
+            foreach (var provider in AIWorkspaceSettings.ConfigurableProviders)
+                workspace.GetOrCreate(provider);
+            SeedDefaultActions(workspace);
+            return workspace;
+        }
+
+        private static AIWorkspaceSettings? TryLoadLegacy(string storageKey)
+        {
+            var legacyFile = GetLegacyFile(storageKey);
+            if (!File.Exists(legacyFile))
+                return null;
+
+            try
+            {
+                var stored = JsonSerializer.Deserialize<StoredAISettings>(File.ReadAllText(legacyFile));
+                if (stored == null)
+                    return null;
+
+                var workspace = DefaultWorkspace();
+                var openRouter = workspace.GetOrCreate(AIProvider.OpenRouter);
+                openRouter.ApiKey = Decrypt(stored.EncryptedApiKey);
+                if (!string.IsNullOrWhiteSpace(stored.Endpoint))
+                    openRouter.Endpoint = stored.Endpoint;
+                if (!string.IsNullOrWhiteSpace(stored.Model))
+                    openRouter.Model = stored.Model;
+                openRouter.TimeoutSeconds = stored.TimeoutSeconds <= 0 ? 120 : stored.TimeoutSeconds;
+                workspace.DefaultProvider = AIProvider.OpenRouter;
+                return workspace;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static AIProvider ParseProvider(string? value, AIProvider fallback)
+            => Enum.TryParse<AIProvider>(value, out var p) ? p : fallback;
+
+        // ── API legada (mantida para compatibilidade) ────────────────────
+
+        /// <summary>Configuracao efetiva do provedor padrao.</summary>
+        public static AISettings Load(string storageKey = "NXProject.Community")
+            => LoadWorkspace(storageKey).ResolveActiveSettings();
+
+        /// <summary>Atualiza o perfil do provedor informado dentro do workspace.</summary>
+        public static void Save(AISettings settings, string storageKey = "NXProject.Community")
+        {
+            var workspace = LoadWorkspace(storageKey);
+            var provider = settings.Provider == AIProvider.None ? workspace.DefaultProvider : settings.Provider;
+            var profile = workspace.GetOrCreate(provider);
+            profile.AuthMode = settings.AuthMode;
+            profile.ApiKey = settings.ApiKey;
+            profile.Endpoint = settings.Endpoint;
+            profile.Model = settings.Model;
+            profile.TimeoutSeconds = settings.TimeoutSeconds;
+            SaveWorkspace(workspace, storageKey);
         }
 
         private static string GetSettingsDirectory(string storageKey)
@@ -97,10 +293,11 @@ namespace NXProject.Services
                 string.IsNullOrWhiteSpace(storageKey) ? "NXProject.Community" : storageKey.Trim());
         }
 
-        private static string GetSettingsFile(string storageKey)
-        {
-            return Path.Combine(GetSettingsDirectory(storageKey), "ai-settings.json");
-        }
+        private static string GetWorkspaceFile(string storageKey)
+            => Path.Combine(GetSettingsDirectory(storageKey), "ai-workspace.json");
+
+        private static string GetLegacyFile(string storageKey)
+            => Path.Combine(GetSettingsDirectory(storageKey), "ai-settings.json");
 
         public static string SanitizeSecret(string? value)
         {

@@ -14,11 +14,11 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0">
-                <TextBlock Text="Sprint"
+                <TextBlock Text="{DynamicResource Sprint_Title}"
                            FontSize="24"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource PrimaryBrush}"/>
-                <TextBlock Text="Centralize aqui as configuracoes de sprint do projeto. Os parametros de SPF agora ficam em uma tela separada no menu Exibir."
+                <TextBlock Text="{DynamicResource Sprint_Subtitle}"
                            Margin="0,8,0,0"
                            FontSize="13"
                            Foreground="{StaticResource SecondaryTextBrush}"
@@ -53,7 +53,7 @@
 
                     <TextBlock Grid.Row="0"
                                Grid.Column="0"
-                               Text="Sprint inicial"
+                               Text="{DynamicResource Sprint_InitialSprint}"
                                VerticalAlignment="Center"
                                FontSize="13"
                                FontWeight="SemiBold"/>
@@ -64,7 +64,7 @@
                              VerticalContentAlignment="Center"/>
                     <TextBlock Grid.Row="0"
                                Grid.Column="2"
-                               Text="Numero exibido na primeira faixa de sprint do Gantt."
+                               Text="{DynamicResource Sprint_InitialSprintHint}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"
@@ -73,7 +73,7 @@
 
                     <TextBlock Grid.Row="2"
                                Grid.Column="0"
-                               Text="Dias por sprint"
+                               Text="{DynamicResource Sprint_DaysPerSprint}"
                                VerticalAlignment="Center"
                                FontSize="13"
                                FontWeight="SemiBold"/>
@@ -84,7 +84,7 @@
                              VerticalContentAlignment="Center"/>
                     <TextBlock Grid.Row="2"
                                Grid.Column="2"
-                               Text="Quantidade de dias usada para avancar automaticamente a sprint no cronograma."
+                               Text="{DynamicResource Sprint_DaysPerSprintHint}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"
@@ -93,7 +93,7 @@
 
                     <TextBlock Grid.Row="4"
                                Grid.Column="0"
-                               Text="Numeracao"
+                               Text="{DynamicResource Sprint_Numbering}"
                                VerticalAlignment="Center"
                                FontSize="13"
                                FontWeight="SemiBold"/>
@@ -104,7 +104,7 @@
                               SelectedItem="{Binding SprintNumberingMode, Mode=TwoWay}"/>
                     <TextBlock Grid.Row="4"
                                Grid.Column="2"
-                               Text="Escolhe se o cronograma avanca as sprints de forma sequencial, apenas par ou apenas impar."
+                               Text="{DynamicResource Sprint_NumberingHint}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"
@@ -113,7 +113,7 @@
 
                     <TextBlock Grid.Row="6"
                                Grid.Column="0"
-                               Text="Amarelo ate"
+                               Text="{DynamicResource Sprint_YellowUntil}"
                                VerticalAlignment="Center"
                                FontSize="13"
                                FontWeight="SemiBold"/>
@@ -124,7 +124,7 @@
                              VerticalContentAlignment="Center"/>
                     <TextBlock Grid.Row="6"
                                Grid.Column="2"
-                               Text="Limite superior da faixa de atencao. Sugestao inicial: use 2d e ajuste conforme a velocidade da empresa."
+                               Text="{DynamicResource Sprint_SlackHint}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"
@@ -133,7 +133,7 @@
 
                     <TextBlock Grid.Row="8"
                                Grid.Column="0"
-                               Text="Vermelho abaixo de"
+                               Text="{DynamicResource Sprint_RedBelow}"
                                VerticalAlignment="Center"
                                FontSize="13"
                                FontWeight="SemiBold"/>
@@ -144,7 +144,7 @@
                              VerticalContentAlignment="Center"/>
                     <TextBlock Grid.Row="8"
                                Grid.Column="2"
-                               Text="Limite critico conforme a velocidade da empresa. Sugestao inicial: use 1d; a faixa amarela fica entre este limite e o limite de atencao."
+                               Text="{DynamicResource Sprint_CriticalHint}"
                                VerticalAlignment="Center"
                                Margin="12,0,0,0"
                                FontSize="12"
@@ -154,18 +154,18 @@
             </Border>
 
             <StackPanel Grid.Row="4"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Left">
-                <Button Content="Gravar configuracao para novos projetos"
-                        Padding="14,8"
-                        Command="{Binding SaveSprintSettingsAsDefaultCommand}"/>
-                <TextBlock Margin="12,0,0,0"
-                           VerticalAlignment="Center"
-                           Text="Mantem a configuracao atual como padrao local para os proximos projetos."
-                           FontSize="12"
-                           Foreground="{StaticResource SecondaryTextBrush}"
-                           TextWrapping="Wrap"
-                           MaxWidth="320"/>
+                Orientation="Horizontal"
+                HorizontalAlignment="Left">
+            <Button Content="{DynamicResource Sprint_SaveAsDefault}"
+                Padding="14,8"
+                Command="{Binding SaveSprintSettingsAsDefaultCommand}"/>
+            <TextBlock Margin="12,0,0,0"
+                   VerticalAlignment="Center"
+                   Text="{DynamicResource Sprint_SaveAsDefaultDesc}"
+                   FontSize="12"
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   TextWrapping="Wrap"
+                   MaxWidth="320"/>
             </StackPanel>
         </Grid>
     </ScrollViewer>

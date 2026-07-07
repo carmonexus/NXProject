@@ -2914,6 +2914,20 @@ namespace NXProject.Services
 
         public static bool IsStoryTypePublic(string? type) => IsStoryType(type);
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
+
+        public static bool ShouldBlockManualStoryCompletionWithoutDevOpsTasks(
+            ProjectTask? task,
+            double requestedPercentComplete,
+            bool enforceStoryCompletionWithTasks = true)
+        {
+            if (!enforceStoryCompletionWithTasks || task == null || requestedPercentComplete < 100)
+                return false;
+
+            return task.TfsId is > 0
+                   && IsStoryType(task.TfsType)
+                   && (task.DevopsTaskCount ?? 0) <= 0;
+        }
+
         public static DateTime? GetTfsFinishDateForTests(ProjectTask task) => GetTfsFinishDate(task);
         public static List<object> BuildCreateOpsForTests(
             ProjectTask task,
@@ -3289,7 +3303,15 @@ namespace NXProject.Services
         public static async Task<List<(int Id, string Title, string Type, string Owner)>> FetchRootWorkItemsAsync(
             TfsConnectionOptions options, CancellationToken ct = default)
         {
-            if (options == null || !options.IsValid) return [];
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+            if (string.IsNullOrWhiteSpace(options.OrganizationUrl) ||
+                string.IsNullOrWhiteSpace(options.TeamProject) ||
+                string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+            {
+                throw new InvalidOperationException("Conexão DevOps incompleta para Discovery: informe URL, Team Project e PAT.");
+            }
+
             var orgBase = options.OrganizationUrl.TrimEnd('/');
             var auth    = new AuthenticationHeaderValue(
                 "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
@@ -3302,7 +3324,12 @@ namespace NXProject.Services
             wiqlReq.Headers.Authorization = auth;
             wiqlReq.Content = new StringContent(wiqlBody, Encoding.UTF8, "application/json");
             using var wiqlResp = await Http.SendAsync(wiqlReq, ct);
-            if (!wiqlResp.IsSuccessStatusCode) return [];
+            if (!wiqlResp.IsSuccessStatusCode)
+            {
+                var err = await wiqlResp.Content.ReadAsStringAsync(ct);
+                throw new InvalidOperationException(
+                    $"Falha no Discovery DevOps.\nURL: {wiqlUrl}\nStatus: {(int)wiqlResp.StatusCode} {wiqlResp.ReasonPhrase}\nResposta: {err}");
+            }
 
             var wiqlJson = await wiqlResp.Content.ReadAsStringAsync(ct);
             using var wiqlDoc = JsonDocument.Parse(wiqlJson);
@@ -3323,7 +3350,12 @@ namespace NXProject.Services
                 using var batchReq = new HttpRequestMessage(HttpMethod.Get, batchUrl);
                 batchReq.Headers.Authorization = auth;
                 using var batchResp = await Http.SendAsync(batchReq, ct);
-                if (!batchResp.IsSuccessStatusCode) continue;
+                if (!batchResp.IsSuccessStatusCode)
+                {
+                    var err = await batchResp.Content.ReadAsStringAsync(ct);
+                    throw new InvalidOperationException(
+                        $"Falha ao carregar detalhes dos itens do Discovery.\nURL: {batchUrl}\nStatus: {(int)batchResp.StatusCode} {batchResp.ReasonPhrase}\nResposta: {err}");
+                }
                 var batchJson = await batchResp.Content.ReadAsStringAsync(ct);
                 using var batchDoc = JsonDocument.Parse(batchJson);
                 if (!batchDoc.RootElement.TryGetProperty("value", out var values)) continue;

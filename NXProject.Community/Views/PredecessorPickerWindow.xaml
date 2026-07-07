@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.PredecessorPickerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Selecionar predecessoras"
+        Title="{DynamicResource Pred_Title}"
         Width="860"
         Height="660"
         MinWidth="700"
@@ -19,7 +19,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="Predecessoras"
+            <TextBlock Text="{DynamicResource Pred_Header}"
                        FontSize="22"
                        FontWeight="SemiBold"
                        Foreground="#2B579A"/>
@@ -38,7 +38,7 @@
                 Padding="10"
                 Margin="0,0,0,10">
             <StackPanel>
-                <TextBlock Text="Marcadas"
+                <TextBlock Text="{DynamicResource Pred_Marked}"
                            FontWeight="SemiBold"
                            Margin="0,0,0,4"/>
                 <TextBlock x:Name="SelectedSummaryText"
@@ -56,7 +56,7 @@
                                         CornerRadius="3" Padding="4,1" Margin="0,0,6,0">
                                     <TextBlock Text="{Binding}" FontSize="11" Foreground="#856404"/>
                                 </Border>
-                                <Button Content="✕ Remover"
+                                <Button Content="{DynamicResource Pred_Remove}"
                                         FontSize="10" Height="20" Padding="4,1"
                                         Background="#FFF3CD" BorderBrush="#FFEAA0"
                                         Tag="{Binding}"
@@ -79,7 +79,7 @@
                      VerticalContentAlignment="Center"
                      TextChanged="OnSearchTextChanged"/>
             <Button Grid.Column="1"
-                    Content="Limpar busca"
+                    Content="{DynamicResource Pred_ClearSearch}"
                     Width="96"
                     Height="30"
                     Margin="8,0,0,0"
@@ -125,7 +125,7 @@
         </Border>
 
         <Grid Grid.Row="4" Margin="0,14,0,0">
-            <Button Content="Limpar predecessoras"
+            <Button Content="{DynamicResource Pred_ClearPreds}"
                     HorizontalAlignment="Left"
                     Height="30"
                     Padding="12,0"
@@ -139,7 +139,7 @@
                            VerticalAlignment="Center"
                            Margin="0,0,16,0"
                            Foreground="#666"/>
-                <Button Content="Cancelar"
+                <Button Content="{DynamicResource Pred_Cancel}"
                         Width="96"
                         Height="30"
                         Margin="0,0,8,0"

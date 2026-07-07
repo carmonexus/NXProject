@@ -136,6 +136,9 @@
                     <CheckBox x:Name="SyncPredecessorLinksCheck"
                               Content="{DynamicResource Cfg_SyncPredLinks}"
                               IsChecked="True" Margin="0,10,0,0" FontSize="11"/>
+                    <CheckBox x:Name="EnforceStoryCompletionWithTasksCheck"
+                              Content="{DynamicResource Cfg_EnforceStoryCompletionWithTasks}"
+                              IsChecked="True" Margin="0,6,0,0" FontSize="11"/>
                     <StackPanel Margin="0,10,0,0">
                         <TextBlock Text="{DynamicResource Cfg_FutureSprints}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
                         <StackPanel Orientation="Horizontal">

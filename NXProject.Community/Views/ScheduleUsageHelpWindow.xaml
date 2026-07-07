@@ -1,7 +1,7 @@
 <Window x:Class="NXProject.Views.ScheduleUsageHelpWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Como usar o cronograma"
+        Title="{DynamicResource SU_Title}"
         Width="860"
         Height="680"
         MinWidth="640"
@@ -17,180 +17,117 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="Como usar o cronograma"
-                       FontSize="24"
-                       FontWeight="SemiBold"
-                       Foreground="#2B579A"/>
-            <TextBlock Text="Use a grade e o Gantt para planejar datas, duracao, progresso, recursos e sprints. O NXProject recalcula o fim das atividades a partir do calendario de trabalho."
-                       Margin="0,8,0,0"
-                       TextWrapping="Wrap"
-                       Foreground="#444"/>
+            <TextBlock Text="{DynamicResource SU_Title}"
+                       FontSize="24" FontWeight="SemiBold" Foreground="#2B579A"/>
+            <TextBlock Text="{DynamicResource SU_Sub}"
+                       Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#444"/>
         </StackPanel>
 
         <Border Grid.Row="1"
-                BorderBrush="#D9E1EA"
-                BorderThickness="1"
-                CornerRadius="8"
-                Background="#F8FAFC"
-                Padding="16">
+                BorderBrush="#D9E1EA" BorderThickness="1" CornerRadius="8"
+                Background="#F8FAFC" Padding="16">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
 
-                    <!-- 1. Duracao -->
-                    <TextBlock Text="1. Duracao (Dur.(h))"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,0,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-A coluna Dur.(h) trabalha em HH reais de esforco, nao em prazo de calendario. Digite 8 para 8 horas, 16.5 para 16 horas e 30 minutos.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Para converter dias uteis em horas, use o sufixo d: 2d vira 2 dias uteis."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Alterar Dur.(h) recalcula a data Fim mantendo a data Inicio e aplicando a % de alocacao do recurso."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Quando HH Atual > 0, a duracao exibida e HH Atual + HH Restante."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- A % de alocacao nao muda o HH: 40h continuam sendo 40h. Ela muda quantos dias de calendario essas horas ocupam."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- A edicao de duracao fica bloqueada quando a atividade esta 100% concluida."/>
+                    <TextBlock Text="{DynamicResource SU_1H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_1P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_1a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_1b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_1c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_1d}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_1e}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 2. HH Atual e HH Restante -->
-                    <TextBlock Text="2. HH Atual e HH Restante"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-HH Atual representa o esforco ja realizado na atividade. HH Restante e o esforco ainda necessario para concluir.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Duracao total = HH Atual + HH Restante (quando HH Atual esta preenchido)."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Ao alterar % Compl., o NXProject recalcula automaticamente HH Atual e HH Restante."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Esses campos sao sincronizados com o Azure DevOps (campos HH_Atual_float e HH_Restante_float)."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Para visualizar as colunas, use Exibir > Customizar colunas e habilite HH Atual e HH Restante."/>
+                    <TextBlock Text="{DynamicResource SU_2H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_2P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_2a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_2b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_2c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_2d}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 3. Percentual de conclusao -->
-                    <TextBlock Text="3. Percentual de conclusao (% Compl.)"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-Ao digitar o percentual de conclusao, o NXProject recalcula HH Atual e HH Restante proporcional a duracao total da atividade.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Com % = 100, HH Atual recebe a duracao total e HH Restante fica zero; se Inicio + duracao cair no futuro, o Fim e limitado a hoje. Excecao: se o Inicio estiver fixado no futuro, o Fim fica igual ao Inicio fixado."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Ao registrar o primeiro avanco (% 0 → acima de 0): se a data Inicio estiver no futuro, ela e movida para hoje, ancorando o inicio da atividade."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Depois que a atividade foi iniciada (% acima de 0), a data Inicio nao e mais alterada pela cascata — apenas as atividades seguintes do mesmo recurso sao reposicionadas."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Qualquer alteracao de % que mude a data Fim dispara a cascata de predecessora virtual para as atividades seguintes."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Atividades no estado Encerrado (Closed) com % diferente de 100 continuam com duracao editavel."/>
+                    <TextBlock Text="{DynamicResource SU_3H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_3P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_3a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_3b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_3c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_3d}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_3e}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 4. Data Inicio e Fim -->
-                    <TextBlock Text="4. Datas Inicio e Fim"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-A data Fim e calculada automaticamente: Inicio + HH reais convertidos pela % de alocacao, respeitando o calendario (fins de semana e feriados sao pulados).
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Alterar a data Fim muda a duracao; o sistema pede confirmacao antes de aceitar."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Digitar 0 no campo Inicio remove a fixacao e reposiciona pela sprint ou predecessora."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- A configuracao do calendario esta em Exibir > Calendario."/>
+                    <TextBlock Text="{DynamicResource SU_4H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_4P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_4a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_4b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_4c}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 5. Predecessoras -->
-                    <TextBlock Text="5. Predecessoras explicitas"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-A coluna Pred. define quais atividades precisam terminar antes da atividade atual iniciar.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Clique no campo Pred. para abrir a janela de selecao."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Use a busca para localizar por nome ou ID."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- E possivel marcar multiplas predecessoras com os checkboxes."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- A data de inicio e calculada automaticamente como o proximo dia util apos a maior data fim entre todas as predecessoras."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Quando a data fim de uma predecessora muda, todas as dependentes sao recalculadas em cascata."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- O recalculo usa ordenacao topologica: uma atividade so e recalculada apos todas as suas predecessoras estarem posicionadas. Referencias cruzadas (A depende de B que depende de A) sao detectadas e interrompidas automaticamente."/>
+                    <TextBlock Text="{DynamicResource SU_5H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_5P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_5a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_5b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_5c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_5d}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_5e}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_5f}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 6. Marcos do cronograma -->
-                    <TextBlock Text="6. Marcos do cronograma"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-Marcos sao atividades com duracao zero usadas para registrar uma data importante no cronograma.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Para um marco local que nao vai para o Azure DevOps, use Tipo = No DevOps e Dur.(h) = 0."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Para um marco sincronizavel no Azure DevOps, use Tipo = Marco-Devops e Dur.(h) = 0; ele e criado como Task com a tag MARCO-PROJECT."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Marco-Devops so aceita duracao zero. Atividades DevOps comuns nao aceitam duracao zero como marco."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Se o marco tiver predecessoras explicitas, a data de inicio usa a maior data fim entre elas, como nas demais atividades."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Se o Marco-Devops nao tiver predecessora informada, o sistema usa automaticamente a atividade irma anterior; se nao houver irma anterior, usa o pai."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Na importacao do Azure DevOps, o Marco-Devops e posicionado pela predecessora que faz sentido na hierarquia: uma atividade irma ou o proprio pai."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Predecessoras fora da hierarquia podem existir como dependencia no DevOps, mas sao ignoradas para posicionar o marco visualmente dentro da lista."/>
+                    <TextBlock Text="{DynamicResource SU_6H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_6P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_6a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_6b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_6c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_6d}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_6e}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_6f}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_6g}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 7. Gantt -->
-                    <TextBlock Text="7. Gantt"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-O Gantt exibe barras de duracao, marcos, sprints e setas de dependencia.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- A barra azul clara representa a duracao total planejada da atividade."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- A faixa escura central representa o % completo, em uma leitura parecida com o MS Project."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- A linha escura discreta na base representa o HH Atual proporcional ao total de HH Atual + HH Restante."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- A barra cinza-azulada clara representa agrupamentos como Feature ou Epic."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Ative o botao de lupa na toolbar e mova o mouse sobre o Gantt para analisar o grafico de perto."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Ao mover uma atividade no Gantt, as dependentes podem acompanhar o deslocamento."/>
+                    <TextBlock Text="{DynamicResource SU_7H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_7P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_7a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_7b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_7c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_7d}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_7e}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_7f}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 8. Colunas e modos de exibicao -->
-                    <TextBlock Text="8. Colunas e modos de exibicao"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-Use o botao Exibir > Customizar colunas para escolher quais colunas aparecem em cada modo de visualizacao.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Visao Padrao: configuracao compacta, ideal para monitores menores."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Visao Expandida: configuracao completa com HH Atual, HH Restante, OrgH, SFP e Predecessoras."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- A configuracao e salva no arquivo do projeto e restaurada ao reabrir."/>
+                    <TextBlock Text="{DynamicResource SU_8H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_8P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_8a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_8b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_8c}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 9. Progresso e Curva S -->
-                    <TextBlock Text="9. Progresso do Projeto e Curva S"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-Acesse em Exibir > Progresso do Projeto e Curva S para acompanhar o andamento geral do projeto.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Linha azul: HH Original (Planejado) acumulado por sprint."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Linha laranja solida: HH Atual acumulado (sprints concluidas ou em andamento)."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Linha laranja tracejada: HH Restante projetado (sprints futuras)."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- O calculo considera somente atividades no nivel story (nivel de menor profundidade com sprint atribuida)."/>
+                    <TextBlock Text="{DynamicResource SU_9H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_9P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_9a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_9b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_9c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_9d}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 10. Predecessora Virtual -->
-                    <TextBlock Text="10. Predecessora Virtual (mesmo recurso e hierarquia)"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-Atividades do mesmo nivel hierarquico com o mesmo recurso atribuido sao encadeadas automaticamente, como se a atividade anterior fosse predecessora da seguinte — sem necessidade de cadastrar predecessoras explicitas.
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- O encadeamento segue a ordem das atividades na lista dentro do mesmo nivel e mesmo pai."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Quando a data fim de uma atividade muda, as seguintes do mesmo recurso e nivel sao recalculadas em cascata."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- O recalculo ocorre ao alterar duracao, data inicio, data fim, percentual de conclusao, predecessora explicita ou recurso."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Ao alterar o recurso, a atividade e reposicionada apos a ultima atividade do novo recurso no mesmo nivel; as atividades do recurso anterior tambem sao reajustadas."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Ao arrastar uma atividade para outra posicao, as datas sao recalculadas na posicao de origem e de destino."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Atividades com predecessoras explicitas nao sao movidas pela predecessora virtual."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- Ao abrir ou importar o projeto, o encadeamento virtual e as predecessoras explicitas sao aplicados automaticamente em toda a hierarquia."/>
+                    <TextBlock Text="{DynamicResource SU_10H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_10P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_10a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_10b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_10c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_10d}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_10e}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_10f}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_10g}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <!-- 11. Sprint -->
-                    <TextBlock Text="11. Sprint"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,4">
-A coluna Sprint associa a atividade a uma iteracao do Azure DevOps (ou a um numero sintetico de sprint do cronograma).
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Ao trocar a sprint de uma atividade sem progresso (% = 0), a data de inicio e movida para o inicio da sprint selecionada e o fim e recalculado pela duracao."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Se a atividade ja tiver progresso (% > 0), a data de inicio e preservada; apenas o fim e recalculado mantendo a duracao atual."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,4" Text="- Ao alterar a sprint, as datas dos ancestrais (Feature, Epic, Projeto) sao recalculadas automaticamente para refletir o novo intervalo do conjunto de atividades filhas."/>
-                    <TextBlock TextWrapping="Wrap" Margin="18,0,0,12" Text="- A troca de sprint nao causa refresh geral da grade: apenas a linha da atividade e os ancestrais sao atualizados, preservando posicao de scroll e selecao."/>
+                    <TextBlock Text="{DynamicResource SU_11H}" FontSize="16" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,8,0,8"/>
+                    <TextBlock Text="{DynamicResource SU_11P}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_11a}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_11b}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_11c}" TextWrapping="Wrap" Margin="18,0,0,4"/>
+                    <TextBlock Text="{DynamicResource SU_11d}" TextWrapping="Wrap" Margin="18,0,0,12"/>
 
-                    <Border Background="#FFF7E8"
-                            BorderBrush="#E8D39A"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="12"
-                            Margin="0,8,0,0">
-                        <TextBlock TextWrapping="Wrap" Foreground="#444"
-                                   Text="Dica rapida: informe Inicio e Dur.(h) — o Fim e calculado pelo calendario. Atividades do mesmo recurso e nivel se encadeiam automaticamente. Atualize % Compl. para registrar o progresso; HH Atual e HH Restante sao calculados e sincronizados com o Azure DevOps."/>
+                    <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1"
+                            CornerRadius="6" Padding="12" Margin="0,8,0,0">
+                        <TextBlock Text="{DynamicResource SU_Tip}" TextWrapping="Wrap" Foreground="#444"/>
                     </Border>
 
                 </StackPanel>
             </ScrollViewer>
         </Border>
 
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Margin="0,16,0,0">
-            <Button Content="Fechar"
-                    Width="100"
-                    Height="30"
-                    IsDefault="True"
-                    IsCancel="True"
-                    Click="OnCloseClick"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="{DynamicResource SU_Close}" Width="100" Height="30"
+                    IsDefault="True" IsCancel="True" Click="OnCloseClick"/>
         </StackPanel>
     </Grid>
 </Window>

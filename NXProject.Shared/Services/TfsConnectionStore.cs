@@ -94,6 +94,9 @@ namespace NXProject.Services
         /// <summary>Sincroniza links de predecessora no DevOps durante Export → Sincronizar.</summary>
         public bool SyncPredecessorLinks { get; set; } = true;
 
+        /// <summary>Exige TKs > 0 para permitir digitar 100% manualmente em Story DevOps.</summary>
+        public bool EnforceStoryCompletionWithTasks { get; set; } = true;
+
         /// <summary>
         /// Janela de dias futuros para incluir sprints no dropdown mesmo sem work items.
         /// Padrão 90 dias. Use 0 para incluir apenas sprints com itens importados.
@@ -224,6 +227,7 @@ namespace NXProject.Services
             public string SyncNameFieldName { get; set; } = "Sync_Name";
             public string FixedStartTagName { get; set; } = "DT-INI-NEG";
             public bool SyncPredecessorLinks { get; set; } = true;
+            public bool EnforceStoryCompletionWithTasks { get; set; } = true;
             public int FutureSprintDays { get; set; } = 90;
             public bool RememberToken { get; set; }
             public string EncryptedToken { get; set; } = string.Empty;
@@ -282,6 +286,7 @@ namespace NXProject.Services
                 options.FixedStartTagName = string.IsNullOrWhiteSpace(stored.FixedStartTagName)
                     ? options.FixedStartTagName : stored.FixedStartTagName.Trim();
                 options.SyncPredecessorLinks = stored.SyncPredecessorLinks;
+                options.EnforceStoryCompletionWithTasks = stored.EnforceStoryCompletionWithTasks;
                 options.FutureSprintDays = stored.FutureSprintDays >= 0 ? stored.FutureSprintDays : 90;
                 if (stored.RememberToken)
                     options.PersonalAccessToken = WindowsDataProtection.Decrypt(stored.EncryptedToken);
@@ -326,6 +331,7 @@ namespace NXProject.Services
                 SyncNameFieldName = string.IsNullOrWhiteSpace(options.SyncNameFieldName) ? "Sync_Name" : options.SyncNameFieldName.Trim(),
                 FixedStartTagName = string.IsNullOrWhiteSpace(options.FixedStartTagName) ? "DT-INI-NEG" : options.FixedStartTagName.Trim(),
                 SyncPredecessorLinks = options.SyncPredecessorLinks,
+                EnforceStoryCompletionWithTasks = options.EnforceStoryCompletionWithTasks,
                 FutureSprintDays = options.FutureSprintDays,
                 RememberToken = rememberToken,
                 EncryptedToken = rememberToken

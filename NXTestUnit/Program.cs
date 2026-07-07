@@ -64,12 +64,18 @@ internal static class Program
         ("Sync conflito: NXProject abaixo de 100% e outro usuario NAO libera", SyncConflictBelow100OtherUserBlocks),
         ("Sync conflito: versao a frente sem alteracao nao registra conflito", SyncConflictVersionAheadWithoutPendingWritesDoesNotBlock),
         ("Sync conflito: versao a frente em Feature/Epic nao bloqueia rollup", SyncConflictVersionAheadFeatureEpicDoesNotBlockRollup),
-        ("Sync conflito: resolucao manual permite sobrescrever item iniciado", SyncConflictManualOverwriteAllowsStartedItem)
+        ("Sync conflito: resolucao manual permite sobrescrever item iniciado", SyncConflictManualOverwriteAllowsStartedItem),
+        ("Cronograma: digitacao 100% em Story exige TKs maior que zero", ManualStoryCompletionRequiresDevOpsTasks)
     ];
 
     private static int Main(string[] args)
     {
         var category = args.Length > 0 ? args[0] : "schedule";
+        if (string.Equals(category, "simulate-openai", StringComparison.OrdinalIgnoreCase))
+        {
+            SimulateOpenAi();
+            return 0;
+        }
         _solutionRoot = args.Length > 1 ? args[1] : Directory.GetCurrentDirectory();
 
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
@@ -171,6 +177,52 @@ internal static class Program
         var manifestPath = Path.Combine(AppContext.BaseDirectory, "PackagingManifests", "release-zip-required-files.json");
         ValidateZipAgainstManifest(zipPath, manifestPath);
         ValidateSelfContainedNotSingleFile(zipPath, "NXProject.Community.exe", "NXProject.Community.dll", "NXProject.Community.runtimeconfig.json");
+    }
+
+    private static void SimulateOpenAi()
+    {
+        Console.WriteLine("Simulacao: parse do retorno do script JS e fluxo de tratamento.");
+        var samples = new Dictionary<string,string?>()
+        {
+            {"Valid text","{\"text\":\"Ola do assistente\"}"},
+            {"Empty text","{\"text\":\"\"}"},
+            {"Error http","{\"error\":\"http-403\",\"detail\":\"forbidden\"}"},
+            {"Empty object","{}"},
+            {"Missing text key","{\"foo\":\"bar\"}"}
+        };
+
+        foreach (var kv in samples)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"--- Sample: {kv.Key}");
+            var raw = kv.Value;
+            Console.WriteLine($"raw: {raw}");
+            try
+            {
+                using var doc = JsonDocument.Parse(raw ?? "{}");
+                var root = doc.RootElement;
+                if (root.TryGetProperty("error", out var err))
+                {
+                    var detail = root.TryGetProperty("detail", out var d) ? d.GetString() : null;
+                    var msg = "Falha no envio (" + err.GetString() + "). " + (string.IsNullOrWhiteSpace(detail) ? string.Empty : detail);
+                    Console.WriteLine(msg);
+                    continue;
+                }
+
+                var text = root.TryGetProperty("text", out var t) ? t.GetString() : null;
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    Console.WriteLine("A IA nao retornou conteudo. Tente novamente.");
+                    continue;
+                }
+
+                Console.WriteLine($"Resposta recebida ({text.Length} caracteres): {text}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erro ao parsear raw: " + ex.Message);
+            }
+        }
     }
 
     private static void ValidateSetupZip()
@@ -1602,6 +1654,77 @@ internal static class Program
             throw new InvalidOperationException("Resolucao manual deve permitir sobrescrever item iniciado/concluido.");
         if (!automaticNotStarted.CanOverwrite)
             throw new InvalidOperationException("Item nao iniciado deve continuar selecionavel no fluxo automatico.");
+    }
+
+    private static void ManualStoryCompletionRequiresDevOpsTasks()
+    {
+        var storyWithoutCount = new ProjectTask
+        {
+            Id = 1,
+            Name = "Story sem TKs calculado",
+            TfsId = 1001,
+            TfsType = "Story",
+            DevopsTaskCount = null
+        };
+        if (!TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(storyWithoutCount, 100))
+            throw new InvalidOperationException("Story vinculada com TKs nulo deve bloquear a digitacao manual de 100%.");
+
+        var storyWithoutTasks = new ProjectTask
+        {
+            Id = 2,
+            Name = "Story sem Tasks",
+            TfsId = 1002,
+            TfsType = "User Story",
+            DevopsTaskCount = 0
+        };
+        if (!TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(storyWithoutTasks, 100))
+            throw new InvalidOperationException("Story vinculada com TKs = 0 deve bloquear a digitacao manual de 100%.");
+
+        if (TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(
+                storyWithoutTasks,
+                100,
+                enforceStoryCompletionWithTasks: false))
+            throw new InvalidOperationException("Configuracao 'Encerrar Story somente com Task' desmarcada deve liberar 100% mesmo com TKs = 0.");
+
+        storyWithoutTasks.DevopsTaskCount = 1;
+        if (TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(storyWithoutTasks, 100))
+            throw new InvalidOperationException("Story com TKs > 0 deve permitir a digitacao manual de 100%.");
+
+        storyWithoutTasks.DevopsTaskCount = 0;
+        if (TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(storyWithoutTasks, 99))
+            throw new InvalidOperationException("A trava deve valer apenas para digitacao de 100%.");
+
+        var task = new ProjectTask
+        {
+            Id = 3,
+            Name = "Task filha",
+            TfsId = 1003,
+            TfsType = "Task",
+            DevopsTaskCount = 0
+        };
+        if (TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(task, 100))
+            throw new InvalidOperationException("A trava deve valer para Story, nao para Task.");
+
+        var localStory = new ProjectTask
+        {
+            Id = 4,
+            Name = "Story local",
+            TfsType = "Story",
+            DevopsTaskCount = 0
+        };
+        if (TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(localStory, 100))
+            throw new InvalidOperationException("Story sem vinculo DevOps nao deve exigir TKs.");
+
+        var noDevOpsActivity = new ProjectTask
+        {
+            Id = 5,
+            Name = "Atividade NoDevOps",
+            TfsId = -1,
+            TfsType = "NoDevops",
+            DevopsTaskCount = 0
+        };
+        if (TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(noDevOpsActivity, 100))
+            throw new InvalidOperationException("Atividade NoDevOps nao deve exigir TKs para digitar 100%.");
     }
 
     private static void AssertEqual(DateTime expected, DateTime actual, string message)

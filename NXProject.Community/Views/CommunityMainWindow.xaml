@@ -45,7 +45,7 @@
                 <MenuItem Header="{DynamicResource Menu_Edit_AddTask}" Command="{Binding AddTaskCommand}"/>
                 <MenuItem Header="{DynamicResource Menu_Edit_AddSubtask}" Command="{Binding AddSubtaskCommand}"/>
                 <MenuItem Header="{DynamicResource Menu_Edit_DeleteTask}" Command="{Binding DeleteTaskCommand}"/>
-                <MenuItem Header="Abrir no DevOps ↗" Click="OnOpenSelectedTaskInDevOpsClick"/>
+                <MenuItem Header="{DynamicResource Main_OpenInDevOps}" Click="OnOpenSelectedTaskInDevOpsClick"/>
                 <MenuItem Header="{DynamicResource Menu_Edit_Link}" Command="{Binding LinkTasksSequentiallyCommand}"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Menu_Edit_MoveUp}"
@@ -62,12 +62,12 @@
                 <MenuItem Header="{DynamicResource Menu_View_Gantt}" Command="{Binding ShowGanttCommand}"/>
                 <MenuItem Header="{DynamicResource Menu_View_Sprint}" Click="OnSprintSettingsClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_Sfp}" Click="OnSfpSettingsClick"/>
-                <MenuItem Header="Customizar colunas..." Click="OnCustomizeColumnsClick"/>
+                <MenuItem Header="{DynamicResource Main_CustomizeColumns}" Click="OnCustomizeColumnsClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_Calendar}" Click="OnCalendarSettingsClick"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Menu_View_DevOpsList}" Click="OnDevOpsProjectListClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_People}" Click="OnPeopleClick"/>
-                <MenuItem Header="👥 Custo — Pessoas..." Click="OnPeopleCostClick"/>
+                <MenuItem Header="{DynamicResource Main_CostPeople}" Click="OnPeopleCostClick"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Menu_View_Language}" Click="OnLanguageClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_Settings}" Click="OnAppSettingsClick"/>
@@ -78,15 +78,15 @@
                 <MenuItem Header="{DynamicResource Menu_Manage_StoryStatusChart}" Click="OnStoryStatusChartClick"/>
                 <MenuItem Header="{DynamicResource Menu_Manage_AllocationMap}" Click="OnAllocationMapClick"/>
                 <MenuItem Header="{DynamicResource Menu_Manage_ActivityDiagram}" Click="OnActivityDiagramClick"/>
-                <MenuItem Header="💰 Custo por Recurso..." Click="OnResourceCostClick"/>
+                <MenuItem Header="{DynamicResource Main_CostByResource}" Click="OnResourceCostClick"/>
                 <Separator/>
-                <MenuItem Header="Caminho Crítico — Ver atividades críticas..." Click="OnCriticalPathWindowClick"/>
+                <MenuItem Header="{DynamicResource Main_CriticalPath}" Click="OnCriticalPathWindowClick"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Menu_Manage_Baseline}" SubmenuOpened="OnBaselineMenuOpened">
                     <MenuItem Header="{DynamicResource Menu_Manage_Baseline_Save}"  Click="OnBaselineSaveClick"/>
                     <MenuItem Header="{DynamicResource Menu_Manage_Baseline_Open}"  Click="OnBaselineOpenClick"/>
                     <MenuItem x:Name="BaselineToggleItem"
-                              Header="Desativar Baseline"
+                              Header="{DynamicResource Main_DisableBaseline}"
                               Click="OnBaselineToggleClick"/>
                     <Separator/>
                     <MenuItem Header="{DynamicResource Menu_Manage_Baseline_Clear}" Click="OnBaselineClearClick"/>
@@ -120,7 +120,7 @@
                 <TextBlock Text="&#x1F4C4;" FontSize="14"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding ClearProjectCommand}" ToolTip="{DynamicResource Toolbar_ClearProject}">
-                <TextBlock Text="Limpar" FontSize="11" FontWeight="SemiBold"/>
+                <TextBlock Text="{DynamicResource Main_Clear}" FontSize="11" FontWeight="SemiBold"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding OpenProjectCommand}" ToolTip="{DynamicResource Toolbar_Open}">
                 <TextBlock Text="&#x1F4C2;" FontSize="14"/>
@@ -131,7 +131,7 @@
 
             <!-- Importar do Azure DevOps -->
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnImportTfsToolbarClick"
-                    ToolTip="Importar do Azure DevOps — monta o cronograma a partir de Epics, Features e Stories">
+                    ToolTip="{DynamicResource Main_ImportTip}">
                 <Viewbox Width="26" Height="20" Stretch="Uniform">
                     <Canvas Width="72" Height="56">
                         <!-- Nuvem DevOps -->
@@ -147,7 +147,7 @@
 
             <!-- Sincronizar com Azure DevOps -->
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnSyncTfsToolbarClick"
-                    ToolTip="Sincronizar com Azure DevOps — envia alterações e atualiza datas/estados">
+                    ToolTip="{DynamicResource Main_SyncTip}">
                 <Viewbox Width="28" Height="22" Stretch="Uniform">
                     <Canvas Width="64" Height="52">
                         <Rectangle Canvas.Left="2" Canvas.Top="8" Width="39" Height="32" RadiusX="5" RadiusY="5"
@@ -166,7 +166,7 @@
                 </Viewbox>
             </Button>
 
-            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnOpenSelectedTaskInDevOpsClick" ToolTip="Abrir no DevOps ↗">
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnOpenSelectedTaskInDevOpsClick" ToolTip="{DynamicResource Main_OpenInDevOps}">
                 <Viewbox Width="28" Height="16" Stretch="Uniform">
                     <Canvas Width="100" Height="56">
                         <!-- Laço esquerdo -->
@@ -193,10 +193,10 @@
                 <Button.ToolTip>
                     <ToolTip>
                         <StackPanel>
-                            <TextBlock Text="Criar marco" FontWeight="SemiBold"/>
-                            <TextBlock Text="Clique: cria marco irmao abaixo da atividade selecionada."/>
-                            <TextBlock Text="Ctrl+clique: cria marco filho da atividade selecionada, exceto se ela ja for marco."/>
-                            <TextBlock Text="Se a selecionada for DevOps, cria Marco-Devops."/>
+                            <TextBlock Text="{DynamicResource Main_CreateMilestone}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{DynamicResource Main_CreateMilestoneClick}"/>
+                            <TextBlock Text="{DynamicResource Main_CreateMilestoneCtrl}"/>
+                            <TextBlock Text="{DynamicResource Main_CreateMilestoneDevOpsHint}"/>
                         </StackPanel>
                     </ToolTip>
                 </Button.ToolTip>
@@ -217,7 +217,7 @@
             <Button Style="{StaticResource ToolbarButtonStyle}"
                     x:Name="ViewOnlineChildrenBtn"
                     Click="OnViewOnlineChildrenToolbarClick"
-                    ToolTip="Ver / Editar Atividades Online da tarefa selecionada">
+                    ToolTip="{DynamicResource Main_ViewOnlineChildrenTip}">
                 <Viewbox Width="22" Height="20" Stretch="Uniform">
                     <Canvas Width="24" Height="24">
                         <!-- linhas de lista -->
@@ -282,7 +282,7 @@
                 </Grid>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnHierarchyColorPaletteClick"
-                    ToolTip="Paleta de cores por nível de hierarquia (Epic / Feature / Story)">
+                    ToolTip="{DynamicResource Main_PaletteTip}">
                 <Grid Width="22" Height="20">
                     <Rectangle RadiusX="2" RadiusY="2" Fill="#D8D8D8" Margin="0,0,0,10"/>
                     <Rectangle RadiusX="2" RadiusY="2" Fill="#EEEEEE" Margin="0,5,0,5"/>
@@ -300,7 +300,7 @@
             <Button x:Name="SearchTaskButton"
                     Style="{StaticResource ToolbarButtonStyle}"
                     Click="OnSearchTaskClick"
-                    ToolTip="Buscar atividade no cronograma (Ctrl+F)"
+                    ToolTip="{DynamicResource Main_SearchTip}"
                     Padding="4,2">
                 <Viewbox Width="18" Height="18" Stretch="Uniform">
                     <Canvas Width="24" Height="24">
@@ -347,14 +347,14 @@
             <ToggleButton x:Name="MagnifierToggle"
                           Style="{StaticResource ToolbarToggleButtonStyle}"
                           Click="OnMagnifierToggleClick"
-                          ToolTip="Lupa do Gantt (amplia área sob o cursor)"
+                          ToolTip="{DynamicResource Main_GanttLensTip}"
                           Padding="6,2">
                 <TextBlock Text="&#x1F50E;" FontSize="13"/>
             </ToggleButton>
             <Separator/>
             <Separator/>
             <ToggleButton x:Name="GanttOriginalToggle"
-                          ToolTip="Mostrar Gantt pela Estimativa Original"
+                          ToolTip="{DynamicResource Main_GanttOrgHTip}"
                           Width="28" Height="24" Padding="3"
                           Checked="OnGanttOriginalToggleChecked"
                           Unchecked="OnGanttOriginalToggleUnchecked"
@@ -464,7 +464,7 @@
             <Button x:Name="TechLeadReviewButton"
                     Style="{StaticResource ToolbarButtonStyle}"
                     Click="OnTechLeadReviewClick"
-                    ToolTip="Revisão de Tasks (Tech Lead) — busca todas as Tasks de todas as Stories no DevOps">
+                    ToolTip="{DynamicResource Main_TechLeadTip}">
                 <Viewbox Width="16" Height="16">
                     <Canvas Width="18" Height="18">
                         <!-- ícone: checklist com lupa -->

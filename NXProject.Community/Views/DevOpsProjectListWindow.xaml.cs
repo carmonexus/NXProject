@@ -12,6 +12,7 @@ namespace NXProject.Views
     public partial class DevOpsProjectListWindow : Window
     {
         private ObservableCollection<DevOpsProject> _projects = new();
+        private readonly TfsConnectionOptions? _connectionOptions;
 
         /// <summary>Caminho do arquivo da lista após fechar com OK.</summary>
         public string? ResultFilePath { get; private set; }
@@ -19,9 +20,10 @@ namespace NXProject.Views
         /// <summary>Lista salva após fechar com OK.</summary>
         public ObservableCollection<DevOpsProject> ResultProjects => _projects;
 
-        public DevOpsProjectListWindow(string? initialFilePath = null)
+        public DevOpsProjectListWindow(string? initialFilePath = null, TfsConnectionOptions? connectionOptions = null)
         {
             InitializeComponent();
+            _connectionOptions = connectionOptions;
             ProjectsGrid.ItemsSource = _projects;
 
             if (!string.IsNullOrWhiteSpace(initialFilePath))
@@ -125,11 +127,20 @@ namespace NXProject.Views
 
         private void OnDiscoveryClick(object sender, RoutedEventArgs e)
         {
-            var options = TfsConnectionStore.Load("NXProject.Community");
-            if (!options.IsValid)
+            var options = _connectionOptions ?? TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(options.OrganizationUrl) ||
+                string.IsNullOrWhiteSpace(options.TeamProject) ||
+                string.IsNullOrWhiteSpace(options.PersonalAccessToken))
             {
+                var missing = string.Join(", ", new[]
+                {
+                    string.IsNullOrWhiteSpace(options.OrganizationUrl) ? "URL" : null,
+                    string.IsNullOrWhiteSpace(options.TeamProject) ? "Team Project" : null,
+                    string.IsNullOrWhiteSpace(options.PersonalAccessToken) ? "PAT" : null
+                }.Where(x => x != null));
+
                 MessageBox.Show(
-                    AppStrings.Get("Port_NoConnectionMsg"),
+                    $"{AppStrings.Get("Port_NoConnectionMsg")}\n\nCampos ausentes: {missing}",
                     AppStrings.Get("Port_NoConnectionTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
