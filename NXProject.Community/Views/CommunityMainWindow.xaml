@@ -372,6 +372,24 @@
                     </Canvas>
                 </Viewbox>
             </ToggleButton>
+            <ToggleButton x:Name="DailyPercentToggle"
+                          ToolTip="{DynamicResource Main_DailyToggleTip}"
+                          Width="28" Height="24" Padding="3"
+                          Click="OnDailyPercentToggleClick"
+                          VerticalAlignment="Center">
+                <Viewbox Width="16" Height="16">
+                    <Canvas Width="18" Height="18">
+                        <!-- barra planejada (esperado) -->
+                        <Rectangle Canvas.Left="0" Canvas.Top="6" Width="18" Height="6"
+                                   Fill="#C9D8E8" RadiusX="1" RadiusY="1"/>
+                        <!-- progresso esperado ate hoje -->
+                        <Rectangle Canvas.Left="0" Canvas.Top="6" Width="9" Height="6"
+                                   Fill="#217346" RadiusX="1" RadiusY="1"/>
+                        <!-- marcador "hoje" -->
+                        <Line X1="9" Y1="3" X2="9" Y2="15" Stroke="#B91C1C" StrokeThickness="1.5"/>
+                    </Canvas>
+                </Viewbox>
+            </ToggleButton>
             <ToggleButton x:Name="DayHeaderToggle"
                           ToolTip="{DynamicResource Toolbar_DayView}"
                           Width="28"

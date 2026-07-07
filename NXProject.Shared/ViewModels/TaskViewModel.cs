@@ -705,6 +705,55 @@ namespace NXProject.ViewModels
 
         public List<TaskViewModel> ChildrenViewModels { get; } = new();
 
+        // ── %Daily: progresso ESPERADO ate hoje (baseline pela agenda) ─────────
+        // So para atividades em aberto (< 100%). Total = HH Atual + HH Restante
+        // distribuido no calendario entre Inicio e Fim; o esperado e a fracao de
+        // horas uteis decorridas ate hoje (limitada ao total planejado).
+        private double? ComputeDailyPercent()
+        {
+            if (_task.IsSummary) return null;
+            if (_task.PercentComplete >= 100) return null;
+
+            var span = ProjectCalendarService.CountWorkingHours(_task.Start, _task.Finish);
+            if (span <= 0.0001) return null;
+
+            var elapsed = ProjectCalendarService.CountWorkingHours(_task.Start, DateTime.Today);
+            if (elapsed < 0) elapsed = 0;
+            return Math.Clamp(elapsed / span, 0.0, 1.0) * 100.0;
+        }
+
+        public double? DailyPercent => ComputeDailyPercent();
+        public bool HasDailyPercent => DailyPercent.HasValue;
+        public string DailyPercentDisplay => DailyPercent is { } d ? d.ToString("0.#") + "%" : string.Empty;
+
+        /// <summary>True quando %Daily difere do % Conclusao digitado (destaca na grid).</summary>
+        public bool DailyPercentDiffers
+        {
+            get { var d = DailyPercent; return d.HasValue && Math.Abs(d.Value - _task.PercentComplete) >= 0.5; }
+        }
+
+        /// <summary>Fundo de destaque: vermelho se atrasada (deveria estar mais), verde se adiantada.</summary>
+        public Brush DailyPercentBackground
+        {
+            get
+            {
+                var d = DailyPercent;
+                if (!d.HasValue || Math.Abs(d.Value - _task.PercentComplete) < 0.5)
+                    return Brushes.Transparent;
+                return d.Value > _task.PercentComplete
+                    ? new SolidColorBrush(Color.FromRgb(0xFB, 0xE0, 0xE0))   // atrasada (esperado > realizado)
+                    : new SolidColorBrush(Color.FromRgb(0xE2, 0xF3, 0xE2));  // adiantada (esperado < realizado)
+            }
+        }
+
+        private void NotifyDaily()
+        {
+            OnPropertyChanged(nameof(DailyPercent));
+            OnPropertyChanged(nameof(DailyPercentDisplay));
+            OnPropertyChanged(nameof(DailyPercentDiffers));
+            OnPropertyChanged(nameof(DailyPercentBackground));
+        }
+
         public double PercentComplete
         {
             get
@@ -725,6 +774,7 @@ namespace NXProject.ViewModels
 
                 var wasZero = _task.PercentComplete < 0.0001;
                 _task.PercentComplete = normalized;
+                NotifyDaily();
 
                 // Regra: ao iniciar (% 0 → >0), ancoramos o início no dia atual se estiver no futuro.
                 // Depois do início, o Start não pode mais ser movido pela cascata.

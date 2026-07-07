@@ -370,6 +370,25 @@
     <sys:String x:Key="Col_Start">Start</sys:String>
     <sys:String x:Key="Col_Finish">Finish</sys:String>
     <sys:String x:Key="Col_PercentComplete">% Compl.</sys:String>
+    <sys:String x:Key="Col_DailyPercent">%Daily</sys:String>
+    <sys:String x:Key="Col_DailyPercentTip">Expected % by today (schedule baseline: Start + HH up to the date). Highlight: red = behind, green = ahead.</sys:String>
+    <sys:String x:Key="Main_DailyToggleTip">Show/hide the %Daily column (expected % by today)</sys:String>
+    <sys:String x:Key="ColTip_ID">ID — activity identifier; click to edit the DevOps link.</sys:String>
+    <sys:String x:Key="ColTip_DevOps">T·E — Type · State in DevOps (e.g., FA = Feature/Active).</sys:String>
+    <sys:String x:Key="ColTip_Name">Activity name (hierarchical).</sys:String>
+    <sys:String x:Key="ColTip_Duration">Dur.(h) — duration in effort hours (Current HH + Remaining HH).</sys:String>
+    <sys:String x:Key="ColTip_Percent">% Compl. — reported completion percentage of the activity.</sys:String>
+    <sys:String x:Key="ColTip_Sfp">SFP — Simple Function Point of the activity.</sys:String>
+    <sys:String x:Key="ColTip_OrgH">OrgH — original hours estimate (baseline).</sys:String>
+    <sys:String x:Key="ColTip_CurrentHours">Current HH — hours already done on the activity.</sys:String>
+    <sys:String x:Key="ColTip_RemainingHours">Remaining HH — hours left to finish.</sys:String>
+    <sys:String x:Key="ColTip_Start">Start — activity start date.</sys:String>
+    <sys:String x:Key="ColTip_Finish">Finish — finish date (computed from duration and the calendar).</sys:String>
+    <sys:String x:Key="ColTip_Tks">TKs — number of child Tasks in DevOps.</sys:String>
+    <sys:String x:Key="ColTip_Predecessors">Predecessors — activities that must finish before this one starts.</sys:String>
+    <sys:String x:Key="ColTip_Resources">Resources — people allocated to the activity.</sys:String>
+    <sys:String x:Key="ColTip_Sprint">Activity sprint (DevOps iteration).</sys:String>
+    <sys:String x:Key="ColTip_Priority">Priority (DevOps Stack Rank).</sys:String>
     <sys:String x:Key="Col_Predecessors">Pred.</sys:String>
     <sys:String x:Key="Col_Resources">Resources</sys:String>
     <sys:String x:Key="Col_OrgH">OrgH</sys:String>

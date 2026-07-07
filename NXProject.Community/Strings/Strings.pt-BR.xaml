@@ -187,6 +187,25 @@
     <sys:String x:Key="Col_Start">Início</sys:String>
     <sys:String x:Key="Col_Finish">Fim</sys:String>
     <sys:String x:Key="Col_PercentComplete">% Compl.</sys:String>
+    <sys:String x:Key="Col_DailyPercent">%Daily</sys:String>
+    <sys:String x:Key="Col_DailyPercentTip">% esperado até hoje (baseline pela agenda: Início + HH até a data). Destaque: vermelho = atrasada, verde = adiantada.</sys:String>
+    <sys:String x:Key="Main_DailyToggleTip">Mostrar/ocultar a coluna %Daily (% esperado até hoje)</sys:String>
+    <sys:String x:Key="ColTip_ID">ID — identificador da atividade; clique para editar o vínculo com o DevOps.</sys:String>
+    <sys:String x:Key="ColTip_DevOps">T·E — Tipo · Estado no DevOps (ex.: FA = Feature/Active).</sys:String>
+    <sys:String x:Key="ColTip_Name">Nome da atividade (hierárquico).</sys:String>
+    <sys:String x:Key="ColTip_Duration">Dur.(h) — duração em horas de esforço (HH Atual + HH Restante).</sys:String>
+    <sys:String x:Key="ColTip_Percent">% Compl. — percentual de conclusão informado da atividade.</sys:String>
+    <sys:String x:Key="ColTip_Sfp">SFP — Simple Function Point da atividade.</sys:String>
+    <sys:String x:Key="ColTip_OrgH">OrgH — estimativa original de horas (baseline).</sys:String>
+    <sys:String x:Key="ColTip_CurrentHours">HH Atual — horas já realizadas na atividade.</sys:String>
+    <sys:String x:Key="ColTip_RemainingHours">HH Restante — horas restantes para concluir.</sys:String>
+    <sys:String x:Key="ColTip_Start">Início — data de início da atividade.</sys:String>
+    <sys:String x:Key="ColTip_Finish">Fim — data de fim (calculada pela duração e pelo calendário).</sys:String>
+    <sys:String x:Key="ColTip_Tks">TKs — número de Tasks filhas no DevOps.</sys:String>
+    <sys:String x:Key="ColTip_Predecessors">Predecessoras — atividades que devem terminar antes desta iniciar.</sys:String>
+    <sys:String x:Key="ColTip_Resources">Recursos — pessoas alocadas na atividade.</sys:String>
+    <sys:String x:Key="ColTip_Sprint">Sprint da atividade (iteração do DevOps).</sys:String>
+    <sys:String x:Key="ColTip_Priority">Prioridade (Stack Rank do DevOps).</sys:String>
     <sys:String x:Key="Col_Predecessors">Pred.</sys:String>
     <sys:String x:Key="Col_Resources">Recursos</sys:String>
     <sys:String x:Key="Col_OrgH">OrgH</sys:String>

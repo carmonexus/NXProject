@@ -21,6 +21,10 @@ prs.slide_height = H
 
 BLANK = prs.slide_layouts[6]
 
+import os
+LOGO = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                    "NXProject.Community", "Assets", "branding", "logo-nexus-xdata-transparent.png")
+
 def add_rect(slide, l, t, w, h, fill):
     shape = slide.shapes.add_shape(1, l, t, w, h)
     shape.fill.solid()
@@ -142,15 +146,15 @@ funcs = [
     ("Importação Azure DevOps",
      "• Hierarquia Project → Epic → Feature → Story\n• Estimativas, datas, sprints e responsáveis\n• Predecessoras e bloqueios (tag Block)"),
     ("Cronograma inteligente",
-     "• Cascata automática por predecessoras\n• Predecessora virtual por recurso\n• Calendário com feriados e horas úteis"),
+     "• Cascata automática por predecessoras\n• Predecessora virtual por recurso\n• Calendário com feriados e horas úteis\n• Coluna %Daily: ritmo esperado até hoje"),
     ("Gráfico Gantt",
      "• Barras, marcos (milestones), setas de dependência\n• Zoom: Dia, Semana, Sprint, Mês, Trimestre\n• Arrastar para replanejar visualmente"),
     ("Gestão de recursos",
-     "• Alocação por pessoa e sprint\n• Alerta de sobrecarga (>100%)\n• Filtro de cronograma por pessoa"),
+     "• Alocação por pessoa e sprint\n• Descoberta e importação de pessoas do DevOps\n• Custo por recurso (importa e calcula)\n• Alerta de sobrecarga (>100%)"),
     ("Sincronização bidirecional",
-     "• Datas, horas, estado, sprint, tags e predecessoras\n• Cria work items novos no DevOps\n• Relatório detalhado de sincronização"),
+     "• Datas, horas, estado, sprint, tags e predecessoras\n• Cria work items novos no DevOps\n• Revisão Tech Lead: cria/edita tasks online\n• Relatório detalhado de sincronização"),
     ("Health Check",
-     "• Atividades em atraso (Fim < hoje e % < 100)\n• Itens sem responsável\n• Dependências circulares e bloqueios"),
+     "• Atividades em atraso (Fim < hoje e % < 100)\n• Desvio %Daily vs % informado\n• Itens sem responsável e dependências circulares"),
 ]
 for i, (titulo, corpo) in enumerate(funcs):
     col = i % 3; row = i // 3
@@ -258,12 +262,10 @@ add_textbox(slide, Inches(1), Inches(3.9), Inches(11.3), Inches(0.7),
 add_textbox(slide, Inches(1), Inches(4.75), Inches(11.3), Inches(0.5),
             "comercial.nexus.xdata@gmail.com  •  nexusxdata.com.br",
             14, color=AZUL_CLARO, align=PP_ALIGN.CENTER)
-add_textbox(slide, Inches(1), Inches(6.7), Inches(11.3), Inches(0.4),
-            "Nexus XData Tecnologia Ltda",
-            11, color=RGBColor(0x7A, 0x9A, 0xC8), align=PP_ALIGN.CENTER)
+logo_h = Inches(1.25)
+slide.shapes.add_picture(LOGO, (W - logo_h) / 2, Inches(5.55), height=logo_h)
 
 # ── Salvar ────────────────────────────────────────────────────────────────────
-import os
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                    "NXProject_Gestao_Inteligente_DevOps.pptx")
 prs.save(out)

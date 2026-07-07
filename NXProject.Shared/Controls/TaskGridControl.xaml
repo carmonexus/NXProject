@@ -5,6 +5,66 @@
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <!-- Cabeçalho: tooltip com o nome da coluna (evita título escondido) -->
+        <Style x:Key="GridColHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="ToolTipService.ShowDuration" Value="20000"/>
+            <Setter Property="ToolTip"
+                    Value="{Binding RelativeSource={RelativeSource Self}, Path=Content}"/>
+        </Style>
+        <Style x:Key="HdrTip_ID" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_ID}"/>
+        </Style>
+        <Style x:Key="HdrTip_DevOps" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_DevOps}"/>
+        </Style>
+        <Style x:Key="HdrTip_Name" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Name}"/>
+        </Style>
+        <Style x:Key="HdrTip_Duration" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Duration}"/>
+        </Style>
+        <Style x:Key="HdrTip_Sfp" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Sfp}"/>
+        </Style>
+        <Style x:Key="HdrTip_OrgH" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_OrgH}"/>
+        </Style>
+        <Style x:Key="HdrTip_CurrentHours" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_CurrentHours}"/>
+        </Style>
+        <Style x:Key="HdrTip_RemainingHours" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_RemainingHours}"/>
+        </Style>
+        <Style x:Key="HdrTip_Priority" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Priority}"/>
+        </Style>
+        <Style x:Key="HdrTip_Start" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Start}"/>
+        </Style>
+        <Style x:Key="HdrTip_Finish" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Finish}"/>
+        </Style>
+        <Style x:Key="HdrTip_WorkingDays" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_WorkingDays}"/>
+        </Style>
+        <Style x:Key="HdrTip_Percent" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Percent}"/>
+        </Style>
+        <Style x:Key="HdrTip_DailyPercent" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource Col_DailyPercentTip}"/>
+        </Style>
+        <Style x:Key="HdrTip_Predecessors" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Predecessors}"/>
+        </Style>
+        <Style x:Key="HdrTip_Tks" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Tks}"/>
+        </Style>
+        <Style x:Key="HdrTip_Resources" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Resources}"/>
+        </Style>
+        <Style x:Key="HdrTip_Sprint" TargetType="DataGridColumnHeader" BasedOn="{StaticResource GridColHeaderStyle}">
+            <Setter Property="ToolTip" Value="{DynamicResource ColTip_Sprint}"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -22,6 +82,7 @@
               BorderThickness="0"
               RowHeight="22"
               ColumnHeaderHeight="40"
+              ColumnHeaderStyle="{StaticResource GridColHeaderStyle}"
               PreviewMouseMove="OnTaskGridPreviewMouseMove"
               DragOver="OnTaskGridDragOver"
               Drop="OnTaskGridDrop"
@@ -65,7 +126,7 @@
         <DataGrid.Columns>
 
             <!-- ID (clicável: abre edição do vínculo DevOps) -->
-            <DataGridTemplateColumn x:Name="IdColumn" Header="ID" Width="55" IsReadOnly="True">
+            <DataGridTemplateColumn x:Name="IdColumn" Header="ID" Width="55" IsReadOnly="True" HeaderStyle="{StaticResource HdrTip_ID}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Button Content="{Binding DisplayId}"
@@ -106,7 +167,7 @@
             </DataGridTemplateColumn>
 
             <!-- Tipo + Estado DevOps (compacto: ex. "FA") -->
-            <DataGridTemplateColumn x:Name="DevOpsColumn" Header="T·E" Width="30" IsReadOnly="True">
+            <DataGridTemplateColumn x:Name="DevOpsColumn" Header="T·E" Width="30" IsReadOnly="True" HeaderStyle="{StaticResource HdrTip_DevOps}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding DevOpsTag}"
@@ -121,7 +182,7 @@
             </DataGridTemplateColumn>
 
             <!-- Nome (com indentação) -->
-            <DataGridTemplateColumn x:Name="NameColumn" Header="{DynamicResource Col_TaskName}" Width="*" MinWidth="120">
+            <DataGridTemplateColumn x:Name="NameColumn" Header="{DynamicResource Col_TaskName}" Width="*" MinWidth="120" HeaderStyle="{StaticResource HdrTip_Name}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Grid>
@@ -324,7 +385,7 @@
             </DataGridTemplateColumn>
 
             <!-- Duração -->
-            <DataGridTemplateColumn x:Name="DurationColumn" Header="{DynamicResource Col_Duration}" Width="60">
+            <DataGridTemplateColumn x:Name="DurationColumn" Header="{DynamicResource Col_Duration}" Width="60" HeaderStyle="{StaticResource HdrTip_Duration}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Border Padding="2,0"
@@ -416,7 +477,7 @@
             </DataGridTemplateColumn>
 
             <!-- SFP -->
-            <DataGridTextColumn x:Name="SfpColumn" Header="SFP" Binding="{Binding SfpPoints}" Width="55">
+            <DataGridTextColumn x:Name="SfpColumn" Header="SFP" Binding="{Binding SfpPoints}" Width="55" HeaderStyle="{StaticResource HdrTip_Sfp}">
                 <DataGridTextColumn.ElementStyle>
                     <Style TargetType="TextBlock">
                         <Setter Property="TextAlignment" Value="Center"/>
@@ -426,7 +487,7 @@
             </DataGridTextColumn>
 
             <!-- Estimativa Original (OrgH) — visível quando ShowOriginalHoursColumn = true -->
-            <DataGridTextColumn x:Name="OriginalHoursColumn" Header="{DynamicResource Col_OrgH}"
+            <DataGridTextColumn x:Name="OriginalHoursColumn" Header="{DynamicResource Col_OrgH}" HeaderStyle="{StaticResource HdrTip_OrgH}"
                                 Binding="{Binding OriginalEstimatedHoursDisplay, Mode=OneWay}"
                                 Width="50" IsReadOnly="True"
                                 Visibility="Collapsed">
@@ -446,7 +507,7 @@
             </DataGridTextColumn>
 
             <!-- HH Atual (oculto por padrão) -->
-            <DataGridTextColumn x:Name="RealizedHoursColumn" Header="{DynamicResource Col_HHAtual}"
+            <DataGridTextColumn x:Name="RealizedHoursColumn" Header="{DynamicResource Col_HHAtual}" HeaderStyle="{StaticResource HdrTip_CurrentHours}"
                                 Binding="{Binding CurrentHoursDisplay}" Width="80" IsReadOnly="True"
                                 Visibility="Collapsed">
                 <DataGridTextColumn.ElementStyle>
@@ -465,7 +526,7 @@
             </DataGridTextColumn>
 
             <!-- HH Restante (oculto por padrão) -->
-            <DataGridTextColumn x:Name="EstimatedHoursColumn" Header="{DynamicResource Col_HHRestante}"
+            <DataGridTextColumn x:Name="EstimatedHoursColumn" Header="{DynamicResource Col_HHRestante}" HeaderStyle="{StaticResource HdrTip_RemainingHours}"
                                 Binding="{Binding EstimatedHoursDisplay}" Width="80" IsReadOnly="True"
                                 Visibility="Collapsed">
                 <DataGridTextColumn.ElementStyle>
@@ -484,7 +545,7 @@
             </DataGridTextColumn>
 
             <!-- Prioridade (Pri) — visível e editável apenas para Tasks -->
-            <DataGridTemplateColumn x:Name="PriorityColumn" Header="Pri" Width="40">
+            <DataGridTemplateColumn x:Name="PriorityColumn" Header="Pri" Width="40" HeaderStyle="{StaticResource HdrTip_Priority}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding PriorityDisplay}"
@@ -503,7 +564,7 @@
             </DataGridTemplateColumn>
 
             <!-- Início -->
-            <DataGridTemplateColumn x:Name="StartColumn" Header="{DynamicResource Col_Start}" Width="110" SortMemberPath="Start">
+            <DataGridTemplateColumn x:Name="StartColumn" Header="{DynamicResource Col_Start}" Width="110" SortMemberPath="Start" HeaderStyle="{StaticResource HdrTip_Start}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Grid Margin="3,0"
@@ -563,7 +624,7 @@
             </DataGridTemplateColumn>
 
             <!-- Fim -->
-            <DataGridTemplateColumn x:Name="FinishColumn" Header="{DynamicResource Col_Finish}" Width="110" SortMemberPath="Finish">
+            <DataGridTemplateColumn x:Name="FinishColumn" Header="{DynamicResource Col_Finish}" Width="110" SortMemberPath="Finish" HeaderStyle="{StaticResource HdrTip_Finish}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding FinishDisplay}" VerticalAlignment="Center" Margin="3,0"/>
@@ -582,7 +643,7 @@
             </DataGridTemplateColumn>
 
             <!-- DU: dias uteis entre inicio e fim (só visão completa; read-only) -->
-            <DataGridTemplateColumn x:Name="WorkingDaysColumn" Header="DU" Width="48" IsReadOnly="True" SortMemberPath="DurationWorkingDays">
+            <DataGridTemplateColumn x:Name="WorkingDaysColumn" Header="DU" Width="48" IsReadOnly="True" SortMemberPath="DurationWorkingDays" HeaderStyle="{StaticResource HdrTip_WorkingDays}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding DurationWorkingDays, StringFormat={}{0:0.#}}"
@@ -596,7 +657,7 @@
             </DataGridTemplateColumn>
 
             <!-- % Completo -->
-            <DataGridTemplateColumn x:Name="PercentColumn" Header="{DynamicResource Col_PercentComplete}" Width="70">
+            <DataGridTemplateColumn x:Name="PercentColumn" Header="{DynamicResource Col_PercentComplete}" Width="70" HeaderStyle="{StaticResource HdrTip_Percent}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Grid Margin="2,1">
@@ -641,8 +702,23 @@
                 </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
 
+            <!-- %Daily: % esperado ate hoje (baseline pela agenda). Oculta por padrao; toggle na toolbar. -->
+            <DataGridTemplateColumn x:Name="DailyPercentColumn" Header="{DynamicResource Col_DailyPercent}"
+                                    Width="60" IsReadOnly="True" Visibility="Collapsed" SortMemberPath="DailyPercent" HeaderStyle="{StaticResource HdrTip_DailyPercent}">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                        <Border Background="{Binding DailyPercentBackground}" CornerRadius="2" Margin="1">
+                            <TextBlock Text="{Binding DailyPercentDisplay}"
+                                       VerticalAlignment="Center" TextAlignment="Center"
+                                       FontSize="9" FontWeight="SemiBold" Foreground="#333"
+                                       ToolTip="{DynamicResource Col_DailyPercentTip}"/>
+                        </Border>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+
             <!-- Predecessoras -->
-            <DataGridTemplateColumn x:Name="PredecessorColumn" Header="{DynamicResource Col_Predecessors}" Width="80" SortMemberPath="PredecessorsText">
+            <DataGridTemplateColumn x:Name="PredecessorColumn" Header="{DynamicResource Col_Predecessors}" Width="80" SortMemberPath="PredecessorsText" HeaderStyle="{StaticResource HdrTip_Predecessors}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Button Content="{Binding PredecessorsText}"
@@ -724,7 +800,7 @@
             </DataGridTemplateColumn>
 
             <!-- TKs: quantidade de Tasks filhas no DevOps (só modo expandido) -->
-            <DataGridTemplateColumn x:Name="TksColumn" Header="TKs" Width="40" IsReadOnly="True">
+            <DataGridTemplateColumn x:Name="TksColumn" Header="TKs" Width="40" IsReadOnly="True" HeaderStyle="{StaticResource HdrTip_Tks}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Button Content="{Binding TksCountDisplay}"
@@ -745,7 +821,7 @@
             </DataGridTemplateColumn>
 
             <!-- Recursos (editável: ComboBox com criação rápida) -->
-            <DataGridTemplateColumn x:Name="ResourcesColumn" Header="{DynamicResource Col_Resources}" Width="100">
+            <DataGridTemplateColumn x:Name="ResourcesColumn" Header="{DynamicResource Col_Resources}" Width="100" HeaderStyle="{StaticResource HdrTip_Resources}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding ResourcesText, Mode=OneWay}"
@@ -780,7 +856,7 @@
             </DataGridTemplateColumn>
 
             <!-- Sprint: mostra o NOME da sprint do DevOps; editável via dropdown -->
-            <DataGridTemplateColumn x:Name="SprintColumn" Header="{DynamicResource Grid_SprintHeader}" Width="90">
+            <DataGridTemplateColumn x:Name="SprintColumn" Header="{DynamicResource Grid_SprintHeader}" Width="90" HeaderStyle="{StaticResource HdrTip_Sprint}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Border x:Name="SprintBorder" Background="Transparent">

@@ -698,6 +698,17 @@ namespace NXProject.Controls
             PriorityColumn.Visibility = hasDevOpsTasks ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        /// <summary>Coluna %Daily (esperado ate hoje) esta visivel?</summary>
+        public bool IsDailyPercentColumnVisible => DailyPercentColumn.Visibility == Visibility.Visible;
+
+        /// <summary>Mostra/oculta a coluna %Daily. Retorna o novo estado (visivel).</summary>
+        public bool ToggleDailyPercentColumn()
+        {
+            var visible = DailyPercentColumn.Visibility != Visibility.Visible;
+            DailyPercentColumn.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            return visible;
+        }
+
         private void OnTasksCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             RefreshPriorityColumnVisibility();

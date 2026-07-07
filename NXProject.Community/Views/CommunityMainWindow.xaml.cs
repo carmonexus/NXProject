@@ -1793,6 +1793,12 @@ namespace NXProject.Views
             GanttCtrl.MagnifierEnabled = MagnifierToggle.IsChecked == true;
         }
 
+        private void OnDailyPercentToggleClick(object sender, RoutedEventArgs e)
+        {
+            var visible = TaskGridCtrl.ToggleDailyPercentColumn();
+            DailyPercentToggle.IsChecked = visible;
+        }
+
         private void OnZoomMenuClick(object sender, RoutedEventArgs e)
         {
             if (DataContext is not MainViewModel vm) return;
