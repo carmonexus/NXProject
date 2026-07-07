@@ -90,7 +90,7 @@
     <sys:String x:Key="AI_OpenRouterConfig">OpenRouter configuration</sys:String>
     <sys:String x:Key="AI_Token">Token</sys:String>
     <sys:String x:Key="AI_OpenRouterKeyLinkPre">To generate your OpenRouter token: </sys:String>
-    <sys:String x:Key="AI_OpenRouterKeyLink">open the official guide</sys:String>
+    <sys:String x:Key="AI_OpenRouterKeyLink">create an API key</sys:String>
     <sys:String x:Key="AI_ReadyStatus">Ready to generate suggestions.</sys:String>
     <sys:String x:Key="AI_SaveConfig">Save configuration</sys:String>
     <sys:String x:Key="AI_Execute">Run with AI</sys:String>

@@ -245,7 +245,7 @@
                                 <PasswordBox x:Name="OpenRouterApiKeyBox" Margin="0,6,0,4" Height="30"/>
                                 <TextBlock Margin="0,0,0,10" TextWrapping="Wrap" Foreground="#555">
                                     <Run Text="{DynamicResource AI_OpenRouterKeyLinkPre}"/>
-                                    <Hyperlink Click="OnOpenApiKeyGuideClick"><Run Text="{DynamicResource AI_OpenRouterKeyLink}"/></Hyperlink>
+                                    <Hyperlink Click="OnOpenRouterApiKeyGuideClick"><Run Text="{DynamicResource AI_OpenRouterKeyLink}"/></Hyperlink>
                                     <Run Text="."/>
                                 </TextBlock>
 

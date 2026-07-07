@@ -16,6 +16,7 @@ namespace NXProject.Views
     public partial class CommunityAIWindow : Window
     {
         private const string OpenAIApiKeyGuideUrl = "https://platform.openai.com/account/api-keys";
+        private const string OpenRouterApiKeyGuideUrl = "https://openrouter.ai/settings/keys";
         private const int DefaultTimeoutSeconds = 120;
         private const string SettingsStorageKey = "NXProject.Community";
 
@@ -480,7 +481,7 @@ namespace NXProject.Views
                 // Ignora falha inicial e continua com o texto.
             }
             _resultWebViewReady = true;
-            if (!string.IsNullOrWhiteSpace(_pendingResultHtml))
+            if (!string.IsNullOrWhiteSpace(_pendingResultHtml) && ResultWebView != null)
             {
                 ResultWebView.NavigateToString(_pendingResultHtml);
                 _pendingResultHtml = string.Empty;
@@ -656,11 +657,11 @@ namespace NXProject.Views
 
         private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 
-        private void OnOpenApiKeyGuideClick(object sender, RoutedEventArgs e)
+        private void OnOpenRouterApiKeyGuideClick(object sender, RoutedEventArgs e)
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = OpenAIApiKeyGuideUrl,
+                FileName = OpenRouterApiKeyGuideUrl,
                 UseShellExecute = true
             });
         }
