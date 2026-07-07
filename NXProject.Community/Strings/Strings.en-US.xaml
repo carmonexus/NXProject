@@ -1075,8 +1075,8 @@
     <sys:String x:Key="TLR_AddSelected">📥 Add selected to schedule</sys:String>
     <sys:String x:Key="TLR_Memorize">💾 Memorize Task in Schedule</sys:String>
     <sys:String x:Key="TLR_MemorizeTip">Closes keeping the Tasks included in the local schedule (does not release the Story)</sys:String>
-    <sys:String x:Key="TLR_Release">🔓 Release Activity</sys:String>
-    <sys:String x:Key="TLR_ReleaseTip">Closes and removes the Tasks from the local schedule (releases the Story)</sys:String>
+    <sys:String x:Key="TLR_Release">Close</sys:String>
+    <sys:String x:Key="TLR_ReleaseTip">Closes this window</sys:String>
     <sys:String x:Key="TLR_SelectAndSearch">Select Epic → Feature → Story and click 🔍 Search Tasks.</sys:String>
     <sys:String x:Key="TLR_Searching">Searching Tasks in DevOps...</sys:String>
     <sys:String x:Key="TLR_Totals">Visible: {0} Tasks | Est: {1:0.#}h | Done: {2:0.#}h | {3} in schedule</sys:String>

@@ -37,6 +37,7 @@ namespace NXProject.Views
             Loaded += CommunityAIWindow_Loaded;
             _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _progressTimer.Tick += OnProgressTimerTick;
+            Closing += OnWindowClosing;
             LoadSettings();
             ProjectContextTextBox.Text = _viewModel.BuildAiProjectContext();
         }
@@ -58,6 +59,7 @@ namespace NXProject.Views
 
             // Provedor padrao
             SelectDefaultProvider(_workspace.DefaultProvider);
+            PromptTextBox.Text = _workspace.LastPrompt ?? string.Empty;
 
             // Profundidade do cronograma DevOps (Story vs Task)
             CreateTasksCheck.IsChecked = _workspace.CreateTasks;
@@ -115,6 +117,8 @@ namespace NXProject.Views
 
             if (ActionTypeCombo.SelectedItem is AIActionType selectedAction)
                 _workspace.SelectedAction = selectedAction.Name;
+
+            _workspace.LastPrompt = PromptTextBox.Text ?? string.Empty;
         }
 
         private void CollectProviderTab(AIProvider provider, PasswordBox apiKey, TextBox endpoint, TextBox model, TextBox timeout, AIAuthMode authMode)
@@ -138,6 +142,19 @@ namespace NXProject.Views
             CollectWorkspace();
             AISettingsStore.SaveWorkspace(_workspace, SettingsStorageKey);
             return _workspace.ResolveActiveSettings();
+        }
+
+        private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            try
+            {
+                CollectWorkspace();
+                AISettingsStore.SaveWorkspace(_workspace, SettingsStorageKey);
+            }
+            catch
+            {
+                // Fechar a janela nao deve ser bloqueado por falha de persistencia local.
+            }
         }
 
         // ── Geracao ──────────────────────────────────────────────────────
@@ -323,7 +340,7 @@ namespace NXProject.Views
             var novo = new AIActionType
             {
                 Name = "Novo tipo",
-                Prompt = "Voce e um assistente de projetos. Responda de forma objetiva ao pedido.",
+                Prompt = "Você é um assistente de projetos. Responda de forma objetiva ao pedido.",
                 CreatesTasks = false
             };
             _workspace.ActionTypes.Add(novo);
@@ -435,7 +452,7 @@ namespace NXProject.Views
                 return;
             }
 
-            // Cronograma hierarquico (Fazer Cronograma Devops)
+            // Cronograma hierarquico (Fazer Cronograma DevOps)
             if (_lastSchedule != null && _lastSchedule.Roots.Count > 0)
             {
                 var createdSched = _viewModel.ApplyAiSchedule(_lastSchedule.Roots, _lastScheduleUntilTask, markPendingTfs: _lastScheduleDevops);

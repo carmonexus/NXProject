@@ -50,9 +50,9 @@ namespace NXProject.Models
         public bool CreatesTasks { get; set; }
 
         // Ação hierarquica (Epic→Feature→Story[→Task]) que monta o JSON modelo.
-        public const string ScheduleDevOpsActionName = "Fazer Cronograma Devops";
+        public const string ScheduleDevOpsActionName = "Fazer Cronograma DevOps";
         // Ação plana (lista de tarefas encadeadas), somente local.
-        public const string ScheduleNoDevOpsActionName = "Cronograma NoDevops";
+        public const string ScheduleNoDevOpsActionName = "Cronograma NoDevOps";
         // Nome legado (migrado para NoDevops).
         public const string ScheduleActionName = "Fazer Cronograma";
         public const string FreeActionName = "Livre";
@@ -101,6 +101,8 @@ namespace NXProject.Models
         public bool CreateTasks { get; set; }
         /// <summary>Quantidade de tarefas enviadas no contexto da analise de cronograma.</summary>
         public int AnalysisTaskLimit { get; set; } = 30;
+        /// <summary>Ultimo prompt digitado pelo usuario no assistente.</summary>
+        public string LastPrompt { get; set; } = string.Empty;
         public List<AIProviderProfile> Providers { get; set; } = new();
 
         /// <summary>Tipos de acao com IA (o built-in "Fazer Cronograma" + livres/customizados).</summary>

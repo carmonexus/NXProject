@@ -47,20 +47,24 @@ namespace NXProject.Services
             public string ScheduleMode { get; set; } = "DevOps";
             public bool CreateTasks { get; set; }
             public int AnalysisTaskLimit { get; set; } = 30;
+            public string LastPrompt { get; set; } = string.Empty;
             public List<StoredProviderProfile> Providers { get; set; } = new();
             public List<StoredActionType> ActionTypes { get; set; } = new();
-            public string SelectedAction { get; set; } = "Fazer Cronograma Devops";
+            public string SelectedAction { get; set; } = AIActionType.ScheduleDevOpsActionName;
             public int ActionsSchemaVersion { get; set; }
         }
 
-        // Versao atual do schema de acoes (v2 introduziu "Fazer Cronograma Devops").
+        private const string LegacyScheduleDevOpsActionName = "Fazer Cronograma Devops";
+        private const string LegacyScheduleNoDevOpsActionName = "Cronograma NoDevops";
+
+        // Versao atual do schema de acoes (v2 introduziu "Fazer Cronograma DevOps").
         private const int CurrentActionsSchemaVersion = 2;
 
         /// <summary>Prompt do modo livre: responde no dominio de projeto, sem gerar tarefas.</summary>
         private const string FreeActionPrompt =
-            "Voce e um assistente do NXProject Community. Ajude com planejamento e execucao de projetos " +
-            "(cronograma, atividades, dependencias, estimativas, distribuicao de trabalho). Responda em texto " +
-            "claro e objetivo, sem formato JSON. Nao gere tarefas automaticamente; apenas responda ao pedido.";
+            "Você é um assistente do NXProject Community. Ajude com planejamento e execução de projetos " +
+            "(cronograma, atividades, dependências, estimativas, distribuição de trabalho). Responda em texto " +
+            "claro e objetivo, sem formato JSON. Não gere tarefas automaticamente; apenas responda ao pedido.";
 
         /// <summary>Ações padrão do assistente (usadas no 1º uso e no botão "Restaurar padrão").</summary>
         public static List<AIActionType> GetDefaultActions() => new()
@@ -93,7 +97,20 @@ namespace NXProject.Services
 
         private static void SeedDefaultActions(AIWorkspaceSettings workspace)
         {
-            // Migra o nome legado "Fazer Cronograma" -> "Cronograma NoDevops".
+            if (workspace.SelectedAction == LegacyScheduleDevOpsActionName)
+                workspace.SelectedAction = AIActionType.ScheduleDevOpsActionName;
+            if (workspace.SelectedAction == LegacyScheduleNoDevOpsActionName)
+                workspace.SelectedAction = AIActionType.ScheduleNoDevOpsActionName;
+
+            foreach (var action in workspace.ActionTypes)
+            {
+                if (action.Name == LegacyScheduleDevOpsActionName)
+                    action.Name = AIActionType.ScheduleDevOpsActionName;
+                if (action.Name == LegacyScheduleNoDevOpsActionName)
+                    action.Name = AIActionType.ScheduleNoDevOpsActionName;
+            }
+
+            // Migra o nome legado "Fazer Cronograma" -> "Cronograma NoDevOps".
             var legacyName = workspace.SelectedAction == AIActionType.ScheduleActionName;
             var legacy = workspace.ActionTypes.FirstOrDefault(a => a.Name == AIActionType.ScheduleActionName);
             if (legacy != null) legacy.Name = AIActionType.ScheduleNoDevOpsActionName;
@@ -104,7 +121,7 @@ namespace NXProject.Services
                 workspace.ActionTypes.AddRange(GetDefaultActions());
                 workspace.SelectedAction = AIActionType.ScheduleDevOpsActionName;
             }
-            // Migracao unica para v2: garante a acao "Fazer Cronograma Devops" e a torna padrao.
+            // Migracao unica para v2: garante a acao "Fazer Cronograma DevOps" e a torna padrao.
             else if (workspace.ActionsSchemaVersion < CurrentActionsSchemaVersion)
             {
                 if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.ScheduleDevOpsActionName))
@@ -158,6 +175,7 @@ namespace NXProject.Services
                 ScheduleMode = workspace.ScheduleMode.ToString(),
                 CreateTasks = workspace.CreateTasks,
                 AnalysisTaskLimit = workspace.AnalysisTaskLimit <= 0 ? 30 : workspace.AnalysisTaskLimit,
+                LastPrompt = workspace.LastPrompt ?? string.Empty,
                 Providers = workspace.Providers.Select(p => new StoredProviderProfile
                 {
                     Provider = p.Provider.ToString(),
@@ -191,6 +209,7 @@ namespace NXProject.Services
                 ScheduleMode = Enum.TryParse<ScheduleCreationMode>(stored.ScheduleMode, out var sm) ? sm : ScheduleCreationMode.DevOps,
                 CreateTasks = stored.CreateTasks,
                 AnalysisTaskLimit = stored.AnalysisTaskLimit <= 0 ? 30 : stored.AnalysisTaskLimit,
+                LastPrompt = stored.LastPrompt ?? string.Empty,
                 Providers = (stored.Providers ?? new()).Select(p => new AIProviderProfile
                 {
                     Provider = ParseProvider(p.Provider, AIProvider.OpenRouter),
