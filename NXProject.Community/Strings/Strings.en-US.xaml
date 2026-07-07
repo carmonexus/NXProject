@@ -171,6 +171,27 @@
     <sys:String x:Key="Grid_OpenTasksGridDevOpsTip">Open Tasks Grid (DevOps)</sys:String>
     <sys:String x:Key="Grid_SprintHeader">Sprint</sys:String>
 
+    <sys:String x:Key="PeoplePick_Title">DevOps Discovery — Select people</sys:String>
+    <sys:String x:Key="PeoplePick_SearchLabel">Filter (in list):</sys:String>
+    <sys:String x:Key="PeoplePick_SearchHint">Type part of the name or e-mail to filter the loaded list</sys:String>
+    <sys:String x:Key="PeoplePick_ServerSearch">Search in DevOps</sys:String>
+    <sys:String x:Key="PeoplePick_ColAdd">Add</sys:String>
+    <sys:String x:Key="PeoplePick_Loading">Loading people from DevOps...</sys:String>
+    <sys:String x:Key="PeoplePick_ServerHint">List loaded up to the limit. Not found? Type a name and click "Search in DevOps" to look it up on the server.</sys:String>
+    <sys:String x:Key="PeoplePick_LimitLabel">Limit:</sys:String>
+    <sys:String x:Key="PeoplePick_Reload">Load</sys:String>
+    <sys:String x:Key="PeoplePick_LoadingCountFmt">Loading people from DevOps... ({0})</sys:String>
+    <sys:String x:Key="PeoplePick_CountFmt">{0} of {1} people — {2} checked</sys:String>
+    <sys:String x:Key="PeoplePick_MinChars">Type at least 2 characters to search.</sys:String>
+    <sys:String x:Key="PeoplePick_Searching">Searching "{0}"...</sys:String>
+    <sys:String x:Key="PeoplePick_SearchError">Search failed: {0}</sys:String>
+    <sys:String x:Key="PeoplePick_ColName">Name</sys:String>
+    <sys:String x:Key="PeoplePick_ColEmail">E-mail</sys:String>
+    <sys:String x:Key="PeoplePick_SelectAll">Check visible</sys:String>
+    <sys:String x:Key="PeoplePick_ClearAll">Uncheck all</sys:String>
+    <sys:String x:Key="PeoplePick_Add">Add selected</sys:String>
+    <sys:String x:Key="PeoplePick_Cancel">Cancel</sys:String>
+
     <!-- File Menu -->
     <sys:String x:Key="Menu_File">_File</sys:String>
     <sys:String x:Key="Menu_File_New">_New Project</sys:String>
@@ -578,6 +599,9 @@
     <sys:String x:Key="Cfg_TeamProjectTip">Project name as it appears in Azure DevOps</sys:String>
     <sys:String x:Key="Cfg_Pat">Personal Access Token  (minimum scope: Work Items → Read)</sys:String>
     <sys:String x:Key="Cfg_RememberToken">Remember the token on this computer (stored encrypted)</sys:String>
+    <sys:String x:Key="Cfg_PatScopesTitle">Required PAT scopes:</sys:String>
+    <sys:String x:Key="Cfg_PatScopesSchedule">• Update the schedule: Work Items (Read &amp; Write).</sys:String>
+    <sys:String x:Key="Cfg_PatScopesPeople">• Reuse the DevOps People registry (Discovery): also Identity (Read) and Graph (Read).</sys:String>
     <sys:String x:Key="Cfg_PortfolioSection">Project portfolio</sys:String>
     <sys:String x:Key="Cfg_CalendarLabel">Working calendar (hours/day, holidays, working days)</sys:String>
     <sys:String x:Key="Cfg_AdvancedFields">⚙  Advanced fields</sys:String>
@@ -697,6 +721,14 @@
     <sys:String x:Key="People_DeleteSelected">Delete Selected</sys:String>
     <sys:String x:Key="People_Recalc">Recalculate Schedule</sys:String>
     <sys:String x:Key="People_RecalcTip">Recalculates the finish dates of all tasks based on the current availability</sys:String>
+    <sys:String x:Key="People_DiscoveryTfs">TFS Discovery</sys:String>
+    <sys:String x:Key="People_DiscoveryTfsTip">Finds users assigned to DevOps/TFS work items and adds new people to the schedule.</sys:String>
+    <sys:String x:Key="People_RemoveUnused">Remove without activity</sys:String>
+    <sys:String x:Key="People_RemoveUnusedTip">Removes from the project the people who have no activity in the schedule.</sys:String>
+    <sys:String x:Key="People_RemoveUnusedNone">No person without activity to remove.</sys:String>
+    <sys:String x:Key="People_RemoveUnusedConfirm">Remove {0} person(s) who have no activity in the schedule?</sys:String>
+    <sys:String x:Key="People_RemoveUnusedTitle">Remove without activity</sys:String>
+    <sys:String x:Key="People_RemoveUnusedDone">{0} person(s) without activity removed.</sys:String>
     <sys:String x:Key="People_SaveLocal">💾 Save Local</sys:String>
     <sys:String x:Key="People_SaveLocalTip">Saves each person's Allocation (Project/Internal) configuration locally. Preserved when re-importing from TFS.</sys:String>
     <sys:String x:Key="People_SaveCost">💰 Save cost config...</sys:String>
@@ -740,9 +772,22 @@
     <sys:String x:Key="People_LoadCostTitle">Load cost configuration</sys:String>
     <sys:String x:Key="People_EnterPassword">Enter the password to decrypt:&#10;{0}</sys:String>
     <sys:String x:Key="People_CostLoaded">Cost config loaded: {0} resource(s) updated.</sys:String>
+    <sys:String x:Key="People_CostLoadedAdded">Cost config loaded: {0} resource(s) processed, {1} person(s) added.</sys:String>
     <sys:String x:Key="People_WrongPassword">Incorrect password or corrupted file.</sys:String>
     <sys:String x:Key="People_DecryptError">Decryption error</sys:String>
     <sys:String x:Key="People_LoadError2">Error loading: {0}</sys:String>
+    <sys:String x:Key="People_DiscoveryNoConnection">Configure the Azure DevOps/TFS connection before using Discovery.</sys:String>
+    <sys:String x:Key="People_DiscoveryRunning">Fetching users from DevOps/TFS...</sys:String>
+    <sys:String x:Key="People_DiscoveryRunningFilter">Fetching users from DevOps/TFS with filter "{0}"...</sys:String>
+    <sys:String x:Key="People_DiscoveryAdded">{0} person(s) added by TFS Discovery ({1} found).</sys:String>
+    <sys:String x:Key="People_DiscoveryNone">TFS Discovery completed: no new people added ({0} found).</sys:String>
+    <sys:String x:Key="People_DiscoveryError">{0}</sys:String>
+    <sys:String x:Key="People_DiscoveryLogIntro">TFS Discovery could not complete. Copy the log below and send it for analysis. The PAT is not shown.</sys:String>
+    <sys:String x:Key="People_DiscoveryFilterTitle">TFS Discovery Filter</sys:String>
+    <sys:String x:Key="People_DiscoveryFilterPrompt">Enter a filter to search people in the DevOps/TFS organization (up to 30 characters). Leave empty only to test without a filter. The query returns at most 50 records.</sys:String>
+    <sys:String x:Key="People_DiscoveryFilterRequired">Enter a filter before searching.</sys:String>
+    <sys:String x:Key="People_CopyLog">Copy log</sys:String>
+    <sys:String x:Key="People_LogCopied">Log copied</sys:String>
     <sys:String x:Key="People_Recalculated">Schedule recalculated ({0} activities).</sys:String>
     <sys:String x:Key="People_ChangeSaved">Change saved.</sys:String>
     <sys:String x:Key="People_InvalidMonthly">Enter a valid monthly value.</sys:String>
@@ -1043,6 +1088,7 @@
     <sys:String x:Key="TLR_Epic">Epic:</sys:String>
     <sys:String x:Key="TLR_Feature">Feature:</sys:String>
     <sys:String x:Key="TLR_Story">Story:</sys:String>
+    <sys:String x:Key="TLR_StoryResponsible">Story owner:</sys:String>
     <sys:String x:Key="TLR_BuscarTasks">🔍 Search Tasks</sys:String>
     <sys:String x:Key="TLR_DragToReorder">Drag to reorder</sys:String>
     <sys:String x:Key="TLR_ColTask">Task</sys:String>
@@ -1093,6 +1139,7 @@
     <sys:String x:Key="TLR_TaskCreated">Task #{0} created in TFS. Change the name in the grid and save the changes.</sys:String>
     <sys:String x:Key="TLR_CreateError">Error creating Task in TFS.</sys:String>
     <sys:String x:Key="TLR_IncludeTaskTitle">Add Task</sys:String>
+    <sys:String x:Key="TLR_SavePendingFailed">Could not save the activity being edited online. Fix and save it before creating the new task, to avoid losing changes.</sys:String>
     <sys:String x:Key="TLR_CreateErrorDetail">Error creating Task in TFS:&#10;{0}</sys:String>
     <sys:String x:Key="TLR_DeleteTaskConfirm">Delete TFS Task #{0} "{1}"?&#10;&#10;The deletion will be done in DevOps. If the Story is expanded in the schedule, the grid will be reflected when you close this window.</sys:String>
     <sys:String x:Key="TLR_DeleteTaskTitle">Delete TFS Task</sys:String>

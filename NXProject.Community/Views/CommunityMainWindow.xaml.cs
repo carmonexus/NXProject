@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -38,6 +39,7 @@ namespace NXProject.Views
         private bool _allowClose;
         private bool _aiOpenedOnFirstAccess;
         private bool _expandedLayout;
+        private CancellationTokenSource? _projectPercentRefreshCts;
 
         public CommunityMainWindow()
         {
@@ -56,6 +58,7 @@ namespace NXProject.Views
                 if (args.PropertyName == nameof(vm.Project))
                 {
                     UpdateDevOpsProjectBanner(vm.Project.DevOpsProjectName, vm.Project.DevOpsRootWorkItemId, vm.Project.DevOpsProjectOwner);
+                    ScheduleProjectPercentRefresh(vm);
                     vm.Project.ShowCriticalPath = true;
                     ResetScheduleViewport();
                     Dispatcher.InvokeAsync(() => RefreshCriticalPath(vm),
@@ -74,6 +77,7 @@ namespace NXProject.Views
             };
             vm.FlatTasks.CollectionChanged += (_, _) =>
             {
+                ScheduleProjectPercentRefresh(vm);
                 UpdateEpicHours(vm);
                 RefreshCriticalPath(vm);
             };
@@ -1638,20 +1642,9 @@ namespace NXProject.Views
                 DevOpsScheduleDatesLabel.Text = string.Empty;
             }
 
-            // % de conclusão: média ponderada pelas horas de todas as atividades folha
-            var leaves = vm.FlatTasks.Where(t => !t.IsSummary && !t.IsMilestone).ToList();
-            if (leaves.Count > 0)
-            {
-                double totalW = leaves.Sum(t => t.DurationHours);
-                double pct = totalW > 0
-                    ? leaves.Sum(t => t.DurationHours * t.PercentComplete) / totalW
-                    : leaves.Average(t => t.PercentComplete);
-                DevOpsPercentLabel.Text = AppStrings.Get("Banner_Percent", pct);
-            }
-            else
-            {
-                DevOpsPercentLabel.Text = string.Empty;
-            }
+            DevOpsPercentLabel.Text = vm.Project.Tasks.Count > 0
+                ? AppStrings.Get("Banner_Percent", vm.ProjectPercent)
+                : string.Empty;
         }
 
         private void UpdateDevOpsProjectBanner(string? name, int id, string? owner = null)
@@ -2905,7 +2898,53 @@ namespace NXProject.Views
                 args.PropertyName == nameof(TaskViewModel.PercentComplete))
             {
                 if (DataContext is MainViewModel vm)
+                {
+                    ScheduleProjectPercentRefresh(vm);
                     UpdateEpicHours(vm);
+                }
+            }
+        }
+
+        private void ScheduleProjectPercentRefresh(MainViewModel vm)
+        {
+            _projectPercentRefreshCts?.Cancel();
+            _projectPercentRefreshCts?.Dispose();
+
+            var cts = new CancellationTokenSource();
+            _projectPercentRefreshCts = cts;
+            _ = RefreshProjectPercentAsync(vm, cts.Token);
+        }
+
+        private async System.Threading.Tasks.Task RefreshProjectPercentAsync(MainViewModel vm, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await System.Threading.Tasks.Task.Delay(150, cancellationToken);
+
+                var roots = vm.Project.Tasks.ToArray();
+                var percent = await System.Threading.Tasks.Task.Run(
+                    () => MainViewModel.CalculateProjectPercent(roots),
+                    cancellationToken);
+
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (cancellationToken.IsCancellationRequested || !ReferenceEquals(DataContext, vm))
+                        return;
+
+                    vm.ProjectPercent = percent;
+                    UpdateEpicHours(vm);
+                }, DispatcherPriority.Background);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (InvalidOperationException) when (!cancellationToken.IsCancellationRequested)
+            {
+                if (ReferenceEquals(DataContext, vm))
+                    _ = Dispatcher.InvokeAsync(() => ScheduleProjectPercentRefresh(vm), DispatcherPriority.Background);
             }
         }
 

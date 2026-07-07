@@ -416,6 +416,9 @@
     <sys:String x:Key="Cfg_TeamProjectTip">Nome do projeto conforme aparece no Azure DevOps</sys:String>
     <sys:String x:Key="Cfg_Pat">Personal Access Token  (escopo mínimo: Work Items → Read)</sys:String>
     <sys:String x:Key="Cfg_RememberToken">Lembrar o token neste computador (salvo de forma criptografada)</sys:String>
+    <sys:String x:Key="Cfg_PatScopesTitle">Escopos necessários no PAT:</sys:String>
+    <sys:String x:Key="Cfg_PatScopesSchedule">• Atualizar o cronograma: Work Items (Read &amp; Write).</sys:String>
+    <sys:String x:Key="Cfg_PatScopesPeople">• Reutilizar o cadastro de Pessoas do DevOps (Discovery): também Identity (Read) e Graph (Read).</sys:String>
     <sys:String x:Key="Cfg_PortfolioSection">Portfólio de projetos</sys:String>
     <sys:String x:Key="Cfg_CalendarLabel">Calendário de trabalho (horas/dia, feriados, dias úteis)</sys:String>
     <sys:String x:Key="Cfg_AdvancedFields">⚙  Campos avançados</sys:String>
@@ -535,6 +538,14 @@
     <sys:String x:Key="People_DeleteSelected">Excluir Selecionada</sys:String>
     <sys:String x:Key="People_Recalc">Recalcular Cronograma</sys:String>
     <sys:String x:Key="People_RecalcTip">Recalcula as datas-fim de todas as tarefas com base na disponibilidade atual</sys:String>
+    <sys:String x:Key="People_DiscoveryTfs">Discovery TFS</sys:String>
+    <sys:String x:Key="People_DiscoveryTfsTip">Busca usuários responsáveis por work items no DevOps/TFS e inclui os novos no cronograma.</sys:String>
+    <sys:String x:Key="People_RemoveUnused">Remover sem atividade</sys:String>
+    <sys:String x:Key="People_RemoveUnusedTip">Remove do projeto as pessoas que não têm nenhuma atividade no cronograma.</sys:String>
+    <sys:String x:Key="People_RemoveUnusedNone">Nenhuma pessoa sem atividade para remover.</sys:String>
+    <sys:String x:Key="People_RemoveUnusedConfirm">Remover {0} pessoa(s) que não têm atividade no cronograma?</sys:String>
+    <sys:String x:Key="People_RemoveUnusedTitle">Remover sem atividade</sys:String>
+    <sys:String x:Key="People_RemoveUnusedDone">{0} pessoa(s) sem atividade removida(s).</sys:String>
     <sys:String x:Key="People_SaveLocal">💾 Salvar Local</sys:String>
     <sys:String x:Key="People_SaveLocalTip">Salva a configuração de Alocação (Project/Internal) de cada pessoa localmente. Preservada ao re-importar do TFS.</sys:String>
     <sys:String x:Key="People_SaveCost">💰 Salvar config de custo...</sys:String>
@@ -578,9 +589,22 @@
     <sys:String x:Key="People_LoadCostTitle">Carregar configuração de custo</sys:String>
     <sys:String x:Key="People_EnterPassword">Digite a senha para descriptografar:&#10;{0}</sys:String>
     <sys:String x:Key="People_CostLoaded">Config de custo carregada: {0} recurso(s) atualizados.</sys:String>
+    <sys:String x:Key="People_CostLoadedAdded">Config de custo carregada: {0} recurso(s) processados, {1} pessoa(s) incluída(s).</sys:String>
     <sys:String x:Key="People_WrongPassword">Senha incorreta ou arquivo corrompido.</sys:String>
     <sys:String x:Key="People_DecryptError">Erro de descriptografia</sys:String>
     <sys:String x:Key="People_LoadError2">Erro ao carregar: {0}</sys:String>
+    <sys:String x:Key="People_DiscoveryNoConnection">Configure a conexão com o Azure DevOps/TFS antes de usar o Discovery.</sys:String>
+    <sys:String x:Key="People_DiscoveryRunning">Buscando usuários no DevOps/TFS...</sys:String>
+    <sys:String x:Key="People_DiscoveryRunningFilter">Buscando usuários no DevOps/TFS com filtro "{0}"...</sys:String>
+    <sys:String x:Key="People_DiscoveryAdded">{0} pessoa(s) incluída(s) pelo Discovery TFS ({1} encontrada(s)).</sys:String>
+    <sys:String x:Key="People_DiscoveryNone">Discovery TFS concluído: nenhuma pessoa nova incluída ({0} encontrada(s)).</sys:String>
+    <sys:String x:Key="People_DiscoveryError">{0}</sys:String>
+    <sys:String x:Key="People_DiscoveryLogIntro">Não foi possível concluir o Discovery TFS. Copie o log abaixo e envie para análise. O PAT não é exibido.</sys:String>
+    <sys:String x:Key="People_DiscoveryFilterTitle">Filtro do Discovery TFS</sys:String>
+    <sys:String x:Key="People_DiscoveryFilterPrompt">Informe um filtro para buscar pessoas na organização DevOps/TFS (até 30 caracteres). Deixe vazio apenas para testar sem filtro. A consulta retorna no máximo 50 registros.</sys:String>
+    <sys:String x:Key="People_DiscoveryFilterRequired">Informe um filtro antes de buscar.</sys:String>
+    <sys:String x:Key="People_CopyLog">Copiar log</sys:String>
+    <sys:String x:Key="People_LogCopied">Log copiado</sys:String>
     <sys:String x:Key="People_Recalculated">Cronograma recalculado ({0} atividades).</sys:String>
     <sys:String x:Key="People_ChangeSaved">Alteração salva.</sys:String>
     <sys:String x:Key="People_InvalidMonthly">Informe um valor mensal válido.</sys:String>
@@ -881,6 +905,7 @@
     <sys:String x:Key="TLR_Epic">Epic:</sys:String>
     <sys:String x:Key="TLR_Feature">Feature:</sys:String>
     <sys:String x:Key="TLR_Story">Story:</sys:String>
+    <sys:String x:Key="TLR_StoryResponsible">Responsável Story:</sys:String>
     <sys:String x:Key="TLR_BuscarTasks">🔍 Buscar Tasks</sys:String>
     <sys:String x:Key="TLR_DragToReorder">Arraste para reordenar</sys:String>
     <sys:String x:Key="TLR_ColTask">Task</sys:String>
@@ -931,6 +956,7 @@
     <sys:String x:Key="TLR_TaskCreated">Task #{0} criada no TFS. Altere o nome na grid e salve as alterações.</sys:String>
     <sys:String x:Key="TLR_CreateError">Erro ao criar Task no TFS.</sys:String>
     <sys:String x:Key="TLR_IncludeTaskTitle">Incluir Task</sys:String>
+    <sys:String x:Key="TLR_SavePendingFailed">Não foi possível salvar online a atividade em edição. Ajuste e salve antes de criar a nova task, para não perder as alterações.</sys:String>
     <sys:String x:Key="TLR_CreateErrorDetail">Erro ao criar Task no TFS:&#10;{0}</sys:String>
     <sys:String x:Key="TLR_DeleteTaskConfirm">Excluir a Task TFS #{0} "{1}"?&#10;&#10;A exclusao sera feita no DevOps. Se a Story estiver expandida no cronograma, a grid sera refletida ao fechar esta janela.</sys:String>
     <sys:String x:Key="TLR_DeleteTaskTitle">Excluir Task TFS</sys:String>
@@ -1555,5 +1581,26 @@
     <sys:String x:Key="Grid_WorkingDaysTip">Dias uteis (calendario) entre inicio e fim</sys:String>
     <sys:String x:Key="Grid_OpenTasksGridDevOpsTip">Abrir Grid de Tasks (DevOps)</sys:String>
     <sys:String x:Key="Grid_SprintHeader">Sprint</sys:String>
+
+    <sys:String x:Key="PeoplePick_Title">Discovery DevOps — Selecionar pessoas</sys:String>
+    <sys:String x:Key="PeoplePick_SearchLabel">Filtrar (na lista):</sys:String>
+    <sys:String x:Key="PeoplePick_SearchHint">Digite parte do nome ou e-mail para filtrar a lista carregada</sys:String>
+    <sys:String x:Key="PeoplePick_ServerSearch">Buscar no DevOps</sys:String>
+    <sys:String x:Key="PeoplePick_ColAdd">Incluir</sys:String>
+    <sys:String x:Key="PeoplePick_Loading">Carregando pessoas do DevOps...</sys:String>
+    <sys:String x:Key="PeoplePick_ServerHint">Lista carregada ate o limite. Nao achou? Digite um nome e clique em "Buscar no DevOps" para procurar no servidor.</sys:String>
+    <sys:String x:Key="PeoplePick_LimitLabel">Limite:</sys:String>
+    <sys:String x:Key="PeoplePick_Reload">Carregar</sys:String>
+    <sys:String x:Key="PeoplePick_LoadingCountFmt">Carregando pessoas do DevOps... ({0})</sys:String>
+    <sys:String x:Key="PeoplePick_CountFmt">{0} de {1} pessoa(s) — {2} marcada(s)</sys:String>
+    <sys:String x:Key="PeoplePick_MinChars">Digite ao menos 2 caracteres para buscar.</sys:String>
+    <sys:String x:Key="PeoplePick_Searching">Buscando "{0}"...</sys:String>
+    <sys:String x:Key="PeoplePick_SearchError">Falha na busca: {0}</sys:String>
+    <sys:String x:Key="PeoplePick_ColName">Nome</sys:String>
+    <sys:String x:Key="PeoplePick_ColEmail">E-mail</sys:String>
+    <sys:String x:Key="PeoplePick_SelectAll">Marcar visiveis</sys:String>
+    <sys:String x:Key="PeoplePick_ClearAll">Desmarcar todas</sys:String>
+    <sys:String x:Key="PeoplePick_Add">Adicionar selecionadas</sys:String>
+    <sys:String x:Key="PeoplePick_Cancel">Cancelar</sys:String>
 
 </ResourceDictionary>

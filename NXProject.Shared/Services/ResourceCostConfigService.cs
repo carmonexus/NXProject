@@ -78,9 +78,13 @@ namespace NXProject.Services
         /// <summary>
         /// Tenta descriptografar e carregar o arquivo.
         /// Lança <see cref="CryptographicException"/> se a senha for errada ou o arquivo estiver corrompido.
-        /// Retorna o número de recursos atualizados.
+        /// Retorna o número de recursos atualizados (e incluídos, se <paramref name="addMissing"/>).
         /// </summary>
-        public static int Load(string filePath, IEnumerable<Resource> resources, string password)
+        /// <param name="addMissing">
+        /// Quando true, pessoas presentes no arquivo mas nao cadastradas no projeto
+        /// sao incluidas (com nome e custo do arquivo).
+        /// </param>
+        public static int Load(string filePath, ICollection<Resource> resources, string password, bool addMissing = false)
         {
             var data = File.ReadAllBytes(filePath);
 
@@ -115,6 +119,12 @@ namespace NXProject.Services
 
             var map   = entries.ToDictionary(e => e.Name, e => e, StringComparer.OrdinalIgnoreCase);
             int count = 0;
+
+            // Nomes ja cadastrados (para atualizar e detectar ausentes).
+            var existingNames = new HashSet<string>(
+                resources.Where(r => !string.IsNullOrWhiteSpace(r.Name)).Select(r => r.Name.Trim()),
+                StringComparer.OrdinalIgnoreCase);
+
             foreach (var r in resources)
             {
                 if (!map.TryGetValue(r.Name, out var e)) continue;
@@ -123,6 +133,32 @@ namespace NXProject.Services
                 r.MonthlyRate  = e.MonthlyRate;
                 count++;
             }
+
+            if (addMissing)
+            {
+                var nextId = resources.Count > 0 ? resources.Max(r => r.Id) + 1 : 1;
+                foreach (var e in entries)
+                {
+                    if (string.IsNullOrWhiteSpace(e.Name) || existingNames.Contains(e.Name.Trim()))
+                        continue;
+
+                    resources.Add(new Resource
+                    {
+                        Id = nextId++,
+                        Name = e.Name.Trim(),
+                        Type = ResourceType.Work,
+                        Kind = ResourceKind.Project,
+                        AvailabilityPercent = 100.0,
+                        MaxUnitsPerDay = 8.0,
+                        CostType = e.CostType == "Monthly" ? ResourceCostType.Monthly : ResourceCostType.Hourly,
+                        CostPerHour = e.HourlyRate,
+                        MonthlyRate = e.MonthlyRate
+                    });
+                    existingNames.Add(e.Name.Trim());
+                    count++;
+                }
+            }
+
             return count;
         }
 

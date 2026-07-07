@@ -62,10 +62,9 @@ if ($PSBoundParameters.ContainsKey('Configuration')) {
 }
 else {
     $exe = @(
-        Get-ExePath "Debug"
         Get-ExePath "Release"
+        Get-ExePath "Debug"
     ) | Where-Object { $null -ne $_ } |
-        Sort-Object { (Get-Item $_).LastWriteTime } -Descending |
         Select-Object -First 1
 
     if ($null -eq $exe) {

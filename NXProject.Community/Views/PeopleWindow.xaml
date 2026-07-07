@@ -31,6 +31,10 @@
                     Click="OnDeleteClick"/>
             <Button Content="{DynamicResource People_Recalc}" Width="160" Height="28" Margin="8,0,0,0"
                     Click="OnRecalcClick" ToolTip="{DynamicResource People_RecalcTip}"/>
+            <Button x:Name="DiscoveryTfsBtn" Content="{DynamicResource People_DiscoveryTfs}" Width="125" Height="28" Margin="8,0,0,0"
+                    Click="OnDiscoveryTfsClick" ToolTip="{DynamicResource People_DiscoveryTfsTip}"/>
+            <Button Content="{DynamicResource People_RemoveUnused}" Width="160" Height="28" Margin="8,0,0,0"
+                    Click="OnRemoveUnusedClick" ToolTip="{DynamicResource People_RemoveUnusedTip}"/>
             <Button Content="{DynamicResource People_SaveLocal}" Width="120" Height="28" Margin="16,0,0,0"
                     Click="OnSaveLocalClick"
                     Background="#5B3270" Foreground="White"

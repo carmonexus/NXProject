@@ -40,6 +40,40 @@ namespace NXProject.Services
             public string IdText => $"#{Id}";
         }
 
+        public sealed record DevOpsUserInfo(string Name, string Email);
+
+        private sealed record TfsAuthContext(
+            string OrgBase,
+            string TeamProject,
+            AuthenticationHeaderValue Authorization);
+
+        private static TfsAuthContext CreateTfsAuthContext(
+            TfsConnectionOptions options,
+            string purpose,
+            bool requireTeamProject = true)
+        {
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+
+            var orgBase = options.OrganizationUrl?.Trim().TrimEnd('/') ?? string.Empty;
+            var project = options.TeamProject?.Trim() ?? string.Empty;
+            var pat = options.PersonalAccessToken?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(orgBase) ||
+                (requireTeamProject && string.IsNullOrWhiteSpace(project)) ||
+                string.IsNullOrWhiteSpace(pat))
+            {
+                throw new InvalidOperationException(
+                    requireTeamProject
+                        ? $"Conexão DevOps incompleta para {purpose}: informe URL, Team Project e PAT."
+                        : $"Conexão DevOps incompleta para {purpose}: informe URL e PAT.");
+            }
+
+            var auth = new AuthenticationHeaderValue(
+                "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + pat)));
+            return new TfsAuthContext(orgBase, project, auth);
+        }
+
         // Nomes de exibicao dos campos customizados procurados, na ordem de
         // preferencia. O rotulo "HH Estimado" no formulario corresponde ao campo
         // "Esforço Estimado"; o inicio/fim sao "Data_Inicio"/"Data_Fim" (com
@@ -3327,6 +3361,18 @@ namespace NXProject.Services
             if (!wiqlResp.IsSuccessStatusCode)
             {
                 var err = await wiqlResp.Content.ReadAsStringAsync(ct);
+                if (wiqlResp.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                    wiqlResp.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    throw new InvalidOperationException(BuildDiscoveryTokenPermissionError(
+                        "Discovery de projetos DevOps",
+                        (int)wiqlResp.StatusCode,
+                        wiqlResp.ReasonPhrase,
+                        err,
+                        options.TeamProject,
+                        wiqlUrl));
+                }
+
                 throw new InvalidOperationException(
                     $"Falha no Discovery DevOps.\nURL: {wiqlUrl}\nStatus: {(int)wiqlResp.StatusCode} {wiqlResp.ReasonPhrase}\nResposta: {err}");
             }
@@ -3353,6 +3399,18 @@ namespace NXProject.Services
                 if (!batchResp.IsSuccessStatusCode)
                 {
                     var err = await batchResp.Content.ReadAsStringAsync(ct);
+                    if (batchResp.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                        batchResp.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                    {
+                        throw new InvalidOperationException(BuildDiscoveryTokenPermissionError(
+                            "Discovery de projetos DevOps",
+                            (int)batchResp.StatusCode,
+                            batchResp.ReasonPhrase,
+                            err,
+                            options.TeamProject,
+                            batchUrl));
+                    }
+
                     throw new InvalidOperationException(
                         $"Falha ao carregar detalhes dos itens do Discovery.\nURL: {batchUrl}\nStatus: {(int)batchResp.StatusCode} {batchResp.ReasonPhrase}\nResposta: {err}");
                 }
@@ -3372,6 +3430,662 @@ namespace NXProject.Services
                 }
             }
             return result;
+        }
+
+        /// <summary>
+        /// Busca pessoas via Identity Picker (o mesmo seletor de @mencao do DevOps).
+        /// Retorna null se a API nao respondeu com sucesso (para cair no fallback).
+        /// </summary>
+        private static async Task<List<DevOpsUserInfo>?> TryIdentityPickerAsync(
+            TfsAuthContext conn, string filter, CancellationToken ct, List<string> failures)
+        {
+            foreach (var orgBase in GetDevOpsApiBaseCandidates(conn.OrgBase))
+            {
+                var url = $"{orgBase.TrimEnd('/')}/_apis/IdentityPicker/Identities?api-version=5.2-preview.1";
+                try
+                {
+                    var payload = new
+                    {
+                        query = filter,
+                        identityTypes = new[] { "user" },
+                        operationScopes = new[] { "ims", "source" },
+                        properties = new[] { "DisplayName", "Account", "Mail", "SignInAddress", "SamAccountName" },
+                        options = new { MinResults = 5, MaxResults = 50 }
+                    };
+
+                    using var req = new HttpRequestMessage(HttpMethod.Post, url)
+                    {
+                        Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+                    };
+                    req.Headers.Authorization = conn.Authorization;
+
+                    using var resp = await Http.SendAsync(req, ct);
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        var body = await resp.Content.ReadAsStringAsync(ct);
+                        failures.Add($"[IdentityPicker] URL: {url}\nStatus HTTP: {(int)resp.StatusCode} {resp.ReasonPhrase}" +
+                                     (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nResposta: {TrimDiscoveryResponse(body)}"));
+                        continue;
+                    }
+
+                    var text = await resp.Content.ReadAsStringAsync(ct);
+                    using var doc = JsonDocument.Parse(text);
+                    if (!doc.RootElement.TryGetProperty("results", out var results) || results.ValueKind != JsonValueKind.Array)
+                        continue;
+
+                    var found = new Dictionary<string, DevOpsUserInfo>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var result in results.EnumerateArray())
+                    {
+                        if (!result.TryGetProperty("identities", out var ids) || ids.ValueKind != JsonValueKind.Array)
+                            continue;
+
+                        foreach (var id in ids.EnumerateArray())
+                        {
+                            var name = ReadPickerString(id, "displayName");
+                            var email = ReadPickerString(id, "signInAddress")
+                                        ?? ReadPickerString(id, "mail")
+                                        ?? ReadPickerString(id, "samAccountName");
+                            if (string.IsNullOrWhiteSpace(name))
+                                name = email;
+                            if (string.IsNullOrWhiteSpace(name))
+                                continue;
+
+                            var key = !string.IsNullOrWhiteSpace(email) ? email! : name!;
+                            found.TryAdd(key, new DevOpsUserInfo(name!.Trim(), (email ?? string.Empty).Trim()));
+                        }
+                    }
+
+                    if (found.Count > 0)
+                        return found.Values.OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"[IdentityPicker] URL: {url}\nExcecao: {ex.Message}");
+                }
+            }
+
+            return null;
+        }
+
+        private static string? ReadPickerString(JsonElement el, string prop)
+            => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String
+                ? v.GetString()
+                : null;
+
+        /// <summary>
+        /// Lista usuarios da organizacao pela Graph API (vssps). Usada quando o
+        /// filtro esta vazio. Retorna null se a API nao respondeu com sucesso.
+        /// </summary>
+        private static async Task<List<DevOpsUserInfo>?> TryGraphUsersAsync(
+            TfsAuthContext conn, CancellationToken ct, List<string> failures)
+        {
+            foreach (var vsspsBase in GetDevOpsIdentityApiBaseCandidates(conn.OrgBase))
+            {
+                if (!vsspsBase.Contains("vssps", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var url = $"{vsspsBase.TrimEnd('/')}/_apis/graph/users?api-version=6.0-preview.1";
+                try
+                {
+                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                    req.Headers.Authorization = conn.Authorization;
+
+                    using var resp = await Http.SendAsync(req, ct);
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        var body = await resp.Content.ReadAsStringAsync(ct);
+                        failures.Add($"[Graph] URL: {url}\nStatus HTTP: {(int)resp.StatusCode} {resp.ReasonPhrase}" +
+                                     (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nResposta: {TrimDiscoveryResponse(body)}"));
+                        continue;
+                    }
+
+                    var text = await resp.Content.ReadAsStringAsync(ct);
+                    using var doc = JsonDocument.Parse(text);
+                    if (!doc.RootElement.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array)
+                        continue;
+
+                    var found = new Dictionary<string, DevOpsUserInfo>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var u in value.EnumerateArray())
+                    {
+                        // Ignora identidades que nao sao de usuario real (grupos de servico etc.)
+                        var subjectKind = ReadPickerString(u, "subjectKind");
+                        if (!string.IsNullOrWhiteSpace(subjectKind) &&
+                            !subjectKind.Equals("user", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        var name = ReadPickerString(u, "displayName");
+                        var email = ReadPickerString(u, "mailAddress") ?? ReadPickerString(u, "principalName");
+                        if (string.IsNullOrWhiteSpace(name))
+                            name = email;
+                        if (string.IsNullOrWhiteSpace(name))
+                            continue;
+
+                        var key = !string.IsNullOrWhiteSpace(email) ? email! : name!;
+                        found.TryAdd(key, new DevOpsUserInfo(name!.Trim(), (email ?? string.Empty).Trim()));
+                        if (found.Count >= 200)
+                            break;
+                    }
+
+                    if (found.Count > 0)
+                        return found.Values.OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"[Graph] URL: {url}\nExcecao: {ex.Message}");
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Lista membros da organizacao pela Member Entitlement Management API (vsaex).
+        /// Usada quando o filtro esta vazio, como alternativa a Graph API.
+        /// </summary>
+        private static async Task<List<DevOpsUserInfo>?> TryUserEntitlementsAsync(
+            TfsAuthContext conn, CancellationToken ct, List<string> failures)
+        {
+            foreach (var vsaexBase in GetDevOpsVsaexBaseCandidates(conn.OrgBase))
+            {
+                var url = $"{vsaexBase.TrimEnd('/')}/_apis/userentitlements?top=200&api-version=6.0-preview.3";
+                try
+                {
+                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                    req.Headers.Authorization = conn.Authorization;
+
+                    using var resp = await Http.SendAsync(req, ct);
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        var body = await resp.Content.ReadAsStringAsync(ct);
+                        failures.Add($"[UserEntitlements] URL: {url}\nStatus HTTP: {(int)resp.StatusCode} {resp.ReasonPhrase}" +
+                                     (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nResposta: {TrimDiscoveryResponse(body)}"));
+                        continue;
+                    }
+
+                    var text = await resp.Content.ReadAsStringAsync(ct);
+                    using var doc = JsonDocument.Parse(text);
+                    // Resposta pode ter "members" (paginado) ou "value".
+                    if (!doc.RootElement.TryGetProperty("members", out var members) || members.ValueKind != JsonValueKind.Array)
+                        if (!doc.RootElement.TryGetProperty("value", out members) || members.ValueKind != JsonValueKind.Array)
+                            continue;
+
+                    var found = new Dictionary<string, DevOpsUserInfo>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var m in members.EnumerateArray())
+                    {
+                        var user = m.TryGetProperty("user", out var uEl) ? uEl : m;
+                        var name = ReadPickerString(user, "displayName");
+                        var email = ReadPickerString(user, "mailAddress") ?? ReadPickerString(user, "principalName");
+                        if (string.IsNullOrWhiteSpace(name))
+                            name = email;
+                        if (string.IsNullOrWhiteSpace(name))
+                            continue;
+
+                        var key = !string.IsNullOrWhiteSpace(email) ? email! : name!;
+                        found.TryAdd(key, new DevOpsUserInfo(name!.Trim(), (email ?? string.Empty).Trim()));
+                    }
+
+                    if (found.Count > 0)
+                        return found.Values.OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"[UserEntitlements] URL: {url}\nExcecao: {ex.Message}");
+                }
+            }
+
+            return null;
+        }
+
+        private static IEnumerable<string> GetDevOpsVsaexBaseCandidates(string orgBase)
+        {
+            orgBase = orgBase.TrimEnd('/');
+            if (Uri.TryCreate(orgBase, UriKind.Absolute, out var uri))
+            {
+                var host = uri.Host;
+                if (host.EndsWith(".visualstudio.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    var org = host[..^".visualstudio.com".Length];
+                    if (!string.IsNullOrWhiteSpace(org))
+                    {
+                        yield return $"https://vsaex.dev.azure.com/{org}";
+                        yield return $"https://{org}.vsaex.visualstudio.com";
+                    }
+                }
+                else if (host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    var org = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(org))
+                        yield return $"https://vsaex.dev.azure.com/{org}";
+                }
+            }
+        }
+
+        /// <summary>
+        /// Lista pessoas da organizacao paginando (User Entitlements + Graph) ate
+        /// <paramref name="maxResults"/>. Usada pelo seletor de pessoas para "trazer
+        /// tudo" ate um limite configuravel (a org pode ter centenas de milhares).
+        /// </summary>
+        public static async Task<List<DevOpsUserInfo>> FetchOrgUsersAsync(
+            TfsConnectionOptions options, int maxResults = 1000, CancellationToken ct = default)
+        {
+            if (maxResults <= 0) maxResults = 1000;
+            var conn = CreateTfsAuthContext(options, "Discovery", requireTeamProject: false);
+            var failures = new List<string>();
+            var users = new Dictionary<string, DevOpsUserInfo>(StringComparer.OrdinalIgnoreCase);
+
+            void Absorb(JsonElement member)
+            {
+                var user = member.TryGetProperty("user", out var uEl) ? uEl : member;
+                var name = ReadPickerString(user, "displayName");
+                var email = ReadPickerString(user, "mailAddress") ?? ReadPickerString(user, "principalName");
+                var subjectKind = ReadPickerString(user, "subjectKind");
+                if (!string.IsNullOrWhiteSpace(subjectKind) && !subjectKind.Equals("user", StringComparison.OrdinalIgnoreCase))
+                    return;
+                if (string.IsNullOrWhiteSpace(name)) name = email;
+                if (string.IsNullOrWhiteSpace(name)) return;
+                var key = !string.IsNullOrWhiteSpace(email) ? email! : name!;
+                users.TryAdd(key, new DevOpsUserInfo(name!.Trim(), (email ?? string.Empty).Trim()));
+            }
+
+            // 1) User Entitlements (vsaex), paginado por continuationToken.
+            foreach (var vsaexBase in GetDevOpsVsaexBaseCandidates(conn.OrgBase))
+            {
+                if (users.Count >= maxResults) break;
+                try
+                {
+                    string? continuation = null;
+                    var safety = 0;
+                    do
+                    {
+                        var url = $"{vsaexBase.TrimEnd('/')}/_apis/userentitlements?top=100&api-version=6.0-preview.3" +
+                                  (string.IsNullOrEmpty(continuation) ? string.Empty : $"&continuationToken={Uri.EscapeDataString(continuation)}");
+                        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                        req.Headers.Authorization = conn.Authorization;
+                        using var resp = await Http.SendAsync(req, ct);
+                        if (!resp.IsSuccessStatusCode)
+                        {
+                            var body = await resp.Content.ReadAsStringAsync(ct);
+                            failures.Add($"[UserEntitlements] URL: {url}\nStatus HTTP: {(int)resp.StatusCode} {resp.ReasonPhrase}" +
+                                         (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nResposta: {TrimDiscoveryResponse(body)}"));
+                            break;
+                        }
+
+                        var text = await resp.Content.ReadAsStringAsync(ct);
+                        using var doc = JsonDocument.Parse(text);
+                        JsonElement members = default;
+                        var hasMembers = (doc.RootElement.TryGetProperty("members", out members) && members.ValueKind == JsonValueKind.Array)
+                                         || (doc.RootElement.TryGetProperty("value", out members) && members.ValueKind == JsonValueKind.Array);
+                        if (!hasMembers) break;
+
+                        var before = users.Count;
+                        foreach (var m in members.EnumerateArray())
+                        {
+                            Absorb(m);
+                            if (users.Count >= maxResults) break;
+                        }
+                        if (users.Count >= maxResults) break;
+                        if (users.Count == before && members.GetArrayLength() == 0) break;
+
+                        continuation = doc.RootElement.TryGetProperty("continuationToken", out var ctk) && ctk.ValueKind == JsonValueKind.String
+                            ? ctk.GetString() : null;
+                        if (string.IsNullOrEmpty(continuation) && resp.Headers.TryGetValues("X-MS-ContinuationToken", out var hv))
+                            continuation = hv.FirstOrDefault();
+                    }
+                    while (!string.IsNullOrEmpty(continuation) && users.Count < maxResults && ++safety < 100000);
+
+                    if (users.Count > 0)
+                        return users.Values.OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"[UserEntitlements] Excecao: {ex.Message}");
+                }
+            }
+
+            // 2) Graph (vssps), paginado por X-MS-ContinuationToken.
+            foreach (var vsspsBase in GetDevOpsIdentityApiBaseCandidates(conn.OrgBase))
+            {
+                if (users.Count >= maxResults) break;
+                if (!vsspsBase.Contains("vssps", StringComparison.OrdinalIgnoreCase)) continue;
+                try
+                {
+                    string? continuation = null;
+                    var safety = 0;
+                    do
+                    {
+                        var url = $"{vsspsBase.TrimEnd('/')}/_apis/graph/users?api-version=6.0-preview.1" +
+                                  (string.IsNullOrEmpty(continuation) ? string.Empty : $"&continuationToken={Uri.EscapeDataString(continuation)}");
+                        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                        req.Headers.Authorization = conn.Authorization;
+                        using var resp = await Http.SendAsync(req, ct);
+                        if (!resp.IsSuccessStatusCode)
+                        {
+                            var body = await resp.Content.ReadAsStringAsync(ct);
+                            failures.Add($"[Graph] URL: {url}\nStatus HTTP: {(int)resp.StatusCode} {resp.ReasonPhrase}" +
+                                         (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nResposta: {TrimDiscoveryResponse(body)}"));
+                            break;
+                        }
+
+                        var text = await resp.Content.ReadAsStringAsync(ct);
+                        using var doc = JsonDocument.Parse(text);
+                        if (!doc.RootElement.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array) break;
+
+                        foreach (var u in value.EnumerateArray())
+                        {
+                            Absorb(u);
+                            if (users.Count >= maxResults) break;
+                        }
+                        if (users.Count >= maxResults) break;
+
+                        continuation = resp.Headers.TryGetValues("X-MS-ContinuationToken", out var hv) ? hv.FirstOrDefault() : null;
+                    }
+                    while (!string.IsNullOrEmpty(continuation) && users.Count < maxResults && ++safety < 100000);
+
+                    if (users.Count > 0)
+                        return users.Values.OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"[Graph] Excecao: {ex.Message}");
+                }
+            }
+
+            if (users.Count > 0)
+                return users.Values.OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+
+            throw new InvalidOperationException(BuildDiscoveryUserError(
+                0, "Org users listing failed", string.Join("\n\n---\n\n", failures), conn.TeamProject));
+        }
+
+        public static async Task<List<DevOpsUserInfo>> FetchUsersByFilterAsync(
+            TfsConnectionOptions options, string filter, CancellationToken ct = default)
+        {
+            const int maxResults = 50;
+
+            var conn = CreateTfsAuthContext(options, "Discovery", requireTeamProject: false);
+            filter = filter?.Trim() ?? string.Empty;
+            if (filter.Length > 30)
+                filter = filter[..30];
+
+            // 1) Identity Picker — mesma API usada pelo seletor de @mencao do DevOps.
+            //    Faz busca por substring de forma confiavel (inclusive orgs AAD).
+            //    So funciona com um termo de busca; filtro vazio cai no endpoint de identidades.
+            var failures = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                var picked = await TryIdentityPickerAsync(conn, filter, ct, failures);
+                if (picked is { Count: > 0 })
+                    return picked;
+            }
+            else
+            {
+                // Filtro vazio: lista os usuarios da organizacao (Graph + User Entitlements).
+                var all = await TryGraphUsersAsync(conn, ct, failures)
+                          ?? await TryUserEntitlementsAsync(conn, ct, failures);
+                if (all is { Count: > 0 })
+                    return all;
+            }
+
+            var users = new Dictionary<string, DevOpsUserInfo>(StringComparer.OrdinalIgnoreCase);
+            JsonDocument? doc = null;
+
+            foreach (var identityBase in GetDevOpsIdentityApiBaseCandidates(conn.OrgBase))
+            {
+                var url =
+                    $"{identityBase}/_apis/identities" +
+                    $"?searchFilter=General" +
+                    (string.IsNullOrWhiteSpace(filter) ? string.Empty : $"&filterValue={Uri.EscapeDataString(filter)}") +
+                    $"&queryMembership=None" +
+                    $"&{ApiVersion}";
+
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                req.Headers.Authorization = conn.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                var responseText = await resp.Content.ReadAsStringAsync(ct);
+                if (resp.IsSuccessStatusCode)
+                {
+                    doc = JsonDocument.Parse(responseText);
+                    break;
+                }
+
+                failures.Add(
+                    $"URL: {url}\nStatus HTTP: {(int)resp.StatusCode} {resp.ReasonPhrase}" +
+                    (string.IsNullOrWhiteSpace(responseText)
+                        ? string.Empty
+                        : $"\nResposta: {TrimDiscoveryResponse(responseText)}"));
+            }
+
+            if (doc == null)
+                throw new InvalidOperationException(BuildDiscoveryUserError(
+                    0,
+                    "Identity endpoint failed",
+                    string.Join("\n\n---\n\n", failures),
+                    conn.TeamProject));
+
+            using (doc)
+            {
+            if (!doc.RootElement.TryGetProperty("value", out var values) ||
+                values.ValueKind != JsonValueKind.Array)
+                return [];
+
+            foreach (var identity in values.EnumerateArray())
+            {
+                var name =
+                    ReadIdentitySearchProperty(identity, "displayName") ??
+                    ReadIdentitySearchProperty(identity, "providerDisplayName") ??
+                    ReadIdentitySearchProperty(identity, "customDisplayName") ??
+                    string.Empty;
+                var email =
+                    ReadIdentitySearchProperty(identity, "uniqueName") ??
+                    ReadIdentitySearchProperty(identity, "mail") ??
+                    ReadIdentitySearchProperty(identity, "Mail") ??
+                    ReadIdentitySearchProperty(identity, "Account") ??
+                    ReadIdentitySearchProperty(identity, "signInAddress") ??
+                    string.Empty;
+
+                if (string.IsNullOrWhiteSpace(name))
+                    name = email;
+                if (string.IsNullOrWhiteSpace(name))
+                    continue;
+                if (!string.IsNullOrWhiteSpace(filter) && !MatchesUserFilter(name, email, filter))
+                    continue;
+
+                var key = !string.IsNullOrWhiteSpace(email) ? email : name;
+                users.TryAdd(key, new DevOpsUserInfo(name.Trim(), (email ?? string.Empty).Trim()));
+                if (users.Count >= maxResults)
+                    break;
+            }
+            }
+
+            return users.Values
+                .OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        private static IEnumerable<string> GetDevOpsApiBaseCandidates(string orgBase)
+        {
+            orgBase = orgBase.TrimEnd('/');
+            yield return orgBase;
+
+            if (orgBase.Contains(".visualstudio.com", StringComparison.OrdinalIgnoreCase) &&
+                !orgBase.EndsWith("/DefaultCollection", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return $"{orgBase}/DefaultCollection";
+            }
+        }
+
+        private static IEnumerable<string> GetDevOpsIdentityApiBaseCandidates(string orgBase)
+        {
+            orgBase = orgBase.TrimEnd('/');
+            yield return orgBase;
+
+            if (Uri.TryCreate(orgBase, UriKind.Absolute, out var uri))
+            {
+                var host = uri.Host;
+                if (host.EndsWith(".visualstudio.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    var org = host[..^".visualstudio.com".Length];
+                    if (!string.IsNullOrWhiteSpace(org))
+                    {
+                        yield return $"https://vssps.dev.azure.com/{org}";
+                        yield return $"https://{org}.vssps.visualstudio.com";
+                    }
+                }
+                else if (host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    var org = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(org))
+                        yield return $"https://vssps.dev.azure.com/{org}";
+                }
+            }
+
+            if (orgBase.Contains(".visualstudio.com", StringComparison.OrdinalIgnoreCase) &&
+                !orgBase.EndsWith("/DefaultCollection", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return $"{orgBase}/DefaultCollection";
+            }
+        }
+
+        private static bool MatchesUserFilter(string? name, string? email, string filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+                return false;
+
+            return (!string.IsNullOrWhiteSpace(name) &&
+                    name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                   (!string.IsNullOrWhiteSpace(email) &&
+                    email.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private static string? ReadIdentitySearchProperty(JsonElement identity, string name)
+        {
+            if (identity.TryGetProperty(name, out var direct))
+                return ReadIdentitySearchValue(direct);
+
+            if (identity.TryGetProperty("properties", out var props) &&
+                props.ValueKind == JsonValueKind.Object &&
+                props.TryGetProperty(name, out var prop))
+            {
+                return ReadIdentitySearchValue(prop);
+            }
+
+            return null;
+        }
+
+        private static string? ReadIdentitySearchValue(JsonElement value)
+        {
+            if (value.ValueKind == JsonValueKind.String)
+                return value.GetString();
+
+            if (value.ValueKind == JsonValueKind.Object)
+            {
+                if (value.TryGetProperty("$value", out var typedValue) &&
+                    typedValue.ValueKind == JsonValueKind.String)
+                    return typedValue.GetString();
+                if (value.TryGetProperty("value", out var plainValue) &&
+                    plainValue.ValueKind == JsonValueKind.String)
+                    return plainValue.GetString();
+            }
+
+            return null;
+        }
+
+        private static string TrimDiscoveryResponse(string response)
+        {
+            if (string.IsNullOrWhiteSpace(response))
+                return string.Empty;
+
+            var compact = Regex.Replace(response, "<.*?>", " ");
+            compact = Regex.Replace(compact, @"\s+", " ").Trim();
+            if (string.IsNullOrWhiteSpace(compact))
+                compact = response.Trim();
+
+            const int max = 700;
+            return compact.Length <= max ? compact : compact[..max] + "...";
+        }
+
+        private static string BuildDiscoveryUserError(int statusCode, string? reason, string response, string project, string? url = null)
+        {
+            var scope = string.IsNullOrWhiteSpace(project)
+                ? "Escopo: organização"
+                : $"Projeto configurado: {project}";
+            var urlText = string.IsNullOrWhiteSpace(url)
+                ? string.Empty
+                : $"URL: {url}\n\n";
+
+            if (statusCode == 401)
+            {
+                return BuildDiscoveryTokenPermissionError(
+                    "Discovery de pessoas DevOps/TFS",
+                    statusCode,
+                    reason,
+                    response,
+                    project,
+                    url);
+            }
+
+            if (statusCode == 403)
+            {
+                if (!string.IsNullOrWhiteSpace(url) &&
+                    url.Contains("/_apis/identities", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BuildDiscoveryTokenPermissionError(
+                        "Discovery de pessoas DevOps/TFS",
+                        statusCode,
+                        reason,
+                        response,
+                        project,
+                        url);
+                }
+
+                return
+                    "O Azure DevOps/TFS autenticou o token, mas bloqueou o acesso aos work items deste projeto.\n\n" +
+                    urlText +
+                    $"Status HTTP: {statusCode} {reason}\n\n" +
+                    "Verifique se o usuário dono do PAT tem acesso ao Team Project e permissão para ler Work Items.\n\n" +
+                    scope +
+                    (string.IsNullOrWhiteSpace(response) ? string.Empty : $"\n\nResposta: {response}");
+            }
+
+            return
+                $"Falha no Discovery de usuários DevOps.\n\n" +
+                urlText +
+                $"Status: {statusCode} {reason}\n" +
+                (string.IsNullOrWhiteSpace(response) ? string.Empty : $"Resposta: {response}");
+        }
+
+        private static string BuildDiscoveryTokenPermissionError(
+            string action,
+            int statusCode,
+            string? reason,
+            string response,
+            string project,
+            string? url = null)
+        {
+            var scope = string.IsNullOrWhiteSpace(project)
+                ? "Projeto configurado: (não informado)"
+                : $"Projeto configurado: {project}";
+            var technical = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(url))
+                technical.AppendLine($"URL: {url}");
+            if (statusCode > 0)
+                technical.AppendLine($"Detalhe técnico: HTTP {statusCode} {reason}");
+            if (!string.IsNullOrWhiteSpace(response))
+            {
+                technical.AppendLine("Resposta técnica:");
+                technical.AppendLine(response);
+            }
+
+            return
+                $"Não foi possível autenticar no Azure DevOps/TFS para executar: {action}.\n\n" +
+                "Atualize o Personal Access Token (PAT) desta organização e salve novamente no NXProject com a opção de lembrar token.\n\n" +
+                "No Azure DevOps, habilite no PAT:\n" +
+                "- Identity: Read (necessário para Discovery de pessoas)\n" +
+                "- Work Items: Read ou Work Items: Read & Write (necessário para cronograma, importação, sync e Discovery de projetos)\n\n" +
+                "Se o token já foi alterado no portal, cole o novo valor na configuração TFS/DevOps do NXProject e salve.\n\n" +
+                scope +
+                (technical.Length == 0 ? string.Empty : $"\n\n{technical.ToString().TrimEnd()}");
         }
 
         private static bool IsStoryType(string? type) =>

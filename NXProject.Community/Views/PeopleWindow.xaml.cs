@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -104,6 +105,224 @@ namespace NXProject.Views
             MarkDirty(AppStrings.Get("People_PersonAdded"));
         }
 
+        private void OnDiscoveryTfsClick(object sender, RoutedEventArgs e)
+        {
+            CommitPendingEdits();
+
+            var options = TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(options.OrganizationUrl) ||
+                string.IsNullOrWhiteSpace(options.TeamProject) ||
+                string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+            {
+                MessageBox.Show(AppStrings.Get("People_DiscoveryNoConnection"), AppStrings.Get("People_Title"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Busca no servidor por termo (a org pode ter centenas de milhares de usuarios;
+            // nunca listamos tudo). O erro de cada busca aparece na propria tela do seletor.
+            var picker = new DiscoveryPeoplePickerWindow(
+                term => TfsImportService.FetchUsersByFilterAsync(options, term),
+                limit => TfsImportService.FetchOrgUsersAsync(options, limit),
+                onSearchError: ex => ShowDiscoveryErrorDialog(ex, options)) { Owner = this };
+
+            if (picker.ShowDialog() != true || picker.SelectedUsers.Count == 0)
+                return;
+
+            var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var resource in _vm.Project.Resources)
+            {
+                if (!string.IsNullOrWhiteSpace(resource.Email))
+                    existing.Add(resource.Email.Trim());
+                if (!string.IsNullOrWhiteSpace(resource.Name))
+                    existing.Add(resource.Name.Trim());
+            }
+
+            var nextId = _vm.Project.Resources.Count > 0
+                ? _vm.Project.Resources.Max(r => r.Id) + 1
+                : 1;
+            var added = 0;
+
+            foreach (var user in picker.SelectedUsers)
+            {
+                var name = user.Name.Trim();
+                var email = user.Email.Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    continue;
+
+                var key = !string.IsNullOrWhiteSpace(email) ? email : name;
+                if (existing.Contains(key) || existing.Contains(name))
+                    continue;
+
+                _vm.Project.Resources.Add(new Resource
+                {
+                    Id = nextId++,
+                    Name = name,
+                    Email = string.IsNullOrWhiteSpace(email) ? null : email,
+                    Type = ResourceType.Work,
+                    Kind = ResourceKind.Project,
+                    AvailabilityPercent = 100.0,
+                    MaxUnitsPerDay = 8.0,
+                    IsImportedFromTfs = true
+                });
+
+                existing.Add(key);
+                existing.Add(name);
+                added++;
+            }
+
+            Refresh();
+            if (added > 0)
+                MarkDirty(AppStrings.Get("People_DiscoveryAdded", added, picker.SelectedUsers.Count));
+            else
+                StatusText.Text = AppStrings.Get("People_DiscoveryNone", picker.SelectedUsers.Count);
+        }
+
+        private void OnRemoveUnusedClick(object sender, RoutedEventArgs e)
+        {
+            CommitPendingEdits();
+
+            // Ids de recursos que possuem pelo menos uma atividade no cronograma.
+            var usedIds = new HashSet<int>();
+            foreach (var t in ProjectTasks())
+                foreach (var a in t.Resources)
+                    usedIds.Add(a.ResourceId);
+
+            var toRemove = _vm.Project.Resources.Where(r => !usedIds.Contains(r.Id)).ToList();
+            if (toRemove.Count == 0)
+            {
+                StatusText.Text = AppStrings.Get("People_RemoveUnusedNone");
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                AppStrings.Get("People_RemoveUnusedConfirm", toRemove.Count),
+                AppStrings.Get("People_RemoveUnusedTitle"),
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes)
+                return;
+
+            foreach (var r in toRemove)
+                _vm.Project.Resources.Remove(r);
+
+            Refresh();
+            MarkDirty(AppStrings.Get("People_RemoveUnusedDone", toRemove.Count));
+        }
+
+        internal void ShowDiscoveryErrorDialog(Exception ex, TfsConnectionOptions options)
+        {
+            var log = BuildDiscoveryErrorLog(ex, options);
+
+            var window = new Window
+            {
+                Title = AppStrings.Get("People_DiscoveryTfs"),
+                Owner = this,
+                Width = 760,
+                Height = 520,
+                MinWidth = 560,
+                MinHeight = 360,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Background = Brushes.White
+            };
+
+            var root = new Grid { Margin = new Thickness(16) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var intro = new TextBlock
+            {
+                Text = AppStrings.Get("People_DiscoveryLogIntro"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 10),
+                Foreground = new SolidColorBrush(Color.FromRgb(60, 60, 60))
+            };
+            Grid.SetRow(intro, 0);
+            root.Children.Add(intro);
+
+            var logBox = new TextBox
+            {
+                Text = log,
+                IsReadOnly = true,
+                AcceptsReturn = true,
+                AcceptsTab = true,
+                TextWrapping = TextWrapping.NoWrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 12
+            };
+            Grid.SetRow(logBox, 1);
+            root.Children.Add(logBox);
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+
+            var copy = new Button
+            {
+                Content = AppStrings.Get("People_CopyLog"),
+                Width = 110,
+                Height = 30,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+            copy.Click += (_, _) =>
+            {
+                Clipboard.SetText(log);
+                copy.Content = AppStrings.Get("People_LogCopied");
+            };
+
+            var close = new Button
+            {
+                Content = AppStrings.Get("People_Close"),
+                Width = 90,
+                Height = 30,
+                IsCancel = true
+            };
+            close.Click += (_, _) => window.Close();
+
+            buttons.Children.Add(copy);
+            buttons.Children.Add(close);
+            Grid.SetRow(buttons, 2);
+            root.Children.Add(buttons);
+
+            window.Content = root;
+            window.ShowDialog();
+        }
+
+        private static string BuildDiscoveryErrorLog(Exception ex, TfsConnectionOptions options)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("NXProject - TFS Discovery People diagnostic");
+            sb.AppendLine($"DateLocal: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"OrganizationUrl: {options.OrganizationUrl}");
+            sb.AppendLine($"TeamProject: {options.TeamProject}");
+            sb.AppendLine($"RootWorkItemId: {options.RootWorkItemId}");
+            sb.AppendLine($"HasPAT: {!string.IsNullOrWhiteSpace(options.PersonalAccessToken)}");
+            sb.AppendLine($"PATLength: {(options.PersonalAccessToken ?? string.Empty).Length}");
+            sb.AppendLine($"PATTrimmedLength: {(options.PersonalAccessToken?.Trim() ?? string.Empty).Length}");
+            sb.AppendLine();
+            sb.AppendLine($"ExceptionType: {ex.GetType().FullName}");
+            sb.AppendLine("Message:");
+            sb.AppendLine(ex.Message);
+
+            if (ex.InnerException != null)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"InnerExceptionType: {ex.InnerException.GetType().FullName}");
+                sb.AppendLine("InnerMessage:");
+                sb.AppendLine(ex.InnerException.Message);
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("StackTrace:");
+            sb.AppendLine(ex.StackTrace ?? "(empty)");
+            return sb.ToString();
+        }
+
         private void OnDeleteClick(object sender, RoutedEventArgs e)
         {
             if (PeopleGrid.SelectedItem is not PersonRow row)
@@ -185,17 +404,17 @@ namespace NXProject.Views
 
             try
             {
+                var before = _vm.Project.Resources.Count;
                 int n = NXProject.Services.ResourceCostConfigService.Load(
-                    fileDlg.FileName, _vm.Project.Resources, pwdDlg.Password);
+                    fileDlg.FileName, _vm.Project.Resources, pwdDlg.Password, addMissing: true);
 
-                foreach (var row in _rows)
-                {
-                    var r = row.Resource;
-                    row.CostTypeLabel = r.CostType.ToString();
-                    row.HourlyRate    = r.CostPerHour;
-                    row.MonthlyRate   = r.MonthlyRate;
-                }
-                StatusText.Text = AppStrings.Get("People_CostLoaded", n);
+                var added = _vm.Project.Resources.Count - before;
+                // Reconstroi as linhas: aplica os custos e inclui as pessoas novas do arquivo.
+                Refresh();
+                if (added > 0)
+                    MarkDirty(AppStrings.Get("People_CostLoadedAdded", n, added));
+                else
+                    StatusText.Text = AppStrings.Get("People_CostLoaded", n);
             }
             catch (System.Security.Cryptography.CryptographicException)
             {

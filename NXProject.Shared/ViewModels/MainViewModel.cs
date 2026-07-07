@@ -96,6 +96,7 @@ namespace NXProject.ViewModels
         [ObservableProperty] private bool _showOriginalHoursColumn = false;
         [ObservableProperty] private string _hiddenColumns = "";
         [ObservableProperty] private string _hiddenColumnsExpanded = "";
+        [ObservableProperty] private double _projectPercent = 0.0;
 
         public ObservableCollection<string> ZoomLevels { get; } = new()
         {
@@ -186,6 +187,56 @@ namespace NXProject.ViewModels
             SelectedTask = selectedModel == null
                 ? null
                 : FlatTasks.FirstOrDefault(vm => vm.Model == selectedModel);
+        }
+
+        public double RecalculateProjectPercent()
+        {
+            ProjectPercent = CalculateProjectPercent(Project.Tasks);
+            return ProjectPercent;
+        }
+
+        public static double CalculateProjectPercent(IEnumerable<ProjectTask> tasks)
+        {
+            var leaves = ProjectLeaves(tasks).Where(t => !t.IsMilestone).ToList();
+            if (leaves.Count == 0)
+                return 0.0;
+
+            var totalWeight = leaves.Sum(GetProjectPercentWeight);
+            return totalWeight > 0
+                ? leaves.Sum(t => GetProjectPercentWeight(t) * Math.Clamp(t.PercentComplete, 0.0, 100.0)) / totalWeight
+                : leaves.Average(t => Math.Clamp(t.PercentComplete, 0.0, 100.0));
+        }
+
+        private static IEnumerable<ProjectTask> ProjectLeaves(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var task in tasks)
+            {
+                if (!task.IsSummary || task.Children.Count == 0)
+                {
+                    yield return task;
+                    continue;
+                }
+
+                foreach (var child in ProjectLeaves(task.Children))
+                    yield return child;
+            }
+        }
+
+        private static double GetProjectPercentWeight(ProjectTask task)
+        {
+            if (task.OriginalEstimatedHours is > 0)
+                return task.OriginalEstimatedHours.Value;
+
+            var current = task.CurrentHours ?? 0;
+            var remaining = task.EstimatedHours ?? 0;
+            if (current > 0 || remaining > 0)
+                return current + remaining;
+
+            if (task.DurationHours > 0)
+                return task.DurationHours;
+
+            var calendarHours = ProjectCalendarService.CountWorkingHours(task.Start, task.Finish);
+            return calendarHours > 0 ? calendarHours : 1.0;
         }
 
         private static void RecalculateLeafFinishesFromAssignments(IEnumerable<ProjectTask> tasks)

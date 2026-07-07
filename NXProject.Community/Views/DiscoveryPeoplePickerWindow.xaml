@@ -1,0 +1,101 @@
+<Window x:Class="NXProject.Views.DiscoveryPeoplePickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource PeoplePick_Title}"
+        Width="660" Height="560"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        MinWidth="520" MinHeight="380"
+        Background="White">
+
+    <Border Padding="20">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Titulo -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                <TextBlock Text="{DynamicResource PeoplePick_Title}"
+                           FontSize="16" FontWeight="SemiBold" Foreground="#2B579A"/>
+                <TextBlock Text="{DynamicResource PeoplePick_ServerHint}"
+                           FontSize="12" Foreground="#666" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- Status de carregamento -->
+            <Border x:Name="LoadingPanel" Grid.Row="1" Background="#EFF3FB" BorderBrush="#C7D8F0"
+                    BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,10"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="StatusText" Text="{DynamicResource PeoplePick_Loading}"
+                           FontSize="12" Foreground="#2B579A" VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- Filtro (na lista) + Buscar no DevOps -->
+            <Grid Grid.Row="2" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{DynamicResource PeoplePick_SearchLabel}"
+                           VerticalAlignment="Center" FontSize="12" Foreground="#555" Margin="0,0,8,0"/>
+                <TextBox x:Name="FilterBox" Grid.Column="1" Height="28" FontSize="12"
+                         VerticalContentAlignment="Center" ToolTip="{DynamicResource PeoplePick_SearchHint}"
+                         TextChanged="OnFilterChanged" KeyDown="OnFilterKeyDown"/>
+                <Button x:Name="ServerSearchButton" Grid.Column="2"
+                        Content="{DynamicResource PeoplePick_ServerSearch}"
+                        Height="28" Padding="12,0" Margin="8,0,0,0" Click="OnServerSearchClick"/>
+            </Grid>
+
+            <!-- Grid com checkboxes -->
+            <DataGrid x:Name="PeopleGrid" Grid.Row="3"
+                      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                      SelectionMode="Single" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                      BorderBrush="#D9E1EA" BorderThickness="1"
+                      RowBackground="White" AlternatingRowBackground="#F9FAFB"
+                      ColumnHeaderHeight="32" RowHeight="28" IsReadOnly="False">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="{DynamicResource PeoplePick_ColAdd}" Width="60" CanUserResize="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="{DynamicResource PeoplePick_ColName}" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="{DynamicResource PeoplePick_ColEmail}" Binding="{Binding Email}" Width="260" IsReadOnly="True"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Selecao rapida + limite de carga -->
+            <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock x:Name="CountText" Text="" FontSize="11" Foreground="#555" VerticalAlignment="Center"/>
+                <Button Content="{DynamicResource PeoplePick_SelectAll}" Height="26" Padding="10,0" Margin="12,0,0,0"
+                        FontSize="11" Click="OnSelectVisibleClick"/>
+                <Button Content="{DynamicResource PeoplePick_ClearAll}" Height="26" Padding="10,0" Margin="6,0,0,0"
+                        FontSize="11" Click="OnClearAllClick"/>
+                <TextBlock Text="{DynamicResource PeoplePick_LimitLabel}" VerticalAlignment="Center"
+                           FontSize="11" Foreground="#555" Margin="18,0,4,0"/>
+                <TextBox x:Name="LimitBox" Width="70" Height="26" FontSize="11" Text="1000"
+                         VerticalContentAlignment="Center"/>
+                <Button x:Name="ReloadButton" Content="{DynamicResource PeoplePick_Reload}" Height="26" Padding="10,0"
+                        Margin="6,0,0,0" FontSize="11" Click="OnReloadClick"/>
+            </StackPanel>
+
+            <!-- Botoes -->
+            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button x:Name="AddButton" Content="{DynamicResource PeoplePick_Add}"
+                        Height="32" Padding="14,0" IsDefault="True"
+                        Background="#2B579A" Foreground="White" Click="OnAddClick"/>
+                <Button Content="{DynamicResource PeoplePick_Cancel}" Width="100" Height="32" Margin="10,0,0,0"
+                        IsCancel="True"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

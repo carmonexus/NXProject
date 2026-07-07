@@ -103,6 +103,7 @@ namespace NXProject.Views
             StoryFilterBox.ItemsSource = new[] { "(Todas)" };
             StoryFilterBox.SelectedIndex = 0;
             StoryFilterBox.IsEnabled = false;
+            UpdateStoryResponsible();
 
             BuscarButton.IsEnabled = false;
             StatusText.Text = AppStrings.Get("TLR_SelectAndSearch");
@@ -227,6 +228,9 @@ namespace NXProject.Views
             if (sender is TaskReviewRow row && e.PropertyName != nameof(TaskReviewRow.IsSelected)
                                              && e.PropertyName != nameof(TaskReviewRow.InSchedule))
             {
+                if (e.PropertyName == nameof(TaskReviewRow.AssignedToDisplay))
+                    row.AssignedTo = row.AssignedToDisplay;
+
                 row.IsDirty = true;
                 SaveChangesButton.IsEnabled = _allRows.Any(r => r.IsDirty);
                 DirtyHint.Visibility = SaveChangesButton.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
@@ -346,6 +350,7 @@ namespace NXProject.Views
             StoryFilterBox.SelectedItem = selectedStory?.Name is { Length: > 0 } && stories.Contains(selectedStory.Name)
                 ? selectedStory.Name
                 : "(Todas)";
+            UpdateStoryResponsible();
         }
 
         private static ProjectTask? FindAncestorOrSelf(ProjectTask task, string tfsType)
@@ -380,6 +385,7 @@ namespace NXProject.Views
             StoryFilterBox.ItemsSource = new[] { "(Todas)" };
             StoryFilterBox.SelectedIndex = 0;
             StoryFilterBox.IsEnabled = false;
+            UpdateStoryResponsible();
 
             BuscarButton.IsEnabled = true;
         }
@@ -396,7 +402,7 @@ namespace NXProject.Views
                 var storyNames = new[] { "(Todas)" }.Concat(filtered.Distinct().OrderBy(s => s)).ToList();
                 StoryFilterBox.ItemsSource = storyNames;
                 StoryFilterBox.SelectedIndex = 0;
-                _view?.Refresh(); RefreshRowNumbers(); UpdateTotals();
+                _view?.Refresh(); RefreshRowNumbers(); UpdateTotals(); UpdateStoryResponsible();
                 return;
             }
 
@@ -420,11 +426,31 @@ namespace NXProject.Views
             StoryFilterBox.ItemsSource = new[] { "(Todas)" }.Concat(FilterByProgress(_storyTaskList).Select(TaskLabel)).ToList();
             StoryFilterBox.SelectedIndex = 0;
             StoryFilterBox.IsEnabled = true;
+            UpdateStoryResponsible();
             BuscarButton.IsEnabled = true;
         }
 
-        private void OnStoryFilterChanged(object sender, SelectionChangedEventArgs e) { _view?.Refresh(); RefreshRowNumbers(); UpdateTotals(); }
+        private void OnStoryFilterChanged(object sender, SelectionChangedEventArgs e) { _view?.Refresh(); RefreshRowNumbers(); UpdateTotals(); UpdateStoryResponsible(); }
         private void OnStateFilterChanged(object sender, SelectionChangedEventArgs e) { _view?.Refresh(); RefreshRowNumbers(); UpdateTotals(); }
+
+        private void UpdateStoryResponsible()
+        {
+            if (StoryResponsibleText == null) return;
+            StoryResponsibleText.Text = GetSelectedStoryResponsible();
+        }
+
+        private string GetSelectedStoryResponsible()
+        {
+            var selected = StoryFilterBox?.SelectedItem as string;
+            var story = !string.IsNullOrWhiteSpace(selected) && selected != "(Todas)"
+                ? _stories.Concat(_storyTaskList).FirstOrDefault(s => s.Name == StripLabel(selected))
+                : (_stories.Count == 1 ? _stories[0] : null);
+
+            var responsible = story?.Resources.FirstOrDefault()?.Resource?.DisplayName
+                              ?? story?.Resources.FirstOrDefault()?.Resource?.Name;
+
+            return string.IsNullOrWhiteSpace(responsible) ? "-" : responsible;
+        }
 
         private async void OnBuscarClick(object sender, RoutedEventArgs e)
         {
@@ -505,6 +531,9 @@ namespace NXProject.Views
 
         private async Task SaveDirtyRowsAsync()
         {
+            TasksGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            TasksGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
             var dirty = _allRows.Where(r => r.IsDirty).ToList();
             if (dirty.Count == 0) return;
 
@@ -522,7 +551,9 @@ namespace NXProject.Views
                         estimatedHours: row.EstimatedHours,
                         completedHours: row.CompletedHours,
                         priority: row.Priority,
-                        assignedTo: row.AssignedTo,
+                        // Responsavel vazio e aceito: nao envia System.AssignedTo e nao bloqueia
+                        // o salvamento das demais edicoes da linha.
+                        assignedTo: ResolveAssignedTo(row),
                         state: row.State,
                         title: row.Title,
                         activity: row.Activity,
@@ -616,6 +647,18 @@ namespace NXProject.Views
             var story = GetCurrentDevOpsStory();
             if (story?.TfsId is not > 0 || !TfsImportService.IsStoryTypePublic(story.TfsType))
                 return;
+
+            // Salva as edicoes pendentes online ANTES de criar a nova task e recarregar,
+            // senao o LoadAsync recarrega do DevOps e perde a atividade em edicao.
+            await SaveDirtyRowsAsync();
+
+            // Se alguma edicao nao pode ser salva, nao recarrega (evita perder as alteracoes).
+            if (_allRows.Any(r => r.IsDirty))
+            {
+                MessageBox.Show(AppStrings.Get("TLR_SavePendingFailed"),
+                    AppStrings.Get("TLR_IncludeTaskTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             IncludeTaskButton.IsEnabled = false;
             StatusText.Text = AppStrings.Get("TLR_CreatingTask", story.Name);
@@ -730,8 +773,16 @@ namespace NXProject.Views
                 cb.DataContext is TaskReviewRow row)
             {
                 row.AssignedToDisplay = name;
+                row.AssignedTo = name;
                 row.IsDirty = true;
             }
+        }
+
+        private static string ResolveAssignedTo(TaskReviewRow row)
+        {
+            var assigned = row.AssignedTo?.Trim() ?? "";
+            var display = row.AssignedToDisplay?.Trim() ?? "";
+            return string.IsNullOrWhiteSpace(assigned) ? display : assigned;
         }
 
         private void OnGridContextMenuOpened(object sender, RoutedEventArgs e)
