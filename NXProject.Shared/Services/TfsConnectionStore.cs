@@ -277,6 +277,9 @@ namespace NXProject.Services
                     ? options.FinishFieldName : stored.FinishFieldName.Trim();
                 options.PercAlocFieldName = string.IsNullOrWhiteSpace(stored.PercAlocFieldName)
                     ? options.PercAlocFieldName : stored.PercAlocFieldName.Trim();
+                // Migração: nome antigo acentuado → ASCII (o campo no TFS é Perc_Alocacao).
+                if (string.Equals(options.PercAlocFieldName, "Perc_Alocação", StringComparison.Ordinal))
+                    options.PercAlocFieldName = "Perc_Alocacao";
                 options.PercConclusaoFieldName = string.IsNullOrWhiteSpace(stored.PercConclusaoFieldName)
                     ? options.PercConclusaoFieldName : stored.PercConclusaoFieldName.Trim();
                 options.SyncVersionFieldName = string.IsNullOrWhiteSpace(stored.SyncVersionFieldName)
