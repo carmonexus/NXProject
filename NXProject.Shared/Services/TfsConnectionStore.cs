@@ -79,8 +79,8 @@ namespace NXProject.Services
         /// <summary>Nome do campo de percentual de alocação do recurso na Story (ex.: "Perc_Alocação").</summary>
         public string PercAlocFieldName { get; set; } = "Perc_Alocação";
 
-        /// <summary>Nome do campo de percentual de conclusão da Story (ex.: "Perc_Conclusao").</summary>
-        public string PercConclusaoFieldName { get; set; } = "Perc_Conclusao";
+        /// <summary>Nome do campo de percentual de conclusão da Story (ex.: "Perc_Concluido").</summary>
+        public string PercConclusaoFieldName { get; set; } = "Perc_Concluido";
 
         /// <summary>Campo inteiro que armazena a versão de sincronização (controle de concorrência).</summary>
         public string SyncVersionFieldName { get; set; } = "Sync_version";
@@ -222,7 +222,7 @@ namespace NXProject.Services
             public string StartFieldName { get; set; } = "Data_Inicio";
             public string FinishFieldName { get; set; } = "Data_Fim";
             public string PercAlocFieldName { get; set; } = "Perc_Alocação";
-            public string PercConclusaoFieldName { get; set; } = "Perc_Conclusao";
+            public string PercConclusaoFieldName { get; set; } = "Perc_Concluido";
             public string SyncVersionFieldName { get; set; } = "Sync_version";
             public string SyncNameFieldName { get; set; } = "Sync_Name";
             public string FixedStartTagName { get; set; } = "DT-INI-NEG";
@@ -326,7 +326,7 @@ namespace NXProject.Services
                 StartFieldName = string.IsNullOrWhiteSpace(options.StartFieldName) ? "Data_Inicio" : options.StartFieldName.Trim(),
                 FinishFieldName = string.IsNullOrWhiteSpace(options.FinishFieldName) ? "Data_Fim" : options.FinishFieldName.Trim(),
                 PercAlocFieldName = string.IsNullOrWhiteSpace(options.PercAlocFieldName) ? "Perc_Alocação" : options.PercAlocFieldName.Trim(),
-                PercConclusaoFieldName = string.IsNullOrWhiteSpace(options.PercConclusaoFieldName) ? "Perc_Conclusao" : options.PercConclusaoFieldName.Trim(),
+                PercConclusaoFieldName = string.IsNullOrWhiteSpace(options.PercConclusaoFieldName) ? "Perc_Concluido" : options.PercConclusaoFieldName.Trim(),
                 SyncVersionFieldName = string.IsNullOrWhiteSpace(options.SyncVersionFieldName) ? "Sync_version" : options.SyncVersionFieldName.Trim(),
                 SyncNameFieldName = string.IsNullOrWhiteSpace(options.SyncNameFieldName) ? "Sync_Name" : options.SyncNameFieldName.Trim(),
                 FixedStartTagName = string.IsNullOrWhiteSpace(options.FixedStartTagName) ? "DT-INI-NEG" : options.FixedStartTagName.Trim(),

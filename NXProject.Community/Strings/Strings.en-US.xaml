@@ -471,6 +471,7 @@
     <sys:String x:Key="Status_PdfStarted">PDF generation flow started.</sys:String>
     <sys:String x:Key="Msg_ClearProjectTitle">Close project</sys:String>
     <sys:String x:Key="Msg_ClearProjectBody">Close the current project? All tasks and resources will be removed (save first if needed).</sys:String>
+    <sys:String x:Key="Msg_CloseSaveBody">There are unsaved changes. Save before closing the project?&#10;&#10;Yes = save and close · No = close without saving · Cancel = stay in the project.</sys:String>
     <sys:String x:Key="Status_NewProject">New project created.</sys:String>
     <sys:String x:Key="Status_ProjectAlreadyClean">Project is already empty.</sys:String>
     <sys:String x:Key="Status_ProjectClearCancelled">Project close cancelled.</sys:String>

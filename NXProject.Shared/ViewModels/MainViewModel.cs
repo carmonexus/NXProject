@@ -907,34 +907,39 @@ namespace NXProject.ViewModels
             StatusMessage = AppStrings.Get("Status_NewProject");
         }
 
+        // Fecha o projeto atual: oferece salvar as alterações e depois volta a um
+        // projeto novo (vazio), como o comando Novo.
         [RelayCommand]
         private void ClearProject()
         {
-            if (Project.Tasks.Count == 0 && Project.Resources.Count == 0)
+            bool hasContent = Project.Tasks.Count > 0 || Project.Resources.Count > 0;
+
+            if (hasContent && Project.IsDirty)
             {
-                StatusMessage = AppStrings.Get("Status_ProjectAlreadyClean");
-                return;
+                var ans = MessageBox.Show(
+                    AppStrings.Get("Msg_CloseSaveBody"),
+                    AppStrings.Get("Msg_ClearProjectTitle"),
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (ans == MessageBoxResult.Cancel)
+                {
+                    StatusMessage = AppStrings.Get("Status_ProjectClearCancelled");
+                    return;
+                }
+                if (ans == MessageBoxResult.Yes)
+                {
+                    SaveProject();
+                    if (Project.IsDirty)   // salvar cancelado → aborta o fechamento
+                    {
+                        StatusMessage = AppStrings.Get("Status_ProjectClearCancelled");
+                        return;
+                    }
+                }
+                // Não → descarta as alterações
             }
 
-            var confirm = MessageBox.Show(
-                AppStrings.Get("Msg_ClearProjectBody"),
-                AppStrings.Get("Msg_ClearProjectTitle"),
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (confirm != MessageBoxResult.Yes)
-            {
-                StatusMessage = AppStrings.Get("Status_ProjectClearCancelled");
-                return;
-            }
-
-            Project.Tasks.Clear();
-            Project.Resources.Clear();
-            Project.IsDirty = true;
-            _nextId = 1;
-            _collapsedTaskIds.Clear();
-            SelectedTask = null;
-            RebuildFlatTasks();
+            NewProject();
             StatusMessage = AppStrings.Get("Status_ProjectCleared");
         }
 

@@ -1385,6 +1385,25 @@ namespace NXProject.ViewModels
             }
         }
 
+        /// <summary>
+        /// Remove TODAS as predecessoras (inclusive as não resolvidas / fora do
+        /// projeto — work items do TFS que não estão no cronograma) e limpa o
+        /// destaque amarelo. Reusa a lógica do setter de PredecessorsText.
+        /// </summary>
+        public void ClearAllPredecessors()
+        {
+            if (_task.PredecessorIds.Count == 0 && !_task.HasBrokenPredecessorLink)
+                return;
+
+            // Setter vazio já limpa os IDs (inclusive os não resolvidos) e recalcula início.
+            PredecessorsText = string.Empty;
+
+            _task.HasBrokenPredecessorLink = false;
+            OnPropertyChanged(nameof(PredecessorsText));
+            OnPropertyChanged(nameof(HasUnresolvedPredecessor));
+            OnPropertyChanged(nameof(HasBrokenPredecessorLink));
+        }
+
         private bool CanUsePredecessor(TaskViewModel? predecessor)
         {
             if (IsNoDevOpsActivity || predecessor == null)

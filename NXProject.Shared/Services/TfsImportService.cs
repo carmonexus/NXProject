@@ -97,7 +97,7 @@ namespace NXProject.Services
         private static readonly string[] PercAlocFieldNames =
             { "Perc_Alocação", "Perc_Aloc", "PercAloc", "Perc Aloc", "Percentual Alocacao", "Percentual_Alocacao" };
         private static readonly string[] PercConclusaoFieldNames =
-            { "Perc_Conclusao", "Perc_Conclusão", "PercConclusao", "Percentual Conclusao", "Percentual_Conclusao" };
+            { "Perc_Concluido", "Perc_Concluído", "Perc_Conclusao", "Perc_Conclusão", "PercConcluido", "PercConclusao", "Percentual Conclusao", "Percentual_Conclusao" };
         private static readonly string[] TipoCentroCustoFieldNames =
             { "Tipo_Centro_Custo", "TipoCentroCusto", "Tipo Centro Custo" };
 

@@ -266,6 +266,7 @@
     <sys:String x:Key="Status_PdfStarted">Fluxo de geração de PDF iniciado.</sys:String>
     <sys:String x:Key="Msg_ClearProjectTitle">Fechar projeto</sys:String>
     <sys:String x:Key="Msg_ClearProjectBody">Deseja fechar o projeto atual? Todas as tarefas e recursos serão removidos (salve antes, se necessário).</sys:String>
+    <sys:String x:Key="Msg_CloseSaveBody">Há alterações não salvas. Deseja salvar antes de fechar o projeto?&#10;&#10;Sim = salvar e fechar · Não = fechar sem salvar · Cancelar = continuar no projeto.</sys:String>
     <sys:String x:Key="Status_NewProject">Novo projeto criado.</sys:String>
     <sys:String x:Key="Status_ProjectAlreadyClean">O projeto ja esta limpo.</sys:String>
     <sys:String x:Key="Status_ProjectClearCancelled">Fechamento do projeto cancelado.</sys:String>

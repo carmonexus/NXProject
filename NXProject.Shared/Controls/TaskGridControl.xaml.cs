@@ -1215,6 +1215,25 @@ namespace NXProject.Controls
             HighlightPredecessorsRequested?.Invoke(null!);
         }
 
+        // Limpa TODAS as predecessoras da atividade (inclusive as fora do projeto,
+        // amarelas — work items do TFS que não estão no cronograma).
+        private void OnClearPredecessorsClick(object sender, RoutedEventArgs e)
+        {
+            var vm = GetTaskViewModelFromContextSender(sender);
+            if (vm == null) return;
+            e.Handled = true;
+
+            vm.ClearAllPredecessors();
+            if (_highlightSourceTaskId == vm.Model.Id)
+                ClearHighlightState();
+
+            if (DataContext is ViewModels.MainViewModel mainVm)
+            {
+                mainVm.Project.IsDirty = true;
+                mainVm.RebuildFlatTasks();
+            }
+        }
+
         private void OnTaskGridSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_highlightSourceTaskId.HasValue) return;
