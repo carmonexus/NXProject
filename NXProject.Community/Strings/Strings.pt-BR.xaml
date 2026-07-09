@@ -5,7 +5,7 @@
     <!-- Menu Arquivo -->
     <sys:String x:Key="Menu_File">_Arquivo</sys:String>
     <sys:String x:Key="Menu_File_New">_Novo Projeto</sys:String>
-    <sys:String x:Key="Menu_File_Clear">_Limpar Projeto</sys:String>
+    <sys:String x:Key="Menu_File_Clear">_Fechar Projeto</sys:String>
     <sys:String x:Key="Menu_File_Open">_Abrir...</sys:String>
     <sys:String x:Key="Menu_File_Save">_Salvar</sys:String>
     <sys:String x:Key="Menu_File_SaveAs">Salvar _Como...</sys:String>
@@ -93,7 +93,7 @@
 
     <!-- Toolbar tooltips -->
     <sys:String x:Key="Toolbar_NewProject">Novo Projeto</sys:String>
-    <sys:String x:Key="Toolbar_ClearProject">Limpar Projeto</sys:String>
+    <sys:String x:Key="Toolbar_ClearProject">Fechar Projeto</sys:String>
     <sys:String x:Key="Toolbar_Open">Abrir</sys:String>
     <sys:String x:Key="Toolbar_Save">Salvar</sys:String>
     <sys:String x:Key="Toolbar_AddTask">Adicionar Tarefa</sys:String>
@@ -264,12 +264,12 @@
     <sys:String x:Key="Status_TaskNotFoundInHierarchy">Atividade selecionada não encontrada na hierarquia.</sys:String>
     <sys:String x:Key="Status_PrintSent">Documento enviado para impressão.</sys:String>
     <sys:String x:Key="Status_PdfStarted">Fluxo de geração de PDF iniciado.</sys:String>
-    <sys:String x:Key="Msg_ClearProjectTitle">Limpar projeto</sys:String>
-    <sys:String x:Key="Msg_ClearProjectBody">Deseja remover todas as tarefas e recursos do projeto atual?</sys:String>
+    <sys:String x:Key="Msg_ClearProjectTitle">Fechar projeto</sys:String>
+    <sys:String x:Key="Msg_ClearProjectBody">Deseja fechar o projeto atual? Todas as tarefas e recursos serão removidos (salve antes, se necessário).</sys:String>
     <sys:String x:Key="Status_NewProject">Novo projeto criado.</sys:String>
     <sys:String x:Key="Status_ProjectAlreadyClean">O projeto ja esta limpo.</sys:String>
-    <sys:String x:Key="Status_ProjectClearCancelled">Limpeza do projeto cancelada.</sys:String>
-    <sys:String x:Key="Status_ProjectCleared">Projeto limpo.</sys:String>
+    <sys:String x:Key="Status_ProjectClearCancelled">Fechamento do projeto cancelado.</sys:String>
+    <sys:String x:Key="Status_ProjectCleared">Projeto fechado.</sys:String>
     <sys:String x:Key="Status_RecalcError">Erro ao recalcular datas apos troca de recurso.</sys:String>
     <sys:String x:Key="Status_DatesRecalculated">Datas recalculadas considerando alocacao e disponibilidade.</sys:String>
     <sys:String x:Key="Status_CalendarApplied">Calendario aplicado ao cronograma.</sys:String>
@@ -441,7 +441,9 @@
     <sys:String x:Key="Imp_Cancel">Cancelar</sys:String>
     <sys:String x:Key="Imp_NoConnectionStatus">Conexão com o Azure DevOps não configurada. Clique em "Configurar..." acima.</sys:String>
     <sys:String x:Key="Imp_ErrorTitle">Erro na importação do Azure DevOps</sys:String>
-    <sys:String x:Key="Sync_ProjectTargetInfo">A sincronização vai usar o projeto deste cronograma:&#10;&#10;Team Project: {0}&#10;Organização: {1}&#10;&#10;(diferente da configuração global atual). Continuar?</sys:String>
+    <sys:String x:Key="Sync_ConfirmBody">Sincronizar com o Azure DevOps?&#10;&#10;Projeto (Work Item raiz): {0} ({1})&#10;Team Project (contêiner DevOps): {2}&#10;Organização: {3}&#10;&#10;Isto vai atualizar os work items vinculados (título/descrição, horas e datas conforme as regras).</sys:String>
+    <sys:String x:Key="Sync_ConfirmDiffersNote">Atenção: este projeto é diferente do configurado globalmente. A sincronização vai usar o projeto acima (do cronograma aberto).</sys:String>
+    <sys:String x:Key="Sync_NoRootProject">(sem projeto vinculado)</sys:String>
     <sys:String x:Key="Imp_AuthError">Falha de autenticação com o Azure DevOps. Verifique se o PAT (token) é válido, não expirou e tem os escopos necessários (Work Items - Read &amp; Write), e se a URL da organização e o Team Project estão corretos.</sys:String>
     <sys:String x:Key="Imp_OpenTokensPrompt">Deseja abrir a página de tokens (PAT) do Azure DevOps para gerar/renovar o token agora?</sys:String>
     <sys:String x:Key="Imp_EmptyResult">Nenhum item foi importado. Verifique: o ID do work item raiz (tipo Project), as permissões do PAT no projeto, e se o nível de backlog "Project" está habilitado no Azure DevOps.</sys:String>
@@ -1634,7 +1636,7 @@
     <sys:String x:Key="Main_CustomizeColumns">Customizar colunas...</sys:String>
     <sys:String x:Key="Main_CriticalPath">Caminho Crítico — Ver atividades críticas...</sys:String>
     <sys:String x:Key="Main_DisableBaseline">Desativar Baseline</sys:String>
-    <sys:String x:Key="Main_Clear">Limpar</sys:String>
+    <sys:String x:Key="Main_Clear">Fechar</sys:String>
     <sys:String x:Key="Main_ImportTip">Importar do Azure DevOps — monta o cronograma a partir de Epics, Features e Stories</sys:String>
     <sys:String x:Key="Main_SyncTip">Sincronizar com Azure DevOps — envia alterações e atualiza datas/estados</sys:String>
     <sys:String x:Key="Main_CreateMilestone">Criar marco</sys:String>

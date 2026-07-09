@@ -154,7 +154,7 @@
     <sys:String x:Key="Main_CustomizeColumns">Customize columns...</sys:String>
     <sys:String x:Key="Main_CriticalPath">Critical Path — View critical activities...</sys:String>
     <sys:String x:Key="Main_DisableBaseline">Disable Baseline</sys:String>
-    <sys:String x:Key="Main_Clear">Clear</sys:String>
+    <sys:String x:Key="Main_Clear">Close</sys:String>
     <sys:String x:Key="Main_ImportTip">Import from Azure DevOps — builds the schedule from Epics, Features and Stories</sys:String>
     <sys:String x:Key="Main_SyncTip">Sync with Azure DevOps — sends changes and updates dates/states</sys:String>
     <sys:String x:Key="Main_CreateMilestone">Create milestone</sys:String>
@@ -217,7 +217,7 @@
     <!-- File Menu -->
     <sys:String x:Key="Menu_File">_File</sys:String>
     <sys:String x:Key="Menu_File_New">_New Project</sys:String>
-    <sys:String x:Key="Menu_File_Clear">_Clear Project</sys:String>
+    <sys:String x:Key="Menu_File_Clear">_Close Project</sys:String>
     <sys:String x:Key="Menu_File_Open">_Open...</sys:String>
     <sys:String x:Key="Menu_File_Save">_Save</sys:String>
     <sys:String x:Key="Menu_File_SaveAs">Save _As...</sys:String>
@@ -305,7 +305,7 @@
 
     <!-- Toolbar tooltips -->
     <sys:String x:Key="Toolbar_NewProject">New Project</sys:String>
-    <sys:String x:Key="Toolbar_ClearProject">Clear Project</sys:String>
+    <sys:String x:Key="Toolbar_ClearProject">Close Project</sys:String>
     <sys:String x:Key="Toolbar_Open">Open</sys:String>
     <sys:String x:Key="Toolbar_Save">Save</sys:String>
     <sys:String x:Key="Toolbar_AddTask">Add Task</sys:String>
@@ -469,12 +469,12 @@
     <sys:String x:Key="Status_TaskNotFoundInHierarchy">Selected task not found in hierarchy.</sys:String>
     <sys:String x:Key="Status_PrintSent">Document sent to printer.</sys:String>
     <sys:String x:Key="Status_PdfStarted">PDF generation flow started.</sys:String>
-    <sys:String x:Key="Msg_ClearProjectTitle">Clear project</sys:String>
-    <sys:String x:Key="Msg_ClearProjectBody">Remove all tasks and resources from the current project?</sys:String>
+    <sys:String x:Key="Msg_ClearProjectTitle">Close project</sys:String>
+    <sys:String x:Key="Msg_ClearProjectBody">Close the current project? All tasks and resources will be removed (save first if needed).</sys:String>
     <sys:String x:Key="Status_NewProject">New project created.</sys:String>
     <sys:String x:Key="Status_ProjectAlreadyClean">Project is already empty.</sys:String>
-    <sys:String x:Key="Status_ProjectClearCancelled">Project clear cancelled.</sys:String>
-    <sys:String x:Key="Status_ProjectCleared">Project cleared.</sys:String>
+    <sys:String x:Key="Status_ProjectClearCancelled">Project close cancelled.</sys:String>
+    <sys:String x:Key="Status_ProjectCleared">Project closed.</sys:String>
     <sys:String x:Key="Status_RecalcError">Error recalculating dates after resource change.</sys:String>
     <sys:String x:Key="Status_DatesRecalculated">Dates recalculated considering allocation and availability.</sys:String>
     <sys:String x:Key="Status_CalendarApplied">Calendar applied to the schedule.</sys:String>
@@ -646,7 +646,9 @@
     <sys:String x:Key="Imp_Cancel">Cancel</sys:String>
     <sys:String x:Key="Imp_NoConnectionStatus">Azure DevOps connection not configured. Click "Configure..." above.</sys:String>
     <sys:String x:Key="Imp_ErrorTitle">Azure DevOps import error</sys:String>
-    <sys:String x:Key="Sync_ProjectTargetInfo">Synchronization will use this schedule's project:&#10;&#10;Team Project: {0}&#10;Organization: {1}&#10;&#10;(different from the current global configuration). Continue?</sys:String>
+    <sys:String x:Key="Sync_ConfirmBody">Synchronize with Azure DevOps?&#10;&#10;Project (root Work Item): {0} ({1})&#10;Team Project (DevOps container): {2}&#10;Organization: {3}&#10;&#10;This will update the linked work items (title/description, hours and dates per the rules).</sys:String>
+    <sys:String x:Key="Sync_ConfirmDiffersNote">Note: this project is different from the globally configured one. Synchronization will use the project above (from the open schedule).</sys:String>
+    <sys:String x:Key="Sync_NoRootProject">(no linked project)</sys:String>
     <sys:String x:Key="Imp_AuthError">Authentication with Azure DevOps failed. Check that the PAT (token) is valid, not expired and has the required scopes (Work Items - Read &amp; Write), and that the organization URL and Team Project are correct.</sys:String>
     <sys:String x:Key="Imp_OpenTokensPrompt">Open the Azure DevOps tokens (PAT) page to create/renew the token now?</sys:String>
     <sys:String x:Key="Imp_EmptyResult">No items were imported. Check: the root work item ID (Project type), the PAT permissions on the project, and whether the "Project" backlog level is enabled in Azure DevOps.</sys:String>

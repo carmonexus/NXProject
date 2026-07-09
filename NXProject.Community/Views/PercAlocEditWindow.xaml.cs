@@ -22,7 +22,8 @@ public partial class PercAlocEditWindow : Window
 
         TaskNameText.Text = taskName;
         RangeText.Text    = AppStrings.Get("PercAloc_Range", _maxPercent);
-        PercAlocBox.Text  = ((int)currentPercent).ToString();
+        // % de alocação exibido com até 2 casas decimais.
+        PercAlocBox.Text  = Math.Round(currentPercent, 2).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
         // HH/dia pré-preenchido
         var hpd = ProjectCalendarService.WorkingHoursPerDay * currentPercent / 100.0;
@@ -54,9 +55,9 @@ public partial class PercAlocEditWindow : Window
             return;
         }
 
-        var perc = (int)Math.Round(hh / ProjectCalendarService.WorkingHoursPerDay * 100.0);
+        var perc = Math.Round(hh / ProjectCalendarService.WorkingHoursPerDay * 100.0, 2);
         perc = Math.Clamp(perc, 1, _maxPercent);
-        PercAlocBox.Text = perc.ToString();
+        PercAlocBox.Text = perc.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
         HideError();
         PercAlocBox.Focus();
         PercAlocBox.SelectAll();
@@ -100,10 +101,11 @@ public partial class PercAlocEditWindow : Window
             return;
         }
 
-        // % = horas necessárias / horas disponíveis × 100 (trunca para não antecipar a data)
-        int perc = (int)(hours / availableHours * 100.0);
+        // % = horas necessárias / horas disponíveis × 100.
+        // Trunca para 2 casas (piso) para não antecipar a data.
+        double perc = Math.Floor(hours / availableHours * 100.0 * 100.0) / 100.0;
         perc = Math.Clamp(perc, 1, _maxPercent);
-        PercAlocBox.Text = perc.ToString();
+        PercAlocBox.Text = perc.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
         // Também atualiza o HH/dia correspondente
         var hpd = ProjectCalendarService.WorkingHoursPerDay * perc / 100.0;
@@ -126,7 +128,9 @@ public partial class PercAlocEditWindow : Window
 
     private void OnOk(object sender, RoutedEventArgs e)
     {
-        if (!int.TryParse(PercAlocBox.Text, out var v) || v < 1 || v > _maxPercent)
+        var raw = PercAlocBox.Text.Replace(',', '.').Trim();
+        if (!double.TryParse(raw, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var v) || v < 1 || v > _maxPercent)
         {
             ShowError(AppStrings.Get("PercAloc_RangeError", _maxPercent));
             PercAlocBox.Focus();
@@ -134,7 +138,8 @@ public partial class PercAlocEditWindow : Window
             return;
         }
 
-        ResultPercent = v;
+        // Persiste com até 2 casas decimais.
+        ResultPercent = Math.Round(v, 2);
         DialogResult  = true;
     }
 

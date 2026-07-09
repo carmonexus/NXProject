@@ -832,14 +832,14 @@ namespace NXProject.Services
 
                         if (typePercAloc != null)
                         {
-                            var primaryAloc = task.Resources.Count > 0 ? task.Resources[0].AllocationPercent : 100.0;
-                            var primaryAlocInt = (int)Math.Round(primaryAloc);
+                            // % de alocação é decimal (2 casas) no NXProject/XML/TFS.
+                            var primaryAloc = task.Resources.Count > 0 ? Math.Round(task.Resources[0].AllocationPercent, 2) : 100.0;
                             var currentAloc = ReadDouble(wi, typePercAloc);
-                            if (currentAloc == null || Math.Abs(currentAloc.Value - primaryAloc) > 0.5)
+                            if (currentAloc == null || Math.Abs(currentAloc.Value - primaryAloc) > 0.005)
                             {
-                                ops.Add(PatchAdd($"/fields/{typePercAloc}", primaryAlocInt));
-                                var oldA = currentAloc.HasValue ? $"{currentAloc.Value:0}%→" : "";
-                                changes.Add($"% aloc.: {oldA}{primaryAlocInt}%");
+                                ops.Add(PatchAdd($"/fields/{typePercAloc}", primaryAloc));
+                                var oldA = currentAloc.HasValue ? $"{currentAloc.Value:0.##}%→" : "";
+                                changes.Add($"% aloc.: {oldA}{primaryAloc:0.##}%");
                             }
                         }
 
@@ -1899,8 +1899,9 @@ namespace NXProject.Services
 
                 if (percAlocRef != null)
                 {
-                    var primaryAloc = task.Resources.Count > 0 ? task.Resources[0].AllocationPercent : 100.0;
-                    ops.Add(PatchAdd($"/fields/{percAlocRef}", (int)Math.Round(primaryAloc)));
+                    // % de alocação decimal (2 casas) na criação no DevOps.
+                    var primaryAloc = task.Resources.Count > 0 ? Math.Round(task.Resources[0].AllocationPercent, 2) : 100.0;
+                    ops.Add(PatchAdd($"/fields/{percAlocRef}", primaryAloc));
                 }
 
                 if (startRef != null && task.Start > DateTime.MinValue.AddYears(1))

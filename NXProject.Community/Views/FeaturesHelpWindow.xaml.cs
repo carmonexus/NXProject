@@ -558,7 +558,7 @@ namespace NXProject.Views
                      "• Data_Inicio — data de início planejada. Tipo: Data e Hora.\n" +
                      "• Data_Fim — data de término planejada. Tipo: Data e Hora.\n\n" +
                      "Campos exclusivos da Story:\n" +
-                     "• Perc_Alocação — percentual do dia útil dedicado a esta Story (afeta a data de término). Tipo: Inteiro (1–100).\n" +
+                     "• Perc_Alocação — percentual do dia útil dedicado a esta Story (afeta a data de término). Tipo: Decimal/Float (1–100, até 2 casas decimais).\n" +
                      "• Perc_Conclusao — percentual de conclusão (lido na importação, gravado na sincronização). Tipo: Inteiro (0–100).\n\n" +
                      "Campos de controle de concorrência (Story, Feature e Epic):\n" +
                      "• Sync_version — contador de versão, gerenciado automaticamente pelo NXProject. Tipo: Inteiro.\n" +
@@ -1252,7 +1252,7 @@ namespace NXProject.Views
                      "• Data_Inicio — planned start date. Type: Date and Time.\n" +
                      "• Data_Fim — planned finish date. Type: Date and Time.\n\n" +
                      "Story-only fields:\n" +
-                     "• Perc_Alocação — % of the person's working day dedicated to this Story (affects finish date). Type: Integer (1–100).\n" +
+                     "• Perc_Alocação — % of the person's working day dedicated to this Story (affects finish date). Type: Decimal/Float (1–100, up to 2 decimal places).\n" +
                      "• Perc_Conclusao — % completion (read on import, written on sync). Type: Integer (0–100).\n\n" +
                      "Concurrency control fields (Story, Feature and Epic):\n" +
                      "• Sync_version — version counter, auto-managed by NXProject. Type: Integer.\n" +

@@ -97,7 +97,7 @@
                          Width="80" Height="32" FontSize="14"
                          TextAlignment="Center" Padding="6,4"
                          VerticalContentAlignment="Center"
-                         PreviewTextInput="OnPreviewTextInput"/>
+                         PreviewTextInput="OnPreviewDecimalInput"/>
                 <TextBlock Text="%"
                            FontSize="14" Foreground="#444"
                            VerticalAlignment="Center" Margin="6,0,0,0"/>

@@ -1333,6 +1333,7 @@ namespace NXProject.Views
             // no projeto errado ao alternar entre cronogramas. O PAT continua o da config.
             var projOrg  = vm.Project.DevOpsOrganizationUrl?.Trim();
             var projTeam = vm.Project.DevOpsTeamProject?.Trim();
+            bool targetDiffers = false;
             if (!string.IsNullOrWhiteSpace(projOrg) || !string.IsNullOrWhiteSpace(projTeam))
             {
                 var connOrg  = options.OrganizationUrl?.Trim() ?? "";
@@ -1340,17 +1341,9 @@ namespace NXProject.Views
                 if (!string.IsNullOrWhiteSpace(projOrg))  options.OrganizationUrl = projOrg;
                 if (!string.IsNullOrWhiteSpace(projTeam)) options.TeamProject = projTeam;
 
-                bool differs =
+                targetDiffers =
                     (!string.IsNullOrWhiteSpace(projTeam) && !string.Equals(connTeam, projTeam, StringComparison.OrdinalIgnoreCase)) ||
                     (!string.IsNullOrWhiteSpace(projOrg)  && !string.Equals(connOrg, projOrg, StringComparison.OrdinalIgnoreCase));
-                if (differs)
-                {
-                    var proceed = MessageBox.Show(
-                        AppStrings.Get("Sync_ProjectTargetInfo", options.TeamProject ?? "", options.OrganizationUrl ?? ""),
-                        "Sincronizar TFS/DevOps", MessageBoxButton.OKCancel, MessageBoxImage.Information);
-                    if (proceed != MessageBoxResult.OK)
-                        return;
-                }
             }
 
             if (string.IsNullOrWhiteSpace(options.OrganizationUrl) ||
@@ -1363,8 +1356,19 @@ namespace NXProject.Views
                 return;
             }
 
+            // Confirmação mostra o PROJETO (work item raiz) + Team Project e organização.
+            var rootName = string.IsNullOrWhiteSpace(vm.Project.DevOpsProjectName)
+                ? AppStrings.Get("Sync_NoRootProject")
+                : vm.Project.DevOpsProjectName!;
+            var rootId = vm.Project.DevOpsRootWorkItemId > 0
+                ? "#" + vm.Project.DevOpsRootWorkItemId
+                : "-";
+            var confirmBody = AppStrings.Get("Sync_ConfirmBody",
+                rootName, rootId, options.TeamProject ?? "", options.OrganizationUrl ?? "");
+            if (targetDiffers)
+                confirmBody += "\n\n" + AppStrings.Get("Sync_ConfirmDiffersNote");
             var confirm = MessageBox.Show(
-                "Isto vai atualizar os work items vinculados no DevOps (título/descrição, horas, e datas conforme as regras). Continuar?",
+                confirmBody,
                 "Sincronizar TFS/DevOps", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.OK)
                 return;
