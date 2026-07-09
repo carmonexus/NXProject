@@ -50,6 +50,7 @@ namespace NXProject.Views
             ProjectCalendarService.Load("NXProject.Community");
             StatusLogoImage.Source = ProtectedLogoProvider.GetLogoImage();
             var vm = new MainViewModel("NXProject.Community");
+            vm.ConfirmCompleteOutsideSprint = ConfirmCompleteOutsideSprint;
             DataContext = vm;
 
             // Atualiza o banner quando um projeto é aberto/carregado ou FlatTasks muda
@@ -2611,7 +2612,7 @@ namespace NXProject.Views
                 return;
 
             var durations = vm.CaptureTaskWorkingDurations();
-            var control = new Controls.CalendarSettingsControl("NXProject.Community");
+            var control = new Controls.CalendarSettingsControl("NXProject.Community", vm.Project);
             var window = new Window
             {
                 Title = "Calendario de trabalho",
@@ -2661,6 +2662,46 @@ namespace NXProject.Views
                 return;
 
             new StoryStatusChartWindow(vm) { Owner = this }.ShowDialog();
+        }
+
+        private bool ConfirmCompleteOutsideSprint(NXProject.ViewModels.TaskViewModel task, NXProject.Models.Sprint sprint)
+        {
+            const string fmt = "dd/MM/yyyy";
+            var finish = NXProject.Services.ProjectCalendarService
+                .GetInclusiveFinishDate(task.Model.Start, task.Model.Finish);
+            var msg = AppStrings.Get("Complete_OutOfSprintConfirm",
+                task.Model.Name,
+                sprint.Name,
+                sprint.Start.ToString(fmt), sprint.End.ToString(fmt),
+                task.Model.Start.ToString(fmt), finish.ToString(fmt));
+            var res = MessageBox.Show(this, msg,
+                AppStrings.Get("Complete_OutOfSprintTitle"),
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            return res == MessageBoxResult.Yes;
+        }
+
+        private void OnFixOutOfPeriodSprintsClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainViewModel vm)
+                return;
+
+            var fixes = vm.GetOutOfPeriodSprintFixes();
+            if (fixes.Count == 0)
+            {
+                MessageBox.Show(this, AppStrings.Get("FixSprints_None"),
+                    AppStrings.Get("FixSprints_Title"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new FixSprintsWindow(fixes) { Owner = this };
+            if (dialog.ShowDialog() != true)
+                return;
+
+            var applied = vm.ApplyOutOfPeriodSprintFixes(fixes);
+            MessageBox.Show(this, AppStrings.Get("FixSprints_Done", applied),
+                AppStrings.Get("FixSprints_Title"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void OnHierarchyColorPaletteClick(object sender, RoutedEventArgs e)

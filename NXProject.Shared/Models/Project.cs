@@ -71,6 +71,14 @@ namespace NXProject.Models
         // Recursos do projeto
         public ObservableCollection<Resource> Resources { get; set; } = new();
 
+        /// <summary>
+        /// Calendário embutido no cronograma (dias úteis, feriados, horas/dia).
+        /// Quando presente, é usado no lugar do calendário Geral (da máquina) e
+        /// viaja junto no arquivo .nxp. NUNCA é sincronizado com o TFS/DevOps.
+        /// Null = usa o calendário Geral da máquina.
+        /// </summary>
+        public ProjectCalendar? Calendar { get; set; }
+
         // Justificativas de gaps no cronograma de recursos
         public List<GapJustification> GapJustifications { get; set; } = new();
 

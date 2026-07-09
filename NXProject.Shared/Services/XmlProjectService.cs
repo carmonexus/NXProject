@@ -52,6 +52,7 @@ namespace NXProject.Services
                     SaveSprintSettingsMetadata(sprintProfile),
                     SaveSprints(project.Sprints),
                     SaveResources(project.Resources),
+                    SaveCalendar(project.Calendar),
                     SaveTasks(project.Tasks)
                 )
             );
@@ -93,6 +94,42 @@ namespace NXProject.Services
             return el;
         }
 
+        // Calendário embutido no cronograma (opcional). Retorna null quando o
+        // projeto não tem calendário próprio (usa o Geral da máquina).
+        private static XElement? SaveCalendar(NXProject.Models.ProjectCalendar? cal)
+        {
+            if (cal == null) return null;
+            var el = new XElement(EXT + "Calendar",
+                new XElement(EXT + "WorkingHoursPerDay", cal.WorkingHoursPerDay),
+                new XElement(EXT + "TreatSaturdayAsWorkday", cal.TreatSaturdayAsWorkday),
+                new XElement(EXT + "TreatSundayAsWorkday", cal.TreatSundayAsWorkday));
+            var holidays = new XElement(EXT + "Holidays");
+            foreach (var h in cal.Holidays)
+                holidays.Add(new XElement(EXT + "Holiday",
+                    new XElement(EXT + "Date", h.Date.ToString("yyyy-MM-dd")),
+                    new XElement(EXT + "Name", h.Name ?? "")));
+            el.Add(holidays);
+            return el;
+        }
+
+        private static NXProject.Models.ProjectCalendar? LoadCalendar(XElement root)
+        {
+            var el = root.Element(EXT + "Calendar");
+            if (el == null) return null;
+            var cal = new NXProject.Models.ProjectCalendar
+            {
+                WorkingHoursPerDay = ParseDouble(el.Element(EXT + "WorkingHoursPerDay")?.Value) ?? 8.0,
+                TreatSaturdayAsWorkday = bool.TryParse(el.Element(EXT + "TreatSaturdayAsWorkday")?.Value, out var sat) && sat,
+                TreatSundayAsWorkday = bool.TryParse(el.Element(EXT + "TreatSundayAsWorkday")?.Value, out var sun) && sun
+            };
+            foreach (var h in el.Element(EXT + "Holidays")?.Elements(EXT + "Holiday") ?? Enumerable.Empty<XElement>())
+            {
+                if (DateTime.TryParse(h.Element(EXT + "Date")?.Value, out var d))
+                    cal.Holidays.Add(new NXProject.Models.ProjectHoliday { Date = d, Name = h.Element(EXT + "Name")?.Value ?? "" });
+            }
+            return cal;
+        }
+
         private static XElement SaveResources(ObservableCollection<Resource> resources)
         {
             var el = new XElement(NS + "Resources");
@@ -108,7 +145,8 @@ namespace NXProject.Services
                     new XElement(NS + "Notes", r.Notes ?? ""),
                     new XElement(EXT + "IsImportedFromTfs", r.IsImportedFromTfs),
                     new XElement(EXT + "Kind", r.Kind.ToString()),
-                    new XElement(EXT + "AvailabilityPercent", r.AvailabilityPercent)
+                    new XElement(EXT + "AvailabilityPercent", r.AvailabilityPercent),
+                    new XElement(EXT + "Team", r.Team ?? "")
                     // CostType, CostPerHour e MonthlyRate NÃO são gravados no .nxp (sigilosos)
                     // → usar "Salvar config de custo" na tela Pessoas para persistir separadamente
                 ));
@@ -310,6 +348,8 @@ namespace NXProject.Services
                 foreach (var r in resEl.Elements(NS + "Resource"))
                     project.Resources.Add(LoadResource(r));
 
+            project.Calendar = LoadCalendar(root);
+
             var tasksEl = root.Element(NS + "Tasks");
             if (tasksEl != null)
                 foreach (var t in tasksEl.Elements(NS + "Task"))
@@ -363,7 +403,8 @@ namespace NXProject.Services
             Notes = el.Element(NS + "Notes")?.Value,
             IsImportedFromTfs = bool.TryParse(el.Element(EXT + "IsImportedFromTfs")?.Value, out var importedFromTfs) && importedFromTfs,
             Kind = Enum.TryParse<ResourceKind>(el.Element(EXT + "Kind")?.Value, out var rk) ? rk : ResourceKind.Project,
-            AvailabilityPercent = ParseDouble(el.Element(EXT + "AvailabilityPercent")?.Value) ?? 100.0
+            AvailabilityPercent = ParseDouble(el.Element(EXT + "AvailabilityPercent")?.Value) ?? 100.0,
+            Team = string.IsNullOrWhiteSpace(el.Element(EXT + "Team")?.Value) ? null : el.Element(EXT + "Team")!.Value
             // CostType/CostPerHour/MonthlyRate carregados separadamente via ResourceCostConfigService
         };
 

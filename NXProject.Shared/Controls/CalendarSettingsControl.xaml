@@ -3,88 +3,132 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid Margin="18">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,14">
-            <TextBlock Text="{DynamicResource Calendar_Title}"
-                       FontWeight="SemiBold"
-                       Foreground="#1F4EA1"/>
-            <TextBlock Text="{Binding CalendarPath}"
-                       Margin="0,4,0,0"
-                       Foreground="#555"
-                       TextTrimming="CharacterEllipsis"/>
-        </StackPanel>
+        <TabControl Grid.Row="0">
+            <!-- ══════════════ ABA GERAL (máquina) ══════════════ -->
+            <TabItem Header="{DynamicResource Calendar_TabGeneral}">
+                <Grid Margin="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-        <Grid Grid.Row="1" Margin="0,0,0,12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="170"/>
-                <ColumnDefinition Width="28"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="24"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-                <TextBlock Text="{DynamicResource Calendar_WorkingHoursLabel}"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,4"/>
-                <TextBox Text="{Binding Calendar.WorkingHoursPerDay, UpdateSourceTrigger=PropertyChanged}"
-                         Height="28"
-                         Padding="6,4"/>
-            </StackPanel>
-            <CheckBox Content="{DynamicResource Calendar_SaturdayWorkday}"
-                      Grid.Column="2"
-                      IsChecked="{Binding Calendar.TreatSaturdayAsWorkday}"
-                      VerticalAlignment="Bottom"
-                      Margin="0,0,0,5"/>
-            <CheckBox Content="{DynamicResource Calendar_SundayWorkday}"
-                      Grid.Column="4"
-                      IsChecked="{Binding Calendar.TreatSundayAsWorkday}"
-                      VerticalAlignment="Bottom"
-                      Margin="0,0,0,5"/>
-        </Grid>
+                    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                        <TextBlock Text="{DynamicResource Calendar_Title}" FontWeight="SemiBold" Foreground="#1F4EA1"/>
+                        <TextBlock Text="{Binding CalendarPath}" Margin="0,4,0,0" Foreground="#555" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
 
-        <DataGrid Grid.Row="2"
-                  ItemsSource="{Binding Calendar.Holidays}"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="True"
-                  CanUserDeleteRows="True"
-                  HeadersVisibility="Column"
-                  RowHeight="26"
-                  BorderBrush="#D0D7E2"
-                  BorderThickness="1">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="{DynamicResource Calendar_Holiday_Date_Header}"
-                                    Binding="{Binding Date, StringFormat=dd/MM/yyyy}"
-                                    Width="130"/>
-                <DataGridTextColumn Header="{DynamicResource Calendar_Holiday_Name_Header}"
-                                    Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                    Width="*"/>
-            </DataGrid.Columns>
-        </DataGrid>
+                    <Grid Grid.Row="1" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="28"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="24"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="{DynamicResource Calendar_WorkingHoursLabel}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding GeneralCalendar.WorkingHoursPerDay, UpdateSourceTrigger=PropertyChanged}" Height="28" Padding="6,4"/>
+                        </StackPanel>
+                        <CheckBox Content="{DynamicResource Calendar_SaturdayWorkday}" Grid.Column="2"
+                                  IsChecked="{Binding GeneralCalendar.TreatSaturdayAsWorkday}" VerticalAlignment="Bottom" Margin="0,0,0,5"/>
+                        <CheckBox Content="{DynamicResource Calendar_SundayWorkday}" Grid.Column="4"
+                                  IsChecked="{Binding GeneralCalendar.TreatSundayAsWorkday}" VerticalAlignment="Bottom" Margin="0,0,0,5"/>
+                    </Grid>
 
-        <DockPanel Grid.Row="3" Margin="0,14,0,0">
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                <Button Content="{DynamicResource Calendar_AddToday}"
-                        Width="120"
-                        Margin="0,0,8,0"
-                        Click="OnAddTodayClick"/>
-                <Button Content="{DynamicResource Calendar_RemoveSelected}"
-                        Width="140"
-                        Click="OnRemoveSelectedClick"/>
-            </StackPanel>
+                    <DataGrid Grid.Row="2" x:Name="GeneralGrid" ItemsSource="{Binding GeneralCalendar.Holidays}"
+                              AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True"
+                              HeadersVisibility="Column" RowHeight="26" BorderBrush="#D0D7E2" BorderThickness="1">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{DynamicResource Calendar_Holiday_Date_Header}" Binding="{Binding Date, StringFormat=dd/MM/yyyy}" Width="130"/>
+                            <DataGridTextColumn Header="{DynamicResource Calendar_Holiday_Name_Header}" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <DockPanel Grid.Row="3" Margin="0,12,0,0">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                            <Button Content="{DynamicResource Calendar_AddToday}" Width="120" Margin="0,0,8,0" Click="OnAddTodayGeneralClick"/>
+                            <Button Content="{DynamicResource Calendar_RemoveSelected}" Width="140" Click="OnRemoveGeneralClick"/>
+                        </StackPanel>
+                        <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                Content="{DynamicResource Calendar_IncludeInProject}"
+                                ToolTip="{DynamicResource Calendar_IncludeInProjectTip}"
+                                Width="230" Click="OnIncludeInProjectClick"
+                                Background="#1F4EA1" Foreground="White" FontWeight="SemiBold"/>
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ══════════════ ABA CRONOGRAMA (embutido no .nxp) ══════════════ -->
+            <TabItem Header="{DynamicResource Calendar_TabProject}">
+                <Grid Margin="12">
+                    <!-- Mensagem quando não há calendário no cronograma -->
+                    <TextBlock x:Name="NoProjectCalendarMsg" Visibility="Collapsed"
+                               Text="{DynamicResource Calendar_NoProjectCalendar}"
+                               TextWrapping="Wrap" Foreground="#7A5C00" VerticalAlignment="Top"/>
+
+                    <Grid x:Name="ProjectCalendarPanel">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="{DynamicResource Calendar_ProjectActive}" Margin="0,0,0,10"
+                                   Foreground="#2E7D32" FontWeight="SemiBold" TextWrapping="Wrap"/>
+
+                        <Grid Grid.Row="1" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="170"/>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="24"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{DynamicResource Calendar_WorkingHoursLabel}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding ProjectCalendarModel.WorkingHoursPerDay, UpdateSourceTrigger=PropertyChanged}" Height="28" Padding="6,4"/>
+                            </StackPanel>
+                            <CheckBox Content="{DynamicResource Calendar_SaturdayWorkday}" Grid.Column="2"
+                                      IsChecked="{Binding ProjectCalendarModel.TreatSaturdayAsWorkday}" VerticalAlignment="Bottom" Margin="0,0,0,5"/>
+                            <CheckBox Content="{DynamicResource Calendar_SundayWorkday}" Grid.Column="4"
+                                      IsChecked="{Binding ProjectCalendarModel.TreatSundayAsWorkday}" VerticalAlignment="Bottom" Margin="0,0,0,5"/>
+                        </Grid>
+
+                        <DataGrid Grid.Row="2" x:Name="ProjectGrid" ItemsSource="{Binding ProjectCalendarModel.Holidays}"
+                                  AutoGenerateColumns="False" CanUserAddRows="True" CanUserDeleteRows="True"
+                                  HeadersVisibility="Column" RowHeight="26" BorderBrush="#D0D7E2" BorderThickness="1">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{DynamicResource Calendar_Holiday_Date_Header}" Binding="{Binding Date, StringFormat=dd/MM/yyyy}" Width="130"/>
+                                <DataGridTextColumn Header="{DynamicResource Calendar_Holiday_Name_Header}" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <DockPanel Grid.Row="3" Margin="0,12,0,0">
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                <Button Content="{DynamicResource Calendar_AddToday}" Width="120" Margin="0,0,8,0" Click="OnAddTodayProjectClick"/>
+                                <Button Content="{DynamicResource Calendar_RemoveSelected}" Width="140" Click="OnRemoveProjectClick"/>
+                            </StackPanel>
+                            <Button x:Name="CopyToGeneralBtn" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                    Content="{DynamicResource Calendar_CopyToGeneral}"
+                                    ToolTip="{DynamicResource Calendar_CopyToGeneralTip}"
+                                    Width="230" Click="OnCopyToGeneralClick"/>
+                        </DockPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <DockPanel Grid.Row="1" Margin="0,14,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="{DynamicResource Calendar_Save}"
-                        Width="110"
-                        Margin="0,0,8,0"
-                        IsDefault="True"
-                        Click="OnSaveClick"/>
-                <Button Content="{DynamicResource Calendar_Cancel}"
-                        Width="110"
-                        IsCancel="True"/>
+                <Button Content="{DynamicResource Calendar_Save}" Width="110" Margin="0,0,8,0" IsDefault="True" Click="OnSaveClick"/>
+                <Button Content="{DynamicResource Calendar_Cancel}" Width="110" IsCancel="True"/>
             </StackPanel>
         </DockPanel>
     </Grid>

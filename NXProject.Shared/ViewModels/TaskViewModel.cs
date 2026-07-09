@@ -24,6 +24,59 @@ namespace NXProject.ViewModels
         // Retorna a data fim da sprint atribuída à tarefa (null se não houver sprint ou sprint não encontrada).
         public Func<string?, DateTime?>? GetSprintFinish { get; set; }
 
+        // Retorna a sprint atribuída à tarefa (para avaliar período x data de referência).
+        public Func<string?, Sprint?>? GetSprintByPath { get; set; }
+
+        // Confirmação (UI) ao concluir (100%) uma atividade cuja sprint está fora
+        // da faixa de período. Recebe (tarefa, sprint). Retorna true para prosseguir.
+        public Func<TaskViewModel, Sprint, bool>? ConfirmCompleteOutsideSprint { get; set; }
+
+        // Data de referência da atividade ("onde ela está"): 0% → início;
+        // em andamento → posição do % concluído; 100% → fim inclusivo.
+        public DateTime? SprintReferenceDate
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(_task.TfsIterationPath)) return null;
+                return ProjectCalendarService.GetProgressReferenceDate(
+                    _task.Start, _task.Finish, _task.PercentComplete);
+            }
+        }
+
+        // Estado da sprint em relação ao período (data de referência):
+        // 0 = ok; 1 = fora do período (ajustável); 2 = concluída antecipada;
+        // 3 = sprint em andamento (contém hoje) com % fora do período.
+        private int SprintPeriodState
+        {
+            get
+            {
+                if (!SupportsSprint || string.IsNullOrWhiteSpace(_task.TfsIterationPath)) return 0;
+                var sprint = GetSprintByPath?.Invoke(_task.TfsIterationPath);
+                if (sprint == null) return 0;
+                // Sprint sem faixa de período válida (ex.: gerada pela IA sem datas) não destaca.
+                if (sprint.Start == default || sprint.End == default || sprint.End.Date <= sprint.Start.Date)
+                    return 0;
+
+                var r = ProjectCalendarService.GetProgressReferenceDate(
+                    _task.Start, _task.Finish, _task.PercentComplete);
+                if (sprint.Start.Date <= r && r <= sprint.End.Date)
+                    return 0; // referência dentro da sprint → ok
+
+                var today = DateTime.Today;
+                // 100% e sprint com período anterior a hoje → entrega antecipada.
+                if (_task.PercentComplete >= 100 && sprint.End.Date < today)
+                    return 2;
+                // Sprint em andamento (contém hoje) → não ajusta.
+                if (sprint.Start.Date <= today && today <= sprint.End.Date)
+                    return 3;
+                return 1;
+            }
+        }
+
+        public bool IsSprintOutOfPeriod   => SprintPeriodState == 1;
+        public bool IsSprintCompletedEarly => SprintPeriodState == 2;
+        public bool IsSprintActiveMismatch => SprintPeriodState == 3;
+
         // True quando a data fim da tarefa ultrapassa a data fim da sprint atribuída.
         // Comparação por string dd/MM/yyyy para evitar problemas de fuso/hora.
         public bool IsFinishBeyondSprint
@@ -772,9 +825,35 @@ namespace NXProject.ViewModels
                 if (Math.Abs(_task.PercentComplete - normalized) < 0.0001)
                     return;
 
+                // Concluindo (transição para 100%) com a sprint fora da faixa de
+                // período (o fim da atividade não cai na janela da sprint): confirma.
+                if (normalized >= 100 && _task.PercentComplete < 100 &&
+                    !string.IsNullOrWhiteSpace(_task.TfsIterationPath) &&
+                    ConfirmCompleteOutsideSprint != null)
+                {
+                    var sprint = GetSprintByPath?.Invoke(_task.TfsIterationPath);
+                    // Só confirma se a sprint existir E tiver faixa de período válida
+                    // (sprints sem datas — ex.: geradas pela IA — não disparam a mensagem).
+                    var hasValidRange = sprint != null
+                        && sprint.Start != default && sprint.End != default
+                        && sprint.End.Date > sprint.Start.Date;
+                    if (hasValidRange)
+                    {
+                        var finish = ProjectCalendarService.GetInclusiveFinishDate(_task.Start, _task.Finish).Date;
+                        var inRange = sprint!.Start.Date <= finish && finish <= sprint.End.Date;
+                        if (!inRange && !ConfirmCompleteOutsideSprint(this, sprint))
+                        {
+                            // Cancelado: reverte a exibição na grade para o valor atual.
+                            OnPropertyChanged(nameof(PercentComplete));
+                            return;
+                        }
+                    }
+                }
+
                 var wasZero = _task.PercentComplete < 0.0001;
                 _task.PercentComplete = normalized;
                 NotifyDaily();
+                NotifySprintPeriodChanged();
 
                 // Regra: ao iniciar (% 0 → >0), ancoramos o início no dia atual se estiver no futuro.
                 // Depois do início, o Start não pode mais ser movido pela cascata.
@@ -1373,6 +1452,16 @@ namespace NXProject.ViewModels
             OnPropertyChanged(nameof(SprintDisplay));
             OnPropertyChanged(nameof(SprintPath));
             OnPropertyChanged(nameof(IsFinishBeyondSprint));
+            NotifySprintPeriodChanged();
+        }
+
+        // Notifica os estados de período da sprint (destaque na célula).
+        public void NotifySprintPeriodChanged()
+        {
+            OnPropertyChanged(nameof(SprintReferenceDate));
+            OnPropertyChanged(nameof(IsSprintOutOfPeriod));
+            OnPropertyChanged(nameof(IsSprintCompletedEarly));
+            OnPropertyChanged(nameof(IsSprintActiveMismatch));
         }
 
         public void NotifyDatesChanged()
@@ -1387,6 +1476,7 @@ namespace NXProject.ViewModels
             OnPropertyChanged(nameof(DisplayAsMilestone));
             OnPropertyChanged(nameof(StartFixed));
             OnPropertyChanged(nameof(IsFinishBeyondSprint));
+            NotifySprintPeriodChanged();
             RecalcAncestorSummaries();
         }
 

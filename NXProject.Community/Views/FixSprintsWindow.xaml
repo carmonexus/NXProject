@@ -1,0 +1,107 @@
+<Window x:Class="NXProject.Views.FixSprintsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource FixSprints_Title}"
+        Width="1160" Height="580"
+        MinWidth="860" MinHeight="380"
+        WindowStartupLocation="CenterOwner"
+        Background="White">
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="{DynamicResource FixSprints_Title}"
+                   FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"/>
+
+        <TextBlock Grid.Row="1" x:Name="IntroText" Margin="0,6,0,10"
+                   TextWrapping="Wrap" Foreground="#555" FontSize="12"/>
+
+        <DataGrid Grid.Row="2" x:Name="FixGrid"
+                  AutoGenerateColumns="False" CanUserAddRows="False"
+                  CanUserDeleteRows="False" CanUserReorderColumns="False"
+                  IsReadOnly="True" SelectionMode="Single"
+                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                  RowHeight="28" FontSize="12" CanUserSortColumns="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="{DynamicResource FixSprints_ColEpic}"
+                                    Width="1.4*" Binding="{Binding Epic}"/>
+                <DataGridTextColumn Header="{DynamicResource FixSprints_ColFeature}"
+                                    Width="1.4*" Binding="{Binding Feature}"/>
+                <DataGridTextColumn Header="{DynamicResource FixSprints_ColStory}"
+                                    Width="1.6*" Binding="{Binding Story}"/>
+                <DataGridTextColumn Header="{DynamicResource FixSprints_ColActivityPeriod}"
+                                    Width="140" Binding="{Binding ActivityPeriod}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#555"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="{DynamicResource FixSprints_ColCurrent}"
+                                    Width="110" Binding="{Binding CurrentSprint}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#E65100"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="{DynamicResource FixSprints_ColCurrentPeriod}"
+                                    Width="140" Binding="{Binding CurrentPeriod}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#E65100"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTemplateColumn Header="{DynamicResource FixSprints_ColNew}" Width="170">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{Binding AvailableSprints}"
+                                      SelectedItem="{Binding SelectedSprint, Mode=TwoWay}"
+                                      FontSize="11" Margin="2" VerticalAlignment="Center">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Margin="6,0,0,0" Foreground="Gray">
+                                                <Run Text="{Binding Start, StringFormat=dd/MM/yy, Mode=OneWay}"/>
+                                                <Run Text="–"/>
+                                                <Run Text="{Binding End, StringFormat=dd/MM/yy, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="{DynamicResource FixSprints_ColNewPeriod}"
+                                    Width="140" Binding="{Binding NewPeriod}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="#2E7D32"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="CancelButton" Content="{DynamicResource FixSprints_Cancel}"
+                    Width="110" Height="30" Margin="0,0,8,0" Click="OnCancelClick"/>
+            <Button x:Name="ApplyButton" Content="{DynamicResource FixSprints_Apply}"
+                    Width="130" Height="30" Click="OnApplyClick"
+                    Background="#2B579A" Foreground="White" FontWeight="SemiBold"/>
+        </StackPanel>
+    </Grid>
+</Window>

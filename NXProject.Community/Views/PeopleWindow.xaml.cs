@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using NXProject.Models;
 using NXProject.Services;
@@ -65,10 +66,52 @@ namespace NXProject.Views
                 .Select(r => new PersonRow(r, CountTasks(r, assignments)))
                 .ToList();
 
-            PeopleGrid.ItemsSource = null;
-            PeopleGrid.ItemsSource = _rows;
-            CountLabel.Text = AppStrings.Get("People_Count", _rows.Count);
+            RebuildTeamFilter();
+            ApplyTeamFilter();
             StatusText.Text = string.Empty;
+        }
+
+        private bool _suppressTeamFilter;
+
+        // Popula o combo de equipes: "Todas" + equipes distintas dos recursos.
+        private void RebuildTeamFilter()
+        {
+            var allLabel = AppStrings.Get("People_TeamAll");
+            var previous = TeamFilterCombo.SelectedItem as string;
+
+            var items = new List<string> { allLabel };
+            items.AddRange(_rows.Select(r => r.TeamDisplay)
+                                .Distinct()
+                                .OrderBy(t => t, StringComparer.CurrentCultureIgnoreCase));
+
+            _suppressTeamFilter = true;
+            TeamFilterCombo.ItemsSource = items;
+            TeamFilterCombo.SelectedItem = previous != null && items.Contains(previous) ? previous : allLabel;
+            _suppressTeamFilter = false;
+        }
+
+        private void OnTeamFilterChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressTeamFilter) return;
+            ApplyTeamFilter();
+        }
+
+        // Aplica o filtro de equipe à grade (ou mostra todas).
+        private void ApplyTeamFilter()
+        {
+            var allLabel = AppStrings.Get("People_TeamAll");
+            var sel = TeamFilterCombo.SelectedItem as string;
+
+            IEnumerable<PersonRow> view = _rows;
+            if (!string.IsNullOrEmpty(sel) && sel != allLabel)
+                view = _rows.Where(r => r.TeamDisplay == sel);
+
+            var list = view.ToList();
+            PeopleGrid.ItemsSource = null;
+            PeopleGrid.ItemsSource = list;
+            CountLabel.Text = list.Count == _rows.Count
+                ? AppStrings.Get("People_Count", _rows.Count)
+                : AppStrings.Get("People_CountFiltered", list.Count, _rows.Count);
         }
 
         private static int CountTasks(Resource r, List<TaskResource> assignments) =>
@@ -176,6 +219,122 @@ namespace NXProject.Views
                 MarkDirty(AppStrings.Get("People_DiscoveryAdded", added, picker.SelectedUsers.Count));
             else
                 StatusText.Text = AppStrings.Get("People_DiscoveryNone", picker.SelectedUsers.Count);
+        }
+
+        private async void OnDiscoveryTeamClick(object sender, RoutedEventArgs e)
+        {
+            CommitPendingEdits();
+
+            var options = TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(options.OrganizationUrl) ||
+                string.IsNullOrWhiteSpace(options.TeamProject) ||
+                string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+            {
+                MessageBox.Show(AppStrings.Get("People_DiscoveryNoConnection"), AppStrings.Get("People_Title"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            List<TfsImportService.DevOpsTeamInfo> teams;
+            try
+            {
+                Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+                teams = await TfsImportService.FetchTeamsAsync(options);
+            }
+            catch (Exception ex)
+            {
+                Mouse.OverrideCursor = null;
+                ShowDiscoveryErrorDialog(ex, options);
+                return;
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+
+            if (teams.Count == 0)
+            {
+                StatusText.Text = AppStrings.Get("People_TeamNone");
+                return;
+            }
+
+            var picker = new DiscoveryTeamPickerWindow(teams) { Owner = this };
+            if (picker.ShowDialog() != true || picker.SelectedTeam == null)
+                return;
+
+            var team = picker.SelectedTeam;
+            List<TfsImportService.DevOpsUserInfo> members;
+            try
+            {
+                Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+                members = await TfsImportService.FetchTeamMembersAsync(options, team.Id);
+            }
+            catch (Exception ex)
+            {
+                Mouse.OverrideCursor = null;
+                ShowDiscoveryErrorDialog(ex, options);
+                return;
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+
+            // Índice das pessoas atuais por email/nome para não duplicar.
+            var byKey = new Dictionary<string, Resource>(StringComparer.OrdinalIgnoreCase);
+            foreach (var resource in _vm.Project.Resources)
+            {
+                if (!string.IsNullOrWhiteSpace(resource.Email)) byKey[resource.Email.Trim()] = resource;
+                if (!string.IsNullOrWhiteSpace(resource.Name)) byKey[resource.Name.Trim()] = resource;
+            }
+
+            var nextId = _vm.Project.Resources.Count > 0
+                ? _vm.Project.Resources.Max(r => r.Id) + 1
+                : 1;
+            var added = 0;
+            var tagged = 0;
+
+            foreach (var user in members)
+            {
+                var name = user.Name.Trim();
+                var email = user.Email.Trim();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                var key = !string.IsNullOrWhiteSpace(email) ? email : name;
+                if (byKey.TryGetValue(key, out var existing) || byKey.TryGetValue(name, out existing))
+                {
+                    // Já existe (veio do cronograma ou de outra equipe): marca a equipe se ainda não tiver.
+                    if (string.IsNullOrWhiteSpace(existing.Team))
+                    {
+                        existing.Team = team.Name;
+                        tagged++;
+                    }
+                    continue;
+                }
+
+                var res = new Resource
+                {
+                    Id = nextId++,
+                    Name = name,
+                    Email = string.IsNullOrWhiteSpace(email) ? null : email,
+                    Type = ResourceType.Work,
+                    Kind = ResourceKind.Project,
+                    AvailabilityPercent = 100.0,
+                    MaxUnitsPerDay = 8.0,
+                    IsImportedFromTfs = true,
+                    Team = team.Name
+                };
+                _vm.Project.Resources.Add(res);
+                byKey[key] = res;
+                byKey[name] = res;
+                added++;
+            }
+
+            Refresh();
+            if (added > 0 || tagged > 0)
+                MarkDirty(AppStrings.Get("People_TeamImported", team.Name, added, tagged));
+            else
+                StatusText.Text = AppStrings.Get("People_TeamNoMembers", team.Name);
         }
 
         private void OnRemoveUnusedClick(object sender, RoutedEventArgs e)
@@ -601,6 +760,11 @@ namespace NXProject.Views
             public int TaskCount { get; }
 
             public bool IsImportedFromTfs => Resource.IsImportedFromTfs;
+
+            // Equipe: nome do Team DevOps; se vazio, a pessoa veio do cronograma.
+            public string TeamDisplay => string.IsNullOrWhiteSpace(Resource.Team)
+                ? AppStrings.Get("People_TeamSchedule")
+                : Resource.Team!;
 
             public string AvailabilityText => $"{_availPct:0}%";
 

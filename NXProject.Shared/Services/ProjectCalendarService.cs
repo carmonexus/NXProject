@@ -56,6 +56,26 @@ namespace NXProject.Services
             File.WriteAllText(path, JsonSerializer.Serialize(Current, JsonOptions));
         }
 
+        /// <summary>
+        /// Define o calendário ativo em memória (sem gravar em disco). Usado ao
+        /// abrir um cronograma que traz calendário próprio embutido no .nxp.
+        /// </summary>
+        public static void SetCurrent(ProjectCalendar calendar) => Current = Normalize(calendar);
+
+        /// <summary>Cópia profunda de um calendário (para copiar Geral ↔ Cronograma).</summary>
+        public static ProjectCalendar Clone(ProjectCalendar source)
+        {
+            var copy = new ProjectCalendar
+            {
+                WorkingHoursPerDay = source.WorkingHoursPerDay,
+                TreatSaturdayAsWorkday = source.TreatSaturdayAsWorkday,
+                TreatSundayAsWorkday = source.TreatSundayAsWorkday
+            };
+            foreach (var h in source.Holidays)
+                copy.Holidays.Add(new ProjectHoliday { Date = h.Date, Name = h.Name });
+            return copy;
+        }
+
         public static bool IsWorkingDay(DateTime date) => IsWorkingDay(date, Current);
 
         public static double WorkingHoursPerDay =>
@@ -185,6 +205,25 @@ namespace NXProject.Services
                 date = date.AddDays(-1);
 
             return date;
+        }
+
+        /// <summary>
+        /// Data de referência da atividade para fins de sprint ("onde a atividade está"):
+        /// 0% → início; em andamento → início + (% × duração útil); 100% → fim inclusivo.
+        /// </summary>
+        public static DateTime GetProgressReferenceDate(DateTime start, DateTime finish, double percentComplete)
+        {
+            if (percentComplete <= 0)
+                return start.Date;
+            if (percentComplete >= 100)
+                return GetInclusiveFinishDate(start, finish).Date;
+
+            var total = CountWorkingHours(start, finish);
+            if (total <= 0)
+                return start.Date;
+
+            var target = percentComplete / 100.0 * total;
+            return AddWorkingHours(start, target).Date;
         }
 
         public static int CountWorkingDays(DateTime start, DateTime finish) => CountWorkingDays(start, finish, Current);

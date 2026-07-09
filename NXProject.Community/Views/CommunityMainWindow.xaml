@@ -75,6 +75,11 @@
             <MenuItem Header="{DynamicResource Menu_Manage}">
                 <MenuItem Header="{DynamicResource Menu_Manage_Resources}" Click="OnResourceAllocationClick"/>
                 <MenuItem Header="{DynamicResource Menu_Manage_HealthCheck}" Click="OnDelayedTasksClick"/>
+                <MenuItem Header="{DynamicResource Menu_Manage_FixSprints}" Click="OnFixOutOfPeriodSprintsClick">
+                    <MenuItem.Icon>
+                        <TextBlock Text="&#x1F4C6;" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="{DynamicResource Menu_Manage_StoryStatusChart}" Click="OnStoryStatusChartClick"/>
                 <MenuItem Header="{DynamicResource Menu_Manage_AllocationMap}" Click="OnAllocationMapClick"/>
                 <MenuItem Header="{DynamicResource Menu_Manage_ActivityDiagram}" Click="OnActivityDiagramClick"/>
@@ -181,6 +186,32 @@
                         <Polygon Points="22,4 30,8 22,14" Fill="#4A6FA5"/>
                         <!-- Seta baixo direito -->
                         <Polygon Points="78,42 70,46 78,52" Fill="#4A6FA5"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
+
+            <!-- Ajustar sprints fora do período: bandeira de chegada + seta de ajuste -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnFixOutOfPeriodSprintsClick"
+                    ToolTip="{DynamicResource Toolbar_FixSprints}">
+                <Viewbox Width="24" Height="22" Stretch="Uniform">
+                    <Canvas Width="28" Height="26">
+                        <!-- Mastro -->
+                        <Line X1="5" Y1="2" X2="5" Y2="25"
+                              Stroke="#333333" StrokeThickness="2"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        <!-- Fundo branco da bandeira -->
+                        <Rectangle Canvas.Left="6" Canvas.Top="3" Width="14.4" Height="8"
+                                   Fill="White" Stroke="#333333" StrokeThickness="1"/>
+                        <!-- Quadrados pretos (padrão xadrez 4x2) -->
+                        <Rectangle Canvas.Left="6"    Canvas.Top="3" Width="3.6" Height="4" Fill="#222222"/>
+                        <Rectangle Canvas.Left="13.2" Canvas.Top="3" Width="3.6" Height="4" Fill="#222222"/>
+                        <Rectangle Canvas.Left="9.6"  Canvas.Top="7" Width="3.6" Height="4" Fill="#222222"/>
+                        <Rectangle Canvas.Left="16.8" Canvas.Top="7" Width="3.6" Height="4" Fill="#222222"/>
+                        <!-- Seta circular de ajuste -->
+                        <Path Stroke="#E87B00" StrokeThickness="2.2" Fill="Transparent"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Data="M 21,15.5 A 4,4 0 1 1 17.4,13.4"/>
+                        <Polygon Points="18.2,10.8 22.2,13.0 18.2,15.2" Fill="#E87B00"/>
                     </Canvas>
                 </Viewbox>
             </Button>
@@ -377,18 +408,7 @@
                           Width="28" Height="24" Padding="3"
                           Click="OnDailyPercentToggleClick"
                           VerticalAlignment="Center">
-                <Viewbox Width="16" Height="16">
-                    <Canvas Width="18" Height="18">
-                        <!-- barra planejada (esperado) -->
-                        <Rectangle Canvas.Left="0" Canvas.Top="6" Width="18" Height="6"
-                                   Fill="#C9D8E8" RadiusX="1" RadiusY="1"/>
-                        <!-- progresso esperado ate hoje -->
-                        <Rectangle Canvas.Left="0" Canvas.Top="6" Width="9" Height="6"
-                                   Fill="#217346" RadiusX="1" RadiusY="1"/>
-                        <!-- marcador "hoje" -->
-                        <Line X1="9" Y1="3" X2="9" Y2="15" Stroke="#B91C1C" StrokeThickness="1.5"/>
-                    </Canvas>
-                </Viewbox>
+                <TextBlock Text="&#x1F4AC;" FontSize="14"/>
             </ToggleButton>
             <ToggleButton x:Name="DayHeaderToggle"
                           ToolTip="{DynamicResource Toolbar_DayView}"

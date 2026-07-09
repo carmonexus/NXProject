@@ -42,6 +42,8 @@ namespace NXProject.Services
 
         public sealed record DevOpsUserInfo(string Name, string Email);
 
+        public sealed record DevOpsTeamInfo(string Id, string Name);
+
         private sealed record TfsAuthContext(
             string OrgBase,
             string TeamProject,
@@ -3795,6 +3797,121 @@ namespace NXProject.Services
 
             throw new InvalidOperationException(BuildDiscoveryUserError(
                 0, "Org users listing failed", string.Join("\n\n---\n\n", failures), conn.TeamProject));
+        }
+
+        /// <summary>
+        /// Lista as equipes (Teams) do Team Project configurado.
+        /// </summary>
+        public static async Task<List<DevOpsTeamInfo>> FetchTeamsAsync(
+            TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            var conn = CreateTfsAuthContext(options, "Discovery Teams");
+            var teams = new List<DevOpsTeamInfo>();
+            var failures = new List<string>();
+
+            var top = 200;
+            var skip = 0;
+            var safety = 0;
+            while (++safety < 1000)
+            {
+                var url = $"{conn.OrgBase.TrimEnd('/')}/_apis/projects/{Uri.EscapeDataString(conn.TeamProject)}/teams" +
+                          $"?$top={top}&$skip={skip}&api-version=6.0";
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                req.Headers.Authorization = conn.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadAsStringAsync(ct);
+                    failures.Add($"[Teams] URL: {url}\nStatus HTTP: {(int)resp.StatusCode} {resp.ReasonPhrase}" +
+                                 (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nResposta: {TrimDiscoveryResponse(body)}"));
+                    break;
+                }
+
+                var text = await resp.Content.ReadAsStringAsync(ct);
+                using var doc = JsonDocument.Parse(text);
+                if (!doc.RootElement.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array)
+                    break;
+
+                var count = 0;
+                foreach (var t in value.EnumerateArray())
+                {
+                    var id = ReadPickerString(t, "id");
+                    var name = ReadPickerString(t, "name");
+                    if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(name))
+                        teams.Add(new DevOpsTeamInfo(id!, name!.Trim()));
+                    count++;
+                }
+                if (count < top) break;
+                skip += top;
+            }
+
+            if (teams.Count > 0)
+                return teams.OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+
+            throw new InvalidOperationException(BuildDiscoveryUserError(
+                0, "Teams listing failed", string.Join("\n\n---\n\n", failures), conn.TeamProject));
+        }
+
+        /// <summary>
+        /// Lista os membros de uma equipe (Team) do Team Project configurado.
+        /// </summary>
+        public static async Task<List<DevOpsUserInfo>> FetchTeamMembersAsync(
+            TfsConnectionOptions options, string teamId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(teamId))
+                return new List<DevOpsUserInfo>();
+
+            var conn = CreateTfsAuthContext(options, "Discovery Team Members");
+            var users = new Dictionary<string, DevOpsUserInfo>(StringComparer.OrdinalIgnoreCase);
+            var failures = new List<string>();
+
+            var top = 200;
+            var skip = 0;
+            var safety = 0;
+            while (++safety < 1000)
+            {
+                var url = $"{conn.OrgBase.TrimEnd('/')}/_apis/projects/{Uri.EscapeDataString(conn.TeamProject)}" +
+                          $"/teams/{Uri.EscapeDataString(teamId)}/members?$top={top}&$skip={skip}&api-version=6.0";
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                req.Headers.Authorization = conn.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadAsStringAsync(ct);
+                    failures.Add($"[TeamMembers] URL: {url}\nStatus HTTP: {(int)resp.StatusCode} {resp.ReasonPhrase}" +
+                                 (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nResposta: {TrimDiscoveryResponse(body)}"));
+                    break;
+                }
+
+                var text = await resp.Content.ReadAsStringAsync(ct);
+                using var doc = JsonDocument.Parse(text);
+                if (!doc.RootElement.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array)
+                    break;
+
+                var count = 0;
+                foreach (var m in value.EnumerateArray())
+                {
+                    var identity = m.TryGetProperty("identity", out var idEl) ? idEl : m;
+                    var name = ReadPickerString(identity, "displayName");
+                    var email = ReadPickerString(identity, "mailAddress") ?? ReadPickerString(identity, "uniqueName");
+                    if (email != null && !email.Contains('@')) email = null;
+                    if (string.IsNullOrWhiteSpace(name)) name = email;
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        var key = !string.IsNullOrWhiteSpace(email) ? email! : name!;
+                        users.TryAdd(key, new DevOpsUserInfo(name!.Trim(), (email ?? string.Empty).Trim()));
+                    }
+                    count++;
+                }
+                if (count < top) break;
+                skip += top;
+            }
+
+            if (users.Count > 0 || failures.Count == 0)
+                return users.Values.OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+
+            throw new InvalidOperationException(BuildDiscoveryUserError(
+                0, "Team members listing failed", string.Join("\n\n---\n\n", failures), conn.TeamProject));
         }
 
         public static async Task<List<DevOpsUserInfo>> FetchUsersByFilterAsync(

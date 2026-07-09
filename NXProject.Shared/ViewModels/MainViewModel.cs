@@ -98,6 +98,13 @@ namespace NXProject.ViewModels
         [ObservableProperty] private string _hiddenColumnsExpanded = "";
         [ObservableProperty] private double _projectPercent = 0.0;
 
+        /// <summary>
+        /// Confirmação (UI) ao concluir (100%) uma atividade com a sprint fora da
+        /// faixa de período. Definida pela camada de apresentação (Community).
+        /// Recebe (tarefa, sprint) e retorna true para prosseguir com os 100%.
+        /// </summary>
+        public Func<TaskViewModel, Sprint, bool>? ConfirmCompleteOutsideSprint { get; set; }
+
         public ObservableCollection<string> ZoomLevels { get; } = new()
         {
             "Dia", "Semana", "Sprint", "Mês", "Trimestre", "Semestre"
@@ -340,7 +347,14 @@ namespace NXProject.ViewModels
                     if (string.IsNullOrEmpty(path)) return null;
                     var sprint = Sprints.FirstOrDefault(s => string.Equals(s.Path, path, StringComparison.OrdinalIgnoreCase));
                     return sprint?.End;
-                }
+                },
+                GetSprintByPath = path =>
+                {
+                    if (string.IsNullOrEmpty(path)) return null;
+                    return Sprints.FirstOrDefault(s => string.Equals(s.Path, path, StringComparison.OrdinalIgnoreCase));
+                },
+                ConfirmCompleteOutsideSprint = (t, sprint) =>
+                    ConfirmCompleteOutsideSprint?.Invoke(t, sprint) ?? true
             };
             if (parentVm != null)
                 parentVm.ChildrenViewModels.Add(vm);
@@ -554,6 +568,161 @@ namespace NXProject.ViewModels
                     ? $"Sprint da tarefa alterada para \"{sprint.Name}\" (sincronize para aplicar no DevOps)."
                     : "Sprint removida da tarefa.";
             });
+        }
+
+        /// <summary>
+        /// Proposta de ajuste de sprint: tarefa cuja sprint atual está "fora do
+        /// período" (fim ultrapassa o fim da sprint) e a sprint cujo período
+        /// contém o fim da tarefa — a que o Gantt mostra naquele intervalo.
+        /// </summary>
+        public sealed class SprintPeriodFix : System.ComponentModel.INotifyPropertyChanged
+        {
+            public TaskViewModel Task { get; init; } = null!;
+            public string TaskName { get; init; } = string.Empty;
+            public string Epic { get; init; } = string.Empty;
+            public string Feature { get; init; } = string.Empty;
+            public string Story { get; init; } = string.Empty;
+            public string CurrentSprint { get; init; } = string.Empty;
+            public string CurrentPeriod { get; init; } = string.Empty;
+            public string ActivityPeriod { get; init; } = string.Empty;
+
+            // Sprints disponíveis para escolha (todas do projeto, por data).
+            public System.Collections.Generic.List<Sprint> AvailableSprints { get; init; } = new();
+
+            private Sprint _selected = null!;
+            // Sprint sugerida — editável pelo usuário no combo da janela de ajuste.
+            public Sprint SelectedSprint
+            {
+                get => _selected;
+                set
+                {
+                    if (ReferenceEquals(_selected, value) || value == null) return;
+                    _selected = value;
+                    OnPropertyChanged(nameof(SelectedSprint));
+                    OnPropertyChanged(nameof(NewSprint));
+                    OnPropertyChanged(nameof(NewPeriod));
+                }
+            }
+
+            // Alvo aplicado = sprint selecionada.
+            public Sprint Target => _selected;
+            public string NewSprint => _selected?.Name ?? string.Empty;
+            public string NewPeriod => _selected == null ? "—" : FormatPeriod(_selected.Start, _selected.End);
+
+            public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+            private void OnPropertyChanged(string name) =>
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+        }
+
+        private static string FormatPeriod(DateTime start, DateTime end) =>
+            (start == default || end == default) ? "—" : $"{start:dd/MM/yy} – {end:dd/MM/yy}";
+
+        // Nome do ancestral (incluindo a própria tarefa) com o TfsType informado.
+        private static string AncestorNameByType(ProjectTask task, string tfsType)
+        {
+            for (var node = task; node != null; node = node.Parent)
+                if (string.Equals(node.TfsType, tfsType, StringComparison.OrdinalIgnoreCase))
+                    return node.Name;
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Lista as tarefas cuja sprint atribuída está fora do período (célula
+        /// laranja) e para as quais existe uma sprint cujo intervalo contém o
+        /// fim da tarefa. Não altera nada — apenas propõe.
+        /// </summary>
+        public System.Collections.Generic.List<SprintPeriodFix> GetOutOfPeriodSprintFixes()
+        {
+            var fixes = new System.Collections.Generic.List<SprintPeriodFix>();
+            if (Project.Sprints.Count == 0)
+                return fixes;
+
+            foreach (var vm in FlatTasks)
+            {
+                if (!vm.SupportsSprint) continue;
+                if (string.IsNullOrWhiteSpace(vm.Model.TfsIterationPath)) continue;
+                // Só ajusta o estado "fora do período"; concluída-antecipada e
+                // sprint-em-andamento são exceções que não se ajustam.
+                if (!vm.IsSprintOutOfPeriod) continue;
+
+                // Data de referência "onde a atividade está":
+                // 0% → início; em andamento → posição do %; 100% → fim.
+                var reference = ProjectCalendarService.GetProgressReferenceDate(
+                    vm.Model.Start, vm.Model.Finish, vm.Model.PercentComplete).Date;
+
+                // 1º) Sprint cujo período contém a referência → remove o destaque.
+                // Em empate, a de menor janela.
+                var target = Project.Sprints
+                    .Where(s => s.Start.Date <= reference && reference <= s.End.Date)
+                    .OrderBy(s => (s.End - s.Start).Duration())
+                    .FirstOrDefault();
+
+                // 2º) Referência fora de qualquer janela: última sprint que começa
+                // em/antes da referência (mais próxima e ANTES). Continua destacada.
+                if (target == null)
+                {
+                    target = Project.Sprints
+                        .Where(s => s.Start.Date <= reference)
+                        .OrderByDescending(s => s.Start.Date)
+                        .FirstOrDefault()
+                        ?? Project.Sprints
+                            .OrderBy(s => s.Start.Date)
+                            .FirstOrDefault();
+                }
+
+                if (target == null) continue;
+                if (string.Equals(target.Path, vm.Model.TfsIterationPath, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var current = Project.Sprints.FirstOrDefault(s =>
+                    string.Equals(s.Path, vm.Model.TfsIterationPath, StringComparison.OrdinalIgnoreCase));
+
+                var story = AncestorNameByType(vm.Model, "Story");
+                if (string.IsNullOrEmpty(story)) story = vm.Model.Name;
+
+                var activityFinish = ProjectCalendarService
+                    .GetInclusiveFinishDate(vm.Model.Start, vm.Model.Finish);
+
+                fixes.Add(new SprintPeriodFix
+                {
+                    Task            = vm,
+                    TaskName        = vm.Model.Name,
+                    Epic            = AncestorNameByType(vm.Model, "Epic"),
+                    Feature         = AncestorNameByType(vm.Model, "Feature"),
+                    Story           = story,
+                    CurrentSprint   = current?.Name ?? vm.Model.TfsIterationPath!,
+                    CurrentPeriod   = current != null ? FormatPeriod(current.Start, current.End) : "—",
+                    ActivityPeriod  = FormatPeriod(vm.Model.Start, activityFinish),
+                    AvailableSprints = Project.Sprints.OrderBy(s => s.Start).ToList(),
+                    SelectedSprint  = target,
+                });
+            }
+            return fixes;
+        }
+
+        /// <summary>
+        /// Aplica os ajustes: grava o novo IterationPath (sem mover as datas —
+        /// mantém a posição do Gantt) e marca o projeto para sincronizar.
+        /// </summary>
+        public int ApplyOutOfPeriodSprintFixes(System.Collections.Generic.IEnumerable<SprintPeriodFix> fixes)
+        {
+            var applied = 0;
+            foreach (var fix in fixes)
+            {
+                fix.Task.Model.TfsIterationPath = fix.Target.Path;
+                fix.Task.NotifySprintChanged();
+                fix.Task.NotifyDatesChanged();
+                applied++;
+            }
+
+            if (applied > 0)
+            {
+                Project.IsDirty = true;
+                RecalcSprints();
+                RebuildSprintGroups();
+                RebuildResourceGroups();
+            }
+            return applied;
         }
 
         partial void OnSprintDurationDaysChanged(int value)
@@ -783,6 +952,13 @@ namespace NXProject.ViewModels
                 try
                 {
                     var project = XmlProjectService.Load(dlg.FileName);
+
+                    // Calendário: usa o embutido no cronograma (se houver) ou volta ao Geral da máquina.
+                    if (project.Calendar != null)
+                        ProjectCalendarService.SetCurrent(project.Calendar);
+                    else
+                        ProjectCalendarService.Load(_sprintSettingsStorageKey);
+
                     foreach (var root in project.Tasks)
                         root.RecalcSummary();
                     SyncOriginalHoursWhenZeroPercent(project.Tasks);

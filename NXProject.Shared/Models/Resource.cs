@@ -26,6 +26,12 @@ namespace NXProject.Models
         public string? Email { get; set; }
         public string? Notes { get; set; }
 
+        /// <summary>
+        /// Equipe (Team) do Azure DevOps de onde a pessoa foi importada.
+        /// Vazio/nulo quando a pessoa veio direto do cronograma (exibido como "Cronograma").
+        /// </summary>
+        public string? Team { get; set; }
+
         public bool IsImportedFromTfs { get; set; }
 
         /// <summary>

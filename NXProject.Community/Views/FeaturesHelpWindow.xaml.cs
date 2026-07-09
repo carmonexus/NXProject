@@ -449,7 +449,21 @@ namespace NXProject.Views
                      "A coluna Sprint na grade permite mover Stories e Features entre sprints. Ao alterar a sprint, a data de Início é recalculada para o início daquela sprint.\n" +
                      "• Para remover a associação com sprint e usar data fixa, basta informar uma data no campo Início."),
                     ("Visão no Gantt",
-                     "O Gantt exibe as sprints no cabeçalho inferior, com numeração e cores alternadas. A visão de zoom Sprint ou Semana deixa as iterações mais visíveis.")
+                     "O Gantt exibe as sprints no cabeçalho inferior, com numeração e cores alternadas. A visão de zoom Sprint ou Semana deixa as iterações mais visíveis."),
+                    ("Ajustar sprints fora do período",
+                     "O botão 🏁 na toolbar (e Gerenciar → Ajustar sprints fora do período) reatribui atividades cuja sprint não corresponde ao período em que a atividade realmente está.\n\n" +
+                     "Data de referência (onde a atividade está):\n" +
+                     "• 0% de conclusão → data de Início.\n" +
+                     "• Em andamento (>0% e <100%) → posição do % concluído: Início + (% × duração útil).\n" +
+                     "• 100% → data de Fim.\n\n" +
+                     "Escolha da sprint ao ajustar:\n" +
+                     "• Se alguma sprint contém a data de referência → usa ela (sai o destaque).\n" +
+                     "• Senão → a última sprint que começa em/antes da referência (mais próxima e ANTES) → permanece destacada.\n\n" +
+                     "Destaque na coluna Sprint:\n" +
+                     "• Laranja: a sprint atribuída não contém a data de referência (ajustável pelo botão).\n" +
+                     "• Texto verde itálico: atividade 100% concluída antecipada, em uma sprint de período anterior (não ajusta).\n" +
+                     "• Texto azul: sprint em andamento (contém a data de hoje) com o % fora do período (não ajusta).\n\n" +
+                     "Antes de aplicar, uma janela mostra Epic, Feature, Story, Sprint Atual e Sprint Ajustada para revisão; nada muda sem clicar em Aplicar. As datas não são movidas — apenas o rótulo da sprint. Depois, sincronize com o DevOps para gravar.")
                 },
                 "A coluna Sprint é especialmente útil para replanejar — mova Stories entre sprints e veja o impacto no cronograma imediatamente."
             ),
@@ -1129,7 +1143,21 @@ namespace NXProject.Views
                      "The Sprint column in the grid lets you move Stories and Features between sprints. When you change the sprint, the Start date is recalculated to the start of that sprint.\n" +
                      "• To remove the sprint association and use a fixed date, just enter a date in the Start field."),
                     ("View in Gantt",
-                     "The Gantt shows sprints in the bottom header, with numbering and alternating colors. Sprint or Week zoom makes iterations more visible.")
+                     "The Gantt shows sprints in the bottom header, with numbering and alternating colors. Sprint or Week zoom makes iterations more visible."),
+                    ("Fix sprints out of period",
+                     "The 🏁 button on the toolbar (and Manage → Fix sprints out of period) reassigns activities whose sprint does not match the period the activity is actually in.\n\n" +
+                     "Reference date (where the activity is):\n" +
+                     "• 0% complete → Start date.\n" +
+                     "• In progress (>0% and <100%) → % position: Start + (% × working duration).\n" +
+                     "• 100% → Finish date.\n\n" +
+                     "Sprint choice when fixing:\n" +
+                     "• If a sprint contains the reference date → use it (highlight clears).\n" +
+                     "• Otherwise → the last sprint starting on/before the reference (closest and BEFORE) → stays highlighted.\n\n" +
+                     "Highlight in the Sprint column:\n" +
+                     "• Orange: the assigned sprint does not contain the reference date (adjustable by the button).\n" +
+                     "• Italic green text: 100% activity delivered early, in an earlier-period sprint (not adjusted).\n" +
+                     "• Blue text: sprint in progress (contains today) with the % out of period (not adjusted).\n\n" +
+                     "Before applying, a window shows Epic, Feature, Story, Current Sprint and Adjusted Sprint for review; nothing changes until you click Apply. Dates are not moved — only the sprint label. Then sync with DevOps to persist.")
                 },
                 "The Sprint column is especially useful for replanning — move Stories between sprints and see the schedule impact immediately."
             ),
