@@ -300,6 +300,7 @@
     <!-- Diálogo de exclusão -->
     <sys:String x:Key="Delete_ProtectedTitle">Exclusão protegida</sys:String>
     <sys:String x:Key="Delete_ProtectedMsg">A atividade "{0}" é do tipo "{1}" e não pode ser excluída pelo NXProject.\n\nPara excluir, acesse o DevOps diretamente.\n\nDeseja abrir o item no DevOps agora?</sys:String>
+    <sys:String x:Key="Delete_StartedStoryMsg">A Story "{0}" já está iniciada ({1:0.#}% concluído) e não pode ser excluída pelo NXProject.\n\nPara excluir, acesse o DevOps diretamente.\n\nDeseja abrir o item no DevOps agora?</sys:String>
     <sys:String x:Key="Delete_ConfirmTitle">Confirmar Exclusão</sys:String>
     <sys:String x:Key="Delete_DevOpsTitle">⚠ Excluir Story #{0} do Azure DevOps?</sys:String>
     <sys:String x:Key="Delete_LocalTitle">⚠ Excluir tarefa "{0}"?</sys:String>
@@ -439,6 +440,10 @@
     <sys:String x:Key="Imp_Importing">Importando...</sys:String>
     <sys:String x:Key="Imp_Cancel">Cancelar</sys:String>
     <sys:String x:Key="Imp_NoConnectionStatus">Conexão com o Azure DevOps não configurada. Clique em "Configurar..." acima.</sys:String>
+    <sys:String x:Key="Imp_ErrorTitle">Erro na importação do Azure DevOps</sys:String>
+    <sys:String x:Key="Imp_AuthError">Falha de autenticação com o Azure DevOps. Verifique se o PAT (token) é válido, não expirou e tem os escopos necessários (Work Items - Read &amp; Write), e se a URL da organização e o Team Project estão corretos.</sys:String>
+    <sys:String x:Key="Imp_OpenTokensPrompt">Deseja abrir a página de tokens (PAT) do Azure DevOps para gerar/renovar o token agora?</sys:String>
+    <sys:String x:Key="Imp_EmptyResult">Nenhum item foi importado. Verifique: o ID do work item raiz (tipo Project), as permissões do PAT no projeto, e se o nível de backlog "Project" está habilitado no Azure DevOps.</sys:String>
     <sys:String x:Key="Imp_SelectOrEnterId">Selecione um projeto da lista ou informe um ID de work item raiz válido.</sys:String>
 
     <!-- Configuração Integração Azure DevOps -->

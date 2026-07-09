@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -118,6 +119,15 @@ namespace NXProject.Views
                 var importResult = await TfsImportService.ImportAsync(options);
                 var project = importResult.Project;
 
+                if (project.Tasks.Count == 0)
+                {
+                    var warn = AppStrings.Get("Imp_EmptyResult");
+                    ShowStatus(warn);
+                    MessageBox.Show(this, warn, AppStrings.Get("Imp_ErrorTitle"),
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 if (DevOpsProjectCombo.SelectedItem is DevOpsProject selected)
                 {
                     project.DevOpsProjectName = selected.Name;
@@ -143,12 +153,75 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
-                ShowStatus(ex.Message);
+                var (msg, isAuth) = BuildImportErrorMessage(ex);
+                ShowStatus(msg);
+
+                if (isAuth)
+                {
+                    var res = MessageBox.Show(this,
+                        msg + "\n\n" + AppStrings.Get("Imp_OpenTokensPrompt"),
+                        AppStrings.Get("Imp_ErrorTitle"),
+                        MessageBoxButton.YesNo, MessageBoxImage.Error);
+                    if (res == MessageBoxResult.Yes)
+                        OpenTokensPage();
+                }
+                else
+                {
+                    MessageBox.Show(this, msg, AppStrings.Get("Imp_ErrorTitle"),
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             finally
             {
                 SetImporting(false);
             }
+        }
+
+        // Abre a página de Personal Access Tokens da organização no navegador.
+        private void OpenTokensPage()
+        {
+            try
+            {
+                var org = _savedOptions.OrganizationUrl?.Trim().TrimEnd('/');
+                if (string.IsNullOrWhiteSpace(org)) return;
+                var url = org + "/_usersSettings/tokens";
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, AppStrings.Get("Imp_ErrorTitle"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // Monta uma mensagem de erro legível: encadeia InnerExceptions (redes/TLS
+        // costumam trazer a causa real só no Inner) e destaca falha de PAT/autenticação.
+        // Retorna (mensagem, ehFalhaDeAutenticacao).
+        private static (string Message, bool IsAuth) BuildImportErrorMessage(Exception ex)
+        {
+            var parts = new List<string>();
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                var m = e.Message?.Trim();
+                if (!string.IsNullOrEmpty(m) && !parts.Contains(m))
+                    parts.Add(m);
+            }
+            if (parts.Count == 0)
+                parts.Add(ex.GetType().Name);
+
+            var full = string.Join("\n", parts);
+            var lower = full.ToLowerInvariant();
+
+            bool looksAuth = lower.Contains("autentica") || lower.Contains("401") ||
+                             lower.Contains("403") || lower.Contains("unauthorized") ||
+                             lower.Contains("forbidden") || lower.Contains("html") ||
+                             lower.Contains("login") || lower.Contains("pat") ||
+                             lower.Contains("sign in") || lower.Contains("tf400813");
+
+            if (looksAuth)
+                return (AppStrings.Get("Imp_AuthError") + "\n\n" + full, true);
+
+            return (full, false);
         }
 
         private void OnWindowLoaded(object sender, RoutedEventArgs e)

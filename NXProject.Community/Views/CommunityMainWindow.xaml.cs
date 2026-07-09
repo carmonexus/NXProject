@@ -1168,13 +1168,27 @@ namespace NXProject.Views
             bool isNoDevOps = string.Equals(task.Model.TfsType?.Trim(), "No DevOps", StringComparison.OrdinalIgnoreCase);
             bool isStory = NXProject.Services.TfsImportService.IsStoryTypePublic(task.Model.TfsType);
             bool hasDevOpsId = task.TfsId is > 0;
-            bool canDeleteInDevOps = hasDevOpsId && isStory;
+            bool isStarted = task.PercentComplete > 0.0001;
+            // Story com andamento (% > 0) também é protegida: não pode excluir aqui.
+            bool storyStartedProtected = hasDevOpsId && isStory && isStarted;
+            bool canDeleteInDevOps = hasDevOpsId && isStory && !isStarted;
 
-            // Tipo com ID real mas não é Story (Epic/Feature): não pode excluir aqui, oferece abrir no DevOps
+            // Epic/Feature (ID real, não Story): não pode excluir aqui, oferece abrir no DevOps.
             if (hasDevOpsId && !isStory)
             {
                 var result = MessageBox.Show(
                     LanguageService.Str("Delete_ProtectedMsg", task.Name, task.Model.TfsType ?? ""),
+                    LanguageService.Str("Delete_ProtectedTitle"), MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (result == MessageBoxResult.Yes)
+                    OpenTaskInDevOps(task.Model);
+                return;
+            }
+
+            // Story já iniciada (% > 0): protegida da exclusão pelo cronograma.
+            if (storyStartedProtected)
+            {
+                var result = MessageBox.Show(
+                    LanguageService.Str("Delete_StartedStoryMsg", task.Name, task.PercentComplete),
                     LanguageService.Str("Delete_ProtectedTitle"), MessageBoxButton.YesNo, MessageBoxImage.Information);
                 if (result == MessageBoxResult.Yes)
                     OpenTaskInDevOps(task.Model);

@@ -497,6 +497,7 @@
     <!-- Delete dialog -->
     <sys:String x:Key="Delete_ProtectedTitle">Protected deletion</sys:String>
     <sys:String x:Key="Delete_ProtectedMsg">The activity "{0}" is of type "{1}" and cannot be deleted by NXProject.\n\nTo delete, access DevOps directly.\n\nDo you want to open the item in DevOps now?</sys:String>
+    <sys:String x:Key="Delete_StartedStoryMsg">The Story "{0}" is already started ({1:0.#}% complete) and cannot be deleted by NXProject.\n\nTo delete, access DevOps directly.\n\nDo you want to open the item in DevOps now?</sys:String>
     <sys:String x:Key="Delete_ConfirmTitle">Confirm Deletion</sys:String>
     <sys:String x:Key="Delete_DevOpsTitle">⚠ Delete Story #{0} from Azure DevOps?</sys:String>
     <sys:String x:Key="Delete_LocalTitle">⚠ Delete task "{0}"?</sys:String>
@@ -636,6 +637,10 @@
     <sys:String x:Key="Imp_Importing">Importing...</sys:String>
     <sys:String x:Key="Imp_Cancel">Cancel</sys:String>
     <sys:String x:Key="Imp_NoConnectionStatus">Azure DevOps connection not configured. Click "Configure..." above.</sys:String>
+    <sys:String x:Key="Imp_ErrorTitle">Azure DevOps import error</sys:String>
+    <sys:String x:Key="Imp_AuthError">Authentication with Azure DevOps failed. Check that the PAT (token) is valid, not expired and has the required scopes (Work Items - Read &amp; Write), and that the organization URL and Team Project are correct.</sys:String>
+    <sys:String x:Key="Imp_OpenTokensPrompt">Open the Azure DevOps tokens (PAT) page to create/renew the token now?</sys:String>
+    <sys:String x:Key="Imp_EmptyResult">No items were imported. Check: the root work item ID (Project type), the PAT permissions on the project, and whether the "Project" backlog level is enabled in Azure DevOps.</sys:String>
     <sys:String x:Key="Imp_SelectOrEnterId">Select a project from the list or enter a valid root work item ID.</sys:String>
 
     <!-- Azure DevOps Integration Configuration -->
