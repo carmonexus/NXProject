@@ -41,6 +41,9 @@ namespace NXProject.Views
             StartFieldBox.Text = saved.StartFieldName;
             FinishFieldBox.Text = saved.FinishFieldName;
             PercAlocFieldBox.Text = saved.PercAlocFieldName;
+            PercConclusaoFieldBox.Text = saved.PercConclusaoFieldName;
+            SyncVersionFieldBox.Text = saved.SyncVersionFieldName;
+            SyncNameFieldBox.Text = saved.SyncNameFieldName;
             FixedStartTagBox.Text = saved.FixedStartTagName;
             SyncPredecessorLinksCheck.IsChecked = saved.SyncPredecessorLinks;
             EnforceStoryCompletionWithTasksCheck.IsChecked = saved.EnforceStoryCompletionWithTasks;
@@ -160,7 +163,10 @@ namespace NXProject.Views
             EffortFieldName     = string.IsNullOrWhiteSpace(EffortFieldBox.Text)    ? "HH Estimado"   : EffortFieldBox.Text.Trim(),
             StartFieldName      = string.IsNullOrWhiteSpace(StartFieldBox.Text)     ? "Data_Inicio"   : StartFieldBox.Text.Trim(),
             FinishFieldName     = string.IsNullOrWhiteSpace(FinishFieldBox.Text)    ? "Data_Fim"      : FinishFieldBox.Text.Trim(),
-            PercAlocFieldName   = string.IsNullOrWhiteSpace(PercAlocFieldBox.Text)  ? "Perc_Alocação" : PercAlocFieldBox.Text.Trim(),
+            PercAlocFieldName   = string.IsNullOrWhiteSpace(PercAlocFieldBox.Text)  ? "Perc_Alocacao" : PercAlocFieldBox.Text.Trim(),
+            PercConclusaoFieldName = string.IsNullOrWhiteSpace(PercConclusaoFieldBox.Text) ? "Perc_Conclusao" : PercConclusaoFieldBox.Text.Trim(),
+            SyncVersionFieldName = string.IsNullOrWhiteSpace(SyncVersionFieldBox.Text) ? "Sync_version" : SyncVersionFieldBox.Text.Trim(),
+            SyncNameFieldName   = string.IsNullOrWhiteSpace(SyncNameFieldBox.Text)   ? "Sync_Name"    : SyncNameFieldBox.Text.Trim(),
             FixedStartTagName   = string.IsNullOrWhiteSpace(FixedStartTagBox.Text)  ? "DT-INI-NEG"   : FixedStartTagBox.Text.Trim(),
             SyncPredecessorLinks = SyncPredecessorLinksCheck.IsChecked == true,
             EnforceStoryCompletionWithTasks = EnforceStoryCompletionWithTasksCheck.IsChecked == true,

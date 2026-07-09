@@ -474,7 +474,10 @@
     <sys:String x:Key="Cfg_EffortField">Campo esforço (horas)</sys:String>
     <sys:String x:Key="Cfg_StartField">Campo data início</sys:String>
     <sys:String x:Key="Cfg_FinishField">Campo data fim</sys:String>
-    <sys:String x:Key="Cfg_PercAlocField">Campo % alocação (Perc_Aloc)</sys:String>
+    <sys:String x:Key="Cfg_PercAlocField">Campo % alocação (Perc_Alocacao)</sys:String>
+    <sys:String x:Key="Cfg_PercConclusaoField">Campo % conclusão (Perc_Conclusao)</sys:String>
+    <sys:String x:Key="Cfg_SyncVersionField">Campo controle de versão (Sync_version)</sys:String>
+    <sys:String x:Key="Cfg_SyncNameField">Campo usuário da sync (Sync_Name)</sys:String>
     <sys:String x:Key="Cfg_FixedStartTag">Tag de data negociada (início fixado)</sys:String>
     <sys:String x:Key="Cfg_SyncPredLinks">Sincronizar links de predecessora no DevOps</sys:String>
     <sys:String x:Key="Cfg_EnforceStoryCompletionWithTasks">Encerrar Story somente com Task</sys:String>

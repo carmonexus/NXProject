@@ -183,13 +183,13 @@ NXProject reads and writes custom fields on **Stories, Features and Epics** in A
 | `HH Estimado` | `Custom.HHEstimado` *(example)* | Integer or Decimal | `HH Estimado` | Story, Feature, Epic | Estimated effort in hours |
 | `Data_Inicio` | `Custom.DataInicio` *(example)* | Date/Time | `Data_Inicio` | Story, Feature, Epic | Planned start date |
 | `Data_Fim` | `Custom.DataFim` *(example)* | Date/Time | `Data_Fim` | Story, Feature, Epic | Planned finish date |
-| `Perc_Alocacao` | `Custom.PercAlocacao` *(example)* | Integer (1–100) | `Perc_Alocacao` | Story | % of person's day dedicated to this Story |
+| `Perc_Alocacao` | `Custom.PercAlocacao` *(example)* | Decimal/Float (1–100, up to 2 decimals) | `Perc_Alocacao` | Story | % of person's day dedicated to this Story |
 | `Perc_Conclusao` | `Custom.PercConclusao` *(example)* | Integer (0–100) | `Perc_Conclusao` | Story | % completion (read on import, written on sync) |
 | `Sync_version` | `Custom.Syncversion` *(example)* | Integer | `Sync_version` | Story, Feature, Epic | Concurrency version counter (auto-managed) |
 | `Sync_Name` | `Custom.SyncName` *(example)* | Text *(plain text, not Identity)* | `Sync_Name` | Story, Feature, Epic | Who last synced (auto-managed) |
 
 > The reference names above are examples — Azure DevOps generates them automatically from the display name and your organization prefix.  
-> If your fields have different display names, update them in NXProject under **File → Import TFS / Azure DevOps → Advanced fields** expander.
+> If your fields have different display names, set them in NXProject under **Configure Azure DevOps → Advanced fields**, where all field names are configurable: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, Sync_version and Sync_Name.
 
 > **Tip:** create the fields once at the process level and then add them to Story, Feature and Epic work item types — they share the same field definition across types.
 

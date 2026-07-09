@@ -148,11 +148,30 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="{DynamicResource Cfg_PercAlocField}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
                             <TextBox x:Name="PercAlocFieldBox" Height="26" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="{DynamicResource Cfg_PercConclusaoField}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                            <TextBox x:Name="PercConclusaoFieldBox" Height="26" Padding="6,3"/>
+                        </StackPanel>
+                    </Grid>
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="{DynamicResource Cfg_SyncVersionField}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                            <TextBox x:Name="SyncVersionFieldBox" Height="26" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="{DynamicResource Cfg_SyncNameField}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                            <TextBox x:Name="SyncNameFieldBox" Height="26" Padding="6,3"/>
                         </StackPanel>
                     </Grid>
                     <StackPanel Margin="0,8,0,0">

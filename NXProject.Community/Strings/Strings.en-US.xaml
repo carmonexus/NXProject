@@ -679,7 +679,10 @@
     <sys:String x:Key="Cfg_EffortField">Effort field (hours)</sys:String>
     <sys:String x:Key="Cfg_StartField">Start date field</sys:String>
     <sys:String x:Key="Cfg_FinishField">Finish date field</sys:String>
-    <sys:String x:Key="Cfg_PercAlocField">Allocation % field (Perc_Aloc)</sys:String>
+    <sys:String x:Key="Cfg_PercAlocField">Allocation % field (Perc_Alocacao)</sys:String>
+    <sys:String x:Key="Cfg_PercConclusaoField">Completion % field (Perc_Conclusao)</sys:String>
+    <sys:String x:Key="Cfg_SyncVersionField">Version control field (Sync_version)</sys:String>
+    <sys:String x:Key="Cfg_SyncNameField">Sync user field (Sync_Name)</sys:String>
     <sys:String x:Key="Cfg_FixedStartTag">Negotiated date tag (fixed start)</sys:String>
     <sys:String x:Key="Cfg_SyncPredLinks">Sync predecessor links in DevOps</sys:String>
     <sys:String x:Key="Cfg_EnforceStoryCompletionWithTasks">Close Story only with Task</sys:String>

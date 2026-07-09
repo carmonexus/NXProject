@@ -183,13 +183,13 @@ O NXProject lê e grava campos customizados em **Stories, Features e Epics** do 
 | `HH Estimado` | `Custom.HHEstimado` *(exemplo)* | Inteiro ou Decimal | `HH Estimado` | Story, Feature, Epic | Esforço estimado em horas |
 | `Data_Inicio` | `Custom.DataInicio` *(exemplo)* | Data/Hora | `Data_Inicio` | Story, Feature, Epic | Data de início planejada |
 | `Data_Fim` | `Custom.DataFim` *(exemplo)* | Data/Hora | `Data_Fim` | Story, Feature, Epic | Data de fim planejada |
-| `Perc_Alocacao` | `Custom.PercAlocacao` *(exemplo)* | Inteiro (1–100) | `Perc_Alocacao` | Story | % do dia da pessoa dedicado a esta Story |
+| `Perc_Alocacao` | `Custom.PercAlocacao` *(exemplo)* | Decimal/Float (1–100, até 2 casas) | `Perc_Alocacao` | Story | % do dia da pessoa dedicado a esta Story |
 | `Perc_Conclusao` | `Custom.PercConclusao` *(exemplo)* | Inteiro (0–100) | `Perc_Conclusao` | Story | % de conclusão (lido no import, gravado no sync) |
 | `Sync_version` | `Custom.Syncversion` *(exemplo)* | Inteiro | `Sync_version` | Story, Feature, Epic | Contador de versão de concorrência (gerenciado automaticamente) |
 | `Sync_Name` | `Custom.SyncName` *(exemplo)* | Texto *(texto simples, não Identity)* | `Sync_Name` | Story, Feature, Epic | Quem realizou a última sincronização (gerenciado automaticamente) |
 
 > Os nomes de referência acima são exemplos — o Azure DevOps os gera automaticamente a partir do nome de exibição e do prefixo da sua organização.  
-> Se os seus campos tiverem nomes de exibição diferentes, ajuste-os no NXProject em **Arquivo → Importar TFS / Azure DevOps → expansor "Campos (avançado)"**.
+> Se os seus campos tiverem nomes diferentes, ajuste-os no NXProject em **Configuração Integração Azure DevOps → Campos avançados**, onde todos os nomes são configuráveis: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, Sync_version e Sync_Name.
 
 > **Dica:** crie os campos uma vez no nível do processo e adicione-os a Story, Feature e Epic — todos os tipos compartilham a mesma definição de campo.
 
