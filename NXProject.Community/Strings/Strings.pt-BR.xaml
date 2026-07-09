@@ -1207,6 +1207,14 @@
     <sys:String x:Key="Calendar_ProjectActive">Calendário do cronograma ativo — usado no cálculo das datas e salvo no arquivo .nxp (não vai para o TFS/DevOps).</sys:String>
     <sys:String x:Key="Calendar_IncludedMsg">Calendário incluído no cronograma. Clique em Salvar para gravar no arquivo.</sys:String>
     <sys:String x:Key="Calendar_CopiedToGeneralMsg">Calendário copiado para o Geral (da máquina).</sys:String>
+    <sys:String x:Key="Calendar_Export">Exportar...</sys:String>
+    <sys:String x:Key="Calendar_ExportTip">Exporta o calendário Geral para um arquivo (ex.: em um drive de rede compartilhado) para compartilhar entre times.</sys:String>
+    <sys:String x:Key="Calendar_ExportTitle">Exportar calendário</sys:String>
+    <sys:String x:Key="Calendar_ExportedMsg">Calendário exportado.</sys:String>
+    <sys:String x:Key="Calendar_Import">Importar...</sys:String>
+    <sys:String x:Key="Calendar_ImportTip">Importa um calendário de arquivo (ex.: de um drive de rede compartilhado) e o aplica ao Geral desta máquina.</sys:String>
+    <sys:String x:Key="Calendar_ImportTitle">Importar calendário</sys:String>
+    <sys:String x:Key="Calendar_ImportedMsg">Calendário importado para o Geral.</sys:String>
     <sys:String x:Key="SMap_Add">+ Adicionar</sys:String>
     <sys:String x:Key="SMap_Remove">Remover</sys:String>
     <sys:String x:Key="SMap_Defaults">Pré-definidos</sys:String>

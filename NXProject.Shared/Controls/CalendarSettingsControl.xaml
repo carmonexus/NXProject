@@ -51,10 +51,14 @@
                     </DataGrid>
 
                     <DockPanel Grid.Row="3" Margin="0,12,0,0">
-                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                            <Button Content="{DynamicResource Calendar_AddToday}" Width="120" Margin="0,0,8,0" Click="OnAddTodayGeneralClick"/>
-                            <Button Content="{DynamicResource Calendar_RemoveSelected}" Width="140" Click="OnRemoveGeneralClick"/>
-                        </StackPanel>
+                        <WrapPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                            <Button Content="{DynamicResource Calendar_AddToday}" Width="120" Margin="0,0,8,4" Click="OnAddTodayGeneralClick"/>
+                            <Button Content="{DynamicResource Calendar_RemoveSelected}" Width="140" Margin="0,0,8,4" Click="OnRemoveGeneralClick"/>
+                            <Button Content="{DynamicResource Calendar_Export}" Width="105" Margin="0,0,8,4"
+                                    Click="OnExportGeneralClick" ToolTip="{DynamicResource Calendar_ExportTip}"/>
+                            <Button Content="{DynamicResource Calendar_Import}" Width="105" Margin="0,0,8,4"
+                                    Click="OnImportGeneralClick" ToolTip="{DynamicResource Calendar_ImportTip}"/>
+                        </WrapPanel>
                         <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
                                 Content="{DynamicResource Calendar_IncludeInProject}"
                                 ToolTip="{DynamicResource Calendar_IncludeInProjectTip}"

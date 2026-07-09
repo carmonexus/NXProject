@@ -56,6 +56,14 @@
     <sys:String x:Key="Calendar_ProjectActive">Schedule calendar active — used for date calculation and saved in the .nxp file (not sent to TFS/DevOps).</sys:String>
     <sys:String x:Key="Calendar_IncludedMsg">Calendar included in the schedule. Click Save to write it to the file.</sys:String>
     <sys:String x:Key="Calendar_CopiedToGeneralMsg">Calendar copied to the machine's General.</sys:String>
+    <sys:String x:Key="Calendar_Export">Export...</sys:String>
+    <sys:String x:Key="Calendar_ExportTip">Exports the General calendar to a file (e.g. on a shared network drive) to share across teams.</sys:String>
+    <sys:String x:Key="Calendar_ExportTitle">Export calendar</sys:String>
+    <sys:String x:Key="Calendar_ExportedMsg">Calendar exported.</sys:String>
+    <sys:String x:Key="Calendar_Import">Import...</sys:String>
+    <sys:String x:Key="Calendar_ImportTip">Imports a calendar from a file (e.g. from a shared network drive) and applies it to this machine's General.</sys:String>
+    <sys:String x:Key="Calendar_ImportTitle">Import calendar</sys:String>
+    <sys:String x:Key="Calendar_ImportedMsg">Calendar imported to General.</sys:String>
 
     <sys:String x:Key="AI_WindowTitle">Project AI Assistant</sys:String>
     <sys:String x:Key="AI_Title">AI Assistant for project tasks</sys:String>

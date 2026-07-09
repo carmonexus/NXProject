@@ -61,6 +61,60 @@ namespace NXProject.Controls
             UpdateCopyEnabled();
         }
 
+        // Exportar o calendário Geral para um arquivo (ex.: drive de rede compartilhado).
+        private void OnExportGeneralClick(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = AppStringsSafe("Calendar_ExportTitle", "Exportar calendário"),
+                Filter = ProjectCalendarService.FileFilter,
+                FileName = "calendario-nxproject.nxcal"
+            };
+            if (dlg.ShowDialog() != true) return;
+            try
+            {
+                ProjectCalendarService.ExportToFile(GeneralCalendar, dlg.FileName);
+                MessageBox.Show(Window.GetWindow(this),
+                    AppStringsSafe("Calendar_ExportedMsg", "Calendário exportado."),
+                    AppStringsSafe("Calendar_TabGeneral", "Geral"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Window.GetWindow(this), ex.Message,
+                    AppStringsSafe("Calendar_TabGeneral", "Geral"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // Importar um calendário de arquivo para o Geral (compartilhado entre times).
+        private void OnImportGeneralClick(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = AppStringsSafe("Calendar_ImportTitle", "Importar calendário"),
+                Filter = ProjectCalendarService.FileFilter
+            };
+            if (dlg.ShowDialog() != true) return;
+            try
+            {
+                GeneralCalendar = ProjectCalendarService.ImportFromFile(dlg.FileName);
+                OnPropertyChanged(nameof(GeneralCalendar));
+                ProjectCalendarService.Save(GeneralCalendar, _storageKey);
+                UpdateCopyEnabled();
+                MessageBox.Show(Window.GetWindow(this),
+                    AppStringsSafe("Calendar_ImportedMsg", "Calendário importado para o Geral."),
+                    AppStringsSafe("Calendar_TabGeneral", "Geral"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Window.GetWindow(this), ex.Message,
+                    AppStringsSafe("Calendar_TabGeneral", "Geral"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         // Incluir/atualizar o calendário do cronograma a partir do Geral.
         private void OnIncludeInProjectClick(object sender, RoutedEventArgs e)
         {

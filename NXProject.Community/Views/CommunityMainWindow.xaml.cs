@@ -2631,8 +2631,8 @@ namespace NXProject.Views
             {
                 Title = "Calendario de trabalho",
                 Owner = this,
-                Width = 720,
-                Height = 520,
+                Width = 820,
+                Height = 540,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Background = (System.Windows.Media.Brush)FindResource("BackgroundBrush"),
                 Content = control

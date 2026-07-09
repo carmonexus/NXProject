@@ -26,7 +26,8 @@ namespace NXProject.Services
 
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
             var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(FilePath, json);
+            // LGPD: nomes de pessoas são dados pessoais — grava cifrado (DPAPI, escopo do usuário).
+            File.WriteAllText(FilePath, WindowsDataProtection.Encrypt(json, "NXProject.ResourceKinds"));
         }
 
         /// <summary>Carrega o mapeamento nome→Kind salvo localmente.</summary>
@@ -36,7 +37,12 @@ namespace NXProject.Services
             if (!File.Exists(FilePath)) return result;
             try
             {
-                var json = File.ReadAllText(FilePath);
+                var content = File.ReadAllText(FilePath);
+                // Cifrado (DPAPI) → decifra; arquivo antigo em texto plano → usa como está
+                // (migra para cifrado na próxima gravação).
+                var json = WindowsDataProtection.Decrypt(content);
+                if (string.IsNullOrEmpty(json))
+                    json = content;
                 var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
                 if (dict == null) return result;
                 foreach (var (name, kindStr) in dict)

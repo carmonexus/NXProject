@@ -76,6 +76,26 @@ namespace NXProject.Services
             return copy;
         }
 
+        // Filtro de arquivo para exportar/importar o calendário (compartilhável).
+        public const string FileFilter =
+            "Calendário NXProject (*.nxcal;*.json)|*.nxcal;*.json|Todos os arquivos (*.*)|*.*";
+
+        /// <summary>Exporta um calendário para um arquivo (ex.: em drive de rede compartilhado).</summary>
+        public static void ExportToFile(ProjectCalendar calendar, string path)
+        {
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+            File.WriteAllText(path, JsonSerializer.Serialize(Normalize(calendar), JsonOptions));
+        }
+
+        /// <summary>Importa um calendário de um arquivo exportado.</summary>
+        public static ProjectCalendar ImportFromFile(string path)
+        {
+            var json = File.ReadAllText(path);
+            return Normalize(JsonSerializer.Deserialize<ProjectCalendar>(json));
+        }
+
         public static bool IsWorkingDay(DateTime date) => IsWorkingDay(date, Current);
 
         public static double WorkingHoursPerDay =>
