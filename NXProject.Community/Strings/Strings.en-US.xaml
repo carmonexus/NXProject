@@ -646,6 +646,7 @@
     <sys:String x:Key="Imp_Cancel">Cancel</sys:String>
     <sys:String x:Key="Imp_NoConnectionStatus">Azure DevOps connection not configured. Click "Configure..." above.</sys:String>
     <sys:String x:Key="Imp_ErrorTitle">Azure DevOps import error</sys:String>
+    <sys:String x:Key="Sync_ProjectTargetInfo">Synchronization will use this schedule's project:&#10;&#10;Team Project: {0}&#10;Organization: {1}&#10;&#10;(different from the current global configuration). Continue?</sys:String>
     <sys:String x:Key="Imp_AuthError">Authentication with Azure DevOps failed. Check that the PAT (token) is valid, not expired and has the required scopes (Work Items - Read &amp; Write), and that the organization URL and Team Project are correct.</sys:String>
     <sys:String x:Key="Imp_OpenTokensPrompt">Open the Azure DevOps tokens (PAT) page to create/renew the token now?</sys:String>
     <sys:String x:Key="Imp_EmptyResult">No items were imported. Check: the root work item ID (Project type), the PAT permissions on the project, and whether the "Project" backlog level is enabled in Azure DevOps.</sys:String>
@@ -1115,6 +1116,13 @@
     <sys:String x:Key="WiEdit_Deleting">Deleting Story in DevOps...</sys:String>
     <sys:String x:Key="WiEdit_DeleteError">Error deleting: {0}</sys:String>
     <sys:String x:Key="WiEdit_InvalidId">Enter a valid ID: DevOps number, 0 to create on sync, or empty to unlink.</sys:String>
+    <sys:String x:Key="WiEdit_IdReadOnlyTip">ID comes from DevOps (imported/synced) — read-only. To unlink, change Type to "No DevOps".</sys:String>
+    <sys:String x:Key="WiEdit_Validating">Validating the item type in DevOps...</sys:String>
+    <sys:String x:Key="WiEdit_ValidateError">Could not validate the item in DevOps: {0}</sys:String>
+    <sys:String x:Key="WiEdit_DeleteNotFound">Item #{0} was not found in DevOps. Check the ID.</sys:String>
+    <sys:String x:Key="WiEdit_DeleteTypeMismatch">Blocked: item #{0} in DevOps is of type "{1}", not a Story. Deletion cancelled to avoid deleting the wrong item (check if the ID was swapped).</sys:String>
+    <sys:String x:Key="WiEdit_TypeMismatch">Item #{0} in DevOps is of type "{1}", different from the selected type "{2}". Adjust the type or the ID.</sys:String>
+    <sys:String x:Key="WiEdit_DeleteStartedStory">Blocked: Story #{0} is already started ({1:0.#}% complete) and cannot be deleted in DevOps. Close or handle it in DevOps itself.</sys:String>
     <sys:String x:Key="WiEdit_SelectTypeToCreate">To create (ID = 0), select the DevOps Type (Epic, Feature or Story).</sys:String>
 
     <!-- Online Activities (child Tasks in DevOps) -->

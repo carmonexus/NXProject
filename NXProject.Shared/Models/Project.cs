@@ -49,6 +49,12 @@ namespace NXProject.Models
         public int DevOpsRootWorkItemId { get; set; }
         public string? DevOpsProjectOwner { get; set; }
 
+        // Organização + Team Project (API) de onde este cronograma foi importado.
+        // A sincronização usa ESTES valores (o projeto aberto), não a config global,
+        // para não sincronizar no projeto errado ao alternar entre cronogramas.
+        public string? DevOpsOrganizationUrl { get; set; }
+        public string? DevOpsTeamProject { get; set; }
+
         // Exibe coluna "OrgH" (Estimativa Original) no cronograma
         public bool ShowOriginalHoursColumn { get; set; } = false;
 

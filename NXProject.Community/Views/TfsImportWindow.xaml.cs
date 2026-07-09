@@ -119,6 +119,11 @@ namespace NXProject.Views
                 var importResult = await TfsImportService.ImportAsync(options);
                 var project = importResult.Project;
 
+                // Grava a origem (organização + Team Project) para a sincronização
+                // usar o projeto do cronograma aberto, não a config global.
+                project.DevOpsOrganizationUrl = options.OrganizationUrl?.Trim();
+                project.DevOpsTeamProject = options.TeamProject?.Trim();
+
                 if (project.Tasks.Count == 0)
                 {
                     var warn = AppStrings.Get("Imp_EmptyResult");

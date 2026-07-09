@@ -1327,6 +1327,32 @@ namespace NXProject.Views
                 return;
 
             var options = Services.TfsConnectionStore.Load("NXProject.Community");
+
+            // Alvo da sincronização = organização + Team Project do cronograma ABERTO
+            // (gravados no .nxp na importação), não a config global. Evita sincronizar
+            // no projeto errado ao alternar entre cronogramas. O PAT continua o da config.
+            var projOrg  = vm.Project.DevOpsOrganizationUrl?.Trim();
+            var projTeam = vm.Project.DevOpsTeamProject?.Trim();
+            if (!string.IsNullOrWhiteSpace(projOrg) || !string.IsNullOrWhiteSpace(projTeam))
+            {
+                var connOrg  = options.OrganizationUrl?.Trim() ?? "";
+                var connTeam = options.TeamProject?.Trim() ?? "";
+                if (!string.IsNullOrWhiteSpace(projOrg))  options.OrganizationUrl = projOrg;
+                if (!string.IsNullOrWhiteSpace(projTeam)) options.TeamProject = projTeam;
+
+                bool differs =
+                    (!string.IsNullOrWhiteSpace(projTeam) && !string.Equals(connTeam, projTeam, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(projOrg)  && !string.Equals(connOrg, projOrg, StringComparison.OrdinalIgnoreCase));
+                if (differs)
+                {
+                    var proceed = MessageBox.Show(
+                        AppStrings.Get("Sync_ProjectTargetInfo", options.TeamProject ?? "", options.OrganizationUrl ?? ""),
+                        "Sincronizar TFS/DevOps", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+                    if (proceed != MessageBoxResult.OK)
+                        return;
+                }
+            }
+
             if (string.IsNullOrWhiteSpace(options.OrganizationUrl) ||
                 string.IsNullOrWhiteSpace(options.TeamProject) ||
                 string.IsNullOrWhiteSpace(options.PersonalAccessToken))

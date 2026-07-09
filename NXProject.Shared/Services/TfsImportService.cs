@@ -3208,6 +3208,42 @@ namespace NXProject.Services
             };
         }
 
+        /// <summary>
+        /// Retorna o System.WorkItemType real do item no DevOps (null se não existir).
+        /// Usado para validar que o ID vinculado é do tipo esperado antes de excluir/sincronizar.
+        /// </summary>
+        public static async Task<string?> GetWorkItemTypeAsync(
+            TfsConnectionOptions options, int workItemId, CancellationToken ct = default)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            if (workItemId <= 0) return null;
+
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue(
+                "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+
+            var url = $"{orgBase}/_apis/wit/workitems/{workItemId}?fields=System.WorkItemType&{ApiVersion}";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = auth;
+            req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+            using var resp = await Http.SendAsync(req, ct);
+            if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                throw new InvalidOperationException($"Falha ao consultar #{workItemId}: {resp.StatusCode} — {body}");
+            }
+
+            var text = await resp.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(text);
+            if (doc.RootElement.TryGetProperty("fields", out var f) &&
+                f.TryGetProperty("System.WorkItemType", out var wt))
+                return wt.GetString();
+            return null;
+        }
+
         public static async Task DeleteWorkItemAsync(TfsConnectionOptions options, int workItemId, CancellationToken ct = default)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));

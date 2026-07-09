@@ -12,6 +12,7 @@ namespace NXProject.Views
     public partial class TfsWorkItemEditWindow : Window
     {
         private readonly TaskViewModel _task;
+        private readonly int? _originalTfsId;
         private string? _devOpsItemUrl;
 
         public bool ShouldImport { get; private set; }
@@ -21,11 +22,25 @@ namespace NXProject.Views
         {
             InitializeComponent();
             _task = task ?? throw new ArgumentNullException(nameof(task));
+            _originalTfsId = task.TfsId;
 
             TaskNameText.Text = task.Name;
             IdBox.Text = task.TfsId is > 0 || task.TfsId == 0
                 ? task.TfsId.Value.ToString()
                 : string.Empty;
+
+            // ID vindo do DevOps (importado / já sincronizado) → somente leitura, para
+            // impedir troca do ID (ex.: apontar uma Story para um Epic e manipular fora do contexto).
+            // Item criado manualmente (pendente de criação no DevOps) → editável até sincronizar.
+            bool isSyncedFromDevOps = task.TfsId is > 0 && !task.Model.IsPendingTfsCreate;
+            if (isSyncedFromDevOps)
+            {
+                IdBox.IsReadOnly = true;
+                IdBox.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xF0, 0xF0, 0xF0));
+                IdBox.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x44, 0x44, 0x44));
+                IdBox.ToolTip = AppStrings.Get("WiEdit_IdReadOnlyTip");
+            }
+
             SelectByText(TypeBox, task.TfsType);
             SelectByText(StateBox, task.TfsState);
             RefreshFeatureTypePanel(task.TfsType, task.TfsClassification);
@@ -74,8 +89,9 @@ namespace NXProject.Views
                         _devOpsItemUrl = $"{org}/{proj}/_workitems/edit/{task.TfsId}";
                         OpenInDevOpsButton.Visibility = Visibility.Visible;
 
-                        // Botão de exclusão apenas para Stories com ID real
-                        if (TfsImportService.IsStoryTypePublic(task.TfsType))
+                        // Exclusão no TFS só para Story já sincronizada (ID real do DevOps).
+                        // Item manual pendente de criação só pode ser excluído localmente.
+                        if (TfsImportService.IsStoryTypePublic(task.TfsType) && !task.Model.IsPendingTfsCreate)
                             DeleteStoryButton.Visibility = Visibility.Visible;
                     }
                 }
@@ -151,6 +167,31 @@ namespace NXProject.Views
                 StatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x44, 0x44, 0x44));
 
                 var options = TfsConnectionStore.Load("NXProject.Community");
+
+                // Trava de segurança: confirma que o ID no DevOps é REALMENTE uma Story.
+                // Evita que uma troca de ID (ex.: apontar para um Epic) exclua o item errado.
+                var realType = await TfsImportService.GetWorkItemTypeAsync(options, _task.TfsId.Value);
+                if (realType == null)
+                {
+                    ShowValidationError(AppStrings.Get("WiEdit_DeleteNotFound", _task.TfsId));
+                    DeleteStoryButton.IsEnabled = true;
+                    return;
+                }
+                if (!TfsImportService.IsStoryTypePublic(realType))
+                {
+                    ShowValidationError(AppStrings.Get("WiEdit_DeleteTypeMismatch", _task.TfsId, realType));
+                    DeleteStoryButton.IsEnabled = true;
+                    return;
+                }
+
+                // Story iniciada (% de conclusão > 0) não pode ser excluída no TFS.
+                if (_task.PercentComplete > 0.0001)
+                {
+                    ShowValidationError(AppStrings.Get("WiEdit_DeleteStartedStory", _task.TfsId, _task.PercentComplete));
+                    DeleteStoryButton.IsEnabled = true;
+                    return;
+                }
+
                 await TfsImportService.DeleteWorkItemAsync(options, _task.TfsId.Value);
 
                 ShouldDelete = true;
@@ -164,6 +205,13 @@ namespace NXProject.Views
                 StatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xB0, 0x00, 0x20));
                 StatusText.Visibility = Visibility.Visible;
             }
+        }
+
+        private void ShowValidationError(string message)
+        {
+            StatusText.Text = message;
+            StatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xB0, 0x00, 0x20));
+            StatusText.Visibility = Visibility.Visible;
         }
 
         private void OnOpenInDevOpsClick(object sender, RoutedEventArgs e)
@@ -213,7 +261,7 @@ namespace NXProject.Views
                 SelectByText(FeatureTypeBox, currentClassification ?? "Feature");
         }
 
-        private void OnOkClick(object sender, RoutedEventArgs e)
+        private async void OnOkClick(object sender, RoutedEventArgs e)
         {
             StatusText.Visibility = Visibility.Collapsed;
 
@@ -240,6 +288,40 @@ namespace NXProject.Views
                 StatusText.Text = AppStrings.Get("WiEdit_SelectTypeToCreate");
                 StatusText.Visibility = Visibility.Visible;
                 return;
+            }
+
+            // Ao vincular manualmente a um ID real DIFERENTE do original, confirma que o
+            // tipo do item no DevOps bate com o tipo escolhido (não trocar Story por Epic).
+            if (!isNoDevOps && id is > 0 && id != _originalTfsId)
+            {
+                try
+                {
+                    StatusText.Text = AppStrings.Get("WiEdit_Validating");
+                    StatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x44, 0x44, 0x44));
+                    StatusText.Visibility = Visibility.Visible;
+
+                    var options = TfsConnectionStore.Load("NXProject.Community");
+                    var realType = await TfsImportService.GetWorkItemTypeAsync(options, id.Value);
+                    if (realType == null)
+                    {
+                        ShowValidationError(AppStrings.Get("WiEdit_DeleteNotFound", id.Value));
+                        return;
+                    }
+                    bool typesMatch =
+                        (TfsImportService.IsStoryTypePublic(selectedType) && TfsImportService.IsStoryTypePublic(realType)) ||
+                        string.Equals(selectedType, realType, StringComparison.OrdinalIgnoreCase);
+                    if (!typesMatch)
+                    {
+                        ShowValidationError(AppStrings.Get("WiEdit_TypeMismatch", id.Value, realType, selectedType ?? ""));
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShowValidationError(AppStrings.Get("WiEdit_ValidateError", ex.Message));
+                    return;
+                }
+                StatusText.Visibility = Visibility.Collapsed;
             }
 
             if (isNoDevOps)

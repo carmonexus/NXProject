@@ -441,6 +441,7 @@
     <sys:String x:Key="Imp_Cancel">Cancelar</sys:String>
     <sys:String x:Key="Imp_NoConnectionStatus">Conexão com o Azure DevOps não configurada. Clique em "Configurar..." acima.</sys:String>
     <sys:String x:Key="Imp_ErrorTitle">Erro na importação do Azure DevOps</sys:String>
+    <sys:String x:Key="Sync_ProjectTargetInfo">A sincronização vai usar o projeto deste cronograma:&#10;&#10;Team Project: {0}&#10;Organização: {1}&#10;&#10;(diferente da configuração global atual). Continuar?</sys:String>
     <sys:String x:Key="Imp_AuthError">Falha de autenticação com o Azure DevOps. Verifique se o PAT (token) é válido, não expirou e tem os escopos necessários (Work Items - Read &amp; Write), e se a URL da organização e o Team Project estão corretos.</sys:String>
     <sys:String x:Key="Imp_OpenTokensPrompt">Deseja abrir a página de tokens (PAT) do Azure DevOps para gerar/renovar o token agora?</sys:String>
     <sys:String x:Key="Imp_EmptyResult">Nenhum item foi importado. Verifique: o ID do work item raiz (tipo Project), as permissões do PAT no projeto, e se o nível de backlog "Project" está habilitado no Azure DevOps.</sys:String>
@@ -910,6 +911,13 @@
     <sys:String x:Key="WiEdit_Deleting">Excluindo Story no DevOps...</sys:String>
     <sys:String x:Key="WiEdit_DeleteError">Erro ao excluir: {0}</sys:String>
     <sys:String x:Key="WiEdit_InvalidId">Informe um ID válido: número do DevOps, 0 para criar na sincronização, ou vazio para desvincular.</sys:String>
+    <sys:String x:Key="WiEdit_IdReadOnlyTip">ID vindo do DevOps (importado/sincronizado) — somente leitura. Para desvincular, mude o Tipo para "No DevOps".</sys:String>
+    <sys:String x:Key="WiEdit_Validating">Validando o tipo do item no DevOps...</sys:String>
+    <sys:String x:Key="WiEdit_ValidateError">Não foi possível validar o item no DevOps: {0}</sys:String>
+    <sys:String x:Key="WiEdit_DeleteNotFound">O item #{0} não foi encontrado no DevOps. Verifique o ID.</sys:String>
+    <sys:String x:Key="WiEdit_DeleteTypeMismatch">Bloqueado: o item #{0} no DevOps é do tipo "{1}", não uma Story. Exclusão cancelada para evitar apagar o item errado (verifique se o ID não foi trocado).</sys:String>
+    <sys:String x:Key="WiEdit_TypeMismatch">O item #{0} no DevOps é do tipo "{1}", diferente do tipo selecionado "{2}". Ajuste o tipo ou o ID.</sys:String>
+    <sys:String x:Key="WiEdit_DeleteStartedStory">Bloqueado: a Story #{0} já está iniciada ({1:0.#}% concluído) e não pode ser excluída no DevOps. Encerre ou trate no próprio DevOps.</sys:String>
     <sys:String x:Key="WiEdit_SelectTypeToCreate">Para criar (ID = 0), selecione o Tipo DevOps (Epic, Feature ou Story).</sys:String>
 
     <!-- Atividades Online (Tasks filhas no DevOps) -->
