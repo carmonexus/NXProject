@@ -160,7 +160,7 @@ namespace NXProject.Views
                      "No NXProject:\n" +
                      "• Possui HH Estimado, Data Início, Data Fim, Sprint e Recurso alocado.\n" +
                      "• Datas são calculadas pela fila do recurso e pela duração em HH.\n" +
-                     "• Percentual de conclusão (%) vem do campo configurado no DevOps (ex: Perc_Concluido).\n" +
+                     "• Percentual de conclusão (%) vem do campo configurado no DevOps (ex: Perc_Conclusao).\n" +
                      "• Block: se a Story tem a tag 'Block' no DevOps, é exibida com ícone ⛔ no cronograma.\n" +
                      "• Tasks filhas: podem ser buscadas/expandidas no cronograma via menu de contexto.\n" +
                      "• Sincroniza: HH Estimado, datas, state, % conclusão, alocação e predecessoras.\n" +
@@ -558,8 +558,8 @@ namespace NXProject.Views
                      "• Data_Inicio — data de início planejada. Tipo: Data e Hora.\n" +
                      "• Data_Fim — data de término planejada. Tipo: Data e Hora.\n\n" +
                      "Campos exclusivos da Story:\n" +
-                     "• Perc_Alocação — percentual do dia útil dedicado a esta Story (afeta a data de término). Tipo: Decimal/Float (1–100, até 2 casas decimais).\n" +
-                     "• Perc_Concluido — percentual de conclusão (lido na importação, gravado na sincronização). Tipo: Inteiro (0–100).\n\n" +
+                     "• Perc_Alocacao — percentual do dia útil dedicado a esta Story (afeta a data de término). Tipo: Decimal/Float (1–100, até 2 casas decimais).\n" +
+                     "• Perc_Conclusao — percentual de conclusão (lido na importação, gravado na sincronização). Tipo: Inteiro (0–100).\n\n" +
                      "Campos de controle de concorrência (Story, Feature e Epic):\n" +
                      "• Sync_version — contador de versão, gerenciado automaticamente pelo NXProject. Tipo: Inteiro.\n" +
                      "• Sync_Name — usuário que fez a última sincronização, gerenciado automaticamente. Tipo: Texto (linha simples — não use o tipo Identidade)."),
@@ -862,7 +862,7 @@ namespace NXProject.Views
                      "In NXProject:\n" +
                      "• Has Estimated HH, Start Date, Finish Date, Sprint and an allocated Resource.\n" +
                      "• Dates are calculated by resource queue and HH duration.\n" +
-                     "• % complete comes from the configured DevOps field (e.g. Perc_Concluido).\n" +
+                     "• % complete comes from the configured DevOps field (e.g. Perc_Conclusao).\n" +
                      "• Block: if the Story has the 'Block' tag in DevOps, it shows ⛔ in the schedule.\n" +
                      "• Child Tasks: can be fetched/expanded in the schedule via context menu.\n" +
                      "• Syncs: Estimated HH, dates, state, % complete, allocation and predecessors."),
@@ -1252,8 +1252,8 @@ namespace NXProject.Views
                      "• Data_Inicio — planned start date. Type: Date and Time.\n" +
                      "• Data_Fim — planned finish date. Type: Date and Time.\n\n" +
                      "Story-only fields:\n" +
-                     "• Perc_Alocação — % of the person's working day dedicated to this Story (affects finish date). Type: Decimal/Float (1–100, up to 2 decimal places).\n" +
-                     "• Perc_Concluido — % completion (read on import, written on sync). Type: Integer (0–100).\n\n" +
+                     "• Perc_Alocacao — % of the person's working day dedicated to this Story (affects finish date). Type: Decimal/Float (1–100, up to 2 decimal places).\n" +
+                     "• Perc_Conclusao — % completion (read on import, written on sync). Type: Integer (0–100).\n\n" +
                      "Concurrency control fields (Story, Feature and Epic):\n" +
                      "• Sync_version — version counter, auto-managed by NXProject. Type: Integer.\n" +
                      "• Sync_Name — user who last synced, auto-managed. Type: Text (single line — do NOT use the Identity type)."),

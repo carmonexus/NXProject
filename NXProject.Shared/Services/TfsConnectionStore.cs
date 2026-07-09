@@ -76,11 +76,11 @@ namespace NXProject.Services
         /// <summary>Nome do campo de data de fim da Story.</summary>
         public string FinishFieldName { get; set; } = "Data_Fim";
 
-        /// <summary>Nome do campo de percentual de alocação do recurso na Story (ex.: "Perc_Alocação").</summary>
-        public string PercAlocFieldName { get; set; } = "Perc_Alocação";
+        /// <summary>Nome do campo de percentual de alocação do recurso na Story (ex.: "Perc_Alocacao").</summary>
+        public string PercAlocFieldName { get; set; } = "Perc_Alocacao";
 
-        /// <summary>Nome do campo de percentual de conclusão da Story (ex.: "Perc_Concluido").</summary>
-        public string PercConclusaoFieldName { get; set; } = "Perc_Concluido";
+        /// <summary>Nome do campo de percentual de conclusão da Story (ex.: "Perc_Conclusao").</summary>
+        public string PercConclusaoFieldName { get; set; } = "Perc_Conclusao";
 
         /// <summary>Campo inteiro que armazena a versão de sincronização (controle de concorrência).</summary>
         public string SyncVersionFieldName { get; set; } = "Sync_version";
@@ -221,8 +221,8 @@ namespace NXProject.Services
             public string EffortFieldName { get; set; } = "HH Estimado";
             public string StartFieldName { get; set; } = "Data_Inicio";
             public string FinishFieldName { get; set; } = "Data_Fim";
-            public string PercAlocFieldName { get; set; } = "Perc_Alocação";
-            public string PercConclusaoFieldName { get; set; } = "Perc_Concluido";
+            public string PercAlocFieldName { get; set; } = "Perc_Alocacao";
+            public string PercConclusaoFieldName { get; set; } = "Perc_Conclusao";
             public string SyncVersionFieldName { get; set; } = "Sync_version";
             public string SyncNameFieldName { get; set; } = "Sync_Name";
             public string FixedStartTagName { get; set; } = "DT-INI-NEG";
@@ -325,8 +325,8 @@ namespace NXProject.Services
                 EffortFieldName = string.IsNullOrWhiteSpace(options.EffortFieldName) ? "HH Estimado" : options.EffortFieldName.Trim(),
                 StartFieldName = string.IsNullOrWhiteSpace(options.StartFieldName) ? "Data_Inicio" : options.StartFieldName.Trim(),
                 FinishFieldName = string.IsNullOrWhiteSpace(options.FinishFieldName) ? "Data_Fim" : options.FinishFieldName.Trim(),
-                PercAlocFieldName = string.IsNullOrWhiteSpace(options.PercAlocFieldName) ? "Perc_Alocação" : options.PercAlocFieldName.Trim(),
-                PercConclusaoFieldName = string.IsNullOrWhiteSpace(options.PercConclusaoFieldName) ? "Perc_Concluido" : options.PercConclusaoFieldName.Trim(),
+                PercAlocFieldName = string.IsNullOrWhiteSpace(options.PercAlocFieldName) ? "Perc_Alocacao" : options.PercAlocFieldName.Trim(),
+                PercConclusaoFieldName = string.IsNullOrWhiteSpace(options.PercConclusaoFieldName) ? "Perc_Conclusao" : options.PercConclusaoFieldName.Trim(),
                 SyncVersionFieldName = string.IsNullOrWhiteSpace(options.SyncVersionFieldName) ? "Sync_version" : options.SyncVersionFieldName.Trim(),
                 SyncNameFieldName = string.IsNullOrWhiteSpace(options.SyncNameFieldName) ? "Sync_Name" : options.SyncNameFieldName.Trim(),
                 FixedStartTagName = string.IsNullOrWhiteSpace(options.FixedStartTagName) ? "DT-INI-NEG" : options.FixedStartTagName.Trim(),

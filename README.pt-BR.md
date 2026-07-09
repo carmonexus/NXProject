@@ -167,7 +167,7 @@ Gerencie múltiplos projetos DevOps em um arquivo compartilhado entre toda a equ
 - **Ordem do backlog**: `Microsoft.VSTS.Common.StackRank`
 - **Bloqueios**: Tasks filhas com tag `Block` marcam a Story como bloqueada
 - **Estado**: Stories `Closed`/`Resolved` com Tasks filhas ainda em aberto são sinalizadas e corrigidas automaticamente
-- **% de Alocação**: `Perc_Alocação` — percentual do dia da pessoa dedicado a esta Story (afeta a data fim calculada)
+- **% de Alocação**: `Perc_Alocacao` — percentual do dia da pessoa dedicado a esta Story (afeta a data fim calculada)
 - **Controle de versão**: `Sync_version` e `Sync_Name` — controle de concorrência entre múltiplos usuários (veja abaixo)
 
 > Os nomes dos campos podem ser alterados no expansor **Campos (avançado)** da tela de importação, caso o seu processo use nomes diferentes.
@@ -183,8 +183,8 @@ O NXProject lê e grava campos customizados em **Stories, Features e Epics** do 
 | `HH Estimado` | `Custom.HHEstimado` *(exemplo)* | Inteiro ou Decimal | `HH Estimado` | Story, Feature, Epic | Esforço estimado em horas |
 | `Data_Inicio` | `Custom.DataInicio` *(exemplo)* | Data/Hora | `Data_Inicio` | Story, Feature, Epic | Data de início planejada |
 | `Data_Fim` | `Custom.DataFim` *(exemplo)* | Data/Hora | `Data_Fim` | Story, Feature, Epic | Data de fim planejada |
-| `Perc_Alocação` | `Custom.PercAlocacao` *(exemplo)* | Inteiro (1–100) | `Perc_Alocação` | Story | % do dia da pessoa dedicado a esta Story |
-| `Perc_Concluido` | `Custom.PercConclusao` *(exemplo)* | Inteiro (0–100) | `Perc_Concluido` | Story | % de conclusão (lido no import, gravado no sync) |
+| `Perc_Alocacao` | `Custom.PercAlocacao` *(exemplo)* | Inteiro (1–100) | `Perc_Alocacao` | Story | % do dia da pessoa dedicado a esta Story |
+| `Perc_Conclusao` | `Custom.PercConclusao` *(exemplo)* | Inteiro (0–100) | `Perc_Conclusao` | Story | % de conclusão (lido no import, gravado no sync) |
 | `Sync_version` | `Custom.Syncversion` *(exemplo)* | Inteiro | `Sync_version` | Story, Feature, Epic | Contador de versão de concorrência (gerenciado automaticamente) |
 | `Sync_Name` | `Custom.SyncName` *(exemplo)* | Texto *(texto simples, não Identity)* | `Sync_Name` | Story, Feature, Epic | Quem realizou a última sincronização (gerenciado automaticamente) |
 

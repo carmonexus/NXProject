@@ -167,7 +167,7 @@ Manage multiple DevOps projects in a shared file across your team. Each project 
 - **Backlog order**: `Microsoft.VSTS.Common.StackRank`
 - **Blockers**: child Tasks with the `Block` tag mark the Story as blocked
 - **State**: `Closed`/`Resolved` Stories with open child Tasks are flagged and auto-corrected
-- **Allocation %**: `Perc_Alocação` — how much of the person's day is dedicated to this Story (affects finish date)
+- **Allocation %**: `Perc_Alocacao` — how much of the person's day is dedicated to this Story (affects finish date)
 - **Sync version**: `Sync_version` and `Sync_Name` — concurrency control (see below)
 
 > Field names can be changed in the **Advanced fields** section of the import dialog if your process uses different names.
@@ -183,8 +183,8 @@ NXProject reads and writes custom fields on **Stories, Features and Epics** in A
 | `HH Estimado` | `Custom.HHEstimado` *(example)* | Integer or Decimal | `HH Estimado` | Story, Feature, Epic | Estimated effort in hours |
 | `Data_Inicio` | `Custom.DataInicio` *(example)* | Date/Time | `Data_Inicio` | Story, Feature, Epic | Planned start date |
 | `Data_Fim` | `Custom.DataFim` *(example)* | Date/Time | `Data_Fim` | Story, Feature, Epic | Planned finish date |
-| `Perc_Alocação` | `Custom.PercAlocacao` *(example)* | Integer (1–100) | `Perc_Alocação` | Story | % of person's day dedicated to this Story |
-| `Perc_Concluido` | `Custom.PercConclusao` *(example)* | Integer (0–100) | `Perc_Concluido` | Story | % completion (read on import, written on sync) |
+| `Perc_Alocacao` | `Custom.PercAlocacao` *(example)* | Integer (1–100) | `Perc_Alocacao` | Story | % of person's day dedicated to this Story |
+| `Perc_Conclusao` | `Custom.PercConclusao` *(example)* | Integer (0–100) | `Perc_Conclusao` | Story | % completion (read on import, written on sync) |
 | `Sync_version` | `Custom.Syncversion` *(example)* | Integer | `Sync_version` | Story, Feature, Epic | Concurrency version counter (auto-managed) |
 | `Sync_Name` | `Custom.SyncName` *(example)* | Text *(plain text, not Identity)* | `Sync_Name` | Story, Feature, Epic | Who last synced (auto-managed) |
 
