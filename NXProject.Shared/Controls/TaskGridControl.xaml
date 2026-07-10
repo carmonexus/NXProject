@@ -776,6 +776,8 @@
                                     <MenuItem Header="{DynamicResource Ctx_HighlightPred}" Click="OnHighlightPredecessorsClick"/>
                                     <MenuItem Header="{DynamicResource Ctx_ClearPredHighlight}" Click="OnClearPredecessorHighlightClick"
                                               Visibility="{Binding IsHighlightSource, Converter={StaticResource BoolToVis}}"/>
+                                    <MenuItem Header="{DynamicResource Ctx_OpenPredInDevOps}" Click="OnOpenPredecessorInDevOpsClick"
+                                              Visibility="{Binding HasUnresolvedPredecessor, Converter={StaticResource BoolToVis}}"/>
                                     <Separator/>
                                     <MenuItem Header="{DynamicResource Pred_ClearPreds}" Click="OnClearPredecessorsClick"/>
                                 </ContextMenu>

@@ -446,6 +446,7 @@
     <!-- Context menus — predecessor cell -->
     <sys:String x:Key="Ctx_HighlightPred">Highlight predecessors</sys:String>
     <sys:String x:Key="Ctx_ClearPredHighlight">Clear predecessor highlight</sys:String>
+    <sys:String x:Key="Ctx_OpenPredInDevOps">Open out-of-scope predecessor in DevOps</sys:String>
 
     <!-- Context menus — resources cell -->
     <sys:String x:Key="Ctx_EditAllocPerc">Edit allocation %...</sys:String>

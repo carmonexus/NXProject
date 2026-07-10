@@ -406,6 +406,13 @@ namespace NXProject.ViewModels
 
         public bool HasSyncConflict => _task.HasSyncConflict;
         public bool HasBrokenPredecessorLink => _task.HasBrokenPredecessorLink;
+
+        // IDs de predecessoras que não resolvem para uma tarefa do cronograma —
+        // são TfsIds de work items fora do escopo (armazenados direto no import).
+        public System.Collections.Generic.List<int> UnresolvedPredecessorIds =>
+            FindByInternalId == null
+                ? new System.Collections.Generic.List<int>()
+                : _task.PredecessorIds.Where(id => FindByInternalId(id) == null).ToList();
         // Verdadeiro quando algum PredecessorId não resolve para uma tarefa existente no projeto.
         public bool HasUnresolvedPredecessor =>
             FindByInternalId != null &&

@@ -1215,6 +1215,43 @@ namespace NXProject.Controls
             HighlightPredecessorsRequested?.Invoke(null!);
         }
 
+        // Abre no DevOps as predecessoras fora do escopo (amarelas) — o ID é o TfsId
+        // do work item que não está no cronograma, para o usuário verificar qual é.
+        private void OnOpenPredecessorInDevOpsClick(object sender, RoutedEventArgs e)
+        {
+            var vm = GetTaskViewModelFromContextSender(sender);
+            if (vm == null) return;
+            e.Handled = true;
+
+            var ids = vm.UnresolvedPredecessorIds;
+            if (ids.Count == 0) return;
+
+            // Base = organização + Team Project do cronograma aberto; fallback config global.
+            string org = "", proj = "";
+            if (DataContext is ViewModels.MainViewModel mainVm)
+            {
+                org = mainVm.Project.DevOpsOrganizationUrl?.Trim() ?? "";
+                proj = mainVm.Project.DevOpsTeamProject?.Trim() ?? "";
+            }
+            if (string.IsNullOrWhiteSpace(org) || string.IsNullOrWhiteSpace(proj))
+            {
+                var cfg = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
+                if (string.IsNullOrWhiteSpace(org)) org = cfg.OrganizationUrl?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(proj)) proj = cfg.TeamProject?.Trim() ?? "";
+            }
+            if (string.IsNullOrWhiteSpace(org)) return;
+            org = org.TrimEnd('/');
+
+            foreach (var id in ids)
+            {
+                var url = string.IsNullOrWhiteSpace(proj)
+                    ? $"{org}/_workitems/edit/{id}"
+                    : $"{org}/{Uri.EscapeDataString(proj)}/_workitems/edit/{id}";
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+                catch { }
+            }
+        }
+
         // Limpa TODAS as predecessoras da atividade (inclusive as fora do projeto,
         // amarelas — work items do TFS que não estão no cronograma).
         private void OnClearPredecessorsClick(object sender, RoutedEventArgs e)

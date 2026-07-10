@@ -241,6 +241,7 @@
     <!-- Menus de contexto — célula predecessoras -->
     <sys:String x:Key="Ctx_HighlightPred">Destacar predecessoras</sys:String>
     <sys:String x:Key="Ctx_ClearPredHighlight">Desmarcar predecessoras</sys:String>
+    <sys:String x:Key="Ctx_OpenPredInDevOps">Abrir predecessora fora do escopo no DevOps</sys:String>
 
     <!-- Menus de contexto — célula recursos -->
     <sys:String x:Key="Ctx_EditAllocPerc">Editar % de alocação...</sys:String>
