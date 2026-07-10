@@ -1066,6 +1066,17 @@ namespace NXProject.Services
                     // Parent: reparenta SÓ se o pai mudou em relação ao que está no DevOps.
                     var (currentParent, relIndex) = FindParentRelation(wi);
                     bool reparent = desiredParent > 0 && desiredParent != currentParent;
+
+                    // TRAVA: Epic já criado no DevOps (TfsId>0) NÃO muda de pai (Work Item
+                    // tipo Project) pelo NXProject — só direto no DevOps. Evita reparentar
+                    // para outro root ao alternar cronogramas.
+                    if (reparent && task.TfsId is > 0 &&
+                        string.Equals(task.TfsType?.Trim(), "Epic", StringComparison.OrdinalIgnoreCase))
+                    {
+                        report.LogWarning($"Epic #{task.TfsId} ({task.Name}): a mudança de Work Item pai não é sincronizada pelo NXProject (Epic já criado). Faça a mudança de EPIC para outro Work Item Project no DevOps.");
+                        reparent = false;
+                    }
+
                     var relationRemovals = new List<int>();
                     if (reparent && relIndex >= 0)
                         relationRemovals.Add(relIndex);

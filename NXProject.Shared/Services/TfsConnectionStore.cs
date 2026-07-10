@@ -98,6 +98,13 @@ namespace NXProject.Services
         public bool EnforceStoryCompletionWithTasks { get; set; } = true;
 
         /// <summary>
+        /// Habilita a descoberta ampla de pessoas na organização (Discovery TFS).
+        /// Requer o escopo Graph (Read) no PAT. Quando desabilitado, o botão
+        /// "Discovery TFS" nem aparece na tela de Pessoas. Padrão: desabilitado.
+        /// </summary>
+        public bool EnableOrgPeopleDiscovery { get; set; } = false;
+
+        /// <summary>
         /// Janela de dias futuros para incluir sprints no dropdown mesmo sem work items.
         /// Padrão 90 dias. Use 0 para incluir apenas sprints com itens importados.
         /// </summary>
@@ -228,6 +235,7 @@ namespace NXProject.Services
             public string FixedStartTagName { get; set; } = "DT-INI-NEG";
             public bool SyncPredecessorLinks { get; set; } = true;
             public bool EnforceStoryCompletionWithTasks { get; set; } = true;
+            public bool EnableOrgPeopleDiscovery { get; set; }
             public int FutureSprintDays { get; set; } = 90;
             public bool RememberToken { get; set; }
             public string EncryptedToken { get; set; } = string.Empty;
@@ -290,6 +298,7 @@ namespace NXProject.Services
                     ? options.FixedStartTagName : stored.FixedStartTagName.Trim();
                 options.SyncPredecessorLinks = stored.SyncPredecessorLinks;
                 options.EnforceStoryCompletionWithTasks = stored.EnforceStoryCompletionWithTasks;
+                options.EnableOrgPeopleDiscovery = stored.EnableOrgPeopleDiscovery;
                 options.FutureSprintDays = stored.FutureSprintDays >= 0 ? stored.FutureSprintDays : 90;
                 if (stored.RememberToken)
                     options.PersonalAccessToken = WindowsDataProtection.Decrypt(stored.EncryptedToken);
@@ -335,6 +344,7 @@ namespace NXProject.Services
                 FixedStartTagName = string.IsNullOrWhiteSpace(options.FixedStartTagName) ? "DT-INI-NEG" : options.FixedStartTagName.Trim(),
                 SyncPredecessorLinks = options.SyncPredecessorLinks,
                 EnforceStoryCompletionWithTasks = options.EnforceStoryCompletionWithTasks,
+                EnableOrgPeopleDiscovery = options.EnableOrgPeopleDiscovery,
                 FutureSprintDays = options.FutureSprintDays,
                 RememberToken = rememberToken,
                 EncryptedToken = rememberToken

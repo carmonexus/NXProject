@@ -54,12 +54,15 @@
                                            FontSize="11" FontWeight="SemiBold" Foreground="#7A5C00"/>
                                 <TextBlock Text="{DynamicResource Cfg_PatScopesSchedule}"
                                            FontSize="11" Foreground="#5A5A5A" TextWrapping="Wrap" Margin="0,3,0,0"/>
-                                <TextBlock Text="{DynamicResource Cfg_PatScopesTeam}"
-                                           FontSize="11" Foreground="#5A5A5A" TextWrapping="Wrap" Margin="0,2,0,0"/>
                                 <TextBlock Text="{DynamicResource Cfg_PatScopesPeople}"
                                            FontSize="11" Foreground="#5A5A5A" TextWrapping="Wrap" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Border>
+
+                        <CheckBox x:Name="EnableOrgDiscoveryCheck"
+                                  Content="{DynamicResource Cfg_EnableOrgDiscovery}"
+                                  ToolTip="{DynamicResource Cfg_EnableOrgDiscoveryTip}"
+                                  FontSize="11" Foreground="#444" Margin="0,10,0,0"/>
 
                         <Border Background="#EEF4FB" BorderBrush="#B8D0EC" BorderThickness="1"
                                 CornerRadius="6" Padding="10,8" Margin="0,10,0,0">

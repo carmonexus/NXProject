@@ -461,9 +461,10 @@
     <sys:String x:Key="Cfg_Pat">Personal Access Token  (escopo mínimo: Work Items → Read)</sys:String>
     <sys:String x:Key="Cfg_RememberToken">Lembrar o token neste computador (salvo de forma criptografada)</sys:String>
     <sys:String x:Key="Cfg_PatScopesTitle">Escopos necessários no PAT:</sys:String>
-    <sys:String x:Key="Cfg_PatScopesSchedule">• Atualizar o cronograma (importar/sincronizar): Work Items (Read &amp; Write).</sys:String>
-    <sys:String x:Key="Cfg_PatScopesTeam">• Importar membros de uma equipe (Discovery Team TFS): também Project and Team (Read).</sys:String>
-    <sys:String x:Key="Cfg_PatScopesPeople">• Descoberta ampla de pessoas na organização (Discovery TFS): também Identity (Read) e Graph (Read).</sys:String>
+    <sys:String x:Key="Cfg_PatScopesSchedule">• Cronograma (importar/sincronizar) e importar equipe (Discovery Team TFS): Work Items (Read &amp; Write).</sys:String>
+    <sys:String x:Key="Cfg_PatScopesPeople">• Descoberta ampla de pessoas na organização (Discovery TFS): também Graph (Read).</sys:String>
+    <sys:String x:Key="Cfg_EnableOrgDiscovery">Habilitar Discovery TFS (descoberta ampla de pessoas na organização)</sys:String>
+    <sys:String x:Key="Cfg_EnableOrgDiscoveryTip">Quando marcado, o botão "Discovery TFS" aparece na tela de Pessoas. Requer o escopo Graph (Read) no PAT. Desmarcado, o botão fica oculto (só o Discovery Team TFS, por equipe, permanece).</sys:String>
     <sys:String x:Key="Cfg_BacklogTitle">Nível de backlog "Project" (obrigatório):</sys:String>
     <sys:String x:Key="Cfg_BacklogNote">O NXProject importa a hierarquia Project → Epic → Feature → Story. É preciso habilitar o work item "Project" nos níveis de navegação de backlog do time (marque Project, Epics, Features e Stories).</sys:String>
     <sys:String x:Key="Cfg_BacklogPath">Boards → Configurações do Projeto → Team configuration → Backlogs → Backlog navigation levels.</sys:String>
@@ -668,6 +669,7 @@
     <sys:String x:Key="People_DiscoveryNone">Discovery TFS concluído: nenhuma pessoa nova incluída ({0} encontrada(s)).</sys:String>
     <sys:String x:Key="People_DiscoveryError">{0}</sys:String>
     <sys:String x:Key="People_DiscoveryLogIntro">Não foi possível concluir o Discovery TFS. Copie o log abaixo e envie para análise. O PAT não é exibido.</sys:String>
+    <sys:String x:Key="People_DiscoveryFriendlyMsg">Não foi possível buscar as pessoas no Azure DevOps.&#10;&#10;Causas mais comuns: o token (PAT) expirou, está sem os escopos necessários ou sem permissão. Escopos do PAT: Discovery Team TFS (membros de equipe) usa Work Items (Read &amp; Write), já necessário para o cronograma; Discovery TFS (pessoas da organização) precisa também de Graph (Read).&#10;&#10;Se precisar de suporte, clique em "Copiar log" e envie os detalhes técnicos para análise (o PAT não é incluído).</sys:String>
     <sys:String x:Key="People_DiscoveryFilterTitle">Filtro do Discovery TFS</sys:String>
     <sys:String x:Key="People_DiscoveryFilterPrompt">Informe um filtro para buscar pessoas na organização DevOps/TFS (até 30 caracteres). Deixe vazio apenas para testar sem filtro. A consulta retorna no máximo 50 registros.</sys:String>
     <sys:String x:Key="People_DiscoveryFilterRequired">Informe um filtro antes de buscar.</sys:String>

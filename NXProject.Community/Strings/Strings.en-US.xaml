@@ -666,9 +666,10 @@
     <sys:String x:Key="Cfg_Pat">Personal Access Token  (minimum scope: Work Items → Read)</sys:String>
     <sys:String x:Key="Cfg_RememberToken">Remember the token on this computer (stored encrypted)</sys:String>
     <sys:String x:Key="Cfg_PatScopesTitle">Required PAT scopes:</sys:String>
-    <sys:String x:Key="Cfg_PatScopesSchedule">• Update the schedule (import/sync): Work Items (Read &amp; Write).</sys:String>
-    <sys:String x:Key="Cfg_PatScopesTeam">• Import members of a team (Discovery Team TFS): also Project and Team (Read).</sys:String>
-    <sys:String x:Key="Cfg_PatScopesPeople">• Organization-wide people discovery (Discovery TFS): also Identity (Read) and Graph (Read).</sys:String>
+    <sys:String x:Key="Cfg_PatScopesSchedule">• Schedule (import/sync) and team import (Discovery Team TFS): Work Items (Read &amp; Write).</sys:String>
+    <sys:String x:Key="Cfg_PatScopesPeople">• Organization-wide people discovery (Discovery TFS): also Graph (Read).</sys:String>
+    <sys:String x:Key="Cfg_EnableOrgDiscovery">Enable Discovery TFS (organization-wide people discovery)</sys:String>
+    <sys:String x:Key="Cfg_EnableOrgDiscoveryTip">When checked, the "Discovery TFS" button appears on the People screen. Requires the Graph (Read) scope on the PAT. Unchecked, the button is hidden (only Discovery Team TFS, by team, remains).</sys:String>
     <sys:String x:Key="Cfg_BacklogTitle">"Project" backlog level (required):</sys:String>
     <sys:String x:Key="Cfg_BacklogNote">NXProject imports the Project → Epic → Feature → Story hierarchy. You must enable the "Project" work item in the team's backlog navigation levels (check Project, Epics, Features and Stories).</sys:String>
     <sys:String x:Key="Cfg_BacklogPath">Boards → Project Settings → Team configuration → Backlogs → Backlog navigation levels.</sys:String>
@@ -873,6 +874,7 @@
     <sys:String x:Key="People_DiscoveryNone">TFS Discovery completed: no new people added ({0} found).</sys:String>
     <sys:String x:Key="People_DiscoveryError">{0}</sys:String>
     <sys:String x:Key="People_DiscoveryLogIntro">TFS Discovery could not complete. Copy the log below and send it for analysis. The PAT is not shown.</sys:String>
+    <sys:String x:Key="People_DiscoveryFriendlyMsg">Could not fetch people from Azure DevOps.&#10;&#10;Most common causes: the token (PAT) expired, is missing the required scopes, or lacks permission. PAT scopes: Discovery Team TFS (team members) uses Work Items (Read &amp; Write), already required for the schedule; Discovery TFS (organization people) also needs Graph (Read).&#10;&#10;If you need support, click "Copy log" and send the technical details for analysis (the PAT is not included).</sys:String>
     <sys:String x:Key="People_DiscoveryFilterTitle">TFS Discovery Filter</sys:String>
     <sys:String x:Key="People_DiscoveryFilterPrompt">Enter a filter to search people in the DevOps/TFS organization (up to 30 characters). Leave empty only to test without a filter. The query returns at most 50 records.</sys:String>
     <sys:String x:Key="People_DiscoveryFilterRequired">Enter a filter before searching.</sys:String>

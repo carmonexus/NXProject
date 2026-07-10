@@ -27,6 +27,11 @@ namespace NXProject.Views
             {
                 try
                 {
+                    // Discovery TFS (descoberta ampla na organização) só aparece se habilitado na config.
+                    var cfg = TfsConnectionStore.Load("NXProject.Community");
+                    DiscoveryTfsBtn.Visibility = cfg.EnableOrgPeopleDiscovery
+                        ? Visibility.Visible : Visibility.Collapsed;
+
                     Refresh();
                     if (focusCost)
                     {
@@ -370,61 +375,42 @@ namespace NXProject.Views
 
         internal void ShowDiscoveryErrorDialog(Exception ex, TfsConnectionOptions options)
         {
+            // Log técnico completo — só vai para a área de transferência (botão Copiar log).
             var log = BuildDiscoveryErrorLog(ex, options);
 
             var window = new Window
             {
                 Title = AppStrings.Get("People_DiscoveryTfs"),
                 Owner = this,
-                Width = 760,
-                Height = 520,
-                MinWidth = 560,
-                MinHeight = 360,
+                Width = 480,
+                MinWidth = 420,
+                SizeToContent = SizeToContent.Height,
+                ResizeMode = ResizeMode.NoResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Background = Brushes.White
             };
 
-            var root = new Grid { Margin = new Thickness(16) };
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var root = new StackPanel { Margin = new Thickness(20) };
 
-            var intro = new TextBlock
+            root.Children.Add(new TextBlock
             {
-                Text = AppStrings.Get("People_DiscoveryLogIntro"),
+                Text = AppStrings.Get("People_DiscoveryFriendlyMsg"),
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 0, 0, 10),
-                Foreground = new SolidColorBrush(Color.FromRgb(60, 60, 60))
-            };
-            Grid.SetRow(intro, 0);
-            root.Children.Add(intro);
-
-            var logBox = new TextBox
-            {
-                Text = log,
-                IsReadOnly = true,
-                AcceptsReturn = true,
-                AcceptsTab = true,
-                TextWrapping = TextWrapping.NoWrap,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                FontFamily = new FontFamily("Consolas"),
-                FontSize = 12
-            };
-            Grid.SetRow(logBox, 1);
-            root.Children.Add(logBox);
+                FontSize = 13,
+                Foreground = new SolidColorBrush(Color.FromRgb(50, 50, 50))
+            });
 
             var buttons = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 12, 0, 0)
+                Margin = new Thickness(0, 18, 0, 0)
             };
 
             var copy = new Button
             {
                 Content = AppStrings.Get("People_CopyLog"),
-                Width = 110,
+                Width = 130,
                 Height = 30,
                 Margin = new Thickness(0, 0, 8, 0)
             };
@@ -439,13 +425,13 @@ namespace NXProject.Views
                 Content = AppStrings.Get("People_Close"),
                 Width = 90,
                 Height = 30,
+                IsDefault = true,
                 IsCancel = true
             };
             close.Click += (_, _) => window.Close();
 
             buttons.Children.Add(copy);
             buttons.Children.Add(close);
-            Grid.SetRow(buttons, 2);
             root.Children.Add(buttons);
 
             window.Content = root;

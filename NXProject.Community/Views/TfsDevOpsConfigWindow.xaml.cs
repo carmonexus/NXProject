@@ -47,6 +47,7 @@ namespace NXProject.Views
             FixedStartTagBox.Text = saved.FixedStartTagName;
             SyncPredecessorLinksCheck.IsChecked = saved.SyncPredecessorLinks;
             EnforceStoryCompletionWithTasksCheck.IsChecked = saved.EnforceStoryCompletionWithTasks;
+            EnableOrgDiscoveryCheck.IsChecked = saved.EnableOrgPeopleDiscovery;
             FutureSprintDaysBox.Text = saved.FutureSprintDays.ToString(CultureInfo.InvariantCulture);
 
             foreach (var f in saved.ExtraCreateFields)
@@ -170,6 +171,7 @@ namespace NXProject.Views
             FixedStartTagName   = string.IsNullOrWhiteSpace(FixedStartTagBox.Text)  ? "DT-INI-NEG"   : FixedStartTagBox.Text.Trim(),
             SyncPredecessorLinks = SyncPredecessorLinksCheck.IsChecked == true,
             EnforceStoryCompletionWithTasks = EnforceStoryCompletionWithTasksCheck.IsChecked == true,
+            EnableOrgPeopleDiscovery = EnableOrgDiscoveryCheck.IsChecked == true,
             FutureSprintDays    = int.TryParse(FutureSprintDaysBox.Text?.Trim(), out var fsd) && fsd >= 0 ? fsd : 90,
             DevOpsProjectListPath = _devOpsProjectListPath,
             ExtraCreateFields   = [.. _extraFields.Where(f => !string.IsNullOrWhiteSpace(f.Ref))],

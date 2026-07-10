@@ -1346,6 +1346,11 @@ namespace NXProject.Views
                     (!string.IsNullOrWhiteSpace(projOrg)  && !string.Equals(connOrg, projOrg, StringComparison.OrdinalIgnoreCase));
             }
 
+            // Work Item raiz (tipo Project) = o do cronograma ABERTO (gravado no .nxp),
+            // NÃO o options.RootWorkItemId da config global (última importação). Evita
+            // reparentar Epics para o root de outro projeto ao alternar cronogramas.
+            options.RootWorkItemId = vm.Project.DevOpsRootWorkItemId;
+
             if (string.IsNullOrWhiteSpace(options.OrganizationUrl) ||
                 string.IsNullOrWhiteSpace(options.TeamProject) ||
                 string.IsNullOrWhiteSpace(options.PersonalAccessToken))
