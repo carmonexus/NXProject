@@ -41,6 +41,19 @@ namespace NXProject.Views
             // Ao fechar, devolve o foco à janela do cronograma (senão o app parece "sumir").
             Closed += (_, _) => Owner?.Activate();
             Closing += OnWindowClosing;
+            // Ctrl+Z global na janela (funciona mesmo sem célula selecionada/foco na grade).
+            PreviewKeyDown += (_, args) =>
+            {
+                if (args.Key == System.Windows.Input.Key.Z
+                    && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0
+                    && args.OriginalSource is not TextBox
+                    && args.OriginalSource is not ComboBox)
+                {
+                    PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+                    Undo();
+                    args.Handled = true;
+                }
+            };
             PlanGrid.CellEditEnding += (_, _) => _dirty = true;
             PlanGrid.RowEditEnding += (_, _) => _dirty = true;
             // Snapshot antes de cada edição de célula — habilita o Ctrl+Z.
@@ -1315,17 +1328,21 @@ namespace NXProject.Views
         // ── Ctrl+V cola nas células (como no Excel); Ctrl+C já copia nativo ──
         private void OnGridPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
+            // Delete: o grid age nativamente — exclui linha(s) inteira(s) selecionada(s)
+            // ou LIMPA o conteúdo das células selecionadas. Nos dois casos, grava o
+            // snapshot ANTES para o Ctrl+Z restaurar exatamente o estado anterior.
+            if (e.Key == System.Windows.Input.Key.Delete && e.OriginalSource is not TextBox
+                && (PlanGrid.SelectedItems.Count > 0 || PlanGrid.SelectedCells.Count > 0))
+            {
+                PushUndo();
+                _dirty = true;
+                return;   // não marca Handled: o grid segue com a ação normal
+            }
+
             if ((System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == 0)
                 return;
 
-            // Ctrl+Z: desfazer (fora da edição da célula — dentro dela o TextBox tem o próprio undo).
-            if (e.Key == System.Windows.Input.Key.Z && e.OriginalSource is not TextBox)
-            {
-                Undo();
-                e.Handled = true;
-                return;
-            }
-
+            // Ctrl+Z é tratado no PreviewKeyDown da janela (global).
             if (e.Key != System.Windows.Input.Key.V)
                 return;
             e.Handled = PasteFromClipboard();
@@ -1424,6 +1441,7 @@ namespace NXProject.Views
             }
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
             var flat = Flatten(_vm.Project.Tasks).ToList();
 
             var log = new System.Text.StringBuilder();
@@ -1849,6 +1867,7 @@ namespace NXProject.Views
             var picker = new PlanItemPickerWindow(colName, candidates, current) { Owner = this };
             if (picker.ShowDialog() != true || picker.Selected == null) return;
 
+            PushUndo();
             ApplyPickedItem(drv.Row, colName, type, picker.Selected);
             _dirty = true;
             ValidateAgainstSchedule();
@@ -2190,6 +2209,7 @@ namespace NXProject.Views
             }
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
 
             var flat = Flatten(_vm.Project.Tasks).ToList();
             int matched = 0, internalAssigned = 0;
