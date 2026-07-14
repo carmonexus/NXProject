@@ -1359,6 +1359,17 @@ namespace NXProject.Views
                     if (!item.TryGetProperty("linha", out var lp) || !lp.TryGetInt32(out var line)) continue;
                     if (!item.TryGetProperty("id_devops", out var ip) || !ip.TryGetInt32(out var devId)) continue;
                     if (!byNumber.TryGetValue(line, out var row) || !byId.TryGetValue(devId, out var src)) continue;
+
+                    // Trava de hierarquia: se a linha tem Story, a Task só pode vir daquela Story
+                    // (a IA é instruída, mas aqui é garantido — nunca associa Task de outra Feature/Story).
+                    var rowStory = storyCol != null ? row[storyCol]?.ToString()?.Trim() : null;
+                    if (!string.IsNullOrEmpty(rowStory)
+                        && !string.Equals(rowStory, (src.Story.Name ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        log.AppendLine($"    Linha {line}: descartada — a IA sugeriu a Task {devId} da Story \"{src.Story.Name}\", mas a linha é da Story \"{rowStory}\".");
+                        continue;
+                    }
+
                     var conf = item.TryGetProperty("confianca", out var cp) ? cp.GetString() ?? "" : "";
                     changes.Add(new MergeChange(row, line, row[taskCol]?.ToString()?.Trim() ?? "", src, conf));
                 }
