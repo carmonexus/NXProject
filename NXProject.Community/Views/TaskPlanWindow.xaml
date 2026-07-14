@@ -18,48 +18,107 @@
         <TextBlock Grid.Row="0" Text="{DynamicResource TaskPlan_Title}"
                    FontSize="18" FontWeight="SemiBold" Foreground="#2B579A"/>
 
-        <!-- Barra -->
-        <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,8">
-            <Button Content="{DynamicResource TaskPlan_New}" Width="80" Height="28" Margin="0,0,8,4" Click="OnNewClick"
-                    ToolTip="{DynamicResource TaskPlan_NewTip}"/>
-            <Button Content="{DynamicResource TaskPlan_Open}" Width="100" Height="28" Margin="0,0,8,4" Click="OnOpenClick"/>
-            <Button Content="{DynamicResource TaskPlan_Reload}" Width="100" Height="28" Margin="0,0,8,4" Click="OnReloadClick"/>
-            <Button Width="64" Height="28" Margin="0,0,8,4" Click="OnSaveClick"
-                    Background="#1B5E20" ToolTip="{DynamicResource TaskPlan_Save}">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="&#x1F4BE;" FontSize="14" VerticalAlignment="Center"/>
-                    <Border Background="#107C41" CornerRadius="2" Margin="4,0,0,0" Padding="3,0">
-                        <TextBlock Text="X" FontSize="12" FontWeight="Bold" Foreground="White"
-                                   VerticalAlignment="Center"/>
-                    </Border>
-                </StackPanel>
-            </Button>
-            <TextBlock Text="{DynamicResource TaskPlan_EpicFilter}" VerticalAlignment="Center" Margin="12,0,6,4" FontSize="12" Foreground="#555"/>
-            <ComboBox x:Name="EpicFilterCombo" Width="200" Height="28" VerticalContentAlignment="Center"
-                      FontSize="12" Margin="0,0,8,4" SelectionChanged="OnEpicFilterChanged"/>
-            <TextBlock Text="{DynamicResource TaskPlan_FeatureFilter}" VerticalAlignment="Center" Margin="4,0,6,4" FontSize="12" Foreground="#555"/>
-            <ComboBox x:Name="FeatureFilterCombo" Width="200" Height="28" VerticalContentAlignment="Center"
-                      FontSize="12" Margin="0,0,8,4" SelectionChanged="OnFeatureFilterChanged"/>
-            <Button Content="{DynamicResource TaskPlan_FetchDevOps}" Height="28" Padding="10,0" Margin="0,0,8,4"
-                    Click="OnFetchDevOpsClick" ToolTip="{DynamicResource TaskPlan_FetchDevOpsTip}"
-                    Background="#2B579A" Foreground="White" FontWeight="SemiBold"/>
-            <Button Content="{DynamicResource TaskPlan_ApplySchedule}" Height="28" Padding="10,0" Margin="0,0,8,4"
-                    Click="OnApplyScheduleClick" ToolTip="{DynamicResource TaskPlan_ApplyScheduleTip}"
-                    Background="#6A1B9A" Foreground="White" FontWeight="SemiBold"/>
-            <Button Content="{DynamicResource TaskPlan_Merge}" Height="28" Padding="10,0" Margin="0,0,8,4"
-                    Click="OnMergeScheduleClick" ToolTip="{DynamicResource TaskPlan_MergeTip}"
-                    Background="#00695C" Foreground="White" FontWeight="SemiBold"/>
-            <Button Height="28" Width="32" Margin="0,0,8,4" Click="OnClearFiltersClick"
-                    ToolTip="{DynamicResource TaskPlan_ClearFilters}">
-                <TextBlock Text="&#x1F9F9;" FontSize="14"/>
-            </Button>
-            <Button Height="28" Width="32" Margin="0,0,8,4" Click="OnSettingsClick"
-                    ToolTip="{DynamicResource TaskPlan_Settings}">
-                <TextBlock Text="&#x2699;" FontSize="14"/>
-            </Button>
-            <TextBlock x:Name="PathText" VerticalAlignment="Center" Margin="4,0,0,4"
-                       FontSize="11" Foreground="#666" TextTrimming="CharacterEllipsis" MaxWidth="560"/>
-        </WrapPanel>
+        <!-- Faixa estilo Excel: menu Arquivo + barra de ícones -->
+        <Border Grid.Row="1" Background="#F3F6F4" BorderBrush="#D5DDD7" BorderThickness="1"
+                CornerRadius="4" Padding="8,6" Margin="0,10,0,8">
+            <WrapPanel Orientation="Horizontal">
+                <!-- Menu Arquivo: ações de baixa frequência -->
+                <Menu VerticalAlignment="Center" Background="Transparent" Margin="0,0,6,2">
+                    <MenuItem Padding="10,4" Background="#107C41" Foreground="White" FontWeight="SemiBold">
+                        <MenuItem.Header>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="&#x1F4C1;" FontSize="15" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource TaskPlan_FileMenu}" FontSize="10"
+                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem Header="{DynamicResource TaskPlan_New}" Click="OnNewClick"
+                                  ToolTip="{DynamicResource TaskPlan_NewTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F4C4;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_Open}" Click="OnOpenClick" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F4C2;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_Reload}" Click="OnReloadClick" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F504;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource TaskPlan_Save}" Click="OnSaveClick" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F4BE;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource TaskPlan_Settings}" Click="OnSettingsClick" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x2699;"/></MenuItem.Icon>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
+
+                <!-- Salvar rápido -->
+                <Button Width="60" Height="46" Margin="0,0,6,2" Click="OnSaveClick"
+                        Background="#1B5E20" ToolTip="{DynamicResource TaskPlan_Save}">
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock Text="&#x1F4BE;" FontSize="14" VerticalAlignment="Center"/>
+                            <Border Background="#107C41" CornerRadius="2" Margin="3,0,0,0" Padding="3,0">
+                                <TextBlock Text="X" FontSize="11" FontWeight="Bold" Foreground="White"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapSave}" FontSize="10" Foreground="White"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
+
+                <Rectangle Width="1" Fill="#C9D3CC" Margin="4,2,10,2"/>
+
+                <!-- Ações DevOps/cronograma: ícones com legenda (como no ribbon do Excel) -->
+                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnFetchDevOpsClick"
+                        Background="#2B579A" ToolTip="{DynamicResource TaskPlan_FetchDevOpsTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F50D;" FontSize="15" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapFetch}" FontSize="10" Foreground="White"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnMergeScheduleClick"
+                        Background="#00695C" ToolTip="{DynamicResource TaskPlan_MergeTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F500;" FontSize="15" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapMerge}" FontSize="10" Foreground="White"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnApplyScheduleClick"
+                        Background="#6A1B9A" ToolTip="{DynamicResource TaskPlan_ApplyScheduleTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F4C6;" FontSize="15" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapApply}" FontSize="10" Foreground="White"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
+
+                <Rectangle Width="1" Fill="#C9D3CC" Margin="6,2,10,2"/>
+
+                <!-- Filtros -->
+                <TextBlock Text="{DynamicResource TaskPlan_EpicFilter}" VerticalAlignment="Center" Margin="0,0,6,2" FontSize="12" Foreground="#555"/>
+                <ComboBox x:Name="EpicFilterCombo" Width="180" Height="28" VerticalContentAlignment="Center"
+                          FontSize="12" Margin="0,0,8,2" SelectionChanged="OnEpicFilterChanged"/>
+                <TextBlock Text="{DynamicResource TaskPlan_FeatureFilter}" VerticalAlignment="Center" Margin="0,0,6,2" FontSize="12" Foreground="#555"/>
+                <ComboBox x:Name="FeatureFilterCombo" Width="180" Height="28" VerticalContentAlignment="Center"
+                          FontSize="12" Margin="0,0,4,2" SelectionChanged="OnFeatureFilterChanged"/>
+                <Button Height="46" Width="52" Margin="0,0,8,2" Click="OnClearFiltersClick"
+                        ToolTip="{DynamicResource TaskPlan_ClearFilters}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F9F9;" FontSize="14" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapClear}" FontSize="10"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
+
+                <TextBlock x:Name="PathText" VerticalAlignment="Center" Margin="4,0,0,2"
+                           FontSize="11" Foreground="#666" TextTrimming="CharacterEllipsis" MaxWidth="520"/>
+            </WrapPanel>
+        </Border>
 
         <DataGrid x:Name="PlanGrid" Grid.Row="2"
                   AutoGenerateColumns="True"

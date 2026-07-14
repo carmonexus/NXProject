@@ -307,6 +307,17 @@
     <sys:String x:Key="TaskPlan_NewTip">Creates a new sheet with the required columns (Save asks for the file name)</sys:String>
     <sys:String x:Key="TaskPlan_NewFile">(new — save to create the .xlsx)</sys:String>
     <sys:String x:Key="TaskPlan_NewCreated">New plan created. Fill in the rows and click Save to choose the file.</sys:String>
+    <sys:String x:Key="TaskPlan_FileMenu">File</sys:String>
+    <sys:String x:Key="TaskPlan_CapSave">Save</sys:String>
+    <sys:String x:Key="TaskPlan_CapFetch">Search</sys:String>
+    <sys:String x:Key="TaskPlan_CapMerge">Merge</sys:String>
+    <sys:String x:Key="TaskPlan_CapApply">Apply</sys:String>
+    <sys:String x:Key="TaskPlan_CapClear">Clear</sys:String>
+    <sys:String x:Key="TaskPlan_NewChoiceMsg">Choose the base for the new sheet:</sys:String>
+    <sys:String x:Key="TaskPlan_NewEmpty">Empty (required columns only)</sys:String>
+    <sys:String x:Key="TaskPlan_NewFromSchedule">From the current schedule (tasks already present)</sys:String>
+    <sys:String x:Key="TaskPlan_NewFromScheduleTfs">From the schedule + TFS Tasks (fetch per Story; may take a while)</sys:String>
+    <sys:String x:Key="TaskPlan_NewTfsDone">Plan created: {0} row(s), {1} task(s) from TFS. Save to create the .xlsx.</sys:String>
     <sys:String x:Key="TaskPlan_MergeUseAI">Do you want to use AI for the merge?&#10;&#10;Yes: the AI compares names (tolerates writing differences) and shows the from/to list before applying.&#10;No: matches only exactly equal names.</sys:String>
     <sys:String x:Key="TaskPlan_MergeNoAI">Configure the AI in the "General AI" screen (provider and API key) to use the AI merge.</sys:String>
     <sys:String x:Key="TaskPlan_MergeAiRunning">Querying the AI for the merge...</sys:String>

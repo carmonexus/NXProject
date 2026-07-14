@@ -95,6 +95,17 @@
     <sys:String x:Key="TaskPlan_NewTip">Cria uma planilha nova com as colunas necessárias (o Salvar pede o nome do arquivo)</sys:String>
     <sys:String x:Key="TaskPlan_NewFile">(novo — salve para criar o .xlsx)</sys:String>
     <sys:String x:Key="TaskPlan_NewCreated">Plano novo criado. Preencha as linhas e clique em Salvar para escolher o arquivo.</sys:String>
+    <sys:String x:Key="TaskPlan_FileMenu">Arquivo</sys:String>
+    <sys:String x:Key="TaskPlan_CapSave">Salvar</sys:String>
+    <sys:String x:Key="TaskPlan_CapFetch">Buscar</sys:String>
+    <sys:String x:Key="TaskPlan_CapMerge">Merge</sys:String>
+    <sys:String x:Key="TaskPlan_CapApply">Aplicar</sys:String>
+    <sys:String x:Key="TaskPlan_CapClear">Limpar</sys:String>
+    <sys:String x:Key="TaskPlan_NewChoiceMsg">Escolha a base da planilha nova:</sys:String>
+    <sys:String x:Key="TaskPlan_NewEmpty">Vazia (só as colunas necessárias)</sys:String>
+    <sys:String x:Key="TaskPlan_NewFromSchedule">Do cronograma atual (tasks já presentes)</sys:String>
+    <sys:String x:Key="TaskPlan_NewFromScheduleTfs">Do cronograma + Tasks do TFS (busca por Story; pode demorar)</sys:String>
+    <sys:String x:Key="TaskPlan_NewTfsDone">Plano criado: {0} linha(s), {1} task(s) vindas do TFS. Salve para criar o .xlsx.</sys:String>
     <sys:String x:Key="TaskPlan_MergeUseAI">Deseja usar a IA para fazer o merge?&#10;&#10;Sim: a IA compara os nomes (aceita diferenças de escrita) e mostra o de/para antes de aplicar.&#10;Não: casa apenas nomes exatamente iguais.</sys:String>
     <sys:String x:Key="TaskPlan_MergeNoAI">Configure a IA na tela "IA Geral" (provedor e chave de API) para usar o merge com IA.</sys:String>
     <sys:String x:Key="TaskPlan_MergeAiRunning">Consultando a IA para o merge...</sys:String>

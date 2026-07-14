@@ -217,8 +217,8 @@ namespace NXProject.Views
             StatusText.Text = AppStrings.Get("TaskPlan_Loaded", table.Rows.Count);
         }
 
-        // Novo plano em branco com as colunas necessárias (o Salvar pede o nome do arquivo).
-        private void OnNewClick(object sender, RoutedEventArgs e)
+        // Novo plano: vazio, do cronograma, ou do cronograma + Tasks do TFS.
+        private async void OnNewClick(object sender, RoutedEventArgs e)
         {
             if (_dirty)
             {
@@ -228,6 +228,79 @@ namespace NXProject.Views
                 if (r == MessageBoxResult.Yes && !TrySave()) return;
             }
 
+            var choice = AskNewPlanSource();
+            if (choice == null) return;
+
+            switch (choice)
+            {
+                case "schedule":
+                    if (!HasSchedule()) return;
+                    BuildFromSchedule();
+                    break;
+                case "tfs":
+                    if (!HasSchedule()) return;
+                    await BuildFromScheduleWithTfsAsync();
+                    break;
+                default:
+                    BuildEmptyPlan();
+                    break;
+            }
+        }
+
+        private bool HasSchedule()
+        {
+            if (_vm?.Project != null && _vm.Project.Tasks.Count > 0) return true;
+            MessageBox.Show(this, AppStrings.Get("TaskPlan_NoSchedule"),
+                AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
+        }
+
+        // Escolha da base do plano novo: vazio / cronograma / cronograma + Tasks do TFS.
+        private string? AskNewPlanSource()
+        {
+            var dlg = new Window
+            {
+                Title = AppStrings.Get("TaskPlan_New"),
+                Owner = this,
+                Width = 440,
+                SizeToContent = SizeToContent.Height,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                Background = System.Windows.Media.Brushes.White
+            };
+            var panel = new StackPanel { Margin = new Thickness(16) };
+            panel.Children.Add(new TextBlock
+            {
+                Text = AppStrings.Get("TaskPlan_NewChoiceMsg"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 12)
+            });
+
+            string? result = null;
+            Button MakeOption(string key, string tag)
+            {
+                var b = new Button
+                {
+                    Content = AppStrings.Get(key),
+                    Height = 32,
+                    Margin = new Thickness(0, 0, 0, 6),
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    Padding = new Thickness(10, 0, 10, 0)
+                };
+                b.Click += (_, _) => { result = tag; dlg.DialogResult = true; };
+                return b;
+            }
+            panel.Children.Add(MakeOption("TaskPlan_NewEmpty", "empty"));
+            panel.Children.Add(MakeOption("TaskPlan_NewFromSchedule", "schedule"));
+            panel.Children.Add(MakeOption("TaskPlan_NewFromScheduleTfs", "tfs"));
+            var cancel = new Button { Content = AppStrings.Get("Pred_Cancel"), Width = 96, Height = 28, HorizontalAlignment = HorizontalAlignment.Right, IsCancel = true, Margin = new Thickness(0, 8, 0, 0) };
+            panel.Children.Add(cancel);
+            dlg.Content = panel;
+            return dlg.ShowDialog() == true ? result : null;
+        }
+
+        private void BuildEmptyPlan()
+        {
             var table = new DataTable();
             string[] cols = { "EPIC", "Feature", "Story", "Task", "ID Devops", "Prioridade", "Estimado", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
@@ -247,6 +320,77 @@ namespace NXProject.Views
             _dirty = false;
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             StatusText.Text = AppStrings.Get("TaskPlan_NewCreated");
+        }
+
+        // Cronograma + Tasks reais do TFS (por Story), com barra de progresso — base consistente.
+        private async Task BuildFromScheduleWithTfsAsync()
+        {
+            BuildFromSchedule();   // base: hierarquia e tasks já presentes no cronograma
+            if (_data == null) return;
+
+            var options = TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(options.OrganizationUrl) || string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+            {
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_PickNoDevOps"),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var stories = Flatten(_vm!.Project.Tasks)
+                .Where(t => IsType(t, "Story") && t.TfsId is > 0)
+                .ToList();
+            var existingIds = _data.Table.Rows.Cast<DataRow>()
+                .Select(r => r["ID Devops"]?.ToString()?.Trim() ?? "")
+                .Where(v => v.EndsWith(":T", StringComparison.OrdinalIgnoreCase))
+                .Select(v => int.TryParse(v[..^2], out var n) ? n : 0)
+                .ToHashSet();
+
+            int added = 0;
+            MergeProgress.Visibility = Visibility.Visible;
+            MergeProgress.IsIndeterminate = false;
+            MergeProgress.Maximum = Math.Max(1, stories.Count);
+            MergeProgress.Value = 0;
+            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            try
+            {
+                for (int i = 0; i < stories.Count; i++)
+                {
+                    var story = stories[i];
+                    StatusText.Foreground = System.Windows.Media.Brushes.Gray;
+                    StatusText.Text = AppStrings.Get("TaskPlan_MergeStepStory", i + 1, stories.Count, story.Name ?? "");
+                    var children = await TfsImportService.FetchChildTasksFromDevOpsAsync(options, story.TfsId!.Value);
+                    MergeProgress.Value = i + 1;
+                    if (children == null) continue;
+
+                    foreach (var t in children)
+                    {
+                        if (existingIds.Contains(t.TfsId)) continue;
+                        var dr = _data.Table.NewRow();
+                        dr["EPIC"]    = Ancestor(story, "Epic");
+                        dr["Feature"] = Ancestor(story, "Feature");
+                        dr["Story"]   = story.Name ?? "";
+                        dr["Task"]    = t.Title;
+                        dr["ID Devops"]  = $"{t.TfsId}:T";
+                        dr["Prioridade"] = t.Priority.ToString();
+                        dr["Estimado"]   = t.EstimatedHours > 0 ? t.EstimatedHours.ToString("0.##") : "";
+                        dr["Status"]     = t.State ?? "";
+                        _data.Table.Rows.Add(dr);
+                        existingIds.Add(t.TfsId);
+                        added++;
+                    }
+                }
+            }
+            finally
+            {
+                MergeProgress.Visibility = Visibility.Collapsed;
+                System.Windows.Input.Mouse.OverrideCursor = null;
+            }
+
+            BuildEpicFilter();
+            ValidateAgainstSchedule();
+            PlanGrid.Items.Refresh();
+            StatusText.Foreground = System.Windows.Media.Brushes.Green;
+            StatusText.Text = AppStrings.Get("TaskPlan_NewTfsDone", _data.Table.Rows.Count, added);
         }
 
         private void OnOpenClick(object sender, RoutedEventArgs e)
