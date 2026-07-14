@@ -116,7 +116,9 @@ namespace NXProject.Views
             SetImporting(true);
             try
             {
-                var importResult = await TfsImportService.ImportAsync(options);
+                // Progresso por etapa (Progress<T> despacha para a thread da UI).
+                var progress = new Progress<string>(step => ImportStepText.Text = step);
+                var importResult = await TfsImportService.ImportAsync(options, progress);
                 var project = importResult.Project;
 
                 // Grava a origem (organização + Team Project) para a sincronização
@@ -263,6 +265,8 @@ namespace NXProject.Views
             ImportButton.IsEnabled = !importing;
             ImportButton.Content = importing ? AppStrings.Get("Imp_Importing") : AppStrings.Get("Imp_Import");
             Mouse.OverrideCursor = importing ? Cursors.Wait : null;
+            ImportProgressPanel.Visibility = importing ? Visibility.Visible : Visibility.Collapsed;
+            if (importing) ImportStepText.Text = "";
         }
 
         private void ShowStatus(string message)

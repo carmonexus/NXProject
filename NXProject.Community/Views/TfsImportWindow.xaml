@@ -115,6 +115,13 @@
                                Text="{DynamicResource Imp_ScheduleRules}"/>
                 </Border>
 
+                <!-- Progresso do import: barra + etapa atual -->
+                <StackPanel x:Name="ImportProgressPanel" Margin="0,12,0,0" Visibility="Collapsed">
+                    <ProgressBar x:Name="ImportProgressBar" Height="14" IsIndeterminate="True"/>
+                    <TextBlock x:Name="ImportStepText" Margin="0,4,0,0"
+                               FontSize="12" Foreground="#2B579A" TextWrapping="Wrap"/>
+                </StackPanel>
+
                 <TextBlock x:Name="StatusText"
                            Foreground="#B00020" TextWrapping="Wrap"
                            Margin="0,12,0,0" Visibility="Collapsed"/>

@@ -301,6 +301,7 @@
     <sys:String x:Key="TaskPlan_SpNote">Integration under development: once the Entra ID App is configured, Task Plan will open/save the file directly on SharePoint (with co-authoring); otherwise it keeps using the local/network file.</sys:String>
     <sys:String x:Key="TaskPlan_SettingsSaved">Settings saved.</sys:String>
     <sys:String x:Key="TaskPlan_SpHelp">How to register the App in Azure (Entra ID) to use MSAL/Graph</sys:String>
+    <sys:String x:Key="TaskPlan_SharePointUrlMsg">This is a SharePoint (https) address and Windows cannot open it directly (WebDAV blocked by modern authentication).&#10;&#10;Options:&#10;1. Recommended: sync the library with OneDrive (the "Sync" button on the SharePoint site). The folder becomes a local path and Task Plan opens the file normally — point the Default folder (⚙) to it.&#10;2. Future: direct SharePoint integration (Entra ID + Graph) is under development — see the fields in ⚙ Settings.&#10;&#10;Open Microsoft's OneDrive sync guide?</sys:String>
     <sys:String x:Key="TaskPlan_FromSchedule">(new — loaded from the schedule; save to create the .xlsx)</sys:String>
     <sys:String x:Key="TaskPlan_New">New</sys:String>
     <sys:String x:Key="TaskPlan_NewTip">Creates a new sheet with the required columns (Save asks for the file name)</sys:String>

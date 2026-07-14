@@ -103,6 +103,7 @@ namespace NXProject.Services
 
         public static async Task<ImportResult> ImportAsync(
             TfsConnectionOptions options,
+            IProgress<string>? progress = null,
             CancellationToken cancellationToken = default)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
@@ -117,6 +118,7 @@ namespace NXProject.Services
             // 1) Descobre os reference names dos campos customizados. Usa o nome
             //    configurado (config_nxproject.json) e, se nao achar, tenta os
             //    candidatos conhecidos como fallback.
+            progress?.Report("Conectando e lendo os campos do DevOps...");
             var fieldMap = await LoadFieldMapAsync(orgBase, authHeader, cancellationToken);
             var hoursRef = ResolveField(fieldMap, options.EffortFieldName, HoursFieldNames);
             var remainingHoursRefImport = ResolveField(fieldMap, null, RemainingHoursFieldNames);
@@ -131,6 +133,7 @@ namespace NXProject.Services
             // Sprints (iterations) do projeto. Carrega TODAS para o mapa de datas
             // (ancora das Stories sem data); as numeradas/exibidas serao so as
             // efetivamente usadas pelos work items (definidas apos baixar os itens).
+            progress?.Report("Carregando as sprints (iterations) do projeto...");
             var allSprints = await LoadIterationsAsync(
                 orgBase, options.TeamProject, authHeader, cancellationToken);
             var sprintStarts = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
@@ -139,6 +142,7 @@ namespace NXProject.Services
                     sprintStarts[s.Path!] = s.Start;
 
             // 2) Query recursiva de links hierarquicos a partir da raiz.
+            progress?.Report("Consultando a hierarquia (Epic → Feature → Story)...");
             var edges = await LoadHierarchyEdgesAsync(orgBase, options.TeamProject, authHeader, options.RootWorkItemId, cancellationToken);
 
             // 3) Coleta todos os ids e baixa os campos em lote.
@@ -176,9 +180,11 @@ namespace NXProject.Services
                     if (!string.IsNullOrWhiteSpace(fd.Field) && !requestedFields.Contains(fd.Field))
                         requestedFields.Add(fd.Field);
 
+            progress?.Report($"Baixando {allIds.Count} work item(s) em lote...");
             var items = await LoadWorkItemsAsync(
                 orgBase, authHeader, allIds, requestedFields, cancellationToken, expandRelations: true);
 
+            progress?.Report("Montando o cronograma...");
             if (!items.TryGetValue(options.RootWorkItemId, out var rootItem))
                 throw new InvalidOperationException(
                     $"Work item raiz {options.RootWorkItemId} não encontrado ou sem acesso no projeto '{options.TeamProject}'.");
@@ -265,6 +271,7 @@ namespace NXProject.Services
             NormalizeIds(project.Tasks);
 
             // Etapa 2: leitura separada dos links de predecessora via WIQL.
+            progress?.Report("Lendo os links de predecessoras...");
             var depLinks = await LoadDependencyLinksAsync(
                 orgBase, options.TeamProject, authHeader, allIds, cancellationToken);
             var externalPredTfsIds = ApplyTfsPredecessors(project.Tasks, depLinks);
@@ -279,6 +286,7 @@ namespace NXProject.Services
             // Etapa 3: resolve predecessoras externas (fora do escopo deste import).
             if (externalPredTfsIds.Count > 0)
             {
+                progress?.Report("Resolvendo predecessoras externas...");
                 var extItems = await FetchWorkItemsByIdsAsync(
                     orgBase, options.TeamProject, authHeader, externalPredTfsIds, cancellationToken);
                 foreach (var extId in externalPredTfsIds.OrderBy(x => x))

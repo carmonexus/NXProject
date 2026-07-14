@@ -255,10 +255,49 @@ namespace NXProject.Views
             {
                 Title = AppStrings.Get("TaskPlan_Open"),
                 Filter = ExcelTaskPlanService.FileFilter,
-                InitialDirectory = DialogFolder
+                InitialDirectory = DialogFolder,
+                // URLs (ex.: SharePoint) não devem ser validadas pelo Windows (WebDAV/Acesso
+                // Negado) — nós mesmos tratamos abaixo com orientação amigável.
+                CheckFileExists = false,
+                ValidateNames = false
             };
-            if (dlg.ShowDialog(this) == true)
-                LoadFile(dlg.FileName);
+            if (dlg.ShowDialog(this) != true) return;
+
+            var chosen = dlg.FileName?.Trim() ?? "";
+            if (IsWebUrl(chosen))
+            {
+                ShowSharePointUrlGuidance();
+                return;
+            }
+            if (!File.Exists(chosen))
+            {
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_LoadError", chosen),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            LoadFile(chosen);
+        }
+
+        // Endereço web (ex.: https://...sharepoint.com/...) colado no diálogo Abrir.
+        private static bool IsWebUrl(string path)
+            => path.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+               || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+               || path.Contains(".sharepoint.com", StringComparison.OrdinalIgnoreCase);
+
+        // Orientação para arquivos no SharePoint: sincronizar via OneDrive (recomendado)
+        // ou aguardar a integração direta (Entra ID + Graph) das configurações.
+        private void ShowSharePointUrlGuidance()
+        {
+            var r = MessageBox.Show(this, AppStrings.Get("TaskPlan_SharePointUrlMsg"),
+                AppStrings.Get("TaskPlan_Title"), MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (r == MessageBoxResult.Yes)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    "https://support.microsoft.com/pt-br/office/sincronizar-arquivos-do-sharepoint-e-do-teams-com-seu-computador-6de9ede8-5b6e-4503-80b2-6190f3354a88")
+                {
+                    UseShellExecute = true
+                });
+            }
         }
 
         private void OnReloadClick(object sender, RoutedEventArgs e)

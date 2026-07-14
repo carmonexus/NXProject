@@ -89,6 +89,7 @@
     <sys:String x:Key="TaskPlan_SpNote">Integração em desenvolvimento: quando o App do Entra ID estiver configurado, o Task Plan abrirá/gravará o arquivo direto no SharePoint (com coautoria); senão, continua usando o arquivo local/rede.</sys:String>
     <sys:String x:Key="TaskPlan_SettingsSaved">Configurações salvas.</sys:String>
     <sys:String x:Key="TaskPlan_SpHelp">Como registrar o App no Azure (Entra ID) para usar MSAL/Graph</sys:String>
+    <sys:String x:Key="TaskPlan_SharePointUrlMsg">Este endereço é do SharePoint (https) e o Windows não consegue abri-lo direto (WebDAV bloqueado pela autenticação moderna).&#10;&#10;Opções:&#10;1. Recomendado: sincronize a biblioteca com o OneDrive (botão "Sincronizar" no site do SharePoint). A pasta vira um caminho local e o Task Plan abre o arquivo normalmente — aponte a Pasta padrão (⚙) para ela.&#10;2. Futuro: a integração direta com o SharePoint (Entra ID + Graph) está em desenvolvimento — veja os campos em ⚙ Configurações.&#10;&#10;Deseja abrir o guia da Microsoft de sincronização com o OneDrive?</sys:String>
     <sys:String x:Key="TaskPlan_FromSchedule">(novo — carregado do cronograma; salve para criar o .xlsx)</sys:String>
     <sys:String x:Key="TaskPlan_New">Novo</sys:String>
     <sys:String x:Key="TaskPlan_NewTip">Cria uma planilha nova com as colunas necessárias (o Salvar pede o nome do arquivo)</sys:String>
