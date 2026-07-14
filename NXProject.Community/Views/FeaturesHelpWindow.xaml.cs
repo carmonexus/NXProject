@@ -468,15 +468,28 @@ namespace NXProject.Views
                 "A coluna Sprint é especialmente útil para replanejar — mova Stories entre sprints e veja o impacto no cronograma imediatamente."
             ),
             (
-                "Task Plan (planejamento de tasks)",
-                "O Task Plan é uma grade estilo Excel para planejar as Tasks de cada EPIC em um arquivo .xlsx nativo — editável tanto pelo NXProject quanto pelo Excel — integrada ao cronograma aberto e ao Azure DevOps.",
+                "Planilha de Plan Task",
+                "A Planilha de Plan Task é uma grade estilo Excel para planejar as Tasks de cada EPIC em um arquivo .xlsx nativo — editável tanto pelo NXProject quanto pelo Excel — integrada ao cronograma aberto e ao Azure DevOps.",
                 new()
                 {
                     ("Arquivo (.xlsx nativo)",
                      "O botão da toolbar abre o Task Plan. Novo cria a planilha com as colunas necessárias (EPIC, Feature, Story, Task, ID Devops, Prioridade, Estimado, Status, Descrição, Observações); Abrir carrega qualquer .xlsx (a linha de títulos é reconhecida automaticamente, mesmo com bloco de resumo acima); o Salvar 💾 grava preservando o restante da aba (resumo, fórmulas). Colunas vinculadas ao cronograma são criadas se faltarem e não podem ser excluídas.\n" +
                      "Em ⚙ Configurações: pasta padrão dos arquivos e os campos do SharePoint (Entra ID + Graph, integração futura). O último arquivo é reaberto automaticamente; sem arquivo, a grade é montada do cronograma aberto."),
                     ("Edição estilo Excel",
-                     "Seleção de células em bloco (Shift/arrastar), Ctrl+C/Ctrl+V (inclusive de/para o Excel), colar criando linhas, numeração de linhas, inserir linha acima/abaixo, excluir linhas, limpar células, cor de fundo de célula (lida e gravada no Excel, inclusive cores de tema), inserir/renomear/excluir colunas (novas são gravadas no fim da aba com a posição da visão preservada), ajuste de altura/largura ao conteúdo e filtros por coluna com tela própria (botão direito no cabeçalho), além das combos de EPIC e Feature."),
+                     "• Ctrl+Z desfaz as últimas alterações (edição, colar, cores, linhas e colunas — até 10 níveis); também no menu do botão direito → Desfazer.\n" +
+                     "• Seleção de células em bloco (Shift/arrastar) com Copiar/Colar por Ctrl+C/Ctrl+V ou pelo menu do botão direito — inclusive de/para o Excel; colar além do fim cria linhas novas.\n" +
+                     "• Linhas numeradas como no Excel; botão direito: inserir linha acima/abaixo, excluir linha(s), limpar células e Cor da célula (paleta) — as cores são lidas do Excel (inclusive as de tema) e gravadas de volta.\n" +
+                     "• Botão direito no cabeçalho: Filtro... (tela com pesquisa e checkboxes por valor), inserir/renomear/excluir coluna e ajustes de largura; no menu das células, ajuste de altura ao texto e da planilha inteira."),
+                    ("Onde guardar o arquivo (OneDrive/SharePoint)",
+                     "• Pasta local ou de rede: funciona direto; se o arquivo estiver aberto no Excel, o NXProject avisa na hora de salvar (um editor por vez).\n" +
+                     "• SharePoint via OneDrive sincronizado (recomendado): no site do SharePoint clique em \"Sincronizar\" — a biblioteca vira uma pasta local (ex.: C:\\Users\\você\\Empresa\\...) e o Task Plan abre o .xlsx dali normalmente; o OneDrive cuida do envio e do versionamento. Aponte a Pasta padrão (⚙) para ela. Vale a regra de um editor por vez.\n" +
+                     "• SharePoint direto (URL https): o Windows não abre esse endereço (WebDAV bloqueado pela autenticação moderna) — o NXProject orienta ao colar a URL. O acesso direto com coautoria exigirá o App registrado no Entra ID (Tenant/Client ID em ⚙; integração em desenvolvimento) — sem client secret, o login é do próprio usuário (MSAL).\n" +
+                     "• Sem arquivo nenhum: para apenas revisar, use Novo → \"Do cronograma + Tasks do TFS\" — carrega tudo na grade para conferência e só cria o .xlsx se você salvar."),
+                    ("Colunas novas e movidas — o prefixo \"xx#_\"",
+                     "Ao salvar, cada coluna volta para a MESMA célula física da planilha, preservando o bloco de resumo e as fórmulas que apontam para colunas fixas. Por isso:\n" +
+                     "• Coluna criada na tela é gravada no FIM da aba, e coluna comum movida (arrastando o cabeçalho) permanece na célula física original.\n" +
+                     "• Para a tela lembrar onde exibi-las, o cabeçalho delas é gravado como \"posição#_Nome\" (ex.: \"2#_Observações\" = 2ª coluna da visão). Ao reabrir, o prefixo é removido e a coluna volta para a posição certa na grade — no Excel você verá o prefixo no título, e é seguro mantê-lo.\n" +
+                     "• As colunas vinculadas ao cronograma (EPIC, Feature, Story, Task, ID Devops, Prioridade, Estimado, Status) têm posição fixa e nome sempre limpo — elas nunca recebem o prefixo; para movê-las de lugar na planilha, faça pelo Excel."),
                     ("Integração com DevOps e cronograma",
                      "• Buscar Task no DevOps: para linhas sem ID, localiza a Story no cronograma e busca as Tasks filhas direto no DevOps, associando o ID no padrão do cronograma ({id}:T; interno {id}:I) com prioridade e estimativa.\n" +
                      "• Merge com Cronograma: busca as Tasks de cada Story no TFS e faz o merge com as linhas (atualiza ID/prioridade/estimado/status e adiciona as que faltam), com barra de progresso, etapas e log copiável. Opcionalmente usa a IA (ação \"Merge de Arquivo Externo com Task\" da tela IA Geral) para casar nomes com diferenças de escrita — mostrando o de/para para confirmação antes de aplicar.\n" +
@@ -1179,6 +1192,38 @@ namespace NXProject.Views
                      "Before applying, a window shows Epic, Feature, Story, Current Sprint and Adjusted Sprint for review; nothing changes until you click Apply. Dates are not moved — only the sprint label. Then sync with DevOps to persist.")
                 },
                 "The Sprint column is especially useful for replanning — move Stories between sprints and see the schedule impact immediately."
+            ),
+            (
+                "Plan Task Sheet",
+                "The Plan Task Sheet is an Excel-style grid for planning each EPIC's Tasks in a native .xlsx file — editable by both NXProject and Excel — integrated with the open schedule and Azure DevOps.",
+                new()
+                {
+                    ("File (native .xlsx)",
+                     "The toolbar button opens the Plan Task Sheet. New creates the sheet with the required columns (EPIC, Feature, Story, Task, ID Devops, Priority, Estimated, Status, Description, Notes) — optionally pre-filled from the current schedule or the schedule + TFS Tasks; Open loads any .xlsx (the title row is recognized automatically, even below a summary block); Save 💾 writes back preserving the rest of the sheet (summary, formulas). Schedule-linked columns are created if missing and cannot be deleted.\n" +
+                     "In ⚙ Settings: default files folder and the SharePoint fields (Entra ID + Graph, future integration). The last file reopens automatically; without a file, the grid is built from the open schedule."),
+                    ("Excel-style editing",
+                     "• Ctrl+Z undoes the latest changes (editing, paste, colors, rows and columns — up to 10 levels); also on the right-click menu → Undo.\n" +
+                     "• Block cell selection (Shift/drag) with Copy/Paste via Ctrl+C/Ctrl+V or the right-click menu — including to/from Excel; pasting past the end creates new rows.\n" +
+                     "• Rows numbered like Excel; right-click: insert row above/below, delete row(s), clear cells and Cell color (palette) — colors are read from Excel (including theme colors) and written back.\n" +
+                     "• Right-click the header: Filter... (dialog with search and per-value checkboxes), insert/rename/delete column and width adjustments; in the cell menu, fit row height to text and fit the whole sheet."),
+                    ("Where to keep the file (OneDrive/SharePoint)",
+                     "• Local or network folder: works directly; if the file is open in Excel, NXProject warns on save (one editor at a time).\n" +
+                     "• SharePoint via synced OneDrive (recommended): on the SharePoint site click \"Sync\" — the library becomes a local folder and Task Plan opens the .xlsx from there normally; OneDrive handles upload and versioning. Point the Default folder (⚙) to it. The one-editor-at-a-time rule applies.\n" +
+                     "• SharePoint directly (https URL): Windows cannot open that address (WebDAV blocked by modern authentication) — NXProject guides you when the URL is pasted. Direct access with co-authoring will require the App registered in Entra ID (Tenant/Client ID in ⚙; integration under development) — no client secret, the user signs in via MSAL.\n" +
+                     "• No file at all: to just review, use New → \"From the schedule + TFS Tasks\" — everything loads into the grid for review and the .xlsx is only created if you save."),
+                    ("New and moved columns — the \"xx#_\" prefix",
+                     "On save, each column goes back to the SAME physical cell in the sheet, preserving the summary block and formulas that point to fixed columns. Therefore:\n" +
+                     "• A column created on screen is saved at the END of the sheet, and a regular column that was moved (dragging its header) stays in its original physical cell.\n" +
+                     "• So the screen remembers where to display them, their header is saved as \"position#_Name\" (e.g. \"2#_Notes\" = 2nd column in the view). On reopen, the prefix is stripped and the column returns to the right position in the grid — in Excel you will see the prefix in the title, and it is safe to keep it.\n" +
+                     "• Schedule-linked columns (EPIC, Feature, Story, Task, ID Devops, Priority, Estimated, Status) have a fixed position and always a clean name — they never get the prefix; to move them in the sheet, do it in Excel."),
+                    ("DevOps and schedule integration",
+                     "• Find Task in DevOps: for rows without an ID, finds the Story in the schedule and fetches its child Tasks directly from DevOps, assigning the schedule ID pattern ({id}:T; internal {id}:I) with priority and estimate.\n" +
+                     "• Merge with Schedule: fetches each Story's Tasks from TFS and merges them with the rows (updates ID/priority/estimated/status and adds missing ones), with a progress bar, steps and a copyable log. Optionally uses AI (the \"Merge de Arquivo Externo com Task\" action from the General AI screen) to match names with writing differences — showing the from/to list for confirmation before applying.\n" +
+                     "• Apply to Schedule: creates in the schedule the plan tasks that don't exist (under the matching Story, via the same routine as the Task grid). Estimated accepts hours (8) or days (2d). A Story in New/0% may have its duration adjusted; once started, its period is preserved.\n" +
+                     "• Ctrl+click on EPIC/Feature/Story cells opens the schedule search; on Task, it searches the Story's children in DevOps. Right-click → View in schedule focuses the activity in the Gantt with the sheet docked to the side.\n" +
+                     "• EPIC/Feature/Story/Task cells found in the schedule turn green; Status is a combo with the DevOps states (the legacy \"Concluída (X)\" column is migrated automatically).")
+                },
+                "Suggested flow: build the plan in Excel or via New, use Merge with Schedule to link the DevOps IDs and Apply to Schedule to create what's missing — always reviewing the from/to list when using AI."
             ),
             (
                 "Azure DevOps",

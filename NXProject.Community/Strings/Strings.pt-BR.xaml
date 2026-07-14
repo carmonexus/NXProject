@@ -101,6 +101,7 @@
     <sys:String x:Key="TaskPlan_CapMerge">Merge</sys:String>
     <sys:String x:Key="TaskPlan_CapApply">Aplicar</sys:String>
     <sys:String x:Key="TaskPlan_CapClear">Limpar</sys:String>
+    <sys:String x:Key="TaskPlan_NewColRef">coluna nova (posição no Excel definida ao salvar)</sys:String>
     <sys:String x:Key="TaskPlan_NewChoiceMsg">Escolha a base da planilha nova:</sys:String>
     <sys:String x:Key="TaskPlan_NewEmpty">Vazia (só as colunas necessárias)</sys:String>
     <sys:String x:Key="TaskPlan_NewFromSchedule">Do cronograma atual (tasks já presentes)</sys:String>
@@ -119,6 +120,8 @@
     <sys:String x:Key="TaskPlan_MergeErrorCopyLog">Ocorreu um erro no merge:&#10;{0}&#10;&#10;Deseja copiar o log detalhado?</sys:String>
     <sys:String x:Key="TaskPlan_InsertRowAbove">Inserir linha acima</sys:String>
     <sys:String x:Key="TaskPlan_InsertRowBelow">Inserir linha abaixo</sys:String>
+    <sys:String x:Key="TaskPlan_Undo">Desfazer</sys:String>
+    <sys:String x:Key="TaskPlan_Undone">Alteração desfeita ({0} restante(s) no histórico).</sys:String>
     <sys:String x:Key="TaskPlan_Copy">Copiar</sys:String>
     <sys:String x:Key="TaskPlan_Paste">Colar</sys:String>
     <sys:String x:Key="TaskPlan_CellColor">Cor da célula</sys:String>
@@ -286,6 +289,7 @@
     <sys:String x:Key="Help_Topic_Resources">👥  Recursos</sys:String>
     <sys:String x:Key="Help_Topic_AllocationMap">📊  Mapa de Alocação</sys:String>
     <sys:String x:Key="Help_Topic_Sprints">🏃  Sprints</sys:String>
+    <sys:String x:Key="Help_Topic_TaskPlan">📗  Planilha de Plan Task</sys:String>
     <sys:String x:Key="Help_Topic_DevOps">☁  Azure DevOps</sys:String>
     <sys:String x:Key="Help_Topic_ProjectList">📋  Lista de Projetos</sys:String>
     <sys:String x:Key="Help_Topic_Sync">🔄  Sincronização</sys:String>

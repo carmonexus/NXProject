@@ -313,6 +313,7 @@
     <sys:String x:Key="TaskPlan_CapMerge">Merge</sys:String>
     <sys:String x:Key="TaskPlan_CapApply">Apply</sys:String>
     <sys:String x:Key="TaskPlan_CapClear">Clear</sys:String>
+    <sys:String x:Key="TaskPlan_NewColRef">new column (Excel position set on save)</sys:String>
     <sys:String x:Key="TaskPlan_NewChoiceMsg">Choose the base for the new sheet:</sys:String>
     <sys:String x:Key="TaskPlan_NewEmpty">Empty (required columns only)</sys:String>
     <sys:String x:Key="TaskPlan_NewFromSchedule">From the current schedule (tasks already present)</sys:String>
@@ -331,6 +332,8 @@
     <sys:String x:Key="TaskPlan_MergeErrorCopyLog">An error occurred during the merge:&#10;{0}&#10;&#10;Copy the detailed log?</sys:String>
     <sys:String x:Key="TaskPlan_InsertRowAbove">Insert row above</sys:String>
     <sys:String x:Key="TaskPlan_InsertRowBelow">Insert row below</sys:String>
+    <sys:String x:Key="TaskPlan_Undo">Undo</sys:String>
+    <sys:String x:Key="TaskPlan_Undone">Change undone ({0} left in history).</sys:String>
     <sys:String x:Key="TaskPlan_Copy">Copy</sys:String>
     <sys:String x:Key="TaskPlan_Paste">Paste</sys:String>
     <sys:String x:Key="TaskPlan_CellColor">Cell color</sys:String>
@@ -491,6 +494,7 @@
     <sys:String x:Key="Help_Topic_Resources">👥  Resources</sys:String>
     <sys:String x:Key="Help_Topic_AllocationMap">📊  Allocation Map</sys:String>
     <sys:String x:Key="Help_Topic_Sprints">🏃  Sprints</sys:String>
+    <sys:String x:Key="Help_Topic_TaskPlan">📗  Plan Task Sheet</sys:String>
     <sys:String x:Key="Help_Topic_DevOps">☁  Azure DevOps</sys:String>
     <sys:String x:Key="Help_Topic_ProjectList">📋  Project List</sys:String>
     <sys:String x:Key="Help_Topic_Sync">🔄  Sync</sys:String>

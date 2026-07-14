@@ -43,6 +43,8 @@ namespace NXProject.Views
             Closing += OnWindowClosing;
             PlanGrid.CellEditEnding += (_, _) => _dirty = true;
             PlanGrid.RowEditEnding += (_, _) => _dirty = true;
+            // Snapshot antes de cada edição de célula — habilita o Ctrl+Z.
+            PlanGrid.BeginningEdit += (_, _) => PushUndo();
             _settings = TaskPlanSettingsStore.Load();
             Loaded += (_, _) =>
             {
@@ -74,6 +76,7 @@ namespace NXProject.Views
                 BindTable();
                 ApplyEpicFilter();
                 _dirty = false;
+                ClearUndo();
                 _settings.LastFile = path;
                 TaskPlanSettingsStore.Save(_settings);
                 StatusText.Foreground = System.Windows.Media.Brushes.Green;
@@ -213,6 +216,7 @@ namespace NXProject.Views
             BindTable();
             ApplyEpicFilter();
             _dirty = true;   // ainda não existe .xlsx — salvar pedirá o arquivo
+            ClearUndo();
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             StatusText.Text = AppStrings.Get("TaskPlan_Loaded", table.Rows.Count);
         }
@@ -318,6 +322,7 @@ namespace NXProject.Views
             BindTable();
             ApplyEpicFilter();
             _dirty = false;
+            ClearUndo();
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             StatusText.Text = AppStrings.Get("TaskPlan_NewCreated");
         }
@@ -737,6 +742,48 @@ namespace NXProject.Views
             PlanGrid.ItemsSource = _data.Table.DefaultView;
         }
 
+        // Rodapé: referência REAL da célula no Excel (ex.: E7), considerando a linha do
+        // cabeçalho da planilha e a coluna física mapeada (ColumnSheetMap).
+        private void OnSelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
+        {
+            if (_data == null || PlanGrid.SelectedCells.Count == 0)
+            {
+                CellRefText.Text = "";
+                return;
+            }
+
+            var cell = PlanGrid.SelectedCells[^1];
+            var colName = cell.Column?.Header?.ToString();
+            if (colName == null || cell.Item is not DataRowView drv)
+            {
+                CellRefText.Text = "";
+                return;
+            }
+
+            var rowIdx = _data.Table.Rows.IndexOf(drv.Row);
+            var excelRow = _data.HeaderRow + 1 + (rowIdx < 0 ? _data.Table.Rows.Count : rowIdx);
+            var text = _data.ColumnSheetMap.TryGetValue(colName, out var sheetCol)
+                ? $"{ToExcelColumn(sheetCol)}{excelRow}"
+                : $"{colName} — {AppStrings.Get("TaskPlan_NewColRef")}";
+
+            CellRefText.Text = PlanGrid.SelectedCells.Count > 1
+                ? $"{text}  ({PlanGrid.SelectedCells.Count})"
+                : text;
+        }
+
+        // 1 → A, 2 → B, ..., 27 → AA (letras de coluna do Excel).
+        private static string ToExcelColumn(int index)
+        {
+            var s = "";
+            while (index > 0)
+            {
+                index--;
+                s = (char)('A' + index % 26) + s;
+                index /= 26;
+            }
+            return s;
+        }
+
         // Numeração das linhas no cabeçalho, como no Excel.
         private void OnLoadingRow(object? sender, DataGridRowEventArgs e)
             => e.Row.Header = (e.Row.GetIndex() + 1).ToString();
@@ -1077,6 +1124,7 @@ namespace NXProject.Views
             }
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
             var col = _data.Table.Columns.Add(name, typeof(string));
             var refIdx = _data.Table.Columns[refCol]!.Ordinal;
             col.SetOrdinal(left ? refIdx : refIdx + 1);
@@ -1099,6 +1147,7 @@ namespace NXProject.Views
             }
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
             _data.Table.Columns[colName]!.ColumnName = name;
             if (_data.Table.Columns.Contains(MatchColPrefix + colName))
                 _data.Table.Columns[MatchColPrefix + colName]!.ColumnName = MatchColPrefix + name;
@@ -1133,6 +1182,7 @@ namespace NXProject.Views
             if (confirm != MessageBoxResult.Yes) return;
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
             if (_data.ColumnSheetMap.TryGetValue(colName, out var sheetIdx))
             {
                 _data.RemovedSheetColumns.Add(sheetIdx);
@@ -1209,11 +1259,74 @@ namespace NXProject.Views
             SetVisibility(FindColumn("Feature", "Nome da Feature"), FeatureFilterCombo);
         }
 
+        // ── Desfazer (Ctrl+Z): histórico de snapshots da tabela ─────────────
+        private sealed record UndoState(DataTable Table, Dictionary<string, int> Map,
+            HashSet<string> Appended, List<int> Removed, int HeaderRow, bool Dirty);
+
+        private readonly List<UndoState> _undo = new();
+        private const int MaxUndo = 10;
+
+        // Guarda o estado ANTES de uma alteração (edição, colar, cor, linhas, colunas...).
+        private void PushUndo()
+        {
+            if (_data == null) return;
+            _undo.Add(new UndoState(
+                _data.Table.Copy(),
+                new Dictionary<string, int>(_data.ColumnSheetMap, StringComparer.OrdinalIgnoreCase),
+                new HashSet<string>(_data.AppendedColumns, StringComparer.OrdinalIgnoreCase),
+                new List<int>(_data.RemovedSheetColumns),
+                _data.HeaderRow,
+                _dirty));
+            if (_undo.Count > MaxUndo) _undo.RemoveAt(0);
+        }
+
+        private void ClearUndo() => _undo.Clear();
+
+        private void OnUndoClick(object sender, RoutedEventArgs e) => Undo();
+
+        private void Undo()
+        {
+            if (_data == null || _undo.Count == 0) return;
+            var state = _undo[^1];
+            _undo.RemoveAt(_undo.Count - 1);
+
+            var restored = new TaskPlanData
+            {
+                Table = state.Table,
+                SheetName = _data.SheetName,
+                HeaderRow = state.HeaderRow
+            };
+            foreach (var kv in state.Map) restored.ColumnSheetMap[kv.Key] = kv.Value;
+            foreach (var a in state.Appended) restored.AppendedColumns.Add(a);
+            restored.RemovedSheetColumns.AddRange(state.Removed);
+            _data = restored;
+            _dirty = state.Dirty;
+
+            _columnFilters.Clear();
+            UpdateFixedColumns();
+            BuildEpicFilter();
+            ValidateAgainstSchedule();
+            BindTable();
+            ApplyEpicFilter();
+            StatusText.Foreground = System.Windows.Media.Brushes.Gray;
+            StatusText.Text = AppStrings.Get("TaskPlan_Undone", _undo.Count);
+        }
+
         // ── Ctrl+V cola nas células (como no Excel); Ctrl+C já copia nativo ──
         private void OnGridPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            if (e.Key != System.Windows.Input.Key.V
-                || (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == 0)
+            if ((System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == 0)
+                return;
+
+            // Ctrl+Z: desfazer (fora da edição da célula — dentro dela o TextBox tem o próprio undo).
+            if (e.Key == System.Windows.Input.Key.Z && e.OriginalSource is not TextBox)
+            {
+                Undo();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key != System.Windows.Input.Key.V)
                 return;
             e.Handled = PasteFromClipboard();
         }
@@ -1233,6 +1346,7 @@ namespace NXProject.Views
             if (string.IsNullOrEmpty(text)) return false;
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
 
             // Colunas visíveis na ordem exibida, a partir da coluna atual.
             var visibleCols = PlanGrid.Columns
@@ -1919,6 +2033,7 @@ namespace NXProject.Views
             if (_data == null || sender is not MenuItem mi) return;
             var hex = mi.Tag as string ?? "";
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
 
             var cells = PlanGrid.SelectedCells.ToList();
             bool newColumns = false;
@@ -1950,6 +2065,7 @@ namespace NXProject.Views
         {
             if (_data == null) return;
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
             var idx = _ctxRow != null ? _data.Table.Rows.IndexOf(_ctxRow) : -1;
             var newRow = _data.Table.NewRow();
             if (idx < 0)
@@ -1967,6 +2083,7 @@ namespace NXProject.Views
         {
             if (_data == null) return;
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PushUndo();
             foreach (var cell in PlanGrid.SelectedCells)
             {
                 if (cell.Item is not DataRowView drv) continue;
@@ -1995,6 +2112,7 @@ namespace NXProject.Views
                 AppStrings.Get("TaskPlan_Title"), MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.Yes) return;
 
+            PushUndo();
             foreach (var r in rows)
                 _data.Table.Rows.Remove(r!);
             _dirty = true;

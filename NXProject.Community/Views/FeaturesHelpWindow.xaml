@@ -55,6 +55,7 @@
                     <ListBoxItem Content="{DynamicResource Help_Topic_Resources}"/>
                     <ListBoxItem Content="{DynamicResource Help_Topic_AllocationMap}"/>
                     <ListBoxItem Content="{DynamicResource Help_Topic_Sprints}"/>
+                    <ListBoxItem Content="{DynamicResource Help_Topic_TaskPlan}"/>
                     <ListBoxItem Content="{DynamicResource Help_Topic_DevOps}"/>
                     <ListBoxItem Content="{DynamicResource Help_Topic_ProjectList}"/>
                     <ListBoxItem Content="{DynamicResource Help_Topic_Sync}"/>
