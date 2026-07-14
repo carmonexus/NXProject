@@ -88,8 +88,8 @@ internal static class Program
 
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
         {
-            "packaging-community" => [PackagingTests[0]],
-            "packaging-setup" => [PackagingTests[1], PackagingTests[2]],
+            "packaging-community" => [PackagingTests[0], PackagingTests[3]],
+            "packaging-setup" => [PackagingTests[1], PackagingTests[2], PackagingTests[3]],
             "packaging" => PackagingTests,
             _ => ScheduleTests
         };
@@ -143,7 +143,8 @@ internal static class Program
     [
         ("Empacotamento: NXProject.Community-Release.zip contem arquivos essenciais", ValidateCommunityReleaseZip),
         ("Empacotamento: NXProject-Setup.zip contem runtime e libs essenciais", ValidateSetupZip),
-        ("Setup: timestamp e intrinseco ao zip e igual ao embutido no build", ValidateSetupTimestampIntrinsic)
+        ("Setup: timestamp e intrinseco ao zip e igual ao embutido no build", ValidateSetupTimestampIntrinsic),
+        ("Empacotamento: toda DLL de terceiros do publish esta no NXProject-Setup.zip", ValidateThirdPartyLibsAreInSetupZip)
     ];
 
     /// <summary>Garante que a identidade do Setup (timestamp) FICA NO proprio Setup e que a
@@ -231,6 +232,40 @@ internal static class Program
                 Console.WriteLine("Erro ao parsear raw: " + ex.Message);
             }
         }
+    }
+
+    /// <summary>
+    /// O Release.zip do Community leva SO os binarios do nucleo; as bibliotecas de
+    /// terceiros vem do Setup. Este teste garante que TODA .dll de terceiros presente
+    /// no publish atual existe dentro do NXProject-Setup.zip — pega dependencia NuGet
+    /// nova (ex.: ClosedXML) sem o Setup regenerado, antes de publicar.
+    /// </summary>
+    private static void ValidateThirdPartyLibsAreInSetupZip()
+    {
+        var publishDir = Path.Combine(_solutionRoot, "dist", "community", "publish-win-x64");
+        var setupZip = Path.Combine(_solutionRoot, "dist", "setup", "NXProject-Setup.zip");
+        if (!Directory.Exists(publishDir))
+            throw new InvalidOperationException($"Publish nao encontrado: {publishDir}. Rode a release do Community antes.");
+        if (!File.Exists(setupZip))
+            throw new InvalidOperationException($"Setup nao encontrado: {setupZip}. Rode release-nxproject-setup.ps1.");
+
+        using var zip = ZipFile.OpenRead(setupZip);
+        var setupEntries = zip.Entries.Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missing = Directory.EnumerateFiles(publishDir, "*.dll", SearchOption.AllDirectories)
+            .Select(Path.GetFileName)
+            .Where(n => n != null
+                && !n.StartsWith("NXProject.Community", StringComparison.OrdinalIgnoreCase)
+                && !n.StartsWith("NXProject.Shared", StringComparison.OrdinalIgnoreCase)
+                && !setupEntries.Contains(n!))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n)
+            .ToList();
+
+        if (missing.Count > 0)
+            throw new InvalidOperationException(
+                $"{missing.Count} DLL(s) de terceiros do publish NAO estao no NXProject-Setup.zip " +
+                $"(regenerar com release-nxproject-setup.ps1): {string.Join(", ", missing)}");
     }
 
     private static void ValidateSetupZip()

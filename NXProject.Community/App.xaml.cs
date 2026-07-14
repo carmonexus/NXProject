@@ -19,6 +19,33 @@ namespace NXProject
                 new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(culture.IetfLanguageTag)));
         }
 
+        /// <summary>
+        /// Biblioteca ausente (ex.: dependência nova que ainda não está na instalação):
+        /// orienta a rodar o NXProject-Setup em vez de mostrar o erro técnico. True se tratou.
+        /// </summary>
+        public static bool ShowMissingLibraryMessage(Exception ex)
+        {
+            for (Exception? cur = ex; cur != null; cur = cur.InnerException)
+            {
+                if (cur is System.IO.FileNotFoundException or System.IO.FileLoadException
+                    && (cur.Message.Contains("assembly", StringComparison.OrdinalIgnoreCase)
+                        || cur.Message.Contains("Could not load", StringComparison.OrdinalIgnoreCase)))
+                {
+                    MessageBox.Show(
+                        "Uma biblioteca necessária não foi encontrada nesta instalação.\n\n" +
+                        "Isso acontece quando uma atualização traz uma dependência nova. " +
+                        "Baixe e execute o NXProject-Setup mais recente para completar a instalação:\n" +
+                        "https://github.com/nexusxdata/NXProject/releases\n\n" +
+                        $"Detalhe técnico: {cur.Message}",
+                        "NXProject — reinstalação necessária",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return true;
+                }
+            }
+            return false;
+        }
+
         protected override void OnStartup(System.Windows.StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -27,6 +54,7 @@ namespace NXProject
             DispatcherUnhandledException += (_, args) =>
             {
                 args.Handled = true;
+                if (ShowMissingLibraryMessage(args.Exception)) return;
                 MessageBox.Show(
                     $"Erro inesperado:\n\n{args.Exception.Message}\n\n{args.Exception.StackTrace}",
                     "Erro — NXProject",
@@ -35,6 +63,7 @@ namespace NXProject
             };
             AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             {
+                if (args.ExceptionObject is Exception ex && ShowMissingLibraryMessage(ex)) return;
                 var msg = args.ExceptionObject?.ToString() ?? "(sem detalhes)";
                 MessageBox.Show($"Erro crítico:\n\n{msg}", "Erro — NXProject", MessageBoxButton.OK, MessageBoxImage.Error);
             };

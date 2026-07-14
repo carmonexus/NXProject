@@ -81,6 +81,8 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
+                // Biblioteca ausente (dependência nova sem o Setup atualizado): mensagem própria.
+                if (CommunityApp.ShowMissingLibraryMessage(ex)) return;
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_LoadError", ex.Message),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
