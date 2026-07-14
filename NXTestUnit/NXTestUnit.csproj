@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <ProjectReference Include="..\NXProject.Shared\NXProject.Shared.csproj" />
   </ItemGroup>
@@ -33,6 +34,12 @@
     </Compile>
     <Compile Include="..\NXProject.Community\Services\UpdateService.cs">
       <Link>Services\UpdateService.cs</Link>
+    </Compile>
+    <Compile Include="..\NXProject.Community\Services\ExcelTaskPlanService.cs">
+      <Link>Services\ExcelTaskPlanService.cs</Link>
+    </Compile>
+    <Compile Include="..\NXProject.Community\Services\TaskPlanScheduleRules.cs">
+      <Link>Services\TaskPlanScheduleRules.cs</Link>
     </Compile>
   </ItemGroup>
 

@@ -2,6 +2,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
+using NXProject.Community.Services;
 using NXProject.Models;
 using NXProject.Services;
 using NXProject.ViewModels;
@@ -65,7 +66,14 @@ internal static class Program
         ("Sync conflito: versao a frente sem alteracao nao registra conflito", SyncConflictVersionAheadWithoutPendingWritesDoesNotBlock),
         ("Sync conflito: versao a frente em Feature/Epic nao bloqueia rollup", SyncConflictVersionAheadFeatureEpicDoesNotBlockRollup),
         ("Sync conflito: resolucao manual permite sobrescrever item iniciado", SyncConflictManualOverwriteAllowsStartedItem),
-        ("Cronograma: digitacao 100% em Story exige TKs maior que zero", ManualStoryCompletionRequiresDevOpsTasks)
+        ("Cronograma: digitacao 100% em Story exige TKs maior que zero", ManualStoryCompletionRequiresDevOpsTasks),
+        ("Task Plan: criar e reabrir xlsx preserva colunas e linhas", TaskPlanCreateAndLoadRoundTrip),
+        ("Task Plan: cabecalho detectado abaixo do bloco de resumo", TaskPlanDetectsHeaderBelowSummary),
+        ("Task Plan: salvar preserva valores e cor de fundo", TaskPlanSavePreservesValuesAndColors),
+        ("Task Plan: coluna nova grava no fim com prefixo e volta na posicao", TaskPlanNewColumnKeepsViewPosition),
+        ("Task Plan: coluna excluida some da planilha ao salvar", TaskPlanDeletedColumnClearedOnSave),
+        ("Task Plan: aplicar cria task interna no padrao do cronograma", TaskPlanApplyCreatesInternalTaskLikeSchedule),
+        ("Task Plan: story iniciada NAO tem a duracao ajustada", TaskPlanStartedStoryKeepsDuration)
     ];
 
     private static int Main(string[] args)
@@ -1737,6 +1745,201 @@ internal static class Program
     {
         if (Math.Abs(expected - actual) > tolerance)
             throw new InvalidOperationException($"{message} Esperado: {expected:0.####}; Atual: {actual:0.####}.");
+    }
+
+    // ── Task Plan (Excel/ClosedXML): funções base ────────────────────────────
+
+    private static string NewTempXlsx() =>
+        Path.Combine(Path.GetTempPath(), $"nx-taskplan-{Guid.NewGuid():N}.xlsx");
+
+    private static TaskPlanData NewPlan(params string[] cols)
+    {
+        var table = new System.Data.DataTable();
+        foreach (var c in cols) table.Columns.Add(c, typeof(string));
+        var data = new TaskPlanData { Table = table, SheetName = "Tarefas", HeaderRow = 1 };
+        for (int i = 0; i < cols.Length; i++) data.ColumnSheetMap[cols[i]] = i + 1;
+        return data;
+    }
+
+    private static void TaskPlanCreateAndLoadRoundTrip()
+    {
+        var path = NewTempXlsx();
+        try
+        {
+            var data = NewPlan("Task", "Story", "ID Devops");
+            data.Table.Rows.Add("Tarefa A", "Story 1", "100:T");
+            data.Table.Rows.Add("Tarefa B", "Story 1", "5:I");
+            ExcelTaskPlanService.CreateNew(path, data);
+
+            var loaded = ExcelTaskPlanService.Load(path);
+            AssertEqual(1, loaded.HeaderRow, "Cabecalho do arquivo novo deve estar na linha 1.");
+            AssertEqual(2, loaded.Table.Rows.Count, "As duas linhas devem voltar.");
+            if (!loaded.Table.Columns.Contains("Task") || !loaded.Table.Columns.Contains("ID Devops"))
+                throw new InvalidOperationException("Colunas Task/ID Devops nao voltaram do arquivo.");
+            if (loaded.Table.Rows[0]["ID Devops"]?.ToString() != "100:T")
+                throw new InvalidOperationException("Valor do ID Devops (:T) nao foi preservado.");
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static void TaskPlanDetectsHeaderBelowSummary()
+    {
+        var path = NewTempXlsx();
+        try
+        {
+            using (var wb = new ClosedXML.Excel.XLWorkbook())
+            {
+                var ws = wb.AddWorksheet("Tarefas");
+                ws.Cell(1, 1).Value = "Plano de Tasks";
+                ws.Cell(3, 5).Value = "EPIC X";          // bloco de resumo
+                ws.Cell(5, 1).Value = "Task";            // linha de titulos
+                ws.Cell(5, 2).Value = "Story";
+                ws.Cell(5, 3).Value = "ID Devops";
+                ws.Cell(6, 1).Value = "Tarefa A";
+                ws.Cell(6, 2).Value = "Story 1";
+                ws.Cell(7, 1).Value = "Tarefa B";
+                ws.Cell(7, 2).Value = "Story 2";
+                wb.SaveAs(path);
+            }
+
+            var loaded = ExcelTaskPlanService.Load(path);
+            AssertEqual(5, loaded.HeaderRow, "A linha de titulos deve ser reconhecida abaixo do resumo.");
+            AssertEqual(2, loaded.Table.Rows.Count, "As linhas de dados devem ser lidas apos o cabecalho.");
+            if (!loaded.Table.Columns.Contains("Story"))
+                throw new InvalidOperationException("Coluna Story nao reconhecida no cabecalho.");
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static void TaskPlanSavePreservesValuesAndColors()
+    {
+        var path = NewTempXlsx();
+        try
+        {
+            var data = NewPlan("Task", "Story");
+            data.Table.Rows.Add("Tarefa A", "Story 1");
+            ExcelTaskPlanService.CreateNew(path, data);
+
+            var loaded = ExcelTaskPlanService.Load(path);
+            loaded.Table.Rows[0]["Task"] = "Tarefa A editada";
+            loaded.Table.Columns.Add(ExcelTaskPlanService.ColorColPrefix + "Task", typeof(string));
+            loaded.Table.Rows[0][ExcelTaskPlanService.ColorColPrefix + "Task"] = "#FFFF00";
+            ExcelTaskPlanService.Save(path, loaded);
+
+            var again = ExcelTaskPlanService.Load(path);
+            if (again.Table.Rows[0]["Task"]?.ToString() != "Tarefa A editada")
+                throw new InvalidOperationException("Valor editado nao foi gravado.");
+            var color = again.Table.Columns.Contains(ExcelTaskPlanService.ColorColPrefix + "Task")
+                ? again.Table.Rows[0][ExcelTaskPlanService.ColorColPrefix + "Task"]?.ToString()
+                : null;
+            if (!string.Equals(color, "#FFFF00", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Cor de fundo nao voltou do arquivo (obtido: '{color}').");
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static void TaskPlanNewColumnKeepsViewPosition()
+    {
+        var path = NewTempXlsx();
+        try
+        {
+            var data = NewPlan("Task", "Story");
+            data.Table.Rows.Add("Tarefa A", "Story 1");
+            ExcelTaskPlanService.CreateNew(path, data);
+
+            var loaded = ExcelTaskPlanService.Load(path);
+            loaded.FixedNameColumns.Add("Task");
+            loaded.FixedNameColumns.Add("Story");
+            var nota = loaded.Table.Columns.Add("Nota", typeof(string));
+            nota.SetOrdinal(1);   // visão: Task, Nota, Story
+            ExcelTaskPlanService.Save(path, loaded);
+
+            // Na planilha, a coluna nova fica no FIM (posicao 3) com o prefixo da visão.
+            using (var wb = new ClosedXML.Excel.XLWorkbook(path))
+            {
+                var header = wb.Worksheet("Tarefas").Cell(1, 3).GetString();
+                if (header != "2#_Nota")
+                    throw new InvalidOperationException($"Cabecalho da coluna nova deveria ser '2#_Nota' no fim da aba (obtido: '{header}').");
+            }
+
+            // Ao reabrir, volta com o nome limpo e na posicao da visão.
+            var again = ExcelTaskPlanService.Load(path);
+            if (!again.Table.Columns.Contains("Nota"))
+                throw new InvalidOperationException("Coluna nova nao voltou com o nome limpo.");
+            AssertEqual(1, again.Table.Columns["Nota"]!.Ordinal, "Coluna nova deve voltar na posicao da visão (indice 1).");
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static void TaskPlanDeletedColumnClearedOnSave()
+    {
+        var path = NewTempXlsx();
+        try
+        {
+            var data = NewPlan("Task", "Story", "Obs");
+            data.Table.Rows.Add("Tarefa A", "Story 1", "obs 1");
+            ExcelTaskPlanService.CreateNew(path, data);
+
+            var loaded = ExcelTaskPlanService.Load(path);
+            loaded.RemovedSheetColumns.Add(loaded.ColumnSheetMap["Obs"]);
+            loaded.ColumnSheetMap.Remove("Obs");
+            loaded.Table.Columns.Remove("Obs");
+            ExcelTaskPlanService.Save(path, loaded);
+
+            var again = ExcelTaskPlanService.Load(path);
+            if (again.Table.Columns.Contains("Obs"))
+                throw new InvalidOperationException("Coluna excluida nao deveria voltar do arquivo.");
+            AssertEqual(1, again.Table.Rows.Count, "As linhas restantes devem continuar integras.");
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static void TaskPlanApplyCreatesInternalTaskLikeSchedule()
+    {
+        SetCurrentCalendar(new ProjectCalendar());
+        var story = new ProjectTask
+        {
+            Id = 10, TfsId = 500, TfsType = "User Story", Name = "Story Nova",
+            TfsState = "New", PercentComplete = 0, Level = 2,
+            TfsIterationPath = @"Proj\Sprint 01", SprintNumber = 1,
+            Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 7)
+        };
+
+        // "2d" convertido pelo calendário do cronograma (dias úteis → horas).
+        var hours = TaskPlanScheduleRules.ParseEstimatedHours("2d")
+            ?? throw new InvalidOperationException("'2d' deveria ser aceito como estimativa.");
+        AssertEqual(2 * ProjectCalendarService.WorkingHoursPerDay, hours, "'2d' deve virar 2 dias úteis em horas.");
+
+        var task = TaskPlanScheduleRules.CreateInternalTask(story, 99, "Task interna", "desc", hours);
+        AssertEqual(0, task.TfsId ?? -1, "Task interna nasce com TfsId=0 ('criar no TFS'), padrão do AddSubtask.");
+        if (task.TfsState != "New" || task.TfsType != "Task")
+            throw new InvalidOperationException("Task interna deve nascer como Task em estado New.");
+        if (task.HasTfsLink)
+            throw new InvalidOperationException("Task interna não pode ter vínculo TFS (DisplayId deve ser '{Id}:I').");
+        if (task.SprintNumber != story.SprintNumber || task.TfsIterationPath != story.TfsIterationPath)
+            throw new InvalidOperationException("Task interna deve herdar sprint/iteração da Story.");
+        // Story em New: a duração pode ser ajustada (fim calculado pode passar do fim da Story).
+        AssertEqual(ProjectCalendarService.AddWorkingHours(story.Start, hours), task.Finish,
+            "Story em New: o fim da task segue a estimativa, mesmo além do fim da Story.");
+    }
+
+    private static void TaskPlanStartedStoryKeepsDuration()
+    {
+        SetCurrentCalendar(new ProjectCalendar());
+        var story = new ProjectTask
+        {
+            Id = 11, TfsId = 501, TfsType = "User Story", Name = "Story Ativa",
+            TfsState = "Active", PercentComplete = 40, Level = 2,
+            Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 7)
+        };
+
+        if (TaskPlanScheduleRules.CanAdjustStoryDuration(story))
+            throw new InvalidOperationException("Story iniciada (Active/40%) não pode ter a duração ajustada.");
+
+        // Estimativa maior que o período da Story: o fim fica contido no fim da Story.
+        var task = TaskPlanScheduleRules.CreateInternalTask(story, 100, "Task interna", null, 40);
+        if (task.Finish > story.Finish)
+            throw new InvalidOperationException("Com a Story iniciada, o fim da task não pode passar do fim da Story.");
     }
 
     private static void SetCurrentCalendar(ProjectCalendar calendar)

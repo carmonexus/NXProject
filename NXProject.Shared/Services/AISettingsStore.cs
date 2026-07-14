@@ -57,8 +57,19 @@ namespace NXProject.Services
         private const string LegacyScheduleDevOpsActionName = "Fazer Cronograma Devops";
         private const string LegacyScheduleNoDevOpsActionName = "Cronograma NoDevops";
 
-        // Versao atual do schema de acoes (v2 introduziu "Fazer Cronograma DevOps").
-        private const int CurrentActionsSchemaVersion = 2;
+        // Versao atual do schema de acoes (v2: "Fazer Cronograma DevOps"; v3: merge de arquivo externo).
+        private const int CurrentActionsSchemaVersion = 3;
+
+        /// <summary>Prompt do merge de planilha externa (Task Plan) com as Tasks do DevOps.</summary>
+        public const string MergeExternalActionPrompt =
+            "Você é um assistente do NXProject que faz merge entre um arquivo externo de plano de tasks " +
+            "e as Tasks reais do Azure DevOps. Você recebe duas listas: LINHAS (linhas do arquivo, com número, " +
+            "nome da task, story e ID atual) e TASKS_DEVOPS (id, título, story, estado, prioridade). " +
+            "Associe cada linha à Task do DevOps correspondente comparando os nomes (podem ter pequenas " +
+            "diferenças de escrita, abreviações ou acentos), respeitando a Story quando informada. " +
+            "Responda SOMENTE com um JSON válido, sem comentários, no formato: " +
+            "[{\"linha\": 1, \"id_devops\": 123, \"task_devops\": \"título\", \"confianca\": \"alta|media|baixa\"}]. " +
+            "Inclua apenas linhas com correspondência; não invente IDs.";
 
         /// <summary>Prompt do modo livre: responde no dominio de projeto, sem gerar tarefas.</summary>
         private const string FreeActionPrompt =
@@ -91,6 +102,12 @@ namespace NXProject.Services
             {
                 Name = AIActionType.AnalysisActionName,
                 Prompt = ProjectAIAssistantService.ScheduleAnalysisPrompt,
+                CreatesTasks = false
+            },
+            new AIActionType
+            {
+                Name = AIActionType.MergeExternalActionName,
+                Prompt = MergeExternalActionPrompt,
                 CreatesTasks = false
             },
         };
@@ -131,6 +148,10 @@ namespace NXProject.Services
                 }
                 if (legacyName || string.IsNullOrWhiteSpace(workspace.SelectedAction))
                     workspace.SelectedAction = AIActionType.ScheduleDevOpsActionName;
+
+                // v3: garante a acao de merge de arquivo externo (usada pelo Task Plan).
+                if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.MergeExternalActionName))
+                    workspace.ActionTypes.Add(GetDefaultActions().First(a => a.Name == AIActionType.MergeExternalActionName));
             }
 
             workspace.ActionsSchemaVersion = CurrentActionsSchemaVersion;

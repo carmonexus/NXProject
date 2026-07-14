@@ -468,6 +468,25 @@ namespace NXProject.Views
                 "A coluna Sprint é especialmente útil para replanejar — mova Stories entre sprints e veja o impacto no cronograma imediatamente."
             ),
             (
+                "Task Plan (planejamento de tasks)",
+                "O Task Plan é uma grade estilo Excel para planejar as Tasks de cada EPIC em um arquivo .xlsx nativo — editável tanto pelo NXProject quanto pelo Excel — integrada ao cronograma aberto e ao Azure DevOps.",
+                new()
+                {
+                    ("Arquivo (.xlsx nativo)",
+                     "O botão da toolbar abre o Task Plan. Novo cria a planilha com as colunas necessárias (EPIC, Feature, Story, Task, ID Devops, Prioridade, Estimado, Status, Descrição, Observações); Abrir carrega qualquer .xlsx (a linha de títulos é reconhecida automaticamente, mesmo com bloco de resumo acima); o Salvar 💾 grava preservando o restante da aba (resumo, fórmulas). Colunas vinculadas ao cronograma são criadas se faltarem e não podem ser excluídas.\n" +
+                     "Em ⚙ Configurações: pasta padrão dos arquivos e os campos do SharePoint (Entra ID + Graph, integração futura). O último arquivo é reaberto automaticamente; sem arquivo, a grade é montada do cronograma aberto."),
+                    ("Edição estilo Excel",
+                     "Seleção de células em bloco (Shift/arrastar), Ctrl+C/Ctrl+V (inclusive de/para o Excel), colar criando linhas, numeração de linhas, inserir linha acima/abaixo, excluir linhas, limpar células, cor de fundo de célula (lida e gravada no Excel, inclusive cores de tema), inserir/renomear/excluir colunas (novas são gravadas no fim da aba com a posição da visão preservada), ajuste de altura/largura ao conteúdo e filtros por coluna com tela própria (botão direito no cabeçalho), além das combos de EPIC e Feature."),
+                    ("Integração com DevOps e cronograma",
+                     "• Buscar Task no DevOps: para linhas sem ID, localiza a Story no cronograma e busca as Tasks filhas direto no DevOps, associando o ID no padrão do cronograma ({id}:T; interno {id}:I) com prioridade e estimativa.\n" +
+                     "• Merge com Cronograma: busca as Tasks de cada Story no TFS e faz o merge com as linhas (atualiza ID/prioridade/estimado/status e adiciona as que faltam), com barra de progresso, etapas e log copiável. Opcionalmente usa a IA (ação \"Merge de Arquivo Externo com Task\" da tela IA Geral) para casar nomes com diferenças de escrita — mostrando o de/para para confirmação antes de aplicar.\n" +
+                     "• Aplicar ao Cronograma: cria no cronograma as tasks do plano que não existem (sob a Story correspondente, pela mesma rotina da grid de Tasks). O Estimado aceita horas (8) ou dias (2d). Story em New/0% pode ter a duração ajustada; iniciada, o período é preservado.\n" +
+                     "• Ctrl+clique nas células EPIC/Feature/Story abre a busca no cronograma; na Task, busca as filhas da Story no DevOps. Botão direito → Ver no cronograma foca a atividade no Gantt com o Task Plan encostado na lateral.\n" +
+                     "• Células de EPIC/Feature/Story/Task encontradas no cronograma ficam verdes; o Status é uma combo com os estados do DevOps (a coluna legada \"Concluída (X)\" é migrada automaticamente).")
+                },
+                "Fluxo sugerido: monte o plano no Excel ou pelo Novo, use Merge com Cronograma para associar os IDs do DevOps e Aplicar ao Cronograma para criar o que faltar — sempre revisando o de/para quando usar a IA."
+            ),
+            (
                 "Azure DevOps",
                 "A integração com o Azure DevOps é o coração do NXProject: o backlog técnico vira cronograma gerenciável sem mudar o fluxo da equipe.",
                 new()

@@ -12,7 +12,10 @@ namespace NXProject.Services
 {
     public static class ProjectAIAssistantService
     {
-        private static readonly HttpClient HttpClient = new();
+        // Timeout infinito no HttpClient: quem controla o tempo é o CancellationTokenSource
+        // com o TimeoutSeconds configurado por provedor (senão o padrão de 100s do HttpClient
+        // cancelaria antes de timeouts maiores, ex.: OpenRouter em 240s).
+        private static readonly HttpClient HttpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
         public static async Task<AIAssistantResponse> GenerateTaskSuggestionsAsync(
             AISettings settings,

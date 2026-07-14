@@ -57,6 +57,8 @@ namespace NXProject.Models
         public const string ScheduleActionName = "Fazer Cronograma";
         public const string FreeActionName = "Livre";
         public const string AnalysisActionName = "Analisar Cronograma";
+        // Merge de planilha externa (Task Plan) com as Tasks do DevOps.
+        public const string MergeExternalActionName = "Merge de Arquivo Externo com Task";
     }
 
     /// <summary>Configuracao persistida de um provedor especifico.</summary>

@@ -945,6 +945,27 @@ namespace NXProject.Views
             }
         }
 
+        /// <summary>
+        /// Foca a janela principal e seleciona/mostra a atividade no cronograma
+        /// (usado pelo Task Plan em "Ver no cronograma").
+        /// </summary>
+        public void FocusTaskInSchedule(NXProject.Models.ProjectTask task)
+        {
+            if (DataContext is not MainViewModel vm) return;
+            Activate();
+            SelectTaskInSchedule(task, vm);
+        }
+
+        /// <summary>
+        /// Adiciona Tasks do DevOps sob uma Story usando a mesma rotina da grid de Tasks
+        /// (usado pelo Task Plan ao sincronizar com o cronograma).
+        /// </summary>
+        public NXProject.Models.ProjectTask? AddDevOpsTasksToStory(
+            IEnumerable<TaskReviewRow> rows, NXProject.Models.ProjectTask story)
+        {
+            return DataContext is MainViewModel vm ? AddTaskRowsToSchedule(rows, story, vm) : null;
+        }
+
         private NXProject.Models.ProjectTask? AddTaskRowsToSchedule(
             IEnumerable<TaskReviewRow> rows,
             NXProject.Models.ProjectTask story,
@@ -2727,6 +2748,12 @@ namespace NXProject.Views
                 AppStrings.Get("Complete_OutOfSprintTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
             return res == MessageBoxResult.Yes;
+        }
+
+        private void OnTaskPlanClick(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MainViewModel;
+            new TaskPlanWindow(vm) { Owner = this }.Show();
         }
 
         private void OnFixOutOfPeriodSprintsClick(object sender, RoutedEventArgs e)

@@ -10,15 +10,16 @@
     <RootNamespace>NXProject</RootNamespace>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <DefineConstants>$(DefineConstants);COMMUNITY</DefineConstants>
-    <Version>1.0.46.28</Version>
-    <AssemblyVersion>1.0.46.28</AssemblyVersion>
-    <FileVersion>1.0.46.28</FileVersion>
-    <InformationalVersion>1.0.46.28</InformationalVersion>
+    <Version>1.0.46.29</Version>
+    <AssemblyVersion>1.0.46.29</AssemblyVersion>
+    <FileVersion>1.0.46.29</FileVersion>
+    <InformationalVersion>1.0.46.29</InformationalVersion>
     <NoWarn>$(NoWarn);NU1900</NoWarn>
     <SatelliteResourceLanguages>pt-BR</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3124.44" />
     <PackageReference Include="PDFsharp" Version="6.2.4" />
