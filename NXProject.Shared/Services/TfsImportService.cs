@@ -1349,8 +1349,13 @@ namespace NXProject.Services
 
         private static int ResolveDesiredParent(ProjectTask task, int rootWorkItemId)
         {
-            // Sem pai no cronograma (nível raiz, ex.: Epic novo): cria sob o Work Item Project.
-            if (task.Parent == null) return rootWorkItemId;
+            // Sem pai no cronograma, só Epic pode nascer direto sob o Work Item Project.
+            // Feature/Story/Task órfãs não podem cair no raiz: isso esconderia perda de
+            // hierarquia local e criaria o item no lugar errado no DevOps.
+            if (task.Parent == null)
+                return string.Equals(task.TfsType?.Trim(), "Epic", StringComparison.OrdinalIgnoreCase)
+                    ? rootWorkItemId
+                    : 0;
 
             var p = task.Parent;
             while (p != null)
@@ -2993,6 +2998,9 @@ namespace NXProject.Services
         }
 
         public static DateTime? GetTfsFinishDateForTests(ProjectTask task) => GetTfsFinishDate(task);
+        public static int ResolveDesiredParentForTests(ProjectTask task, int rootWorkItemId) =>
+            ResolveDesiredParent(task, rootWorkItemId);
+
         public static List<object> BuildCreateOpsForTests(
             ProjectTask task,
             int parentId,

@@ -36,6 +36,8 @@ internal static class Program
         ("Cronograma: Ctrl botao marco nao cria filho em marco", AddMilestoneDoesNotCreateChildUnderMilestone),
         ("Sync TFS: Marco-Devops cria Task com tag MARCO-PROJECT", DevOpsMilestoneCreateOpsAddsMarcoProjectTag),
         ("Sync TFS: data fim usa fim inclusivo", TfsSyncFinishUsesInclusiveDate),
+        ("Sync TFS: cadeia nova cria Feature, Story e Task no pai correto", TfsSyncNewHierarchyUsesImmediateDevOpsParent),
+        ("Sync TFS: Task orfa nao cai no Work Item Project raiz", TfsSyncOrphanTaskDoesNotUseRootProject),
         ("Sync TFS: Marco-Devops usa irmao anterior como predecessora implicita", DevOpsMilestoneUsesPreviousSiblingAsImplicitPredecessor),
         ("Sync TFS: Marco-Devops sem irmao anterior usa pai como predecessora implicita", DevOpsMilestoneUsesParentAsImplicitPredecessor),
         ("Sync TFS: Marco-Devops resolve predecessora explicita com filhos", DevOpsMilestoneResolvesExplicitPredecessorWithChildren),
@@ -760,6 +762,69 @@ internal static class Program
         if (!tfsFinish.HasValue)
             throw new InvalidOperationException("Sync TFS deve calcular uma data fim para atividade com Finish valido.");
         AssertEqual(new DateTime(2026, 7, 3), tfsFinish.Value, "Sync TFS deve enviar a data fim inclusiva, nao o limite exclusivo interno.");
+    }
+
+    private static void TfsSyncNewHierarchyUsesImmediateDevOpsParent()
+    {
+        var epic = new ProjectTask { Id = 1, Name = "Epic existente", TfsType = "Epic", TfsId = 1000 };
+        var feature = new ProjectTask { Id = 2, Name = "Feature nova", TfsType = "Feature", TfsId = 0, Parent = epic };
+        var story = new ProjectTask { Id = 3, Name = "Story nova", TfsType = "User Story", TfsId = 0, Parent = feature };
+        var task = new ProjectTask { Id = 4, Name = "Task nova", TfsType = "Task", TfsId = 0, Parent = story, EstimatedHours = 8 };
+        epic.Children.Add(feature);
+        feature.Children.Add(story);
+        story.Children.Add(task);
+
+        var tasksById = new Dictionary<int, ProjectTask>
+        {
+            [epic.Id] = epic,
+            [feature.Id] = feature,
+            [story.Id] = story,
+            [task.Id] = task
+        };
+
+        AssertEqual(1000, TfsImportService.ResolveDesiredParentForTests(feature, 999),
+            "Feature nova deve ser criada sob o Epic existente, nao no Project raiz.");
+        AssertCreateParent(feature, 1000, tasksById, "Feature nova deve apontar para o Epic.");
+
+        feature.TfsId = 2000;
+        AssertEqual(2000, TfsImportService.ResolveDesiredParentForTests(story, 999),
+            "Story nova deve ser criada sob a Feature recem-criada.");
+        AssertCreateParent(story, 2000, tasksById, "Story nova deve apontar para a Feature.");
+
+        story.TfsId = 3000;
+        AssertEqual(3000, TfsImportService.ResolveDesiredParentForTests(task, 999),
+            "Task nova deve ser criada sob a Story recem-criada ou existente.");
+        AssertCreateParent(task, 3000, tasksById, "Task nova deve apontar para a Story.");
+    }
+
+    private static void TfsSyncOrphanTaskDoesNotUseRootProject()
+    {
+        var task = new ProjectTask { Id = 10, Name = "Task sem pai", TfsType = "Task", TfsId = 0 };
+        var story = new ProjectTask { Id = 11, Name = "Story sem pai", TfsType = "User Story", TfsId = 0 };
+        var feature = new ProjectTask { Id = 12, Name = "Feature sem pai", TfsType = "Feature", TfsId = 0 };
+        var epic = new ProjectTask { Id = 13, Name = "Epic sem pai", TfsType = "Epic", TfsId = 0 };
+
+        AssertEqual(0, TfsImportService.ResolveDesiredParentForTests(task, 999),
+            "Task sem Parent local deve ser pulada, nunca criada no Work Item Project raiz.");
+        AssertEqual(0, TfsImportService.ResolveDesiredParentForTests(story, 999),
+            "Story sem Parent local deve ser pulada, nunca criada no Work Item Project raiz.");
+        AssertEqual(0, TfsImportService.ResolveDesiredParentForTests(feature, 999),
+            "Feature sem Parent local deve ser pulada, nunca criada no Work Item Project raiz.");
+        AssertEqual(999, TfsImportService.ResolveDesiredParentForTests(epic, 999),
+            "Apenas Epic de topo pode ser criada sob o Work Item Project raiz.");
+    }
+
+    private static void AssertCreateParent(
+        ProjectTask task,
+        int expectedParentId,
+        Dictionary<int, ProjectTask> tasksById,
+        string message)
+    {
+        var ops = TfsImportService.BuildCreateOpsForTests(task, expectedParentId, tasksById, syncPredecessorLinks: false);
+        var json = JsonSerializer.Serialize(ops);
+        if (!json.Contains("System.LinkTypes.Hierarchy-Reverse", StringComparison.OrdinalIgnoreCase) ||
+            !json.Contains($"/workItems/{expectedParentId}", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(message);
     }
 
     private static void DevOpsMilestoneUsesPreviousSiblingAsImplicitPredecessor()
