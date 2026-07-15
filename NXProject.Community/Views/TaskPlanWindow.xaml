@@ -97,6 +97,14 @@
                                    HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnLoadAllClick"
+                        Background="#B26A00" ToolTip="{DynamicResource TaskPlan_LoadAllTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F4E5;" FontSize="15" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapLoadAll}" FontSize="10" Foreground="White"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Button Height="46" Width="52" Margin="0,0,4,2" Click="OnClearFiltersClick"
                         ToolTip="{DynamicResource TaskPlan_ClearFilters}">
                     <StackPanel VerticalAlignment="Center">
@@ -146,6 +154,7 @@
                     <MenuItem Header="{DynamicResource TaskPlan_Paste}" InputGestureText="Ctrl+V" Click="OnPasteClick"/>
                     <Separator/>
                     <MenuItem Header="{DynamicResource TaskPlan_ViewInSchedule}" Click="OnViewInScheduleClick"/>
+                    <MenuItem Header="{DynamicResource TaskPlan_OpenInTfs}" Click="OnOpenInTfsClick"/>
                     <Separator/>
                     <MenuItem Header="{DynamicResource TaskPlan_InsertRowAbove}" Click="OnInsertRowAboveClick"/>
                     <MenuItem Header="{DynamicResource TaskPlan_InsertRowBelow}" Click="OnInsertRowBelowClick"/>

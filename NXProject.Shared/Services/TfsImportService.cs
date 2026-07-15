@@ -1349,14 +1349,22 @@ namespace NXProject.Services
 
         private static int ResolveDesiredParent(ProjectTask task, int rootWorkItemId)
         {
+            // Sem pai no cronograma (nível raiz, ex.: Epic novo): cria sob o Work Item Project.
+            if (task.Parent == null) return rootWorkItemId;
+
             var p = task.Parent;
             while (p != null)
             {
                 if (p.TfsId is > 0) return p.TfsId.Value;
-                // Pai com TfsId=0 pode ter acabado de ser criado neste loop — valor já atualizado
+                // Pai com TfsId=0 pode ter acabado de ser criado neste loop — valor já atualizado.
+                // Pai "No DevOps" (TfsId negativo) é transparente: sobe para o avô.
                 p = p.Parent;
             }
-            return rootWorkItemId;
+
+            // Tem pai no cronograma, mas NENHUM ancestral com vínculo DevOps: NÃO cai no
+            // Work Item Project (senão a Task nasce fora da Story, no root). Retorna 0 →
+            // o chamador avisa "crie/vincule o pai primeiro" e pula o item nesta sincronização.
+            return 0;
         }
 
         private static void CollectLinkedTasks(
