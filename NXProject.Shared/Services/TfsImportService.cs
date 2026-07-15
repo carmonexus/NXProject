@@ -427,6 +427,27 @@ namespace NXProject.Services
         ///    início só se o TFS já tiver início não-nulo; fim só se o estado encerrado;
         ///    e reparenta no DevOps se o pai hierárquico mudou (validando antes).
         /// </summary>
+        /// <summary>
+        /// Falha se houver atividades com o MESMO ID interno (estado inconsistente que
+        /// poderia criar/atualizar o work item errado). Chamado no início do Sync.
+        /// </summary>
+        public static void EnsureNoDuplicateTaskIds(Project project)
+        {
+            var all = new List<ProjectTask>();
+            void Walk(IEnumerable<ProjectTask> ts)
+            {
+                foreach (var t in ts) { all.Add(t); Walk(t.Children); }
+            }
+            Walk(project.Tasks);
+
+            var dupIds = all.GroupBy(t => t.Id).Where(g => g.Count() > 1).OrderBy(g => g.Key).ToList();
+            if (dupIds.Count > 0)
+                throw new InvalidOperationException(
+                    "Sincronização bloqueada: existem atividades com o MESMO ID interno — " +
+                    string.Join("; ", dupIds.Select(g => $"ID {g.Key}: " + string.Join(" | ", g.Select(t => $"\"{t.Name}\"")))) +
+                    ". Feche sem salvar e reabra o cronograma antes de sincronizar.");
+        }
+
         public static async Task<SyncReport> SyncAsync(
             Project project, TfsConnectionOptions options, CancellationToken cancellationToken = default,
             HashSet<int>? forceOverwriteIds = null)
@@ -442,6 +463,9 @@ namespace NXProject.Services
             var auth = new AuthenticationHeaderValue(
                 "Basic",
                 Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+
+            // Falha RÁPIDA (antes de qualquer chamada de rede): ID interno duplicado.
+            EnsureNoDuplicateTaskIds(project);
 
             var fieldMap = await LoadFieldMapAsync(orgBase, auth, cancellationToken);
             var hoursRef = ResolveField(fieldMap, options.EffortFieldName, HoursFieldNames);
@@ -638,6 +662,16 @@ namespace NXProject.Services
                     // IsPendingTfsCreate ou TfsId == 0/null → item ainda não existe no DevOps.
                     var parentTask = task.Parent;
                     int desiredParent = ResolveDesiredParent(task, options.RootWorkItemId);
+
+                    // Task só grava/sincroniza sob uma STORY. Se o ancestral vinculado mais
+                    // próximo não é Story (ex.: a Story pai ainda não ganhou o ID DevOps),
+                    // pula com aviso — nunca cria/reparenta a Task sob Feature/Epic/Project.
+                    var parentViolation = TaskParentViolation(task);
+                    if (parentViolation != null)
+                    {
+                        report.LogWarning($"{TaskSyncLabel(task)} ({task.Name}): Task só pode ficar sob uma Story no DevOps — o pai vinculado mais próximo é \"{parentViolation}\". Sincronize/vincule a Story pai primeiro.");
+                        continue;
+                    }
 
                     if (task.IsPendingTfsCreate || !task.TfsId.HasValue || task.TfsId.Value == 0)
                     {
@@ -1345,6 +1379,20 @@ namespace NXProject.Services
             };
             var id = task.TfsId is > 0 ? $"{task.TfsId}:T" : $"{task.Id}:I";
             return $"{type} - {id}";
+        }
+
+        /// <summary>
+        /// Task só pode ficar sob uma STORY no DevOps. Retorna o tipo do pai inválido
+        /// quando o ancestral vinculado mais próximo NÃO é Story (ex.: Feature/Epic —
+        /// acontece se a Story pai ainda não ganhou o ID DevOps); null se ok.
+        /// </summary>
+        public static string? TaskParentViolation(ProjectTask task)
+        {
+            if (!IsTaskType(task.TfsType)) return null;
+            for (var p = task.Parent; p != null; p = p.Parent)
+                if (p.TfsId is > 0)
+                    return IsStoryType(p.TfsType) ? null : (p.TfsType ?? "?");
+            return null;   // sem ancestral vinculado: o fluxo de "pai sem vínculo" já trata
         }
 
         private static int ResolveDesiredParent(ProjectTask task, int rootWorkItemId)

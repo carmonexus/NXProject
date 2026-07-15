@@ -16,8 +16,42 @@ namespace NXProject.Services
         private static readonly XNamespace NS = "http://schemas.microsoft.com/project";
         private static readonly XNamespace EXT = "urn:nxproject:extensions:v1";
 
+        /// <summary>Achata a árvore de tarefas (todas as gerações).</summary>
+        private static IEnumerable<ProjectTask> FlattenTasks(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var t in tasks)
+            {
+                yield return t;
+                foreach (var c in FlattenTasks(t.Children))
+                    yield return c;
+            }
+        }
+
+        /// <summary>
+        /// IDs de atividade duplicados no projeto (não pode acontecer; se ocorrer é bug
+        /// de quem criou a atividade). Usado para BLOQUEAR a gravação e a sincronização.
+        /// </summary>
+        public static string? DescribeDuplicateTaskIds(Project project)
+        {
+            var dups = FlattenTasks(project.Tasks)
+                .GroupBy(t => t.Id)
+                .Where(g => g.Count() > 1)
+                .OrderBy(g => g.Key)
+                .ToList();
+            if (dups.Count == 0) return null;
+            return string.Join("; ", dups.Select(g =>
+                $"ID {g.Key}: " + string.Join(" | ", g.Select(t => $"\"{t.Name}\""))));
+        }
+
         public static void Save(Project project, string filePath)
         {
+            // Nunca grava com ID duplicado — o arquivo ficaria ilegível/inconsistente.
+            var dupMsg = DescribeDuplicateTaskIds(project);
+            if (dupMsg != null)
+                throw new InvalidOperationException(
+                    $"Não é possível gravar: existem atividades com o MESMO ID interno ({dupMsg}). " +
+                    "Feche sem salvar e reabra o cronograma; se persistir, reporte o passo que criou as atividades.");
+
             var sprintProfile = project.GetSprintSettingsProfile();
             var doc = new XDocument(
                 new XDeclaration("1.0", "utf-8", "yes"),
@@ -362,7 +396,29 @@ namespace NXProject.Services
                     project.Tasks.Add(LoadTask(t, null));
 
             ResolveResourceReferences(project.Tasks, project.Resources);
+            NormalizeDuplicateTaskIds(project);
             return project;
+        }
+
+        /// <summary>
+        /// Arquivo legado gravado com ID duplicado (bug já corrigido na origem): mantém o
+        /// primeiro e dá um ID novo aos demais — as predecessoras por ID continuam
+        /// apontando para o primeiro. Assim o arquivo abre e se conserta no próximo salvar.
+        /// </summary>
+        private static void NormalizeDuplicateTaskIds(Project project)
+        {
+            var all = FlattenTasks(project.Tasks).ToList();
+            if (all.Count == 0) return;
+
+            var seen = new HashSet<int>();
+            int next = all.Max(t => t.Id) + 1;
+            foreach (var t in all)
+                if (!seen.Add(t.Id))
+                {
+                    t.Id = next;
+                    seen.Add(next);
+                    next++;
+                }
         }
 
         private static void ResolveResourceReferences(

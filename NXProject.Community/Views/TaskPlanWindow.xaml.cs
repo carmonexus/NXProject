@@ -2428,7 +2428,10 @@ namespace NXProject.Views
                 foreach (DataRow dr in _data.Table.Rows)
                 {
                     var cur = dr[idCol]?.ToString()?.Trim() ?? "";
-                    if (!string.IsNullOrEmpty(cur)) continue;   // já vinculada
+                    // :T já vinculada ao DevOps; vazia ou :I são reavaliadas — o interno
+                    // pode ter virado DevOps desde a última busca (aí promove para :T).
+                    if (cur.EndsWith(":T", StringComparison.OrdinalIgnoreCase)) continue;
+                    bool hadInternal = cur.EndsWith(":I", StringComparison.OrdinalIgnoreCase);
 
                     var taskName = dr[taskCol]?.ToString()?.Trim() ?? "";
                     if (string.IsNullOrEmpty(taskName)) continue;
@@ -2475,9 +2478,10 @@ namespace NXProject.Views
                             dr[estCol] = devTask.EstimatedHours.ToString("0.##");
                         matched++;
                     }
-                    else
+                    else if (!hadInternal)
                     {
-                        // Padrão do cronograma: interno = "{n}:I".
+                        // Padrão do cronograma: interno = "{n}:I". Linha que JÁ tinha :I
+                        // e continua sem correspondência no DevOps mantém o ID atual.
                         dr[idCol] = $"{nextInternal++}:I";
                         internalAssigned++;
                     }

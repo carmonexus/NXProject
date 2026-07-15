@@ -75,7 +75,11 @@ internal static class Program
         ("Task Plan: coluna nova grava no fim com prefixo e volta na posicao", TaskPlanNewColumnKeepsViewPosition),
         ("Task Plan: coluna excluida some da planilha ao salvar", TaskPlanDeletedColumnClearedOnSave),
         ("Task Plan: aplicar cria task interna no padrao do cronograma", TaskPlanApplyCreatesInternalTaskLikeSchedule),
-        ("Task Plan: story iniciada NAO tem a duracao ajustada", TaskPlanStartedStoryKeepsDuration)
+        ("Task Plan: story iniciada NAO tem a duracao ajustada", TaskPlanStartedStoryKeepsDuration),
+        ("Arquivo: gravar com ID interno duplicado e BLOQUEADO com a atividade na mensagem", SaveBlocksDuplicateTaskIds),
+        ("Arquivo: leitura normaliza ID interno duplicado de arquivo legado", LoadNormalizesDuplicateTaskIds),
+        ("Sync TFS: ID interno duplicado bloqueia a sincronizacao", SyncBlocksDuplicateTaskIds),
+        ("Sync TFS: Task so grava sob Story (pai Feature/Epic e bloqueado)", SyncBlocksTaskWithoutStoryParent)
     ];
 
     private static int Main(string[] args)
@@ -2040,6 +2044,108 @@ internal static class Program
         var task = TaskPlanScheduleRules.CreateInternalTask(story, 100, "Task interna", null, 40);
         if (task.Finish > story.Finish)
             throw new InvalidOperationException("Com a Story iniciada, o fim da task não pode passar do fim da Story.");
+    }
+
+    // ── ID interno duplicado: gravar bloqueia, ler normaliza, sync recusa ────
+
+    private static Project NewProjectWithDuplicateIds()
+    {
+        var project = new Project { Name = "Dup", StartDate = new DateTime(2026, 7, 6) };
+        var epic = new ProjectTask { Id = 1, TfsId = 900, TfsType = "Epic", Name = "Epic A" };
+        var s1 = new ProjectTask { Id = 115, TfsId = 901, TfsType = "User Story", Name = "Story 1", Parent = epic };
+        var s2 = new ProjectTask { Id = 115, TfsId = 0, TfsType = "User Story", Name = "Story duplicada", Parent = epic };
+        epic.Children.Add(s1);
+        epic.Children.Add(s2);
+        epic.IsSummary = true;
+        project.Tasks.Add(epic);
+        return project;
+    }
+
+    private static void SaveBlocksDuplicateTaskIds()
+    {
+        var project = NewProjectWithDuplicateIds();
+        var path = Path.Combine(Path.GetTempPath(), $"nx-dup-{Guid.NewGuid():N}.nxp");
+        try
+        {
+            XmlProjectService.Save(project, path);
+            throw new InvalidOperationException("Save deveria BLOQUEAR projeto com ID duplicado.");
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("MESMO ID"))
+        {
+            if (!ex.Message.Contains("115") || !ex.Message.Contains("Story duplicada"))
+                throw new InvalidOperationException("A mensagem deve dizer o ID (115) e a atividade gravada errada.");
+            if (File.Exists(path))
+                throw new InvalidOperationException("Nenhum arquivo deveria ter sido gravado.");
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    private static void LoadNormalizesDuplicateTaskIds()
+    {
+        // Simula um arquivo LEGADO (gravado antes da trava) com dois IDs 115:
+        // grava com IDs válidos e duplica no XML por texto.
+        var project = NewProjectWithDuplicateIds();
+        var all = new List<ProjectTask> { project.Tasks[0] };
+        all.AddRange(project.Tasks[0].Children);
+        project.Tasks[0].Children[1].Id = 777;   // deixa válido para gravar
+
+        var path = Path.Combine(Path.GetTempPath(), $"nx-dup-{Guid.NewGuid():N}.nxp");
+        try
+        {
+            XmlProjectService.Save(project, path);
+            File.WriteAllText(path, File.ReadAllText(path).Replace(">777<", ">115<"));
+
+            var loaded = XmlProjectService.Load(path);
+            var ids = new List<int>();
+            void Walk(IEnumerable<ProjectTask> ts) { foreach (var t in ts) { ids.Add(t.Id); Walk(t.Children); } }
+            Walk(loaded.Tasks);
+
+            if (ids.Count != 3)
+                throw new InvalidOperationException($"Esperadas 3 atividades, obtidas {ids.Count}.");
+            if (ids.Distinct().Count() != ids.Count)
+                throw new InvalidOperationException("A leitura deve normalizar IDs duplicados (todos distintos).");
+            if (!ids.Contains(115))
+                throw new InvalidOperationException("O primeiro ID 115 deve ser preservado.");
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    private static void SyncBlocksDuplicateTaskIds()
+    {
+        var project = NewProjectWithDuplicateIds();
+        try
+        {
+            TfsImportService.EnsureNoDuplicateTaskIds(project);
+            throw new InvalidOperationException("Sync deveria BLOQUEAR projeto com ID duplicado.");
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Sincronização bloqueada"))
+        {
+            if (!ex.Message.Contains("115"))
+                throw new InvalidOperationException("A mensagem do sync deve citar o ID duplicado.");
+        }
+    }
+
+    private static void SyncBlocksTaskWithoutStoryParent()
+    {
+        var epic    = new ProjectTask { Id = 1, TfsId = 900, TfsType = "Epic", Name = "Epic A" };
+        var feature = new ProjectTask { Id = 2, TfsId = 901, TfsType = "Feature", Name = "Feature A", Parent = epic };
+        var story   = new ProjectTask { Id = 3, TfsId = 0, TfsType = "User Story", Name = "Story ainda sem ID", Parent = feature };
+        var task    = new ProjectTask { Id = 4, TfsId = 0, TfsType = "Task", Name = "Task nova", Parent = story };
+
+        // Story pai ainda sem ID DevOps: o ancestral vinculado mais próximo é a Feature —
+        // a Task NÃO pode ser criada/reparentada ali.
+        var violation = TfsImportService.TaskParentViolation(task);
+        if (violation == null || !violation.Contains("Feature"))
+            throw new InvalidOperationException($"Task sob Story sem ID deveria acusar o pai Feature (obtido: '{violation}').");
+
+        // Com a Story vinculada, a Task é aceita.
+        story.TfsId = 902;
+        if (TfsImportService.TaskParentViolation(task) != null)
+            throw new InvalidOperationException("Task sob Story vinculada deve ser aceita.");
+
+        // Story/Feature não são afetadas pela regra (só Task).
+        if (TfsImportService.TaskParentViolation(story) != null)
+            throw new InvalidOperationException("A regra vale apenas para o tipo Task.");
     }
 
     private static void SetCurrentCalendar(ProjectCalendar calendar)
