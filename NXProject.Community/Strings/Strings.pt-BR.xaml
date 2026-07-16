@@ -1789,8 +1789,10 @@
     <sys:String x:Key="Main_GanttLensTip">Lupa do Gantt (amplia área sob o cursor)</sys:String>
     <sys:String x:Key="Main_GanttOrgHTip">Mostrar Gantt pela Estimativa Original</sys:String>
     <sys:String x:Key="Main_TechLeadTip">Revisão de Tasks (Tech Lead) — busca todas as Tasks de todas as Stories no DevOps</sys:String>
-    <sys:String x:Key="Main_LoadTaskToDoTip">Load Task ToDo — carrega do DevOps todas as Tasks (inclusive Closed) das Stories com % de conclusão abaixo de 100% e aplica no cronograma</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoTip">Load Task ToDo — carrega do DevOps todas as Tasks (inclusive Closed) das Stories com % de conclusão abaixo de 100% e aplica no cronograma. Ctrl+clique para incluir também as Stories 100% concluídas</sys:String>
     <sys:String x:Key="Main_LoadTaskToDoNone">Nenhuma Story com % de conclusão abaixo de 100% vinculada ao DevOps.</sys:String>
+    <sys:String x:Key="Main_LoadTaskAllNone">Nenhuma Story vinculada ao DevOps.</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoAskCompleted">Carregar as Tasks também das Stories já 100% concluídas?&#x0a;&#x0a;Sim — traz as Tasks de todas as Stories, útil para conferir visualmente tudo no Gantt.&#x0a;Não — traz apenas as Stories com % de conclusão abaixo de 100%.</sys:String>
     <sys:String x:Key="Main_LoadTaskToDoStep">Carregando Tasks do DevOps — Story {0}/{1}: {2}</sys:String>
     <sys:String x:Key="Main_LoadTaskToDoDone">{0} Task(s) pendente(s) carregada(s) em {1} Story(ies).</sys:String>
     <sys:String x:Key="Main_CostPeople">👥 Custo — Pessoas...</sys:String>

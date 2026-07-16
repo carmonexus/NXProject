@@ -167,8 +167,10 @@
     <sys:String x:Key="Main_GanttLensTip">Gantt magnifier (zooms the area under the cursor)</sys:String>
     <sys:String x:Key="Main_GanttOrgHTip">Show Gantt by Original Estimate</sys:String>
     <sys:String x:Key="Main_TechLeadTip">Task Review (Tech Lead) — fetches all Tasks of all Stories in DevOps</sys:String>
-    <sys:String x:Key="Main_LoadTaskToDoTip">Load Task ToDo — loads from DevOps all Tasks (including Closed) of Stories below 100% completion and applies them to the schedule</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoTip">Load Task ToDo — loads from DevOps all Tasks (including Closed) of Stories below 100% completion and applies them to the schedule. Ctrl+click to also include Stories that are 100% complete</sys:String>
     <sys:String x:Key="Main_LoadTaskToDoNone">No Story below 100% completion linked to DevOps.</sys:String>
+    <sys:String x:Key="Main_LoadTaskAllNone">No Story linked to DevOps.</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoAskCompleted">Also load Tasks from Stories that are already 100% complete?&#x0a;&#x0a;Yes — brings Tasks from every Story, useful to visually check everything on the Gantt.&#x0a;No — brings only Stories below 100% completion.</sys:String>
     <sys:String x:Key="Main_LoadTaskToDoStep">Loading DevOps Tasks — Story {0}/{1}: {2}</sys:String>
     <sys:String x:Key="Main_LoadTaskToDoDone">{0} pending Task(s) loaded into {1} Story(ies).</sys:String>
     <sys:String x:Key="Main_CostPeople">👥 Cost — People...</sys:String>

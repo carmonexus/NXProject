@@ -222,7 +222,8 @@ namespace NXProject.Views
                      "• O botão Expandir a hierarquia abre UM NÍVEL por vez: EPIC → Feature → Story → Task (as Tasks já carregadas no cronograma). Cada clique mostra o próximo nível e recolhe os mais profundos.\n" +
                      "• Expandir nível da selecionada abre o nível das atividades irmãs da selecionada; Recolher tudo fecha toda a hierarquia."),
                     ("Load Task ToDo",
-                     "O ícone Load Task ToDo na toolbar carrega do DevOps as Tasks das Stories com % de conclusão abaixo de 100% (ainda a fazer) e as aplica no cronograma. Traz TODAS as Tasks da Story, inclusive as já concluídas (Closed), para a duração e a soma de HH ficarem corretas. Não duplica as que já existem no cronograma."),
+                     "O ícone Load Task ToDo na toolbar carrega do DevOps as Tasks das Stories com % de conclusão abaixo de 100% (ainda a fazer) e as aplica no cronograma. Traz TODAS as Tasks da Story, inclusive as já concluídas (Closed), para a duração e a soma de HH ficarem corretas. Não duplica as que já existem no cronograma.\n" +
+                     "• Ctrl + Clique no ícone pergunta se as Stories já 100% concluídas também devem entrar. Respondendo Sim, as Tasks de TODAS as Stories vinculadas ao DevOps são carregadas — útil para conferir visualmente o projeto inteiro no Gantt. Respondendo Não, vale o comportamento padrão (só abaixo de 100%)."),
                     ("Duração e datas",
                      "• Coluna Dur.(h): informe em horas (ex: 8) ou em dias úteis com d (ex: 2d = 2 dias úteis).\n" +
                      "• A data Fim é calculada automaticamente: Início + Dur.(h) respeitando o calendário de trabalho.\n" +
@@ -960,7 +961,8 @@ namespace NXProject.Views
                      "• The Expand hierarchy button opens ONE LEVEL at a time: EPIC → Feature → Story → Task (Tasks already loaded in the schedule). Each click reveals the next level and collapses deeper ones.\n" +
                      "• Expand selected level opens the level of the selected item's siblings; Collapse all closes the whole hierarchy."),
                     ("Load Task ToDo",
-                     "The Load Task ToDo toolbar icon loads from DevOps the Tasks of Stories below 100% completion (still to do) and applies them to the schedule. It brings ALL of the Story's Tasks, including already completed (Closed) ones, so duration and HH totals stay correct. It does not duplicate Tasks already in the schedule."),
+                     "The Load Task ToDo toolbar icon loads from DevOps the Tasks of Stories below 100% completion (still to do) and applies them to the schedule. It brings ALL of the Story's Tasks, including already completed (Closed) ones, so duration and HH totals stay correct. It does not duplicate Tasks already in the schedule.\n" +
+                     "• Ctrl + Click on the icon asks whether Stories already 100% complete should be included as well. Answering Yes loads the Tasks of EVERY Story linked to DevOps — useful to visually review the whole project on the Gantt. Answering No keeps the default behavior (below 100% only)."),
                     ("Duration and dates",
                      "• Dur.(h) column: enter in hours (e.g. 8) or in working days with d (e.g. 2d = 2 working days).\n" +
                      "• The Finish date is calculated automatically: Start + Dur.(h) respecting the work calendar.\n" +

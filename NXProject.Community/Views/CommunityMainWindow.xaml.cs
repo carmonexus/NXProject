@@ -1160,19 +1160,29 @@ namespace NXProject.Views
         // Load Task ToDo: para as Stories com % de conclusão abaixo de 100% (ainda a fazer),
         // carrega do DevOps TODAS as Tasks (inclusive as Closed, para a duração/soma de HH
         // ficar correta) e adiciona ao cronograma.
+        // Com Ctrl pressionado, pergunta se as Stories já 100% concluídas também devem ser
+        // incluídas (conferência visual de todas as Tasks no Gantt).
         private async void OnLoadTaskToDoClick(object sender, RoutedEventArgs e)
         {
             if (DataContext is not MainViewModel vm) return;
+
+            bool includeCompleted = false;
+            if ((System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)
+            {
+                var answer = MessageBox.Show(this, AppStrings.Get("Main_LoadTaskToDoAskCompleted"),
+                    "Load Task ToDo", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (answer == MessageBoxResult.Yes) includeCompleted = true;
+            }
 
             var stories = vm.FlatTasks
                 .Select(t => t.Model)
                 .Where(t => t.TfsId is > 0
                          && Services.TfsImportService.IsStoryTypePublic(t.TfsType)
-                         && t.PercentComplete < 100.0)
+                         && (includeCompleted || t.PercentComplete < 100.0))
                 .ToList();
             if (stories.Count == 0)
             {
-                MessageBox.Show(this, AppStrings.Get("Main_LoadTaskToDoNone"),
+                MessageBox.Show(this, AppStrings.Get(includeCompleted ? "Main_LoadTaskAllNone" : "Main_LoadTaskToDoNone"),
                     "Load Task ToDo", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -1197,8 +1207,8 @@ namespace NXProject.Views
                     var tasks = await Services.TfsImportService.FetchChildTasksFromDevOpsAsync(options, story.TfsId!.Value);
                     if (tasks == null || tasks.Count == 0) continue;
 
-                    // Story abaixo de 100%: traz TODAS as Tasks (inclusive as Closed),
-                    // senão a duração/soma de HH da Story fica errada.
+                    // Traz TODAS as Tasks da Story (inclusive as Closed), senão a
+                    // duração/soma de HH da Story fica errada.
                     var rows = tasks
                         .Select(t => new Views.TaskReviewRow
                         {
