@@ -66,6 +66,8 @@
     <sys:String x:Key="TaskPlan_SyncDone">{0} task(s) criada(s) no cronograma; {1} já existiam; {2} sem Story correspondente.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyMissingEpics">Os EPICs abaixo não existem no cronograma:&#10;&#10;{0}&#10;&#10;O EPIC precisa ser criado no DevOps (e importado no cronograma) antes de aplicar. Nada foi aplicado.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyDupTasks">A mesma Story não pode ter duas Tasks com o mesmo nome:&#10;&#10;{0}&#10;&#10;Renomeie ou remova as duplicadas na planilha antes de aplicar. Nada foi aplicado.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyMissingResources">Os Recursos abaixo não existem como pessoas do cronograma:&#10;&#10;{0}&#10;&#10;Cadastre a pessoa (ou corrija o nome na planilha) antes de aplicar. Nada foi aplicado.</sys:String>
+    <sys:String x:Key="TaskPlan_PickNoPeople">Não há pessoas cadastradas no cronograma para selecionar.</sys:String>
     <sys:String x:Key="TaskPlan_PickTitle">Buscar no cronograma</sys:String>
     <sys:String x:Key="TaskPlan_PickHeader">Selecionar {0} do cronograma</sys:String>
     <sys:String x:Key="TaskPlan_PickNone">Selecione um item da lista.</sys:String>

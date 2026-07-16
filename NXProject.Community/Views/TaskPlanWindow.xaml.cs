@@ -294,7 +294,7 @@ namespace NXProject.Views
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
 
             var table = new DataTable();
-            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             foreach (var t in Flatten(_vm.Project.Tasks).Where(t => IsType(t, "Task")))
@@ -310,6 +310,9 @@ namespace NXProject.Views
                 dr["Prioridade"] = t.Priority?.ToString() ?? "";
                 dr["Estimado HH"] = t.EstimatedHours is > 0 ? t.EstimatedHours.Value.ToString("0.##") : "1";
                 dr["Status"]     = t.TfsState ?? "";
+                dr["Recurso"]    = string.Join(", ", t.Resources
+                    .Select(r => r.Resource?.Name ?? "")
+                    .Where(n => n.Length > 0));
                 dr["Descrição da Task"] = t.Description ?? "";
                 table.Rows.Add(dr);
             }
@@ -434,7 +437,7 @@ namespace NXProject.Views
         private void BuildEmptyPlan()
         {
             var table = new DataTable();
-            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             _data = new TaskPlanData { Table = table, SheetName = "Tarefas", HeaderRow = 1 };
@@ -1000,9 +1003,10 @@ namespace NXProject.Views
 
                     // Colunas de hierarquia: verde = encontrado (EPIC/Task); vermelho =
                     // preenchido mas NÃO existe no pai (todas — fica até a edição corrigir).
-                    if (HierarchyType(name) != null && _data.Table.Columns.Contains(MatchColPrefix + name))
+                    bool isResourceCol = string.Equals(name, ResourceCol, StringComparison.Ordinal);
+                    if ((HierarchyType(name) != null || isResourceCol) && _data.Table.Columns.Contains(MatchColPrefix + name))
                     {
-                        if (HierarchyType(name) is "Epic" or "Task")
+                        if (HierarchyType(name) is "Epic" or "Task" || isResourceCol)
                         {
                             var okTrig = new System.Windows.DataTrigger
                             {
@@ -1963,6 +1967,49 @@ namespace NXProject.Views
             return null;
         }
 
+        // Coluna do responsável/recurso na planilha (nome da pessoa do cronograma).
+        private string? ResourceCol => FindColumn(
+            "Recurso", "Recursos", "Responsável", "Responsavel",
+            "Responsible", "Owner", "Atribuído a", "Atribuido a", "Assigned To", "AssignedTo");
+
+        /// <summary>Pessoa (recurso Work) do cronograma cujo nome bate com <paramref name="name"/>.</summary>
+        private Resource? FindScheduleResource(string? name)
+        {
+            var n = name?.Trim().TrimStart('*').Trim();
+            if (string.IsNullOrEmpty(n) || _vm?.Project == null) return null;
+            return _vm.Project.Resources.FirstOrDefault(r =>
+                r.Type == ResourceType.Work
+                && (string.Equals(r.Name?.Trim(), n, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r.DisplayName?.TrimStart('*').Trim(), n, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        /// <summary>Nomes de pessoas em uma célula de Recurso (separados por vírgula/ponto-e-vírgula).</summary>
+        private static List<string> SplitResourceNames(string? cell) =>
+            (cell ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => s.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        /// <summary>Aloca as pessoas da planilha na Task (sem duplicar). Retorna true se mudou algo.</summary>
+        private bool AssignResourceFromPlan(ProjectTask task, string? cell)
+        {
+            bool changed = false;
+            foreach (var name in SplitResourceNames(cell))
+            {
+                var res = FindScheduleResource(name);
+                if (res == null || task.Resources.Any(tr => tr.ResourceId == res.Id)) continue;
+                task.Resources.Add(new TaskResource
+                {
+                    ResourceId = res.Id,
+                    Resource = res,
+                    EstimatedHours = task.EstimatedHours
+                });
+                changed = true;
+            }
+            return changed;
+        }
+
         /// <summary>Marca (colunas __m_*) as células de EPIC/Feature/Story/Task encontradas no cronograma.</summary>
         private void ValidateAgainstSchedule()
         {
@@ -1975,10 +2022,16 @@ namespace NXProject.Views
                 .Select(c => c.ColumnName)
                 .Where(n => !n.StartsWith("__", StringComparison.Ordinal) && HierarchyType(n) != null)
                 .ToList();
-            if (hierCols.Count == 0 && StoryIdCol == null && FeatureIdCol == null) return;
+            var resourceCol = ResourceCol;
+            if (hierCols.Count == 0 && resourceCol == null && StoryIdCol == null && FeatureIdCol == null) return;
+
+            // Colunas validadas: hierarquia + Recurso (nome de pessoa do cronograma).
+            var valCols = resourceCol != null && !hierCols.Contains(resourceCol)
+                ? hierCols.Append(resourceCol).ToList()
+                : hierCols;
 
             bool addedCols = false;
-            foreach (var col in hierCols)
+            foreach (var col in valCols)
                 if (!_data.Table.Columns.Contains(MatchColPrefix + col))
                 {
                     _data.Table.Columns.Add(MatchColPrefix + col, typeof(string));
@@ -2027,12 +2080,21 @@ namespace NXProject.Views
                     dr[sc] = storyNode != null ? DisplayIdOf(storyNode) : "";
                 }
 
-                foreach (var col in hierCols)
+                foreach (var col in valCols)
                 {
                     var value = dr[col]?.ToString()?.Trim() ?? "";
                     if (string.IsNullOrEmpty(value))
                     {
                         dr[MatchColPrefix + col] = "";
+                        continue;
+                    }
+
+                    // Recurso: valida cada nome contra as pessoas (recursos Work) do cronograma.
+                    if (string.Equals(col, resourceCol, StringComparison.Ordinal))
+                    {
+                        var names = SplitResourceNames(value);
+                        dr[MatchColPrefix + col] =
+                            names.Count > 0 && names.All(n => FindScheduleResource(n) != null) ? "1" : "0";
                         continue;
                     }
 
@@ -2065,8 +2127,9 @@ namespace NXProject.Views
             if (cell == null || cell.DataContext is not DataRowView drv) return;
 
             var colName = cell.Column?.Header?.ToString() ?? "";
+            bool isResourceCol = string.Equals(colName, ResourceCol, StringComparison.Ordinal);
             var type = HierarchyType(colName);
-            if (type == null) return;
+            if (type == null && !isResourceCol) return;
 
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0)
             {
@@ -2078,6 +2141,32 @@ namespace NXProject.Views
 
             e.Handled = true;
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+            // Recurso: lista as pessoas do cronograma (mesma tela da busca da Story).
+            if (isResourceCol)
+            {
+                var people = _vm.Project.Resources
+                    .Where(r => r.Type == ResourceType.Work)
+                    .Select(r => new ProjectTask { Id = r.Id, Name = r.Name, TfsType = "Recurso" })
+                    .ToList();
+                if (people.Count == 0)
+                {
+                    MessageBox.Show(this, AppStrings.Get("TaskPlan_PickNoPeople"),
+                        AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var curName = drv.Row[colName]?.ToString()?.Trim() ?? "";
+                var peoplePicker = new PlanItemPickerWindow(colName, people, curName) { Owner = this };
+                if (peoplePicker.ShowDialog() != true || peoplePicker.Selected == null) return;
+
+                PushUndo();
+                drv.Row[colName] = peoplePicker.Selected.Name ?? "";
+                _dirty = true;
+                ValidateAgainstSchedule();
+                PlanGrid.Items.Refresh();
+                return;
+            }
 
             var flat = Flatten(_vm.Project.Tasks).ToList();
             var current = drv.Row[colName]?.ToString()?.Trim() ?? "";
@@ -2091,7 +2180,7 @@ namespace NXProject.Views
             }
             else
             {
-                candidates = flat.Where(t => IsType(t, type)).ToList();
+                candidates = flat.Where(t => IsType(t, type!)).ToList();
 
                 // Escopo pela hierarquia já associada na linha: Feature só do EPIC da
                 // linha; Story só da Feature (ou, sem Feature, só do EPIC).
@@ -2126,7 +2215,7 @@ namespace NXProject.Views
             if (picker.ShowDialog() != true || picker.Selected == null) return;
 
             PushUndo();
-            ApplyPickedItem(drv.Row, colName, type, picker.Selected);
+            ApplyPickedItem(drv.Row, colName, type!, picker.Selected);
             _dirty = true;
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
@@ -2623,6 +2712,7 @@ namespace NXProject.Views
             var descCol    = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
             var prioCol    = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
             var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var resourceCol = ResourceCol;
             if (idCol == null || taskCol == null || storyCol == null)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_SyncNeedCols"),
@@ -2682,6 +2772,26 @@ namespace NXProject.Views
                 return;
             }
 
+            // Trava: todo Recurso informado precisa existir como pessoa do cronograma
+            // (o nome é a chave da alocação). Se não bater, avisa e NÃO aplica.
+            if (resourceCol != null)
+            {
+                var missingResources = _data.Table.Rows.Cast<DataRow>()
+                    .Where(r => !string.IsNullOrWhiteSpace(r[taskCol]?.ToString()))
+                    .SelectMany(r => SplitResourceNames(r[resourceCol]?.ToString()))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Where(v => FindScheduleResource(v) == null)
+                    .OrderBy(v => v, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+                if (missingResources.Count > 0)
+                {
+                    MessageBox.Show(this,
+                        AppStrings.Get("TaskPlan_ApplyMissingResources", "• " + string.Join("\n• ", missingResources)),
+                        AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+
             int created = 0, existing = 0, noStory = 0;
             bool scheduleChanged = false;
             var touchedStories = new HashSet<ProjectTask>();
@@ -2717,6 +2827,8 @@ namespace NXProject.Views
                             match.Description = description;
                             scheduleChanged = true;
                         }
+                        if (resourceCol != null && AssignResourceFromPlan(match, dr[resourceCol]?.ToString()))
+                            scheduleChanged = true;
                         dr[idCol] = match.TfsId is > 0 ? $"{match.TfsId.Value}:T" : $"{match.Id}:I";
                         existing++;
                         continue;
@@ -2791,6 +2903,8 @@ namespace NXProject.Views
                         descCol != null ? NormalizeTaskPlanDescription(dr[descCol]?.ToString()) : null, hours);
                     if (prioCol != null && int.TryParse(dr[prioCol]?.ToString()?.Trim(), out var prio))
                         task.Priority = prio;
+                    if (resourceCol != null)
+                        AssignResourceFromPlan(task, dr[resourceCol]?.ToString());
 
                     storyNode.Children.Add(task);
                     storyNode.IsSummary = true;

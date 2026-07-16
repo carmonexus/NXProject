@@ -284,6 +284,8 @@
     <sys:String x:Key="TaskPlan_SyncDone">{0} task(s) created in the schedule; {1} already existed; {2} without a matching Story.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyMissingEpics">The EPICs below do not exist in the schedule:&#10;&#10;{0}&#10;&#10;The EPIC must be created in DevOps (and imported into the schedule) before applying. Nothing was applied.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyDupTasks">The same Story cannot have two Tasks with the same name:&#10;&#10;{0}&#10;&#10;Rename or remove the duplicates in the sheet before applying. Nothing was applied.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyMissingResources">The resources below do not exist as schedule people:&#10;&#10;{0}&#10;&#10;Register the person (or fix the name in the sheet) before applying. Nothing was applied.</sys:String>
+    <sys:String x:Key="TaskPlan_PickNoPeople">There are no people registered in the schedule to select.</sys:String>
     <sys:String x:Key="TaskPlan_PickTitle">Search in schedule</sys:String>
     <sys:String x:Key="TaskPlan_PickHeader">Select {0} from the schedule</sys:String>
     <sys:String x:Key="TaskPlan_PickNone">Select an item from the list.</sys:String>
