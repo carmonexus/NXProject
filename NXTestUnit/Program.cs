@@ -1103,6 +1103,9 @@ internal static class Program
 
     private static void TfsImportTaskStateDefinesDefaultPercent()
     {
+        AssertEqual(0, TfsImportService.PercentCompleteFromState("New"), "Task New importada deve ficar 0%.");
+        AssertEqual(0, TfsImportService.PercentCompleteFromState("New", completedHours: 8, estimatedHours: 8),
+            "Task New deve ficar 0% mesmo se o DevOps trouxer CompletedWork preenchido.");
         AssertEqual(100, TfsImportService.PercentCompleteFromState("Closed"), "Task Closed importada deve ficar 100%.");
         AssertEqual(25, TfsImportService.PercentCompleteFromState("Active"), "Task Active importada sem horas deve ficar 25%.");
         AssertEqual(25, TfsImportService.PercentCompleteFromState("Actived"), "Task Actived importada sem horas deve ficar 25%.");

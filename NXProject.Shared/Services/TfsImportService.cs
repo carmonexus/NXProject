@@ -2283,6 +2283,13 @@ namespace NXProject.Services
                 _ => false
             };
 
+        private static bool IsNewState(string? state) =>
+            state?.Trim().ToLowerInvariant() switch
+            {
+                "new" or "novo" => true,
+                _ => false
+            };
+
         /// <summary>Formata a data como meia-noite local em UTC (ex.: 04/05 BRT -> 2026-05-04T03:00:00Z),
         /// para casar com o formato que o DevOps já usa nesses campos.</summary>
         private static string FormatDateForTfs(DateTime date)
@@ -3080,6 +3087,9 @@ namespace NXProject.Services
         {
             if (IsClosedState(state) || string.Equals(state?.Trim(), "Removed", StringComparison.OrdinalIgnoreCase))
                 return 100;
+
+            if (IsNewState(state))
+                return 0;
 
             if (completedHours > 0 && estimatedHours > 0)
                 return Math.Min(100, completedHours / estimatedHours * 100);
