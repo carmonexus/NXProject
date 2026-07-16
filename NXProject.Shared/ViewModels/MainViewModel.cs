@@ -2463,6 +2463,15 @@ namespace NXProject.ViewModels
             var targetTask = FindTaskInCollectionHierarchy(targetVm.Model, sourceCollection);
             if (targetTask == null)
             {
+                if (MoveFeatureToEpicByDrop(sourceVm, targetVm, insertAfter))
+                    return true;
+
+                if (MoveStoryToFeatureByDrop(sourceVm, targetVm, insertAfter))
+                    return true;
+
+                if (MoveTaskToStoryByDrop(sourceVm, targetVm, insertAfter))
+                    return true;
+
                 StatusMessage = AppStrings.Get("Status_DragSameLevel");
                 return false;
             }
@@ -2484,6 +2493,193 @@ namespace NXProject.ViewModels
             MoveTask(sourceCollection, currentIndex, targetIndex);
             RescheduleAfterDrop(sourceVm);
             if (sourceVm.Model.IsMilestone) sourceVm.Model.PredecessorIds.Clear();
+            StatusMessage = AppStrings.Get("Status_TaskReordered");
+            return true;
+        }
+
+        private bool MoveFeatureToEpicByDrop(TaskViewModel sourceVm, TaskViewModel targetVm, bool insertAfter)
+        {
+            var source = sourceVm.Model;
+            var target = targetVm.Model;
+            if (!IsFeatureTask(source))
+                return false;
+
+            ProjectTask? newParent;
+            ProjectTask? targetSibling = null;
+            if (IsEpicTask(target))
+            {
+                newParent = target;
+            }
+            else if (IsFeatureTask(target) && IsEpicTask(target.Parent))
+            {
+                newParent = target.Parent;
+                targetSibling = target;
+            }
+            else
+            {
+                return false;
+            }
+
+            if (newParent == null ||
+                ReferenceEquals(source.Parent, newParent) ||
+                IsTaskInSubtree(source, newParent))
+            {
+                return false;
+            }
+
+            var oldParent = source.Parent;
+            var oldCollection = GetTaskCollection(source);
+            if (!oldCollection.Remove(source))
+                return false;
+
+            if (oldParent != null && oldParent.Children.Count == 0)
+                oldParent.IsSummary = false;
+
+            source.Parent = newParent;
+            UpdateTaskLevelRecursive(source, newParent.Level + 1);
+            newParent.IsSummary = true;
+
+            var newCollection = newParent.Children;
+            var insertIndex = targetSibling != null ? newCollection.IndexOf(targetSibling) : newCollection.Count;
+            if (insertIndex < 0)
+                insertIndex = newCollection.Count;
+            else if (targetSibling != null && insertAfter)
+                insertIndex++;
+
+            newCollection.Insert(insertIndex, source);
+            RecalcSummaryChain(oldParent);
+            RecalcSummaryChain(newParent);
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+            StatusMessage = AppStrings.Get("Status_TaskReordered");
+            return true;
+        }
+
+        private bool MoveStoryToFeatureByDrop(TaskViewModel sourceVm, TaskViewModel targetVm, bool insertAfter)
+        {
+            var source = sourceVm.Model;
+            var target = targetVm.Model;
+            if (!TfsImportService.IsStoryTypePublic(source.TfsType))
+                return false;
+
+            ProjectTask? newParent;
+            ProjectTask? targetSibling = null;
+            if (IsFeatureTask(target))
+            {
+                newParent = target;
+            }
+            else if (TfsImportService.IsStoryTypePublic(target.TfsType) && IsFeatureTask(target.Parent))
+            {
+                newParent = target.Parent;
+                targetSibling = target;
+            }
+            else
+            {
+                return false;
+            }
+
+            if (newParent == null ||
+                ReferenceEquals(source.Parent, newParent) ||
+                IsTaskInSubtree(source, newParent))
+            {
+                return false;
+            }
+
+            var oldParent = source.Parent;
+            var oldCollection = GetTaskCollection(source);
+            if (!oldCollection.Remove(source))
+                return false;
+
+            if (oldParent != null && oldParent.Children.Count == 0)
+                oldParent.IsSummary = false;
+
+            source.Parent = newParent;
+            UpdateTaskLevelRecursive(source, newParent.Level + 1);
+            newParent.IsSummary = true;
+
+            var newCollection = newParent.Children;
+            var insertIndex = targetSibling != null ? newCollection.IndexOf(targetSibling) : newCollection.Count;
+            if (insertIndex < 0)
+                insertIndex = newCollection.Count;
+            else if (targetSibling != null && insertAfter)
+                insertIndex++;
+
+            newCollection.Insert(insertIndex, source);
+            RecalcSummaryChain(oldParent);
+            RecalcSummaryChain(newParent);
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+            var movedVm = FlatTasks.FirstOrDefault(t => ReferenceEquals(t.Model, source));
+            if (movedVm != null)
+                RescheduleAfterDrop(movedVm);
+            StatusMessage = AppStrings.Get("Status_TaskReordered");
+            return true;
+        }
+
+        private static bool IsFeatureTask(ProjectTask? task)
+            => string.Equals(task?.TfsType?.Trim(), "Feature", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsEpicTask(ProjectTask? task)
+            => string.Equals(task?.TfsType?.Trim(), "Epic", StringComparison.OrdinalIgnoreCase);
+
+        private bool MoveTaskToStoryByDrop(TaskViewModel sourceVm, TaskViewModel targetVm, bool insertAfter)
+        {
+            var source = sourceVm.Model;
+            var target = targetVm.Model;
+            if (!TfsImportService.IsTaskTypePublic(source.TfsType))
+                return false;
+
+            ProjectTask? newParent;
+            ProjectTask? targetSibling = null;
+            if (TfsImportService.IsStoryTypePublic(target.TfsType))
+            {
+                newParent = target;
+            }
+            else if (TfsImportService.IsTaskTypePublic(target.TfsType) &&
+                     TfsImportService.IsStoryTypePublic(target.Parent?.TfsType))
+            {
+                newParent = target.Parent;
+                targetSibling = target;
+            }
+            else
+            {
+                return false;
+            }
+
+            if (newParent == null ||
+                ReferenceEquals(source.Parent, newParent) ||
+                IsTaskInSubtree(source, newParent))
+            {
+                return false;
+            }
+
+            var oldParent = source.Parent;
+            var oldCollection = GetTaskCollection(source);
+            if (!oldCollection.Remove(source))
+                return false;
+
+            if (oldParent != null && oldParent.Children.Count == 0)
+                oldParent.IsSummary = false;
+
+            source.Parent = newParent;
+            UpdateTaskLevelRecursive(source, newParent.Level + 1);
+            newParent.IsSummary = true;
+
+            var newCollection = newParent.Children;
+            var insertIndex = targetSibling != null ? newCollection.IndexOf(targetSibling) : newCollection.Count;
+            if (insertIndex < 0)
+                insertIndex = newCollection.Count;
+            else if (targetSibling != null && insertAfter)
+                insertIndex++;
+
+            newCollection.Insert(insertIndex, source);
+            RecalcSummaryChain(oldParent);
+            RecalcSummaryChain(newParent);
+            Project.IsDirty = true;
+            RebuildFlatTasks();
+            var movedVm = FlatTasks.FirstOrDefault(t => ReferenceEquals(t.Model, source));
+            if (movedVm != null)
+                RescheduleAfterDrop(movedVm);
             StatusMessage = AppStrings.Get("Status_TaskReordered");
             return true;
         }

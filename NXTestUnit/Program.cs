@@ -31,6 +31,11 @@ internal static class Program
         ("Cronograma: DevOps pendente continua com ID interno", PendingDevOpsCreateDisplaysAsInternal),
         ("Cronograma: DevOps aceita predecessor I apenas se I tambem for DevOps", DevOpsPredecessorAcceptsInternalDevOpsOnly),
         ("Cronograma: NoDevOps aceita predecessor I de qualquer tipo", NoDevOpsPredecessorAcceptsAnyInternalType),
+        ("Cronograma: arrasto permite mover Feature para outro Epic", DragDropMovesFeatureToAnotherEpic),
+        ("Cronograma: arrasto permite mover Story para outra Feature", DragDropMovesStoryToAnotherFeature),
+        ("Cronograma: arrasto permite mover Task para outra Story", DragDropMovesTaskToAnotherStory),
+        ("Cronograma: arrasto entre pais aceita soltar sobre irmao destino", DragDropMovesHierarchyItemsToSiblingInAnotherParent),
+        ("Cronograma: arrasto bloqueia troca fora da hierarquia DevOps", DragDropBlocksInvalidHierarchyMoves),
         ("Cronograma: botao marco cria Marco-Devops irmao para selecao DevOps", AddMilestoneCreatesDevOpsSiblingForDevOpsSelection),
         ("Cronograma: Ctrl botao marco cria Marco-Devops filho", AddMilestoneCreatesDevOpsChildWithCtrl),
         ("Cronograma: Ctrl botao marco nao cria filho em marco", AddMilestoneDoesNotCreateChildUnderMilestone),
@@ -626,6 +631,302 @@ internal static class Program
         AssertEqual(2, target.PredecessorIds.Count, "NoDevOps deve aceitar predecessor interno de qualquer tipo.");
         AssertEqual(21, target.PredecessorIds[0], "NoDevOps deve aceitar predecessor interno DevOps.");
         AssertEqual(22, target.PredecessorIds[1], "NoDevOps deve aceitar predecessor interno NoDevOps.");
+    }
+
+    private static void DragDropMovesFeatureToAnotherEpic()
+    {
+        var epicA = new ProjectTask
+        {
+            Id = 500,
+            Name = "Epic A",
+            TfsType = "Epic",
+            Level = 0,
+            IsSummary = true
+        };
+        var epicB = new ProjectTask
+        {
+            Id = 600,
+            Name = "Epic B",
+            TfsType = "Epic",
+            Level = 0,
+            IsSummary = true
+        };
+        var feature = new ProjectTask
+        {
+            Id = 501,
+            Name = "Feature movida",
+            TfsType = "Feature",
+            Parent = epicA,
+            Level = 1,
+            IsSummary = true,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 7)
+        };
+        var story = new ProjectTask
+        {
+            Id = 502,
+            Name = "Story filha",
+            TfsType = "Story",
+            Parent = feature,
+            Level = 2,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 7),
+            EstimatedHours = 8
+        };
+        var existingFeature = new ProjectTask
+        {
+            Id = 601,
+            Name = "Feature destino",
+            TfsType = "Feature",
+            Parent = epicB,
+            Level = 1,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 7),
+            EstimatedHours = 8
+        };
+        feature.Children.Add(story);
+        epicA.Children.Add(feature);
+        epicB.Children.Add(existingFeature);
+
+        var project = new Project { Name = "Teste drag feature", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(epicA);
+        project.Tasks.Add(epicB);
+
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+        var sourceVm = vm.FlatTasks.First(t => t.Id == feature.Id);
+        var targetVm = vm.FlatTasks.First(t => t.Id == epicB.Id);
+
+        if (!vm.MoveTaskByDrop(sourceVm, targetVm, insertAfter: true))
+            throw new InvalidOperationException($"Arrasto deve aceitar Feature para outro Epic. Status: {vm.StatusMessage}");
+
+        AssertEqual(epicB.Id, feature.Parent?.Id ?? -1, "Feature arrastada deve trocar para o Epic destino.");
+        AssertEqual(0, epicA.Children.Count, "Epic antigo deve perder a Feature.");
+        AssertEqual(2, epicB.Children.Count, "Epic destino deve receber a Feature.");
+        AssertEqual(1, feature.Level, "Feature movida deve manter nivel abaixo do Epic.");
+        AssertEqual(2, story.Level, "Filhos da Feature movida devem acompanhar o novo nivel.");
+        if (!project.IsDirty)
+            throw new InvalidOperationException("Mover Feature entre Epics deve marcar o projeto como alterado.");
+    }
+
+    private static void DragDropMovesStoryToAnotherFeature()
+    {
+        var featureA = new ProjectTask
+        {
+            Id = 100,
+            Name = "Feature A",
+            TfsType = "Feature",
+            Level = 0,
+            IsSummary = true
+        };
+        var featureB = new ProjectTask
+        {
+            Id = 200,
+            Name = "Feature B",
+            TfsType = "Feature",
+            Level = 0,
+            IsSummary = true
+        };
+        var story = new ProjectTask
+        {
+            Id = 101,
+            Name = "Story movida",
+            TfsType = "Story",
+            Parent = featureA,
+            Level = 1,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 7),
+            EstimatedHours = 8
+        };
+        var existingStory = new ProjectTask
+        {
+            Id = 201,
+            Name = "Story destino",
+            TfsType = "Story",
+            Parent = featureB,
+            Level = 1,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 7),
+            EstimatedHours = 8
+        };
+        featureA.Children.Add(story);
+        featureB.Children.Add(existingStory);
+
+        var project = new Project { Name = "Teste drag", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(featureA);
+        project.Tasks.Add(featureB);
+
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+        var sourceVm = vm.FlatTasks.First(t => t.Id == story.Id);
+        var targetVm = vm.FlatTasks.First(t => t.Id == featureB.Id);
+
+        if (!vm.MoveTaskByDrop(sourceVm, targetVm, insertAfter: true))
+            throw new InvalidOperationException($"Arrasto deve aceitar Story para outra Feature. Status: {vm.StatusMessage}");
+
+        AssertEqual(featureB.Id, story.Parent?.Id ?? -1, "Story arrastada deve trocar para a Feature destino.");
+        AssertEqual(0, featureA.Children.Count, "Feature antiga deve perder a Story.");
+        AssertEqual(2, featureB.Children.Count, "Feature destino deve receber a Story.");
+        AssertEqual(1, story.Level, "Story movida deve manter nivel abaixo da Feature.");
+        if (!project.IsDirty)
+            throw new InvalidOperationException("Mover Story entre Features deve marcar o projeto como alterado.");
+    }
+
+    private static void DragDropMovesTaskToAnotherStory()
+    {
+        var storyA = new ProjectTask
+        {
+            Id = 300,
+            Name = "Story A",
+            TfsType = "Story",
+            Level = 0,
+            IsSummary = true
+        };
+        var storyB = new ProjectTask
+        {
+            Id = 400,
+            Name = "Story B",
+            TfsType = "Story",
+            Level = 0,
+            IsSummary = true
+        };
+        var task = new ProjectTask
+        {
+            Id = 301,
+            Name = "Task movida",
+            TfsType = "Task",
+            Parent = storyA,
+            Level = 1,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 7),
+            EstimatedHours = 8
+        };
+        var existingTask = new ProjectTask
+        {
+            Id = 401,
+            Name = "Task destino",
+            TfsType = "Task",
+            Parent = storyB,
+            Level = 1,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 7),
+            EstimatedHours = 8
+        };
+        storyA.Children.Add(task);
+        storyB.Children.Add(existingTask);
+
+        var project = new Project { Name = "Teste drag task", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(storyA);
+        project.Tasks.Add(storyB);
+
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+        var sourceVm = vm.FlatTasks.First(t => t.Id == task.Id);
+        var targetVm = vm.FlatTasks.First(t => t.Id == storyB.Id);
+
+        if (!vm.MoveTaskByDrop(sourceVm, targetVm, insertAfter: true))
+            throw new InvalidOperationException($"Arrasto deve aceitar Task para outra Story. Status: {vm.StatusMessage}");
+
+        AssertEqual(storyB.Id, task.Parent?.Id ?? -1, "Task arrastada deve trocar para a Story destino.");
+        AssertEqual(0, storyA.Children.Count, "Story antiga deve perder a Task.");
+        AssertEqual(2, storyB.Children.Count, "Story destino deve receber a Task.");
+        AssertEqual(1, task.Level, "Task movida deve manter nivel abaixo da Story.");
+        if (!project.IsDirty)
+            throw new InvalidOperationException("Mover Task entre Stories deve marcar o projeto como alterado.");
+    }
+
+    private static void DragDropMovesHierarchyItemsToSiblingInAnotherParent()
+    {
+        var epicA = new ProjectTask { Id = 700, Name = "Epic A", TfsType = "Epic", Level = 0, IsSummary = true };
+        var epicB = new ProjectTask { Id = 800, Name = "Epic B", TfsType = "Epic", Level = 0, IsSummary = true };
+        var featureA = new ProjectTask { Id = 701, Name = "Feature A", TfsType = "Feature", Parent = epicA, Level = 1, IsSummary = true };
+        var featureB1 = new ProjectTask { Id = 801, Name = "Feature B1", TfsType = "Feature", Parent = epicB, Level = 1 };
+        var featureB2 = new ProjectTask { Id = 802, Name = "Feature B2", TfsType = "Feature", Parent = epicB, Level = 1 };
+        var storyA = new ProjectTask { Id = 702, Name = "Story A", TfsType = "Story", Parent = featureA, Level = 2, IsSummary = true };
+        var storyB1 = new ProjectTask { Id = 803, Name = "Story B1", TfsType = "Story", Parent = featureB1, Level = 2 };
+        var storyB2 = new ProjectTask { Id = 804, Name = "Story B2", TfsType = "Story", Parent = featureB1, Level = 2 };
+        var taskA = new ProjectTask { Id = 703, Name = "Task A", TfsType = "Task", Parent = storyA, Level = 3, Priority = 2 };
+        var taskB1 = new ProjectTask { Id = 805, Name = "Task B1", TfsType = "Task", Parent = storyB1, Level = 3, Priority = 1 };
+        var taskB2 = new ProjectTask { Id = 806, Name = "Task B2", TfsType = "Task", Parent = storyB1, Level = 3, Priority = 3 };
+
+        storyA.Children.Add(taskA);
+        featureA.Children.Add(storyA);
+        epicA.Children.Add(featureA);
+        storyB1.Children.Add(taskB1);
+        storyB1.Children.Add(taskB2);
+        featureB1.Children.Add(storyB1);
+        featureB1.Children.Add(storyB2);
+        epicB.Children.Add(featureB1);
+        epicB.Children.Add(featureB2);
+
+        var project = new Project { Name = "Teste drag irmao", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(epicA);
+        project.Tasks.Add(epicB);
+
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+
+        MoveByDrop(vm, featureA.Id, featureB1.Id, insertAfter: true, "Feature deve poder ser solta apos Feature irma no Epic destino.");
+        AssertEqual(epicB.Id, featureA.Parent?.Id ?? -1, "Feature deve trocar para o Epic da Feature alvo.");
+        AssertEqual(featureA.Id, epicB.Children[1].Id, "Feature deve entrar logo apos a Feature alvo.");
+
+        MoveByDrop(vm, storyA.Id, storyB1.Id, insertAfter: false, "Story deve poder ser solta antes de Story irma na Feature destino.");
+        AssertEqual(featureB1.Id, storyA.Parent?.Id ?? -1, "Story deve trocar para a Feature da Story alvo.");
+        AssertEqual(storyA.Id, featureB1.Children[0].Id, "Story deve entrar antes da Story alvo.");
+
+        MoveByDrop(vm, taskA.Id, taskB1.Id, insertAfter: true, "Task deve poder ser solta apos Task irma na Story destino.");
+        AssertEqual(storyB1.Id, taskA.Parent?.Id ?? -1, "Task deve trocar para a Story da Task alvo.");
+        AssertEqual(taskA.Id, storyB1.Children[1].Id, "Task deve entrar logo apos a Task alvo.");
+        AssertEqual(1, featureA.Level, "Feature movida deve manter nivel abaixo do Epic.");
+        AssertEqual(2, storyA.Level, "Story movida deve manter nivel abaixo da Feature.");
+        AssertEqual(3, taskA.Level, "Task movida deve manter nivel abaixo da Story.");
+    }
+
+    private static void DragDropBlocksInvalidHierarchyMoves()
+    {
+        var epic = new ProjectTask { Id = 900, Name = "Epic", TfsType = "Epic", Level = 0, IsSummary = true };
+        var feature = new ProjectTask { Id = 901, Name = "Feature", TfsType = "Feature", Parent = epic, Level = 1, IsSummary = true };
+        var story = new ProjectTask { Id = 902, Name = "Story", TfsType = "Story", Parent = feature, Level = 2, IsSummary = true };
+        var task = new ProjectTask { Id = 903, Name = "Task", TfsType = "Task", Parent = story, Level = 3 };
+        var otherEpic = new ProjectTask { Id = 910, Name = "Outro Epic", TfsType = "Epic", Level = 0, IsSummary = true };
+        var otherFeature = new ProjectTask { Id = 911, Name = "Outra Feature", TfsType = "Feature", Parent = otherEpic, Level = 1 };
+        var otherStory = new ProjectTask { Id = 912, Name = "Outra Story", TfsType = "Story", Parent = otherFeature, Level = 2 };
+
+        story.Children.Add(task);
+        feature.Children.Add(story);
+        epic.Children.Add(feature);
+        otherFeature.Children.Add(otherStory);
+        otherEpic.Children.Add(otherFeature);
+
+        var project = new Project { Name = "Teste drag invalido", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(epic);
+        project.Tasks.Add(otherEpic);
+
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+
+        AssertBlockedDrop(vm, task.Id, otherFeature.Id, "Task nao deve ser movida diretamente para Feature.");
+        AssertBlockedDrop(vm, story.Id, otherEpic.Id, "Story nao deve ser movida diretamente para Epic.");
+        AssertBlockedDrop(vm, feature.Id, otherStory.Id, "Feature nao deve ser movida diretamente para Story.");
+        AssertEqual(story.Id, task.Parent?.Id ?? -1, "Task bloqueada deve continuar na Story original.");
+        AssertEqual(feature.Id, story.Parent?.Id ?? -1, "Story bloqueada deve continuar na Feature original.");
+        AssertEqual(epic.Id, feature.Parent?.Id ?? -1, "Feature bloqueada deve continuar no Epic original.");
+    }
+
+    private static void MoveByDrop(MainViewModel vm, int sourceId, int targetId, bool insertAfter, string message)
+    {
+        var sourceVm = vm.FlatTasks.First(t => t.Id == sourceId);
+        var targetVm = vm.FlatTasks.First(t => t.Id == targetId);
+        if (!vm.MoveTaskByDrop(sourceVm, targetVm, insertAfter))
+            throw new InvalidOperationException($"{message} Status: {vm.StatusMessage}");
+    }
+
+    private static void AssertBlockedDrop(MainViewModel vm, int sourceId, int targetId, string message)
+    {
+        var sourceVm = vm.FlatTasks.First(t => t.Id == sourceId);
+        var targetVm = vm.FlatTasks.First(t => t.Id == targetId);
+        if (vm.MoveTaskByDrop(sourceVm, targetVm, insertAfter: true))
+            throw new InvalidOperationException(message);
     }
 
     private static void AddMilestoneCreatesDevOpsSiblingForDevOpsSelection()
