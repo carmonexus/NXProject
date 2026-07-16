@@ -100,7 +100,7 @@
 
         <DataGrid.RowStyle>
             <Style TargetType="DataGridRow">
-                <Setter Property="Background" Value="{Binding HierarchyBackground}"/>
+                <Setter Property="Background" Value="{Binding RowBackground}"/>
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding IsHighlightedPredecessor}" Value="True">
                         <Setter Property="Background" Value="#FFEEDD"/>
@@ -897,6 +897,22 @@
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Border x:Name="SprintBorder" Background="Transparent">
+                            <Border.ToolTip>
+                                <StackPanel MaxWidth="380">
+                                    <TextBlock Text="{DynamicResource Grid_SprintOutOfPeriodTip}" TextWrapping="Wrap"
+                                               FontWeight="SemiBold" Foreground="#E65100"
+                                               Visibility="{Binding IsSprintOutOfPeriod, Converter={StaticResource BoolToVis}}"/>
+                                    <TextBlock Text="{DynamicResource Grid_SprintEarlyTip}" TextWrapping="Wrap"
+                                               FontWeight="SemiBold" Foreground="#2E7D32"
+                                               Visibility="{Binding IsSprintCompletedEarly, Converter={StaticResource BoolToVis}}"/>
+                                    <!-- Data de referência (ritmo) da atividade: 0%→início, %→posição, 100%→fim -->
+                                    <TextBlock Margin="0,2,0,0"
+                                               Visibility="{Binding HasSprintReference, Converter={StaticResource BoolToVis}}">
+                                        <Run Text="{DynamicResource Grid_SprintRefTip}"/>
+                                        <Run Text="{Binding SprintReferenceDateText, Mode=OneWay}" FontWeight="SemiBold"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border.ToolTip>
                             <TextBlock x:Name="SprintText"
                                        Text="{Binding SprintDisplay}"
                                        TextAlignment="Left"
@@ -909,13 +925,11 @@
                             <!-- Fora do período: referência (0%→início, %→posição, 100%→fim) não cai na sprint -->
                             <DataTrigger Binding="{Binding IsSprintOutOfPeriod}" Value="True">
                                 <Setter TargetName="SprintBorder" Property="Background" Value="#FFF3E0"/>
-                                <Setter TargetName="SprintBorder" Property="ToolTip" Value="{DynamicResource Grid_SprintOutOfPeriodTip}"/>
                                 <Setter TargetName="SprintText" Property="Foreground" Value="#E65100"/>
                                 <Setter TargetName="SprintText" Property="FontWeight" Value="SemiBold"/>
                             </DataTrigger>
                             <!-- Concluída antecipada: 100% numa sprint de período anterior (só cor do texto) -->
                             <DataTrigger Binding="{Binding IsSprintCompletedEarly}" Value="True">
-                                <Setter TargetName="SprintBorder" Property="ToolTip" Value="{DynamicResource Grid_SprintEarlyTip}"/>
                                 <Setter TargetName="SprintText" Property="Foreground" Value="#2E7D32"/>
                                 <Setter TargetName="SprintText" Property="FontStyle" Value="Italic"/>
                             </DataTrigger>

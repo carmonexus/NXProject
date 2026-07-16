@@ -89,6 +89,14 @@
                                    HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnLoadTaskClick"
+                        Background="#0277BD" ToolTip="{DynamicResource TaskPlan_LoadTaskTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F4CB;" FontSize="15" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapLoadTask}" FontSize="10" Foreground="White"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnApplyScheduleClick"
                         Background="#6A1B9A" ToolTip="{DynamicResource TaskPlan_ApplyScheduleTip}">
                     <StackPanel VerticalAlignment="Center">

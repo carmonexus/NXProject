@@ -76,10 +76,12 @@ internal static class Program
         ("Task Plan: coluna excluida some da planilha ao salvar", TaskPlanDeletedColumnClearedOnSave),
         ("Task Plan: aplicar cria task interna no padrao do cronograma", TaskPlanApplyCreatesInternalTaskLikeSchedule),
         ("Task Plan: story iniciada NAO tem a duracao ajustada", TaskPlanStartedStoryKeepsDuration),
+        ("Task Plan: log de sync atualiza ID interno para ID DevOps na planilha", TaskPlanBackfillIdsFromSyncLog),
         ("Arquivo: gravar com ID interno duplicado e BLOQUEADO com a atividade na mensagem", SaveBlocksDuplicateTaskIds),
         ("Arquivo: leitura normaliza ID interno duplicado de arquivo legado", LoadNormalizesDuplicateTaskIds),
         ("Sync TFS: ID interno duplicado bloqueia a sincronizacao", SyncBlocksDuplicateTaskIds),
-        ("Sync TFS: Task so grava sob Story (pai Feature/Epic e bloqueado)", SyncBlocksTaskWithoutStoryParent)
+        ("Sync TFS: Task so grava sob Story (pai Feature/Epic e bloqueado)", SyncBlocksTaskWithoutStoryParent),
+        ("Sync TFS: duas Tasks de mesmo nome na Story bloqueiam a sincronizacao", SyncBlocksDuplicateTaskNamesInStory)
     ];
 
     private static int Main(string[] args)
@@ -1865,6 +1867,53 @@ internal static class Program
         return data;
     }
 
+    private static void TaskPlanBackfillIdsFromSyncLog()
+    {
+        var path = NewTempXlsx();
+        try
+        {
+            var data = NewPlan("Task", "ID Feature", "ID Story", "ID Task");
+            var r = data.Table.NewRow();
+            r["Task"] = "Tarefa A"; r["ID Feature"] = "5:I"; r["ID Story"] = "9:I"; r["ID Task"] = "115:I";
+            data.Table.Rows.Add(r);
+            ExcelTaskPlanService.CreateNew(path, data);
+
+            var entries = new List<NXProject.Community.Services.BackfillEntry>
+            {
+                new() { TaskKey = "115:I", NewTaskId = "1234:T", NewStoryId = "900:T", NewFeatureId = "800:T" }
+            };
+
+            // Log lateral: grava, lê de volta e confere o nome do arquivo.
+            ExcelTaskPlanService.WritePendingSidecar(path, entries);
+            var sidecar = ExcelTaskPlanService.SidecarPath(path);
+            if (!System.IO.Path.GetFileName(sidecar).EndsWith("_Sync_NXProject.xml"))
+                throw new InvalidOperationException($"Nome do log inesperado: {System.IO.Path.GetFileName(sidecar)}");
+            var read = ExcelTaskPlanService.ReadPendingSidecar(path);
+            if (read == null || read.Count != 1 || read[0].NewTaskId != "1234:T")
+                throw new InvalidOperationException("Log lateral não voltou corretamente.");
+
+            // Aplica direto no .xlsx: linha com ID Task "115:I" vira "1234:T" (idem Story/Feature).
+            var n = ExcelTaskPlanService.TryBackfillIds(path, entries);
+            if (n != 1) throw new InvalidOperationException($"Esperada 1 linha atualizada, obtidas {n}.");
+
+            var loaded = ExcelTaskPlanService.Load(path);
+            var row = loaded.Table.Rows[0];
+            if (row["ID Task"]?.ToString() != "1234:T") throw new InvalidOperationException("ID Task não foi atualizado.");
+            if (row["ID Story"]?.ToString() != "900:T") throw new InvalidOperationException("ID Story não foi atualizado.");
+            if (row["ID Feature"]?.ToString() != "800:T") throw new InvalidOperationException("ID Feature não foi atualizado.");
+
+            ExcelTaskPlanService.DeletePendingSidecar(path);
+            if (ExcelTaskPlanService.ReadPendingSidecar(path) != null)
+                throw new InvalidOperationException("Log lateral deveria ter sido removido.");
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+            var sc = ExcelTaskPlanService.SidecarPath(path);
+            if (File.Exists(sc)) File.Delete(sc);
+        }
+    }
+
     private static void TaskPlanCreateAndLoadRoundTrip()
     {
         var path = NewTempXlsx();
@@ -2146,6 +2195,34 @@ internal static class Program
         // Story/Feature não são afetadas pela regra (só Task).
         if (TfsImportService.TaskParentViolation(story) != null)
             throw new InvalidOperationException("A regra vale apenas para o tipo Task.");
+    }
+
+    private static void SyncBlocksDuplicateTaskNamesInStory()
+    {
+        var project = new Project { Name = "Dup nomes", StartDate = new DateTime(2026, 7, 6) };
+        var epic    = new ProjectTask { Id = 1, TfsId = 900, TfsType = "Epic", Name = "Epic A" };
+        var story   = new ProjectTask { Id = 2, TfsId = 901, TfsType = "User Story", Name = "Story A", Parent = epic };
+        var t1      = new ProjectTask { Id = 3, TfsId = 0, TfsType = "Task", Name = "Ajustar view", Parent = story };
+        var t2      = new ProjectTask { Id = 4, TfsId = 0, TfsType = "Task", Name = "ajustar view", Parent = story }; // mesmo nome (case-insensitive)
+        var t3      = new ProjectTask { Id = 5, TfsId = 0, TfsType = "Task", Name = "Outra task", Parent = story };
+        story.Children.Add(t1); story.Children.Add(t2); story.Children.Add(t3);
+        epic.Children.Add(story);
+        project.Tasks.Add(epic);
+
+        try
+        {
+            TfsImportService.EnsureNoDuplicateTaskNamesInStory(project);
+            throw new InvalidOperationException("Sync deveria BLOQUEAR duas Tasks de mesmo nome na Story.");
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("MESMO nome"))
+        {
+            if (!ex.Message.Contains("Story A") || !ex.Message.Contains("Ajustar view"))
+                throw new InvalidOperationException("A mensagem deve citar a Story e o nome da Task duplicada.");
+        }
+
+        // Sem duplicidade → passa.
+        t2.Name = "Ajustar outra view";
+        TfsImportService.EnsureNoDuplicateTaskNamesInStory(project);
     }
 
     private static void SetCurrentCalendar(ProjectCalendar calendar)

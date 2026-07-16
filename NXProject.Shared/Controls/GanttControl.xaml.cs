@@ -1100,7 +1100,7 @@ namespace NXProject.Controls
             {
                 for (int i = 0; i < Tasks.Count; i++)
                 {
-                    var bg = Tasks[i].HierarchyBackground;
+                    var bg = Tasks[i].RowBackground;   // hierarquia ou cinza de Task
                     if (bg == null) continue;
                     var rowBg = new Rectangle { Width = canvasWidth, Height = RowHeight, Fill = bg };
                     Canvas.SetLeft(rowBg, 0);

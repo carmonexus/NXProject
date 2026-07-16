@@ -75,6 +75,7 @@ namespace NXProject.Services
                     new XElement(EXT + "DevOpsProjectOwner", project.DevOpsProjectOwner ?? ""),
                     new XElement(EXT + "DevOpsOrganizationUrl", project.DevOpsOrganizationUrl ?? ""),
                     new XElement(EXT + "DevOpsTeamProject", project.DevOpsTeamProject ?? ""),
+                    new XElement(EXT + "PlanSheetPath", project.PlanSheetPath ?? ""),
                     new XElement(EXT + "UseHierarchyColors", project.UseHierarchyColors),
                     new XElement(EXT + "BaselineActive", project.BaselineActive),
                     new XElement(EXT + "DiagramLevelWidths",    project.DiagramLevelWidths    ?? ""),
@@ -242,7 +243,9 @@ namespace NXProject.Services
                 new XElement(EXT + "Priority", task.Priority?.ToString() ?? ""),
                 new XElement(EXT + "TasksSuppressed", task.TasksSuppressed),
                 new XElement(EXT + "DevopsTaskCount", task.DevopsTaskCount?.ToString() ?? ""),
-                new XElement(EXT + "Justificativa", task.Justificativa ?? "")
+                new XElement(EXT + "Justificativa", task.Justificativa ?? ""),
+                new XElement(EXT + "SourcePlanPath", task.SourcePlanPath ?? ""),
+                new XElement(EXT + "SourcePlanRowKey", task.SourcePlanRowKey ?? "")
             );
 
             // Predecessoras
@@ -343,6 +346,8 @@ namespace NXProject.Services
                     ? null : root.Element(EXT + "DevOpsOrganizationUrl")!.Value,
                 DevOpsTeamProject = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsTeamProject")?.Value)
                     ? null : root.Element(EXT + "DevOpsTeamProject")!.Value,
+                PlanSheetPath = string.IsNullOrWhiteSpace(root.Element(EXT + "PlanSheetPath")?.Value)
+                    ? null : root.Element(EXT + "PlanSheetPath")!.Value,
                 UseHierarchyColors    = bool.TryParse(root.Element(EXT + "UseHierarchyColors")?.Value, out var uhc) && uhc,
                 BaselineActive        = !bool.TryParse(root.Element(EXT + "BaselineActive")?.Value, out var ba) || ba,
                 DiagramLevelWidths    = root.Element(EXT + "DiagramLevelWidths")?.Value    ?? "",
@@ -515,6 +520,8 @@ namespace NXProject.Services
                 TasksSuppressed = bool.TryParse(el.Element(EXT + "TasksSuppressed")?.Value, out var ts) && ts,
                 DevopsTaskCount = int.TryParse(el.Element(EXT + "DevopsTaskCount")?.Value, out var dtc) ? dtc : null,
                 Justificativa = string.IsNullOrWhiteSpace(el.Element(EXT + "Justificativa")?.Value) ? null : el.Element(EXT + "Justificativa")?.Value,
+                SourcePlanPath = string.IsNullOrWhiteSpace(el.Element(EXT + "SourcePlanPath")?.Value) ? null : el.Element(EXT + "SourcePlanPath")?.Value,
+                SourcePlanRowKey = string.IsNullOrWhiteSpace(el.Element(EXT + "SourcePlanRowKey")?.Value) ? null : el.Element(EXT + "SourcePlanRowKey")?.Value,
                 Parent = parent
             };
 

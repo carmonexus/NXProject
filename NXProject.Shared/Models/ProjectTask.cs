@@ -127,6 +127,13 @@ namespace NXProject.Models
         // do DevOps como "Justificativa: <texto>." e é lida de volta no import.
         public string? Justificativa { get; set; }
 
+        // Origem: Task criada pela Planilha de Plan Task (para, após a sincronização,
+        // atualizar o ID interno (:I) para o ID DevOps (:T) na planilha de origem).
+        // SourcePlanPath = caminho do .xlsx; SourcePlanRowKey = ID interno gravado na
+        // planilha no momento da aplicação (ex.: "115:I").
+        public string? SourcePlanPath { get; set; }
+        public string? SourcePlanRowKey { get; set; }
+
         // Subtarefas
         public ObservableCollection<ProjectTask> Children { get; set; } = new();
 

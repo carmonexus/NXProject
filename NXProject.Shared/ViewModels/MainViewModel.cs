@@ -585,6 +585,10 @@ namespace NXProject.ViewModels
             public string CurrentSprint { get; init; } = string.Empty;
             public string CurrentPeriod { get; init; } = string.Empty;
             public string ActivityPeriod { get; init; } = string.Empty;
+            // Data de referência (ritmo): 0%→início, %→posição, 100%→fim.
+            public string ReferenceDate { get; init; } = string.Empty;
+            public string Status { get; init; } = string.Empty;
+            public string PercentComplete { get; init; } = string.Empty;
 
             // Sprints disponíveis para escolha (todas do projeto, por data).
             public System.Collections.Generic.List<Sprint> AvailableSprints { get; init; } = new();
@@ -650,6 +654,7 @@ namespace NXProject.ViewModels
                 var reference = ProjectCalendarService.GetProgressReferenceDate(
                     vm.Model.Start, vm.Model.Finish, vm.Model.PercentComplete).Date;
 
+
                 // 1º) Sprint cujo período contém a referência → remove o destaque.
                 // Em empate, a de menor janela.
                 var target = Project.Sprints
@@ -677,6 +682,14 @@ namespace NXProject.ViewModels
                 var current = Project.Sprints.FirstOrDefault(s =>
                     string.Equals(s.Path, vm.Model.TfsIterationPath, StringComparison.OrdinalIgnoreCase));
 
+                // NÃO sugere quando a referência já alcançou a sprint atual (ref ≥ início
+                // da sprint) e a sprint já venceu (fim ≤ hoje): a atividade passou pela
+                // sprint — mantém só o destaque no cronograma.
+                if (current != null
+                    && reference >= current.Start.Date
+                    && current.End.Date <= DateTime.Today)
+                    continue;
+
                 var story = AncestorNameByType(vm.Model, "Story");
                 if (string.IsNullOrEmpty(story)) story = vm.Model.Name;
 
@@ -693,6 +706,9 @@ namespace NXProject.ViewModels
                     CurrentSprint   = current?.Name ?? vm.Model.TfsIterationPath!,
                     CurrentPeriod   = current != null ? FormatPeriod(current.Start, current.End) : "—",
                     ActivityPeriod  = FormatPeriod(vm.Model.Start, activityFinish),
+                    ReferenceDate   = reference.ToString("dd/MM/yy"),
+                    Status          = vm.Model.TfsState ?? "",
+                    PercentComplete = $"{vm.Model.PercentComplete:0.#}%",
                     AvailableSprints = Project.Sprints.OrderBy(s => s.Start).ToList(),
                     SelectedSprint  = target,
                 });
@@ -2537,7 +2553,7 @@ namespace NXProject.ViewModels
             // Expande todas as summaries no mesmo nível da selecionada (um nível abaixo)
             foreach (var vm in FlatTasks)
             {
-                if (vm.Depth == targetDepth && vm.IsSummary)
+                if (vm.Depth == targetDepth && HasExpandableChildren(vm.Model))
                     _collapsedTaskIds.Remove(vm.Model.Id);
             }
             RebuildFlatTasks();
@@ -2554,7 +2570,7 @@ namespace NXProject.ViewModels
         {
             foreach (var task in tasks)
             {
-                if (task.IsSummary)
+                if (HasExpandableChildren(task))
                 {
                     _collapsedTaskIds.Add(task.Id);
                     CollapseRecursive(task.Children);
@@ -2562,12 +2578,43 @@ namespace NXProject.ViewModels
             }
         }
 
+        // Expande a hierarquia UM NÍVEL por vez (visão por nível). Ex.: só EPICs → Features;
+        // Features → Stories; Stories → Tasks já carregadas. Cada clique mostra até o nível
+        // alvo e RECOLHE os mais profundos — inclusive Stories que têm Tasks carregadas,
+        // mesmo quando vieram de rotinas antigas sem IsSummary marcado.
         [RelayCommand]
         private void ExpandAll()
         {
-            _collapsedTaskIds.Clear();
+            // Profundidade alvo = a mais rasa que ainda tem filhos e está recolhida.
+            int targetDepth = int.MaxValue;
+            void Scan(IEnumerable<ProjectTask> tasks, int depth)
+            {
+                foreach (var t in tasks)
+                {
+                    if (!HasExpandableChildren(t)) continue;
+                    if (_collapsedTaskIds.Contains(t.Id) && depth < targetDepth) targetDepth = depth;
+                    Scan(t.Children, depth + 1);
+                }
+            }
+            Scan(Project.Tasks, 0);
+            if (targetDepth == int.MaxValue) return;   // já tudo expandido
+
+            // Expande os resumos até targetDepth; recolhe os mais profundos.
+            void Force(IEnumerable<ProjectTask> tasks, int depth)
+            {
+                foreach (var t in tasks)
+                {
+                    if (!HasExpandableChildren(t)) continue;
+                    if (depth <= targetDepth) _collapsedTaskIds.Remove(t.Id);
+                    else _collapsedTaskIds.Add(t.Id);
+                    Force(t.Children, depth + 1);
+                }
+            }
+            Force(Project.Tasks, 0);
             RebuildFlatTasks();
         }
+
+        private static bool HasExpandableChildren(ProjectTask task) => task.Children.Count > 0;
 
         [RelayCommand] private void Undo() { StatusMessage = AppStrings.Get("Status_Undo"); }
         [RelayCommand] private void Redo() { StatusMessage = AppStrings.Get("Status_Redo"); }

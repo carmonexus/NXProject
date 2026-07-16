@@ -43,6 +43,10 @@ namespace NXProject.ViewModels
             }
         }
 
+        // Texto da data de referência para o hint da célula de Sprint no cronograma.
+        public string SprintReferenceDateText => SprintReferenceDate is { } r ? r.ToString("dd/MM/yy") : "";
+        public bool HasSprintReference => SprintReferenceDate != null;
+
         // Estado da sprint em relação ao período (data de referência):
         // 0 = ok; 1 = fora do período (ajustável); 2 = concluída antecipada;
         // 3 = sprint em andamento (contém hoje) com % fora do período.
@@ -145,7 +149,19 @@ namespace NXProject.ViewModels
         [ObservableProperty] private bool _isSelected;
         [ObservableProperty] private bool _isHighlightedPredecessor;
         [ObservableProperty] private bool _isHighlightSource;
-        [ObservableProperty] private Brush? _hierarchyBackground;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(RowBackground))]
+        private Brush? _hierarchyBackground;
+
+        // Cinza sutil para a linha de Task (quando não selecionada), diferenciando de
+        // Story/Feature/Epic. Cede lugar às cores de hierarquia customizadas se houver.
+        private static readonly Brush TaskRowBrush =
+            new SolidColorBrush(Color.FromRgb(0xEC, 0xEE, 0xF1)); // #ECEEF1
+
+        static TaskViewModel() { if (TaskRowBrush is SolidColorBrush b) b.Freeze(); }
+
+        // Fundo da linha na grade: cor de hierarquia (se ativa) ou o cinza de Task.
+        public Brush? RowBackground => HierarchyBackground ?? (IsDevOpsTask ? TaskRowBrush : null);
 
         public int Id
         {

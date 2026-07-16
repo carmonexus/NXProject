@@ -167,6 +167,10 @@
     <sys:String x:Key="Main_GanttLensTip">Gantt magnifier (zooms the area under the cursor)</sys:String>
     <sys:String x:Key="Main_GanttOrgHTip">Show Gantt by Original Estimate</sys:String>
     <sys:String x:Key="Main_TechLeadTip">Task Review (Tech Lead) — fetches all Tasks of all Stories in DevOps</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoTip">Load Task ToDo — loads from DevOps all Tasks (including Closed) of Stories below 100% completion and applies them to the schedule</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoNone">No Story below 100% completion linked to DevOps.</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoStep">Loading DevOps Tasks — Story {0}/{1}: {2}</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoDone">{0} pending Task(s) loaded into {1} Story(ies).</sys:String>
     <sys:String x:Key="Main_CostPeople">👥 Cost — People...</sys:String>
     <sys:String x:Key="Main_CostByResource">💰 Cost by Resource...</sys:String>
     <sys:String x:Key="Main_EnableBaseline">Enable Baseline</sys:String>
@@ -277,6 +281,7 @@
     <sys:String x:Key="TaskPlan_SyncNeedCols">The spreadsheet needs "Task", "Story" and "ID Task" columns to sync.</sys:String>
     <sys:String x:Key="TaskPlan_SyncDone">{0} task(s) created in the schedule; {1} already existed; {2} without a matching Story.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyMissingEpics">The EPICs below do not exist in the schedule:&#10;&#10;{0}&#10;&#10;The EPIC must be created in DevOps (and imported into the schedule) before applying. Nothing was applied.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyDupTasks">The same Story cannot have two Tasks with the same name:&#10;&#10;{0}&#10;&#10;Rename or remove the duplicates in the sheet before applying. Nothing was applied.</sys:String>
     <sys:String x:Key="TaskPlan_PickTitle">Search in schedule</sys:String>
     <sys:String x:Key="TaskPlan_PickHeader">Select {0} from the schedule</sys:String>
     <sys:String x:Key="TaskPlan_PickNone">Select an item from the list.</sys:String>
@@ -321,6 +326,13 @@
     <sys:String x:Key="TaskPlan_CapApply">Apply</sys:String>
     <sys:String x:Key="TaskPlan_CapClear">Clear</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadAll">Load</sys:String>
+    <sys:String x:Key="TaskPlan_CapLoadTask">Load Task</sys:String>
+    <sys:String x:Key="TaskPlan_LoadTaskTip">Loads the schedule/TFS Tasks into the sheet (like Merge), asking whether to also bring the already completed (Closed) tasks</sys:String>
+    <sys:String x:Key="TaskPlan_LoadTaskClosed">Also bring the already completed (Closed) tasks?&#10;&#10;Default: No — only unfinished ones. Closed tasks already in the sheet keep being updated.</sys:String>
+    <sys:String x:Key="TaskPlan_BackfillAsk">{0} Task(s) created from Plan Task sheet(s) ({1} file(s)) got a DevOps ID.&#10;&#10;Update the internal ID to the DevOps ID in the sheet(s) now?&#10;(If any is open in Excel, it will be updated when opened in Task Plan.)</sys:String>
+    <sys:String x:Key="TaskPlan_BackfillDone">Sheets updated. Those open in Excel will be updated when opened in Task Plan.</sys:String>
+    <sys:String x:Key="TaskPlan_BackfillDeferred">The ID update will be applied when the sheet is opened in Task Plan (log saved in the file's folder).</sys:String>
+    <sys:String x:Key="TaskPlan_BackfillApplied">{0} ID(s) updated from internal to DevOps from the sync log.</sys:String>
     <sys:String x:Key="TaskPlan_LoadAllTip">Loads the entire schedule (EPIC, Feature, Story and the TFS Tasks) into a new file</sys:String>
     <sys:String x:Key="TaskPlan_NewColRef">new column (Excel position set on save)</sys:String>
     <sys:String x:Key="TaskPlan_NewChoiceMsg">Choose the base for the new sheet:</sys:String>
@@ -371,6 +383,11 @@
     <sys:String x:Key="TaskPlan_ApplyWidthAll">Apply this width to all columns</sys:String>
     <sys:String x:Key="TaskPlan_PickNoDevOps">Configure the TFS/DevOps integration (organization URL and PAT) to search for Tasks.</sys:String>
     <sys:String x:Key="FixSprints_Title">Adjust sprints</sys:String>
+    <sys:String x:Key="Grid_SprintRefTip">Reference date (pace):</sys:String>
+    <sys:String x:Key="FixSprints_ColReference">Ref. (pace)</sys:String>
+    <sys:String x:Key="FixSprints_ColReferenceTip">Reference date by the activity's pace: 0% → start; in progress → % position; 100% → finish.</sys:String>
+    <sys:String x:Key="FixSprints_ColStatus">Status</sys:String>
+    <sys:String x:Key="FixSprints_ColPercent">% Compl.</sys:String>
     <sys:String x:Key="FixSprints_None">No activities with a sprint out of period were found.</sys:String>
     <sys:String x:Key="FixSprints_Confirm">Found {0} activity(ies) with the sprint out of period. Review below and click Apply to reassign each to the correct-period sprint.</sys:String>
     <sys:String x:Key="FixSprints_ColEpic">Epic</sys:String>
@@ -520,7 +537,7 @@
     <!-- Toolbar — hierarchy buttons -->
     <sys:String x:Key="Toolbar_ExpandSelected">Expand one level: expands all tasks at the same level as the selected</sys:String>
     <sys:String x:Key="Toolbar_CollapseAll">Collapse entire hierarchy</sys:String>
-    <sys:String x:Key="Toolbar_ExpandAll">Expand entire hierarchy</sys:String>
+    <sys:String x:Key="Toolbar_ExpandAll">Expand the hierarchy one level at a time (EPIC → Feature → Story → Task)</sys:String>
 
     <!-- Column headers -->
     <sys:String x:Key="Col_TaskName">Task Name</sys:String>

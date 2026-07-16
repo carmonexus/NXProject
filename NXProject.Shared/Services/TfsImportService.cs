@@ -448,6 +448,39 @@ namespace NXProject.Services
                     ". Feche sem salvar e reabra o cronograma antes de sincronizar.");
         }
 
+        /// <summary>
+        /// Falha se alguma Story tiver duas Tasks filhas com o MESMO nome — a recuperação
+        /// de vínculo por nome e o merge do Task Plan dependem do nome ser único na Story.
+        /// </summary>
+        public static void EnsureNoDuplicateTaskNamesInStory(Project project)
+        {
+            var problems = new List<string>();
+            void Walk(IEnumerable<ProjectTask> ts)
+            {
+                foreach (var t in ts)
+                {
+                    if (IsStoryType(t.TfsType))
+                    {
+                        var dups = t.Children
+                            .Where(c => IsTaskType(c.TfsType) && !string.IsNullOrWhiteSpace(c.Name))
+                            .GroupBy(c => c.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                            .Where(g => g.Count() > 1)
+                            .ToList();
+                        foreach (var g in dups)
+                            problems.Add($"Story \"{t.Name}\": Task \"{g.Key}\" (×{g.Count()})");
+                    }
+                    Walk(t.Children);
+                }
+            }
+            Walk(project.Tasks);
+
+            if (problems.Count > 0)
+                throw new InvalidOperationException(
+                    "Sincronização bloqueada: a mesma Story não pode ter duas Tasks com o MESMO nome — " +
+                    string.Join("; ", problems) +
+                    ". Renomeie ou remova as duplicadas antes de sincronizar.");
+        }
+
         public static async Task<SyncReport> SyncAsync(
             Project project, TfsConnectionOptions options, CancellationToken cancellationToken = default,
             HashSet<int>? forceOverwriteIds = null)
@@ -464,8 +497,10 @@ namespace NXProject.Services
                 "Basic",
                 Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
 
-            // Falha RÁPIDA (antes de qualquer chamada de rede): ID interno duplicado.
+            // Falha RÁPIDA (antes de qualquer chamada de rede): ID interno duplicado
+            // e Tasks de mesmo nome na mesma Story.
             EnsureNoDuplicateTaskIds(project);
+            EnsureNoDuplicateTaskNamesInStory(project);
 
             var fieldMap = await LoadFieldMapAsync(orgBase, auth, cancellationToken);
             var hoursRef = ResolveField(fieldMap, options.EffortFieldName, HoursFieldNames);

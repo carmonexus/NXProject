@@ -83,6 +83,42 @@ namespace NXProject.Views
             };
         }
 
+        // Aplica o log lateral de sincronização (IDs :I → :T) na planilha recém-aberta,
+        // atualizando as células de ID Task/ID Story/ID Feature e limpando o log.
+        private void ApplyPendingSyncLog(string path)
+        {
+            if (_data == null) return;
+            var entries = ExcelTaskPlanService.ReadPendingSidecar(path);
+            if (entries == null || entries.Count == 0) return;
+
+            var idCol      = FindColumn("ID Task", "IdTask", "ID_Task", "ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops");
+            if (idCol == null) return;
+            var byKey = entries.GroupBy(e => e.TaskKey, StringComparer.OrdinalIgnoreCase)
+                               .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            int updated = 0;
+            foreach (DataRow dr in _data.Table.Rows)
+            {
+                var cur = dr[idCol]?.ToString()?.Trim() ?? "";
+                if (!byKey.TryGetValue(cur, out var e)) continue;
+                dr[idCol] = e.NewTaskId;
+                if (StoryIdCol is { } sc && !string.IsNullOrEmpty(e.NewStoryId)) dr[sc] = e.NewStoryId;
+                if (FeatureIdCol is { } fc && !string.IsNullOrEmpty(e.NewFeatureId)) dr[fc] = e.NewFeatureId;
+                updated++;
+            }
+
+            if (updated > 0)
+            {
+                _dirty = true;
+                ValidateAgainstSchedule();
+                PlanGrid.Items.Refresh();
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                StatusText.Text = AppStrings.Get("TaskPlan_BackfillApplied", updated);
+            }
+            // Log aplicado (ou sem correspondência): remove.
+            ExcelTaskPlanService.DeletePendingSidecar(path);
+        }
+
         // ── carregar / salvar ────────────────────────────────────────────────
         private void LoadFile(string path)
         {
@@ -104,6 +140,9 @@ namespace NXProject.Views
                 TaskPlanSettingsStore.Save(_settings);
                 StatusText.Foreground = System.Windows.Media.Brushes.Green;
                 StatusText.Text = AppStrings.Get("TaskPlan_Loaded", _data.Table.Rows.Count);
+
+                // Log de sincronização pendente (na pasta do Excel): aplica os IDs e limpa.
+                ApplyPendingSyncLog(path);
             }
             catch (Exception ex)
             {
@@ -115,7 +154,7 @@ namespace NXProject.Views
         }
 
         // Colunas vinculadas ao cronograma: sempre existem (criadas se faltarem) e não podem ser excluídas.
-        private static readonly string[] ScheduleColumns = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado", "Status" };
+        private static readonly string[] ScheduleColumns = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status" };
 
         // Colunas de ID dos pais (preenchidas pelo Buscar/Merge/Aplicar/Ctrl+clique).
         private string? FeatureIdCol => FindColumn("ID Feature", "IdFeature", "ID_Feature");
@@ -138,7 +177,7 @@ namespace NXProject.Views
                || colName == FeatureIdCol
                || colName == StoryIdCol
                || colName == FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task")
-               || colName == FindColumn("Estimado", "Estimativa", "HH Estimado", "Estimated", "HH")
+               || colName == FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH")
                || colName == FindColumn("Status", "Estado", "State");
 
         // Registra no serviço quais colunas têm nome/posição fixos (vinculadas ao cronograma).
@@ -166,6 +205,22 @@ namespace NXProject.Views
 
         // Mesmos estados da grid de Tasks (TechLeadTaskReviewWindow) — facilita a sincronização.
         private static readonly List<string> KnownStates = ["New", "Active", "Resolved", "Closed", "Blocked"];
+
+        // Renomeia uma coluna exata para o nome canônico, preservando posição/mapa (migração).
+        private void RenameColumnPreservingPosition(string oldName, string newName)
+        {
+            if (_data == null) return;
+            if (!_data.Table.Columns.Contains(oldName) || _data.Table.Columns.Contains(newName)) return;
+            _data.Table.Columns[oldName]!.ColumnName = newName;
+            if (_data.ColumnSheetMap.TryGetValue(oldName, out var sheetIdx))
+            {
+                _data.ColumnSheetMap.Remove(oldName);
+                _data.ColumnSheetMap[newName] = sheetIdx;
+            }
+            if (_data.AppendedColumns.Remove(oldName))
+                _data.AppendedColumns.Add(newName);
+            _dirty = true;
+        }
 
         // Garante as colunas do cronograma no plano aberto (cria com o nome canônico se faltar).
         private void EnsureScheduleColumns()
@@ -195,6 +250,10 @@ namespace NXProject.Views
                     _data.AppendedColumns.Add("Status");
                 _dirty = true;
             }
+
+            // Renomeia a coluna legada "Estimado" para "Estimado HH" (mantém a posição).
+            RenameColumnPreservingPosition("Estimado", "Estimado HH");
+
             string?[] found =
             {
                 _data.Table.Columns.Cast<DataColumn>().Select(c => c.ColumnName)
@@ -207,7 +266,7 @@ namespace NXProject.Views
                 FindColumn("Task", "Tarefa", "Nome da Task"),
                 FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task"),
                 FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task"),
-                FindColumn("Estimado", "Estimativa", "HH Estimado", "Estimated", "HH"),
+                FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH"),
                 FindColumn("Status", "Estado", "State"),
             };
             for (int i = 0; i < ScheduleColumns.Length; i++)
@@ -235,7 +294,7 @@ namespace NXProject.Views
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
 
             var table = new DataTable();
-            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             foreach (var t in Flatten(_vm.Project.Tasks).Where(t => IsType(t, "Task")))
@@ -249,7 +308,7 @@ namespace NXProject.Views
                 dr["Task"]    = t.Name ?? "";
                 dr["ID Task"]  = t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
                 dr["Prioridade"] = t.Priority?.ToString() ?? "";
-                dr["Estimado"]   = t.EstimatedHours is > 0 ? t.EstimatedHours.Value.ToString("0.##") : "";
+                dr["Estimado HH"] = t.EstimatedHours is > 0 ? t.EstimatedHours.Value.ToString("0.##") : "1";
                 dr["Status"]     = t.TfsState ?? "";
                 dr["Descrição da Task"] = t.Description ?? "";
                 table.Rows.Add(dr);
@@ -375,7 +434,7 @@ namespace NXProject.Views
         private void BuildEmptyPlan()
         {
             var table = new DataTable();
-            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             _data = new TaskPlanData { Table = table, SheetName = "Tarefas", HeaderRow = 1 };
@@ -448,7 +507,7 @@ namespace NXProject.Views
                         dr["Task"]    = t.Title;
                         dr["ID Task"]  = $"{t.TfsId}:T";
                         dr["Prioridade"] = t.Priority.ToString();
-                        dr["Estimado"]   = t.EstimatedHours > 0 ? t.EstimatedHours.ToString("0.##") : "";
+                        dr["Estimado HH"] = t.EstimatedHours > 0 ? t.EstimatedHours.ToString("0.##") : "1";
                         dr["Status"]     = t.State ?? "";
                         _data.Table.Rows.Add(dr);
                         existingIds.Add(t.TfsId);
@@ -1442,6 +1501,12 @@ namespace NXProject.Views
             // Ctrl+Z é tratado no PreviewKeyDown da janela (global).
             if (e.Key != System.Windows.Input.Key.V)
                 return;
+
+            // Dentro da edição de uma célula (F2/duplo-clique): deixa o TextBox colar no
+            // ponto do cursor (como no Excel), sem substituir toda a célula com o bloco.
+            if (e.OriginalSource is TextBox)
+                return;
+
             e.Handled = PasteFromClipboard();
         }
 
@@ -1504,7 +1569,32 @@ namespace NXProject.Views
         private sealed record MergeSource(TfsImportService.DevOpsTaskInfo Info, ProjectTask Story);
         private sealed record MergeChange(DataRow Row, int RowNumber, string From, MergeSource Dev, string Confidence);
 
+        // Task Closed do DevOps.
+        private static bool IsClosedTask(TfsImportService.DevOpsTaskInfo t)
+            => string.Equals(t.State?.Trim(), "Closed", StringComparison.OrdinalIgnoreCase);
+
+        // Merge: só atualiza/adiciona Task Closed se ela JÁ estiver na planilha.
         private async void OnMergeScheduleClick(object sender, RoutedEventArgs e)
+            => await RunMergeAsync(includeNewClosed: false);
+
+        // Load Task: carrega do cronograma/TFS como o Merge, perguntando se traz as Closed.
+        private async void OnLoadTaskClick(object sender, RoutedEventArgs e)
+        {
+            if (_data == null) return;
+            if (_vm?.Project == null || _vm.Project.Tasks.Count == 0)
+            {
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_NoSchedule"),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            // Padrão = Não (não traz Closed novas).
+            var r = MessageBox.Show(this, AppStrings.Get("TaskPlan_LoadTaskClosed"),
+                AppStrings.Get("TaskPlan_Title"), MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (r == MessageBoxResult.Cancel) return;
+            await RunMergeAsync(includeNewClosed: r == MessageBoxResult.Yes);
+        }
+
+        private async Task RunMergeAsync(bool includeNewClosed)
         {
             if (_data == null) return;
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0)
@@ -1520,7 +1610,7 @@ namespace NXProject.Views
             var featureCol = FindColumn("Feature", "Nome da Feature");
             var prioCol    = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
             var statusCol  = FindColumn("Status", "Estado", "State");
-            var estCol     = FindColumn("Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
             var descCol    = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
             if (idCol == null || taskCol == null)
             {
@@ -1649,6 +1739,13 @@ namespace NXProject.Views
             foreach (var src in sources)
             {
                 if (existingIds.Contains(src.Info.TfsId) || matchedIds.Contains(src.Info.TfsId)) continue;
+                // Task Closed nova só entra quando o usuário pediu (Load Task → "sim").
+                // No Merge (includeNewClosed=false) a Closed não listada não é recarregada.
+                if (!includeNewClosed && IsClosedTask(src.Info))
+                {
+                    log.AppendLine($"    Ignorada (Closed não listada): {src.Info.TfsId}:T \"{src.Info.Title}\".");
+                    continue;
+                }
                 var dr = _data.Table.NewRow();
                 if (_epicColumn != null) dr[_epicColumn] = Ancestor(src.Story, "Epic");
                 if (featureCol != null) dr[featureCol] = Ancestor(src.Story, "Feature");
@@ -1900,11 +1997,19 @@ namespace NXProject.Views
             var storyCol   = FindColumn("Story", "Nome da Story");
             var featureCol = FindColumn("Feature", "Nome da Feature");
 
+            var taskColV = FindColumn("Task", "Tarefa", "Nome da Task");
+            var estColV  = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
             foreach (DataRow dr in _data.Table.Rows)
             {
                 var story   = storyCol   != null ? dr[storyCol]?.ToString()?.Trim()   : null;
                 var feature = featureCol != null ? dr[featureCol]?.ToString()?.Trim() : null;
                 var epic    = _epicColumn != null ? dr[_epicColumn]?.ToString()?.Trim() : null;
+
+                // Estimado HH: em linha com Task, vazio ou zero vira 1h (padrão).
+                if (estColV != null && taskColV != null
+                    && !string.IsNullOrWhiteSpace(dr[taskColV]?.ToString())
+                    && TaskPlanScheduleRules.ParseEstimatedHours(dr[estColV]?.ToString()) == null)
+                    dr[estColV] = "1";
 
                 // Atualiza os IDs de Feature/Story conforme a digitação (hierarquia estrita).
                 if (FeatureIdCol is { } fc)
@@ -2376,7 +2481,7 @@ namespace NXProject.Views
                 var prioCol = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
                 if (prioCol != null && picked.Priority is int prio)
                     dr[prioCol] = prio.ToString();
-                var estCol = FindColumn("Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+                var estCol = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
                 if (estCol != null && picked.EstimatedHours is > 0)
                     dr[estCol] = picked.EstimatedHours.Value.ToString("0.##");
             }
@@ -2399,7 +2504,7 @@ namespace NXProject.Views
             var storyCol   = FindColumn("Story", "Nome da Story");
             var featureCol = FindColumn("Feature", "Nome da Feature");
             var prioCol    = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
-            var estCol     = FindColumn("Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
             if (idCol == null || taskCol == null)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_FetchNeedCols"),
@@ -2517,7 +2622,7 @@ namespace NXProject.Views
             var featureCol = FindColumn("Feature", "Nome da Feature");
             var descCol    = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
             var prioCol    = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
-            var estCol     = FindColumn("Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
             if (idCol == null || taskCol == null || storyCol == null)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_SyncNeedCols"),
@@ -2550,6 +2655,31 @@ namespace NXProject.Views
                         AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+            }
+
+            // Trava: a mesma Story não pode ter duas Tasks com o MESMO nome (a chave de
+            // vínculo/merge é o nome dentro da Story). Considera EPIC+Feature+Story para
+            // não confundir Stories homônimas de Features diferentes.
+            var dupTasks = _data.Table.Rows.Cast<DataRow>()
+                .Select(r => new
+                {
+                    Task    = r[taskCol]?.ToString()?.Trim() ?? "",
+                    Story   = storyCol   != null ? r[storyCol]?.ToString()?.Trim() ?? "" : "",
+                    Feature = featureCol != null ? r[featureCol]?.ToString()?.Trim() ?? "" : "",
+                    Epic    = _epicColumn != null ? r[_epicColumn]?.ToString()?.Trim() ?? "" : ""
+                })
+                .Where(x => x.Task.Length > 0 && x.Story.Length > 0)
+                .GroupBy(x => (x.Epic.ToLowerInvariant(), x.Feature.ToLowerInvariant(),
+                               x.Story.ToLowerInvariant(), x.Task.ToLowerInvariant()))
+                .Where(g => g.Count() > 1)
+                .Select(g => $"Story \"{g.First().Story}\": Task \"{g.First().Task}\" (×{g.Count()})")
+                .ToList();
+            if (dupTasks.Count > 0)
+            {
+                MessageBox.Show(this,
+                    AppStrings.Get("TaskPlan_ApplyDupTasks", "• " + string.Join("\n• ", dupTasks)),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
 
             int created = 0, existing = 0, noStory = 0;
@@ -2645,9 +2775,8 @@ namespace NXProject.Views
 
                     // Não existe no DevOps: cria interna pelas regras compartilhadas
                     // (padrão do AddSubtask: TfsId=0 → "{Id}:I"; duração respeitando o estado da Story).
-                    var hours = estCol != null
-                        ? TaskPlanScheduleRules.ParseEstimatedHours(dr[estCol]?.ToString()) ?? ProjectCalendarService.WorkingHoursPerDay
-                        : ProjectCalendarService.WorkingHoursPerDay;
+                    // Estimado HH zero/nulo → 1h padrão.
+                    var hours = TaskPlanScheduleRules.ParseEstimatedHours(estCol != null ? dr[estCol]?.ToString() : null) ?? 1.0;
                     var task = TaskPlanScheduleRules.CreateInternalTask(
                         storyNode, _vm.NextId(), taskName,
                         descCol != null ? dr[descCol]?.ToString() : null, hours);
@@ -2659,6 +2788,13 @@ namespace NXProject.Views
                     touchedStories.Add(storyNode);
                     flat.Add(task);
                     dr[idCol] = $"{task.Id}:I";
+                    // Marca a origem (planilha + ID interno) para, após sincronizar, atualizar
+                    // o ID na planilha de origem (só quando a planilha já tem arquivo salvo).
+                    if (!string.IsNullOrEmpty(_path))
+                    {
+                        task.SourcePlanPath = _path;
+                        task.SourcePlanRowKey = $"{task.Id}:I";
+                    }
                     created++;
                 }
             }
@@ -2678,6 +2814,8 @@ namespace NXProject.Views
             if (created > 0)
             {
                 _vm.Project.IsDirty = true;
+                // Associa a planilha ao cronograma (persistido no .nxp) para o backfill pós-sync.
+                if (!string.IsNullOrEmpty(_path)) _vm.Project.PlanSheetPath = _path;
                 _vm.RebuildFlatTasks();
             }
 

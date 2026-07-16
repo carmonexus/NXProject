@@ -55,6 +55,10 @@ namespace NXProject.Models
         public string? DevOpsOrganizationUrl { get; set; }
         public string? DevOpsTeamProject { get; set; }
 
+        // Planilha de Plan Task associada a este cronograma (último .xlsx usado). O log de
+        // atualização de IDs pós-sincronização fica na pasta desse arquivo.
+        public string? PlanSheetPath { get; set; }
+
         // Exibe coluna "OrgH" (Estimativa Original) no cronograma
         public bool ShowOriginalHoursColumn { get; set; } = false;
 

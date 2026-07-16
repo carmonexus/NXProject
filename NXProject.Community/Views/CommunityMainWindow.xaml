@@ -538,6 +538,27 @@
                     </Canvas>
                 </Viewbox>
             </Button>
+
+            <!-- Load Task ToDo: carrega as Tasks pendentes (não Closed) do DevOps para
+                 as Stories com % de conclusão abaixo de 100% -->
+            <Button x:Name="LoadTaskToDoButton"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="OnLoadTaskToDoClick"
+                    ToolTip="{DynamicResource Main_LoadTaskToDoTip}">
+                <Viewbox Width="16" Height="16">
+                    <Canvas Width="18" Height="18">
+                        <!-- ícone: seta para baixo (carregar) + checklist ToDo -->
+                        <Rectangle Canvas.Left="6" Canvas.Top="1" Width="11" Height="16" RadiusX="1" RadiusY="1"
+                                   Stroke="#00695C" StrokeThickness="1.5" Fill="White"/>
+                        <Line X1="8.5" Y1="5"  X2="15" Y2="5"  Stroke="#00695C" StrokeThickness="1.2"/>
+                        <Line X1="8.5" Y1="8"  X2="15" Y2="8"  Stroke="#00695C" StrokeThickness="1.2"/>
+                        <Line X1="8.5" Y1="11" X2="12" Y2="11" Stroke="#00695C" StrokeThickness="1.2"/>
+                        <!-- seta de download -->
+                        <Line X1="3" Y1="3" X2="3" Y2="11" Stroke="#0277BD" StrokeThickness="1.8"/>
+                        <Polyline Points="0.5,8 3,11 5.5,8" Stroke="#0277BD" StrokeThickness="1.8" Fill="Transparent"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
         </ToolBar>
 
         <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource PrimaryBrush}" Foreground="White" Height="22">

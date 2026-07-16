@@ -31,6 +31,18 @@ namespace NXProject.Community.Services
         public HashSet<string> FixedNameColumns { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Atualização pendente de ID na planilha após a sincronização: a linha cuja coluna
+    /// de ID de Task vale <see cref="TaskKey"/> (ex.: "115:I") passa a ter os IDs do DevOps.
+    /// </summary>
+    public sealed class BackfillEntry
+    {
+        public string TaskKey { get; set; } = "";        // ID interno atual na planilha (ex.: "115:I")
+        public string NewTaskId { get; set; } = "";      // novo ID DevOps da Task (ex.: "1234:T")
+        public string? NewStoryId { get; set; }          // novo ID DevOps da Story (opcional)
+        public string? NewFeatureId { get; set; }        // novo ID DevOps da Feature (opcional)
+    }
+
     public static class ExcelTaskPlanService
     {
         public const string FileFilter = "Planilha do Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*";
@@ -320,6 +332,117 @@ namespace NXProject.Community.Services
                 return false;
             }
             catch (IOException) { return true; }
+        }
+
+        // ── Backfill de IDs após a sincronização (ID interno :I → ID DevOps :T) ──
+
+        private static readonly string[] IdTaskHeaders    = { "ID Task", "ID Devops", "ID DevOps", "IdTask", "ID_Task", "IdDevops", "ID_Devops", "ID Dev Ops" };
+        private static readonly string[] IdStoryHeaders   = { "ID Story", "IdStory", "ID_Story" };
+        private static readonly string[] IdFeatureHeaders = { "ID Feature", "IdFeature", "ID_Feature" };
+
+        /// <summary>Log lateral (na pasta do Excel) com as atualizações pendentes: "<nome>_Sync_NXProject.xml".</summary>
+        public static string SidecarPath(string xlsxPath)
+            => Path.Combine(Path.GetDirectoryName(xlsxPath) ?? "",
+                            Path.GetFileNameWithoutExtension(xlsxPath) + "_Sync_NXProject.xml");
+
+        public static void WritePendingSidecar(string xlsxPath, IReadOnlyList<BackfillEntry> entries)
+        {
+            // Junta com o que já houver (mesma TaskKey é substituída pela mais recente).
+            var all = (ReadPendingSidecar(xlsxPath) ?? new List<BackfillEntry>())
+                .Where(e => entries.All(n => !string.Equals(n.TaskKey, e.TaskKey, StringComparison.OrdinalIgnoreCase)))
+                .Concat(entries)
+                .ToList();
+
+            var doc = new System.Xml.Linq.XDocument(
+                new System.Xml.Linq.XElement("NXProjectSync",
+                    new System.Xml.Linq.XAttribute("generated", DateTime.Now.ToString("s")),
+                    all.Select(e => new System.Xml.Linq.XElement("Task",
+                        new System.Xml.Linq.XAttribute("key", e.TaskKey),
+                        new System.Xml.Linq.XAttribute("id", e.NewTaskId),
+                        new System.Xml.Linq.XAttribute("story", e.NewStoryId ?? ""),
+                        new System.Xml.Linq.XAttribute("feature", e.NewFeatureId ?? "")))));
+            doc.Save(SidecarPath(xlsxPath));
+        }
+
+        public static List<BackfillEntry>? ReadPendingSidecar(string xlsxPath)
+        {
+            var p = SidecarPath(xlsxPath);
+            if (!File.Exists(p)) return null;
+            try
+            {
+                var doc = System.Xml.Linq.XDocument.Load(p);
+                return doc.Root?.Elements("Task").Select(e => new BackfillEntry
+                {
+                    TaskKey      = e.Attribute("key")?.Value ?? "",
+                    NewTaskId    = e.Attribute("id")?.Value ?? "",
+                    NewStoryId   = string.IsNullOrEmpty(e.Attribute("story")?.Value)   ? null : e.Attribute("story")!.Value,
+                    NewFeatureId = string.IsNullOrEmpty(e.Attribute("feature")?.Value) ? null : e.Attribute("feature")!.Value,
+                }).Where(x => x.TaskKey.Length > 0 && x.NewTaskId.Length > 0).ToList();
+            }
+            catch { return null; }
+        }
+
+        public static void DeletePendingSidecar(string xlsxPath)
+        {
+            try { var p = SidecarPath(xlsxPath); if (File.Exists(p)) File.Delete(p); }
+            catch { /* melhor esforço */ }
+        }
+
+        /// <summary>
+        /// Aplica os backfills direto no .xlsx: a linha cuja coluna de ID de Task vale a
+        /// TaskKey (ex.: "115:I") recebe o novo ID DevOps (:T) — idem ID Story/ID Feature.
+        /// Requer o arquivo NÃO aberto no Excel (lança IOException se travado). Retorna
+        /// quantas linhas foram atualizadas.
+        /// </summary>
+        public static int TryBackfillIds(string xlsxPath, IReadOnlyList<BackfillEntry> entries)
+        {
+            if (entries.Count == 0) return 0;
+            using var wb = new XLWorkbook(xlsxPath);
+            var ws = wb.Worksheets.First();
+            int lastRow = ws.LastRowUsed()?.RowNumber() ?? 0;
+            int lastCol = ws.LastColumnUsed()?.ColumnNumber() ?? 0;
+            if (lastRow == 0 || lastCol == 0) return 0;
+
+            // Cabeçalho = 1ª linha (nas 25 iniciais) que contém a coluna de ID de Task.
+            int headerRow = 0, idTaskCol = 0, idStoryCol = 0, idFeatureCol = 0;
+            for (int r = 1; r <= Math.Min(lastRow, 25) && headerRow == 0; r++)
+                for (int c = 1; c <= lastCol; c++)
+                {
+                    var h = StripPrefix(ws.Cell(r, c).GetString().Trim());
+                    if (IdTaskHeaders.Any(x => string.Equals(x, h, StringComparison.OrdinalIgnoreCase)))
+                    { headerRow = r; break; }
+                }
+            if (headerRow == 0) return 0;
+
+            for (int c = 1; c <= lastCol; c++)
+            {
+                var h = StripPrefix(ws.Cell(headerRow, c).GetString().Trim());
+                if (idTaskCol == 0    && IdTaskHeaders.Any(x    => string.Equals(x, h, StringComparison.OrdinalIgnoreCase))) idTaskCol = c;
+                if (idStoryCol == 0   && IdStoryHeaders.Any(x   => string.Equals(x, h, StringComparison.OrdinalIgnoreCase))) idStoryCol = c;
+                if (idFeatureCol == 0 && IdFeatureHeaders.Any(x => string.Equals(x, h, StringComparison.OrdinalIgnoreCase))) idFeatureCol = c;
+            }
+            if (idTaskCol == 0) return 0;
+
+            var byKey = entries.GroupBy(e => e.TaskKey, StringComparer.OrdinalIgnoreCase)
+                               .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            int updated = 0;
+            for (int r = headerRow + 1; r <= lastRow; r++)
+            {
+                var cur = ws.Cell(r, idTaskCol).GetString().Trim();
+                if (!byKey.TryGetValue(cur, out var e)) continue;
+                ws.Cell(r, idTaskCol).Value = e.NewTaskId;
+                if (idStoryCol   > 0 && !string.IsNullOrEmpty(e.NewStoryId))   ws.Cell(r, idStoryCol).Value   = e.NewStoryId;
+                if (idFeatureCol > 0 && !string.IsNullOrEmpty(e.NewFeatureId)) ws.Cell(r, idFeatureCol).Value = e.NewFeatureId;
+                updated++;
+            }
+            if (updated > 0) wb.Save();
+            return updated;
+        }
+
+        private static string StripPrefix(string header)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(header, @"^\d+#_(.+)$");
+            return m.Success ? m.Groups[1].Value.Trim() : header;
         }
     }
 }

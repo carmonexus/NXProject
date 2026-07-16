@@ -986,6 +986,8 @@ namespace NXProject.Views
                     // (ex.: tasks internas recém-criadas pelo Task Plan) e gerar ID duplicado.
                     Id               = vm.NextId(),
                     Name             = r.Title,
+                    Level            = story.Level + 1,
+                    Parent           = story,
                     TfsId            = r.TaskId,
                     TfsType          = "Task",
                     EstimatedHours   = r.EstimatedHours > 0 ? r.EstimatedHours : null,
@@ -1006,6 +1008,7 @@ namespace NXProject.Views
 
             if (firstAdded != null)
             {
+                story.IsSummary = true;
                 // Recalcula TKs da story com base nos filhos do tipo Task
                 story.DevopsTaskCount = story.Children.Count(c =>
                     string.Equals(c.TfsType, "Task", StringComparison.OrdinalIgnoreCase));
@@ -1152,6 +1155,88 @@ namespace NXProject.Views
             vm.Project.IsDirty = true;
             vm.RebuildFlatTasks();
             GanttCtrl.ForceRender();
+        }
+
+        // Load Task ToDo: para as Stories com % de conclusão abaixo de 100% (ainda a fazer),
+        // carrega do DevOps TODAS as Tasks (inclusive as Closed, para a duração/soma de HH
+        // ficar correta) e adiciona ao cronograma.
+        private async void OnLoadTaskToDoClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainViewModel vm) return;
+
+            var stories = vm.FlatTasks
+                .Select(t => t.Model)
+                .Where(t => t.TfsId is > 0
+                         && Services.TfsImportService.IsStoryTypePublic(t.TfsType)
+                         && t.PercentComplete < 100.0)
+                .ToList();
+            if (stories.Count == 0)
+            {
+                MessageBox.Show(this, AppStrings.Get("Main_LoadTaskToDoNone"),
+                    "Load Task ToDo", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var options = Services.TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(options.OrganizationUrl) || string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+            {
+                MessageBox.Show(this, "Configure a integração com o TFS/DevOps (Importar → TFS) antes de carregar as Tasks.",
+                    "Load Task ToDo", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            int added = 0, storiesTouched = 0;
+            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            try
+            {
+                for (int i = 0; i < stories.Count; i++)
+                {
+                    var story = stories[i];
+                    vm.StatusMessage = AppStrings.Get("Main_LoadTaskToDoStep", i + 1, stories.Count, story.Name ?? "");
+
+                    var tasks = await Services.TfsImportService.FetchChildTasksFromDevOpsAsync(options, story.TfsId!.Value);
+                    if (tasks == null || tasks.Count == 0) continue;
+
+                    // Story abaixo de 100%: traz TODAS as Tasks (inclusive as Closed),
+                    // senão a duração/soma de HH da Story fica errada.
+                    var rows = tasks
+                        .Select(t => new Views.TaskReviewRow
+                        {
+                            StoryTask       = story,
+                            TaskId          = t.TfsId,
+                            Title           = t.Title,
+                            State           = t.State ?? "New",
+                            EstimatedHours  = t.EstimatedHours,
+                            CompletedHours  = t.CompletedHours,
+                            PercentComplete = t.PercentComplete,
+                            Priority        = t.Priority,
+                            AssignedTo        = t.AssignedTo ?? "",
+                            AssignedToDisplay = t.AssignedToDisplay ?? t.AssignedTo ?? "",
+                        })
+                        .ToList();
+                    if (rows.Count == 0) continue;
+
+                    var before = story.Children.Count;
+                    AddTaskRowsToSchedule(rows, story, vm, refreshAfterAdd: false);
+                    var delta = story.Children.Count - before;
+                    if (delta > 0) { added += delta; storiesTouched++; }
+                }
+            }
+            finally
+            {
+                System.Windows.Input.Mouse.OverrideCursor = null;
+            }
+
+            if (added > 0)
+            {
+                vm.Project.IsDirty = true;
+                vm.RebuildFlatTasks();
+                GanttCtrl.ForceRender();
+                TaskGridCtrl.RefreshRows();
+            }
+            vm.StatusMessage = AppStrings.Get("Main_LoadTaskToDoDone", added, storiesTouched);
+            MessageBox.Show(this, AppStrings.Get("Main_LoadTaskToDoDone", added, storiesTouched),
+                "Load Task ToDo", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private async void OnTechLeadReviewClick(object sender, RoutedEventArgs e)
@@ -1461,9 +1546,91 @@ namespace NXProject.Views
                 }
             }
 
+            // Oferece atualizar o ID interno (:I) para o ID DevOps (:T) nas planilhas de origem.
+            TryBackfillTaskPlanIds(vm);
+
             // Garante que grid e Gantt reflitam conflitos após fechar o log.
             GanttCtrl.ForceRender();
             TaskGridCtrl.RefreshRows();
+        }
+
+        /// <summary>
+        /// Após sincronizar, atualiza o ID interno (:I) para o ID DevOps (:T) nas planilhas
+        /// de Plan Task que originaram Tasks. Tenta gravar direto no .xlsx; se estiver aberto
+        /// no Excel (ou o usuário adiar), grava um log "<nome>_Sync_NXProject.xml" na pasta —
+        /// aplicado quando a planilha for aberta no Task Plan. A sincronização já concluiu.
+        /// </summary>
+        private void TryBackfillTaskPlanIds(MainViewModel vm)
+        {
+            string DisplayId(NXProject.Models.ProjectTask t) => t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
+            NXProject.Models.ProjectTask? Ancestor(NXProject.Models.ProjectTask t, string type)
+            {
+                for (var p = t.Parent; p != null; p = p.Parent)
+                    if (string.Equals(p.TfsType?.Trim(), type, StringComparison.OrdinalIgnoreCase)
+                        || (type == "Story" && string.Equals(p.TfsType?.Trim(), "User Story", StringComparison.OrdinalIgnoreCase)))
+                        return p;
+                return null;
+            }
+
+            // Tasks que vieram de uma planilha e agora têm ID DevOps.
+            var pending = vm.FlatTasks
+                .Select(t => t.Model)
+                .Where(t => !string.IsNullOrEmpty(t.SourcePlanPath)
+                         && !string.IsNullOrEmpty(t.SourcePlanRowKey)
+                         && t.TfsId is > 0)
+                .GroupBy(t => t.SourcePlanPath!, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (pending.Count == 0) return;
+
+            int totalTasks = pending.Sum(g => g.Count());
+            var ask = MessageBox.Show(this,
+                AppStrings.Get("TaskPlan_BackfillAsk", totalTasks, pending.Count),
+                "Sincronizar TFS/DevOps", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            foreach (var group in pending)
+            {
+                var path = group.Key;
+                var entries = group.Select(t => new NXProject.Community.Services.BackfillEntry
+                {
+                    TaskKey      = t.SourcePlanRowKey!,
+                    NewTaskId    = DisplayId(t),
+                    NewStoryId   = Ancestor(t, "Story")   is { } s ? DisplayId(s) : null,
+                    NewFeatureId = Ancestor(t, "Feature") is { } f ? DisplayId(f) : null,
+                }).ToList();
+
+                bool applied = false;
+                if (ask == MessageBoxResult.Yes && System.IO.File.Exists(path)
+                    && !NXProject.Community.Services.ExcelTaskPlanService.IsLockedForWrite(path))
+                {
+                    try
+                    {
+                        NXProject.Community.Services.ExcelTaskPlanService.TryBackfillIds(path, entries);
+                        NXProject.Community.Services.ExcelTaskPlanService.DeletePendingSidecar(path);
+                        applied = true;
+                    }
+                    catch { applied = false; }
+                }
+
+                if (!applied)
+                {
+                    // Não deu para gravar agora (planilha aberta / adiado): grava o log lateral.
+                    try { NXProject.Community.Services.ExcelTaskPlanService.WritePendingSidecar(path, entries); } catch { }
+                }
+
+                // Limpa a marcação de origem (o log lateral ou a gravação já cobrem o resto).
+                foreach (var t in group)
+                {
+                    t.SourcePlanPath = null;
+                    t.SourcePlanRowKey = null;
+                }
+            }
+
+            vm.Project.IsDirty = true;
+            MessageBox.Show(this,
+                ask == MessageBoxResult.Yes
+                    ? AppStrings.Get("TaskPlan_BackfillDone")
+                    : AppStrings.Get("TaskPlan_BackfillDeferred"),
+                "Sincronizar TFS/DevOps", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private static bool ConfirmKnownTfsResources(MainViewModel vm)

@@ -65,6 +65,7 @@
     <sys:String x:Key="TaskPlan_SyncNeedCols">A planilha precisa ter as colunas "Task", "Story" e "ID Task" para sincronizar.</sys:String>
     <sys:String x:Key="TaskPlan_SyncDone">{0} task(s) criada(s) no cronograma; {1} já existiam; {2} sem Story correspondente.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyMissingEpics">Os EPICs abaixo não existem no cronograma:&#10;&#10;{0}&#10;&#10;O EPIC precisa ser criado no DevOps (e importado no cronograma) antes de aplicar. Nada foi aplicado.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyDupTasks">A mesma Story não pode ter duas Tasks com o mesmo nome:&#10;&#10;{0}&#10;&#10;Renomeie ou remova as duplicadas na planilha antes de aplicar. Nada foi aplicado.</sys:String>
     <sys:String x:Key="TaskPlan_PickTitle">Buscar no cronograma</sys:String>
     <sys:String x:Key="TaskPlan_PickHeader">Selecionar {0} do cronograma</sys:String>
     <sys:String x:Key="TaskPlan_PickNone">Selecione um item da lista.</sys:String>
@@ -109,6 +110,13 @@
     <sys:String x:Key="TaskPlan_CapApply">Aplicar</sys:String>
     <sys:String x:Key="TaskPlan_CapClear">Limpar</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadAll">Carregar</sys:String>
+    <sys:String x:Key="TaskPlan_CapLoadTask">Load Task</sys:String>
+    <sys:String x:Key="TaskPlan_LoadTaskTip">Carrega as Tasks do cronograma/TFS na planilha (como o Merge), perguntando se traz também as Tasks já concluídas (Closed)</sys:String>
+    <sys:String x:Key="TaskPlan_LoadTaskClosed">Trazer também as Tasks já concluídas (Closed)?&#10;&#10;Padrão: Não — só as não concluídas. As Closed que já estão na planilha continuam sendo atualizadas.</sys:String>
+    <sys:String x:Key="TaskPlan_BackfillAsk">{0} Task(s) criada(s) por planilha(s) de Plan Task ({1} arquivo(s)) ganharam ID no DevOps.&#10;&#10;Atualizar agora o ID interno para o ID DevOps na(s) planilha(s)?&#10;(Se alguma estiver aberta no Excel, será atualizada ao abri-la no Task Plan.)</sys:String>
+    <sys:String x:Key="TaskPlan_BackfillDone">Planilhas atualizadas. As que estavam abertas no Excel serão atualizadas ao abri-las no Task Plan.</sys:String>
+    <sys:String x:Key="TaskPlan_BackfillDeferred">A atualização de IDs será aplicada quando a planilha for aberta no Task Plan (log gravado na pasta do arquivo).</sys:String>
+    <sys:String x:Key="TaskPlan_BackfillApplied">{0} ID(s) atualizado(s) do interno para o DevOps a partir do log de sincronização.</sys:String>
     <sys:String x:Key="TaskPlan_LoadAllTip">Carrega todo o cronograma (EPIC, Feature, Story e as Tasks do TFS) em um arquivo novo</sys:String>
     <sys:String x:Key="TaskPlan_NewColRef">coluna nova (posição no Excel definida ao salvar)</sys:String>
     <sys:String x:Key="TaskPlan_NewChoiceMsg">Escolha a base da planilha nova:</sys:String>
@@ -159,6 +167,11 @@
     <sys:String x:Key="TaskPlan_ApplyWidthAll">Aplicar esta largura a todas as colunas</sys:String>
     <sys:String x:Key="TaskPlan_PickNoDevOps">Configure a integração com o TFS/DevOps (URL da organização e PAT) para buscar as Tasks.</sys:String>
     <sys:String x:Key="FixSprints_Title">Ajustar sprints</sys:String>
+    <sys:String x:Key="Grid_SprintRefTip">Data de referência (ritmo):</sys:String>
+    <sys:String x:Key="FixSprints_ColReference">Ref. (ritmo)</sys:String>
+    <sys:String x:Key="FixSprints_ColReferenceTip">Data de referência pelo ritmo da atividade: 0% → início; em andamento → posição do % concluído; 100% → fim.</sys:String>
+    <sys:String x:Key="FixSprints_ColStatus">Status</sys:String>
+    <sys:String x:Key="FixSprints_ColPercent">% Concl.</sys:String>
     <sys:String x:Key="FixSprints_None">Nenhuma atividade com sprint fora do período foi encontrada.</sys:String>
     <sys:String x:Key="FixSprints_Confirm">Foram encontradas {0} atividade(s) com a sprint fora do período. Revise abaixo e clique em Aplicar para reatribuir cada uma à sprint do período correto.</sys:String>
     <sys:String x:Key="FixSprints_ColEpic">Epic</sys:String>
@@ -315,7 +328,7 @@
     <!-- Toolbar — botões de hierarquia -->
     <sys:String x:Key="Toolbar_ExpandSelected">Expandir um nível: expande todas as tarefas do mesmo nível da selecionada</sys:String>
     <sys:String x:Key="Toolbar_CollapseAll">Contrair toda a hierarquia</sys:String>
-    <sys:String x:Key="Toolbar_ExpandAll">Expandir toda a hierarquia</sys:String>
+    <sys:String x:Key="Toolbar_ExpandAll">Expandir a hierarquia um nível por vez (EPIC → Feature → Story → Task)</sys:String>
 
     <!-- Cabeçalhos de coluna -->
     <sys:String x:Key="Col_TaskName">Nome da Tarefa</sys:String>
@@ -1776,6 +1789,10 @@
     <sys:String x:Key="Main_GanttLensTip">Lupa do Gantt (amplia área sob o cursor)</sys:String>
     <sys:String x:Key="Main_GanttOrgHTip">Mostrar Gantt pela Estimativa Original</sys:String>
     <sys:String x:Key="Main_TechLeadTip">Revisão de Tasks (Tech Lead) — busca todas as Tasks de todas as Stories no DevOps</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoTip">Load Task ToDo — carrega do DevOps todas as Tasks (inclusive Closed) das Stories com % de conclusão abaixo de 100% e aplica no cronograma</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoNone">Nenhuma Story com % de conclusão abaixo de 100% vinculada ao DevOps.</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoStep">Carregando Tasks do DevOps — Story {0}/{1}: {2}</sys:String>
+    <sys:String x:Key="Main_LoadTaskToDoDone">{0} Task(s) pendente(s) carregada(s) em {1} Story(ies).</sys:String>
     <sys:String x:Key="Main_CostPeople">👥 Custo — Pessoas...</sys:String>
     <sys:String x:Key="Main_CostByResource">💰 Custo por Recurso...</sys:String>
     <sys:String x:Key="Main_EnableBaseline">Ativar Baseline</sys:String>

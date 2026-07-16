@@ -216,7 +216,13 @@ namespace NXProject.Views
                      "O projeto é organizado em níveis: Feature → Story → Task ou qualquer agrupamento que faça sentido. Tarefas filhas são indentadas abaixo da tarefa pai.\n" +
                      "• Use Editar → Criar Subtarefa para indentar uma tarefa.\n" +
                      "• Use Editar → Promover Tarefa para subir um nível.\n" +
-                     "• Tarefas agrupamento (com filhos) calculam datas e duração automaticamente a partir dos filhos."),
+                     "• Tarefas agrupamento (com filhos) calculam datas e duração automaticamente a partir dos filhos.\n" +
+                     "• As linhas de Task ficam com um cinza sutil quando não selecionadas, para diferenciá-las de EPIC/Feature/Story."),
+                    ("Expandir e recolher",
+                     "• O botão Expandir a hierarquia abre UM NÍVEL por vez: EPIC → Feature → Story → Task (as Tasks já carregadas no cronograma). Cada clique mostra o próximo nível e recolhe os mais profundos.\n" +
+                     "• Expandir nível da selecionada abre o nível das atividades irmãs da selecionada; Recolher tudo fecha toda a hierarquia."),
+                    ("Load Task ToDo",
+                     "O ícone Load Task ToDo na toolbar carrega do DevOps as Tasks das Stories com % de conclusão abaixo de 100% (ainda a fazer) e as aplica no cronograma. Traz TODAS as Tasks da Story, inclusive as já concluídas (Closed), para a duração e a soma de HH ficarem corretas. Não duplica as que já existem no cronograma."),
                     ("Duração e datas",
                      "• Coluna Dur.(h): informe em horas (ex: 8) ou em dias úteis com d (ex: 2d = 2 dias úteis).\n" +
                      "• A data Fim é calculada automaticamente: Início + Dur.(h) respeitando o calendário de trabalho.\n" +
@@ -463,7 +469,9 @@ namespace NXProject.Views
                      "• Laranja: a sprint atribuída não contém a data de referência (ajustável pelo botão).\n" +
                      "• Texto verde itálico: atividade 100% concluída antecipada, em uma sprint de período anterior (não ajusta).\n" +
                      "• Texto azul: sprint em andamento (contém a data de hoje) com o % fora do período (não ajusta).\n\n" +
-                     "Antes de aplicar, uma janela mostra Epic, Feature, Story, Sprint Atual e Sprint Ajustada para revisão; nada muda sem clicar em Aplicar. As datas não são movidas — apenas o rótulo da sprint. Depois, sincronize com o DevOps para gravar.")
+                     "Quando NÃO sugere (só destaca): a data de referência já alcançou a sprint atual (referência ≥ início da sprint) e a sprint já venceu (fim ≤ hoje) — a atividade passou pela sprint. A célula fica laranja no cronograma, mas a janela de ajuste não a lista.\n\n" +
+                     "O hint da célula Sprint no cronograma mostra a data de referência (ritmo) da atividade.\n\n" +
+                     "Antes de aplicar, uma janela mostra Epic, Feature, Story, Período da Atividade, Ref. (ritmo), Status, % Concl., Sprint Atual e Sprint Ajustada para revisão; nada muda sem clicar em Aplicar. As datas não são movidas — apenas o rótulo da sprint. Depois, sincronize com o DevOps para gravar.")
                 },
                 "A coluna Sprint é especialmente útil para replanejar — mova Stories entre sprints e veja o impacto no cronograma imediatamente."
             ),
@@ -492,10 +500,12 @@ namespace NXProject.Views
                      "• As colunas vinculadas ao cronograma (EPIC, Feature, Story, Task, ID Devops, Prioridade, Estimado, Status) têm posição fixa e nome sempre limpo — elas nunca recebem o prefixo; para movê-las de lugar na planilha, faça pelo Excel."),
                     ("Integração com DevOps e cronograma",
                      "• Buscar Task no DevOps: para linhas sem ID, localiza a Story no cronograma e busca as Tasks filhas direto no DevOps, associando o ID no padrão do cronograma ({id}:T; interno {id}:I) com prioridade e estimativa.\n" +
-                     "• Merge com Cronograma: busca as Tasks de cada Story no TFS e faz o merge com as linhas (atualiza ID/prioridade/estimado/status e adiciona as que faltam), com barra de progresso, etapas e log copiável. Opcionalmente usa a IA (ação \"Merge de Arquivo Externo com Task\" da tela IA Geral) para casar nomes com diferenças de escrita — mostrando o de/para para confirmação antes de aplicar.\n" +
-                     "• Aplicar ao Cronograma: cria no cronograma as tasks do plano que não existem (sob a Story correspondente, pela mesma rotina da grid de Tasks). O Estimado aceita horas (8) ou dias (2d). Story em New/0% pode ter a duração ajustada; iniciada, o período é preservado.\n" +
-                     "• Ctrl+clique nas células EPIC/Feature/Story abre a busca no cronograma; na Task, busca as filhas da Story no DevOps. Botão direito → Ver no cronograma foca a atividade no Gantt com o Task Plan encostado na lateral.\n" +
-                     "• Células de EPIC/Feature/Story/Task encontradas no cronograma ficam verdes; o Status é uma combo com os estados do DevOps (a coluna legada \"Concluída (X)\" é migrada automaticamente).")
+                     "• Merge com Cronograma: busca as Tasks de cada Story no TFS e faz o merge com as linhas (atualiza ID/prioridade/estimado/status e adiciona as que faltam), com barra de progresso, etapas e log copiável. Só traz uma Task Closed nova se ela já estiver na planilha (não recarrega Closed inéditas). Opcionalmente usa a IA (ação \"Merge de Arquivo Externo com Task\" da tela IA Geral) para casar nomes com diferenças de escrita — mostrando o de/para para confirmação antes de aplicar.\n" +
+                     "• Load Task: carrega as Tasks do cronograma/TFS como o Merge, perguntando se traz também as Tasks já concluídas (Closed) — o padrão é Não.\n" +
+                     "• Aplicar ao Cronograma: cria no cronograma as tasks do plano que não existem (sob a Story correspondente, pela mesma rotina da grid de Tasks; cria a Feature/Story internas que faltarem na cascata). A coluna Estimado HH aceita horas (8) ou dias (2d) e, quando zero/vazia, usa 1h. Story em New/0% pode ter a duração ajustada; iniciada, o período é preservado. Valida antes: EPIC informado precisa existir no cronograma, e a mesma Story não pode ter duas Tasks com o mesmo nome — se houver, nada é aplicado (a sincronização também bloqueia esses casos).\n" +
+                     "• Após a sincronização do cronograma, o NX oferece atualizar o ID interno (:I) das Tasks criadas pela planilha para o ID do DevOps (:T) na própria planilha. Se ela estiver aberta no Excel (ou você adiar), um log \"<nome>_Sync_NXProject.xml\" é gravado na pasta do arquivo e aplicado automaticamente na próxima vez que a planilha for aberta no Task Plan — a sincronização conclui normalmente de qualquer forma.\n" +
+                     "• Ctrl+clique nas células EPIC/Feature/Story abre a busca no cronograma; na Task, busca as filhas da Story no DevOps. Botão direito → Ver no cronograma foca a atividade no Gantt; Abrir no TFS/DevOps abre o work item pelo ID (:T) da célula.\n" +
+                     "• Células de EPIC/Feature/Story/Task encontradas no cronograma ficam verdes; fora do pai correto ficam vermelhas até correção. As colunas ID Feature e ID Story são preenchidas conforme a digitação. O Status é uma combo com os estados do DevOps (a coluna legada \"Concluída (X)\" é migrada automaticamente).")
                 },
                 "Fluxo sugerido: monte o plano no Excel ou pelo Novo, use Merge com Cronograma para associar os IDs do DevOps e Aplicar ao Cronograma para criar o que faltar — sempre revisando o de/para quando usar a IA."
             ),
@@ -944,7 +954,13 @@ namespace NXProject.Views
                      "The project is organized in levels: Feature → Story → Task or any grouping that makes sense. Child tasks are indented below the parent.\n" +
                      "• Use Edit → Create Subtask to indent a task.\n" +
                      "• Use Edit → Promote Task to move up one level.\n" +
-                     "• Summary tasks (with children) calculate dates and duration automatically from their children."),
+                     "• Summary tasks (with children) calculate dates and duration automatically from their children.\n" +
+                     "• Task rows are shown in a subtle gray when not selected, to distinguish them from EPIC/Feature/Story."),
+                    ("Expand and collapse",
+                     "• The Expand hierarchy button opens ONE LEVEL at a time: EPIC → Feature → Story → Task (Tasks already loaded in the schedule). Each click reveals the next level and collapses deeper ones.\n" +
+                     "• Expand selected level opens the level of the selected item's siblings; Collapse all closes the whole hierarchy."),
+                    ("Load Task ToDo",
+                     "The Load Task ToDo toolbar icon loads from DevOps the Tasks of Stories below 100% completion (still to do) and applies them to the schedule. It brings ALL of the Story's Tasks, including already completed (Closed) ones, so duration and HH totals stay correct. It does not duplicate Tasks already in the schedule."),
                     ("Duration and dates",
                      "• Dur.(h) column: enter in hours (e.g. 8) or in working days with d (e.g. 2d = 2 working days).\n" +
                      "• The Finish date is calculated automatically: Start + Dur.(h) respecting the work calendar.\n" +
@@ -1189,7 +1205,9 @@ namespace NXProject.Views
                      "• Orange: the assigned sprint does not contain the reference date (adjustable by the button).\n" +
                      "• Italic green text: 100% activity delivered early, in an earlier-period sprint (not adjusted).\n" +
                      "• Blue text: sprint in progress (contains today) with the % out of period (not adjusted).\n\n" +
-                     "Before applying, a window shows Epic, Feature, Story, Current Sprint and Adjusted Sprint for review; nothing changes until you click Apply. Dates are not moved — only the sprint label. Then sync with DevOps to persist.")
+                     "When it does NOT suggest (highlight only): the reference date has already reached the current sprint (reference ≥ sprint start) and the sprint has already ended (end ≤ today) — the activity passed through the sprint. The cell stays orange in the schedule, but the adjust window does not list it.\n\n" +
+                     "The Sprint cell hint in the schedule shows the activity's reference date (pace).\n\n" +
+                     "Before applying, a window shows Epic, Feature, Story, Activity Period, Ref. (pace), Status, % Compl., Current Sprint and Adjusted Sprint for review; nothing changes until you click Apply. Dates are not moved — only the sprint label. Then sync with DevOps to persist.")
                 },
                 "The Sprint column is especially useful for replanning — move Stories between sprints and see the schedule impact immediately."
             ),
@@ -1218,10 +1236,12 @@ namespace NXProject.Views
                      "• Schedule-linked columns (EPIC, Feature, Story, Task, ID Devops, Priority, Estimated, Status) have a fixed position and always a clean name — they never get the prefix; to move them in the sheet, do it in Excel."),
                     ("DevOps and schedule integration",
                      "• Find Task in DevOps: for rows without an ID, finds the Story in the schedule and fetches its child Tasks directly from DevOps, assigning the schedule ID pattern ({id}:T; internal {id}:I) with priority and estimate.\n" +
-                     "• Merge with Schedule: fetches each Story's Tasks from TFS and merges them with the rows (updates ID/priority/estimated/status and adds missing ones), with a progress bar, steps and a copyable log. Optionally uses AI (the \"Merge de Arquivo Externo com Task\" action from the General AI screen) to match names with writing differences — showing the from/to list for confirmation before applying.\n" +
-                     "• Apply to Schedule: creates in the schedule the plan tasks that don't exist (under the matching Story, via the same routine as the Task grid). Estimated accepts hours (8) or days (2d). A Story in New/0% may have its duration adjusted; once started, its period is preserved.\n" +
-                     "• Ctrl+click on EPIC/Feature/Story cells opens the schedule search; on Task, it searches the Story's children in DevOps. Right-click → View in schedule focuses the activity in the Gantt with the sheet docked to the side.\n" +
-                     "• EPIC/Feature/Story/Task cells found in the schedule turn green; Status is a combo with the DevOps states (the legacy \"Concluída (X)\" column is migrated automatically).")
+                     "• Merge with Schedule: fetches each Story's Tasks from TFS and merges them with the rows (updates ID/priority/estimated/status and adds missing ones), with a progress bar, steps and a copyable log. A new Closed task is only added if it's already in the sheet (Closed tasks aren't reloaded). Optionally uses AI (the \"Merge de Arquivo Externo com Task\" action from the General AI screen) to match names with writing differences — showing the from/to list for confirmation before applying.\n" +
+                     "• Load Task: loads the schedule/TFS Tasks like Merge, asking whether to also bring the already completed (Closed) tasks — default No.\n" +
+                     "• Apply to Schedule: creates in the schedule the plan tasks that don't exist (under the matching Story, via the same routine as the Task grid; creates the missing internal Feature/Story in the cascade). The Estimated HH column accepts hours (8) or days (2d), and when zero/empty uses 1h. A Story in New/0% may have its duration adjusted; once started, its period is preserved. Validates first: an informed EPIC must exist in the schedule, and the same Story cannot have two Tasks with the same name — if so, nothing is applied (sync blocks these cases too).\n" +
+                     "• After the schedule sync, NX offers to update the internal ID (:I) of the Tasks created from the sheet to the DevOps ID (:T) in the sheet itself. If it is open in Excel (or you defer), a log \"<name>_Sync_NXProject.xml\" is saved in the file's folder and applied automatically the next time the sheet is opened in Task Plan — sync completes normally regardless.\n" +
+                     "• Ctrl+click on EPIC/Feature/Story cells opens the schedule search; on Task, it searches the Story's children in DevOps. Right-click → View in schedule focuses the activity in the Gantt; Open in TFS/DevOps opens the work item by the cell's ID (:T).\n" +
+                     "• EPIC/Feature/Story/Task cells found in the schedule turn green; outside the correct parent they turn red until fixed. The ID Feature and ID Story columns are filled as you type. Status is a combo with the DevOps states (the legacy \"Concluída (X)\" column is migrated automatically).")
                 },
                 "Suggested flow: build the plan in Excel or via New, use Merge with Schedule to link the DevOps IDs and Apply to Schedule to create what's missing — always reviewing the from/to list when using AI."
             ),
