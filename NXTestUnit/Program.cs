@@ -41,6 +41,9 @@ internal static class Program
         ("Cronograma: Ctrl botao marco nao cria filho em marco", AddMilestoneDoesNotCreateChildUnderMilestone),
         ("Sync TFS: Marco-Devops cria Task com tag MARCO-PROJECT", DevOpsMilestoneCreateOpsAddsMarcoProjectTag),
         ("Sync TFS: data fim usa fim inclusivo", TfsSyncFinishUsesInclusiveDate),
+        ("Sync TFS: Task cria descricao no mesmo padrao da Story", TfsSyncTaskCreateOpsIncludesDescription),
+        ("Import TFS: estado da Task define percentual padrao", TfsImportTaskStateDefinesDefaultPercent),
+        ("Cronograma: editar estado da Task ajusta percentual", ScheduleStateEditUpdatesTaskPercent),
         ("Sync TFS: cadeia nova cria Feature, Story e Task no pai correto", TfsSyncNewHierarchyUsesImmediateDevOpsParent),
         ("Sync TFS: Task orfa nao cai no Work Item Project raiz", TfsSyncOrphanTaskDoesNotUseRootProject),
         ("Sync TFS: Marco-Devops usa irmao anterior como predecessora implicita", DevOpsMilestoneUsesPreviousSiblingAsImplicitPredecessor),
@@ -1069,6 +1072,72 @@ internal static class Program
         if (!tfsFinish.HasValue)
             throw new InvalidOperationException("Sync TFS deve calcular uma data fim para atividade com Finish valido.");
         AssertEqual(new DateTime(2026, 7, 3), tfsFinish.Value, "Sync TFS deve enviar a data fim inclusiva, nao o limite exclusivo interno.");
+    }
+
+    private static void TfsSyncTaskCreateOpsIncludesDescription()
+    {
+        var story = new ProjectTask { Id = 1, TfsId = 1000, TfsType = "User Story", Name = "Story pai" };
+        var task = new ProjectTask
+        {
+            Id = 2,
+            Name = "Task com descricao",
+            TfsType = "Task",
+            TfsId = 0,
+            Parent = story,
+            Description = "<p>Descricao vinda do Task Plan</p>",
+            EstimatedHours = 8
+        };
+        story.Children.Add(task);
+
+        var ops = TfsImportService.BuildCreateOpsForTests(
+            task,
+            parentId: story.TfsId!.Value,
+            tasksById: new Dictionary<int, ProjectTask> { [story.Id] = story, [task.Id] = task },
+            syncPredecessorLinks: false);
+        var json = JsonSerializer.Serialize(ops);
+
+        if (!json.Contains("System.Description", StringComparison.OrdinalIgnoreCase) ||
+            !json.Contains("Descricao vinda do Task Plan", StringComparison.Ordinal))
+            throw new InvalidOperationException("Task deve criar System.Description no DevOps, igual ao padrão de Story.");
+    }
+
+    private static void TfsImportTaskStateDefinesDefaultPercent()
+    {
+        AssertEqual(100, TfsImportService.PercentCompleteFromState("Closed"), "Task Closed importada deve ficar 100%.");
+        AssertEqual(25, TfsImportService.PercentCompleteFromState("Active"), "Task Active importada sem horas deve ficar 25%.");
+        AssertEqual(25, TfsImportService.PercentCompleteFromState("Actived"), "Task Actived importada sem horas deve ficar 25%.");
+        AssertEqual(50, TfsImportService.PercentCompleteFromState("Active", completedHours: 4, estimatedHours: 8),
+            "Quando houver CompletedWork calculável, o percentual importado deve respeitar HH realizado/estimado.");
+    }
+
+    private static void ScheduleStateEditUpdatesTaskPercent()
+    {
+        var task = new ProjectTask
+        {
+            Id = 91,
+            Name = "Task editada",
+            TfsType = "Task",
+            PercentComplete = 0
+        };
+        var vm = new TaskViewModel(task);
+
+        vm.TfsState = "Active";
+        AssertEqual(25, task.PercentComplete, "Editar estado para Active no cronograma deve ajustar para 25%.");
+
+        vm.TfsState = "Closed";
+        AssertEqual(100, task.PercentComplete, "Editar estado para Closed no cronograma deve ajustar para 100%.");
+
+        task.TfsState = "Active";
+        task.PercentComplete = 25;
+        vm.PercentComplete = 100;
+        if (!string.Equals(task.TfsState, "Closed", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Digitar 100% em Task no cronograma deve mudar o estado para Closed.");
+
+        task.TfsState = "Active";
+        task.PercentComplete = 100;
+        vm.PercentComplete = 100;
+        if (!string.Equals(task.TfsState, "Closed", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Confirmar 100% em Task ja concluida deve corrigir o estado para Closed.");
     }
 
     private static void TfsSyncNewHierarchyUsesImmediateDevOpsParent()
@@ -2365,6 +2434,8 @@ internal static class Program
         AssertEqual(2 * ProjectCalendarService.WorkingHoursPerDay, hours, "'2d' deve virar 2 dias úteis em horas.");
 
         var task = TaskPlanScheduleRules.CreateInternalTask(story, 99, "Task interna", "desc", hours);
+        if (task.Description != "desc")
+            throw new InvalidOperationException("Task Plan deve levar a descrição da Task para o cronograma.");
         AssertEqual(0, task.TfsId ?? -1, "Task interna nasce com TfsId=0 ('criar no TFS'), padrão do AddSubtask.");
         if (task.TfsState != "New" || task.TfsType != "Task")
             throw new InvalidOperationException("Task interna deve nascer como Task em estado New.");

@@ -842,19 +842,19 @@ namespace NXProject.Services
                         changes.Add("título");
                     }
 
+                    if (task.Description != null || !string.IsNullOrWhiteSpace(task.Justificativa))
+                    {
+                        var desiredDesc = MergeJustificativa(task.Description, task.Justificativa);
+                        if (!string.Equals(desiredDesc.Trim(), (wi.Description ?? string.Empty).Trim(), StringComparison.Ordinal))
+                        {
+                            ops.Add(PatchAdd("/fields/System.Description", desiredDesc));
+                            changes.Add("descrição");
+                        }
+                    }
+
                     // ── Campos exclusivos de Story / Feature / Epic (não Task) ──────────
                     if (!isTask)
                     {
-                        if (task.Description != null || !string.IsNullOrWhiteSpace(task.Justificativa))
-                        {
-                            var desiredDesc = MergeJustificativa(task.Description, task.Justificativa);
-                            if (!string.Equals(desiredDesc.Trim(), (wi.Description ?? string.Empty).Trim(), StringComparison.Ordinal))
-                            {
-                                ops.Add(PatchAdd("/fields/System.Description", desiredDesc));
-                                changes.Add("descrição");
-                            }
-                        }
-
                         // Tags (ex.: "Block") — sincroniza se o conjunto mudou.
                         if (!TagsEqual(task.Tags, wi.Tags))
                         {
@@ -1087,12 +1087,11 @@ namespace NXProject.Services
                         if (!task.Priority.HasValue && currentPriority.HasValue && currentPriority.Value > 0)
                             task.Priority = (int)currentPriority.Value;
 
-                        // Fecha a Task no TFS quando 100% concluída e não estiver Closed nem New.
+                        // Task não tem % conclusão no DevOps: 100% no cronograma fecha pelo estado.
                         if (task.PercentComplete >= 100)
                         {
                             var currentState = task.TfsState?.Trim();
-                            if (!string.Equals(currentState, "Closed", StringComparison.OrdinalIgnoreCase) &&
-                                !string.Equals(currentState, "New",    StringComparison.OrdinalIgnoreCase))
+                            if (!string.Equals(currentState, "Closed", StringComparison.OrdinalIgnoreCase))
                             {
                                 task.TfsState = "Closed";
                                 changes.Add("State: → Closed (100%)");
@@ -1987,11 +1986,11 @@ namespace NXProject.Services
                     if (!string.IsNullOrWhiteSpace(f.Ref) && f.Value != null)
                         ops.Add(PatchAdd($"/fields/{f.Ref}", f.Value));
 
+            if (!string.IsNullOrWhiteSpace(task.Description))
+                ops.Add(PatchAdd("/fields/System.Description", MergeJustificativa(task.Description, task.Justificativa)));
+
             if (!isTaskCreate)
             {
-                if (!string.IsNullOrWhiteSpace(task.Description))
-                    ops.Add(PatchAdd("/fields/System.Description", task.Description!));
-
                 if (!string.IsNullOrWhiteSpace(task.Tags))
                     ops.Add(PatchAdd("/fields/System.Tags", NormalizeTagsForWrite(task.Tags)));
 
@@ -2274,6 +2273,13 @@ namespace NXProject.Services
             state?.Trim().ToLowerInvariant() switch
             {
                 "closed" or "resolved" or "done" or "completed" => true,
+                _ => false
+            };
+
+        private static bool IsActiveState(string? state) =>
+            state?.Trim().ToLowerInvariant() switch
+            {
+                "active" or "actived" => true,
                 _ => false
             };
 
@@ -3067,6 +3073,20 @@ namespace NXProject.Services
         public static bool IsStoryTypePublic(string? type) => IsStoryType(type);
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
 
+        public static double PercentCompleteFromState(
+            string? state,
+            double completedHours = 0,
+            double estimatedHours = 0)
+        {
+            if (IsClosedState(state) || string.Equals(state?.Trim(), "Removed", StringComparison.OrdinalIgnoreCase))
+                return 100;
+
+            if (completedHours > 0 && estimatedHours > 0)
+                return Math.Min(100, completedHours / estimatedHours * 100);
+
+            return IsActiveState(state) ? 25 : 0;
+        }
+
         public static bool ShouldBlockManualStoryCompletionWithoutDevOpsTasks(
             ProjectTask? task,
             double requestedPercentComplete,
@@ -3116,6 +3136,7 @@ namespace NXProject.Services
             public string? AssignedToDisplay { get; init; }
             public int Priority { get; init; } = 5;
             public string? State { get; init; }
+            public string? Description { get; init; }
             public string? Activity { get; init; }
             public string? Tags { get; init; }
         }
@@ -3160,7 +3181,7 @@ namespace NXProject.Services
             const string CompletedRef    = "Microsoft.VSTS.Scheduling.CompletedWork";
             var ids = string.Join(",", childIds);
             const string ActivityRef = "Microsoft.VSTS.Common.Activity";
-            var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,{ActivityRef}";
+            var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,{ActivityRef}";
             var batchUrl = $"{orgBase}/_apis/wit/workitems?ids={ids}&fields={fields}&{ApiVersion}";
             using var batchReq = new HttpRequestMessage(HttpMethod.Get, batchUrl);
             batchReq.Headers.Authorization = auth;
@@ -3204,15 +3225,11 @@ namespace NXProject.Services
                         }
                     }
 
-                    // Closed → 100%; caso contrário calcula pelo CompletedWork
-                    double pct = 0;
-                    bool isClosed = string.Equals(state, "Closed", StringComparison.OrdinalIgnoreCase);
-                    if (isClosed)
-                        pct = 100;
-                    else if (completed > 0 && hours > 0)
-                        pct = Math.Min(100, completed / hours * 100);
+                    // Closed → 100%; Active/Actived → 25% quando não há CompletedWork calculável.
+                    var pct = PercentCompleteFromState(state, completed, hours);
 
                     var activity = f.TryGetProperty(ActivityRef, out var ap) && ap.ValueKind == JsonValueKind.String ? ap.GetString() : null;
+                    var description = f.TryGetProperty("System.Description", out var dp) && dp.ValueKind == JsonValueKind.String ? dp.GetString() : null;
                     var tags     = f.TryGetProperty("System.Tags", out var tgp) && tgp.ValueKind == JsonValueKind.String ? tgp.GetString() : null;
 
                     result.Add(new DevOpsTaskInfo
@@ -3220,7 +3237,7 @@ namespace NXProject.Services
                         TfsId = tid, Title = title, State = state,
                         EstimatedHours = hours, CompletedHours = completed,
                         PercentComplete = pct, AssignedTo = assignee, AssignedToDisplay = assigneeDisplay,
-                        Priority = prio, Activity = activity, Tags = tags
+                        Priority = prio, Description = description, Activity = activity, Tags = tags
                     });
                 }
             }
@@ -4966,11 +4983,7 @@ namespace NXProject.Services
         }
 
         private static double StateToPercent(string state) =>
-            state?.Trim().ToLowerInvariant() switch
-            {
-                "closed" or "done" or "completed" or "resolved" or "removed" => 100,
-                _ => 0
-            };
+            PercentCompleteFromState(state);
 
         /// <summary>Avanca <paramref name="days"/> dias uteis (seg-sex) a partir de <paramref name="start"/>.</summary>
         private static DateTime AddWorkingDays(DateTime start, int days)

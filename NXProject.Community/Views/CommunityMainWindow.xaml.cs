@@ -879,6 +879,7 @@ namespace NXProject.Views
                         StoryTask       = story,
                         TaskId          = t.TfsId,
                         Title           = t.Title,
+                        Description     = t.Description ?? "",
                         State           = t.State ?? "New",
                         EstimatedHours  = t.EstimatedHours,
                         CompletedHours  = t.CompletedHours,
@@ -986,6 +987,7 @@ namespace NXProject.Views
                     // (ex.: tasks internas recém-criadas pelo Task Plan) e gerar ID duplicado.
                     Id               = vm.NextId(),
                     Name             = r.Title,
+                    Description      = string.IsNullOrWhiteSpace(r.Description) ? null : r.Description.Trim(),
                     Level            = story.Level + 1,
                     Parent           = story,
                     TfsId            = r.TaskId,
@@ -1095,6 +1097,8 @@ namespace NXProject.Views
             MainViewModel vm)
         {
             task.Name = row.Title;
+            if (!string.IsNullOrWhiteSpace(row.Description))
+                task.Description = row.Description.Trim();
             task.TfsId = row.TaskId;
             task.TfsType = "Task";
             task.EstimatedHours = row.EstimatedHours > 0 ? row.EstimatedHours : null;
@@ -1215,6 +1219,7 @@ namespace NXProject.Views
                             StoryTask       = story,
                             TaskId          = t.TfsId,
                             Title           = t.Title,
+                            Description     = t.Description ?? "",
                             State           = t.State ?? "New",
                             EstimatedHours  = t.EstimatedHours,
                             CompletedHours  = t.CompletedHours,

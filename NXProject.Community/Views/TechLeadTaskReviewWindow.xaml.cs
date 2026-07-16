@@ -171,6 +171,7 @@ namespace NXProject.Views
                         StoryTask       = story,
                         TaskId          = t.TfsId,
                         Title           = t.Title,
+                        Description     = t.Description ?? "",
                         State           = t.State ?? "New",
                         EstimatedHours  = t.EstimatedHours,
                         CompletedHours  = t.CompletedHours,
@@ -1006,6 +1007,9 @@ namespace NXProject.Views
         private string _title = "";
         public string Title { get => _title; set { if (_title == value) return; _title = value; OnPropertyChanged(); } }
 
+        private string _description = "";
+        public string Description { get => _description; set { if (_description == value) return; _description = value ?? ""; OnPropertyChanged(); } }
+
         private string _state = "New";
         public string State
         {
@@ -1014,6 +1018,7 @@ namespace NXProject.Views
             {
                 if (_state == value) return;
                 _state = value;
+                PercentComplete = TfsImportService.PercentCompleteFromState(_state);
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsBlockedState));
                 OnPropertyChanged(nameof(BlockButtonLabel));
@@ -1026,7 +1031,9 @@ namespace NXProject.Views
 
         private double _completedHours;
         public double CompletedHours { get => _completedHours; set { if (_completedHours == value) return; _completedHours = value; OnPropertyChanged(); } }
-        public double PercentComplete { get; set; }
+
+        private double _percentComplete;
+        public double PercentComplete { get => _percentComplete; set { if (Math.Abs(_percentComplete - value) < 0.0001) return; _percentComplete = value; OnPropertyChanged(); } }
 
         private int _priority = 5;
         public int Priority { get => _priority; set { if (_priority == value) return; _priority = value; OnPropertyChanged(); } }

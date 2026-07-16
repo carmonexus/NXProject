@@ -2683,6 +2683,7 @@ namespace NXProject.Views
             }
 
             int created = 0, existing = 0, noStory = 0;
+            bool scheduleChanged = false;
             var touchedStories = new HashSet<ProjectTask>();
             var mainWin = Owner as CommunityMainWindow;
 
@@ -2710,6 +2711,12 @@ namespace NXProject.Views
                     var match = FindTaskInSchedule(flat, taskName, story, feature, epic);
                     if (match != null)
                     {
+                        var description = descCol != null ? NormalizeTaskPlanDescription(dr[descCol]?.ToString()) : null;
+                        if (description != null && !string.Equals(match.Description ?? "", description, StringComparison.Ordinal))
+                        {
+                            match.Description = description;
+                            scheduleChanged = true;
+                        }
                         dr[idCol] = match.TfsId is > 0 ? $"{match.TfsId.Value}:T" : $"{match.Id}:I";
                         existing++;
                         continue;
@@ -2759,6 +2766,8 @@ namespace NXProject.Views
                                 StoryTask       = storyNode,
                                 TaskId          = devTask.TfsId,
                                 Title           = devTask.Title,
+                                Description     = NormalizeTaskPlanDescription(descCol != null ? dr[descCol]?.ToString() : null)
+                                                  ?? devTask.Description ?? "",
                                 State           = devTask.State ?? "New",
                                 EstimatedHours  = devTask.EstimatedHours,
                                 CompletedHours  = devTask.CompletedHours,
@@ -2779,7 +2788,7 @@ namespace NXProject.Views
                     var hours = TaskPlanScheduleRules.ParseEstimatedHours(estCol != null ? dr[estCol]?.ToString() : null) ?? 1.0;
                     var task = TaskPlanScheduleRules.CreateInternalTask(
                         storyNode, _vm.NextId(), taskName,
-                        descCol != null ? dr[descCol]?.ToString() : null, hours);
+                        descCol != null ? NormalizeTaskPlanDescription(dr[descCol]?.ToString()) : null, hours);
                     if (prioCol != null && int.TryParse(dr[prioCol]?.ToString()?.Trim(), out var prio))
                         task.Priority = prio;
 
@@ -2811,7 +2820,7 @@ namespace NXProject.Views
             foreach (var s in touchedStories.Where(TaskPlanScheduleRules.CanAdjustStoryDuration))
                 s.RecalcSummary();
 
-            if (created > 0)
+            if (created > 0 || scheduleChanged)
             {
                 _vm.Project.IsDirty = true;
                 // Associa a planilha ao cronograma (persistido no .nxp) para o backfill pós-sync.
@@ -2824,6 +2833,12 @@ namespace NXProject.Views
             PlanGrid.Items.Refresh();
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             StatusText.Text = AppStrings.Get("TaskPlan_SyncDone", created, existing, noStory);
+        }
+
+        private static string? NormalizeTaskPlanDescription(string? value)
+        {
+            var text = value?.Trim();
+            return string.IsNullOrWhiteSpace(text) ? null : text;
         }
 
         // Cria a cadeia interna que faltar para receber a Task: Feature :I (sob o EPIC

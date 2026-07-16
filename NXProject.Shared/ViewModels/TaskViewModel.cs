@@ -260,8 +260,20 @@ namespace NXProject.ViewModels
             set
             {
                 _task.TfsState = value;
+                if (_task.Children.Count == 0)
+                {
+                    var statePercent = TfsImportService.PercentCompleteFromState(value);
+                    if (Math.Abs(_task.PercentComplete - statePercent) > 0.0001)
+                    {
+                        _task.PercentComplete = statePercent;
+                        NotifyParentPercentChanged();
+                    }
+                }
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PercentComplete));
+                OnPropertyChanged(nameof(PercentCompleteTextBrush));
+                OnPropertyChanged(nameof(PercentCompleteTextAlignment));
+                OnPropertyChanged(nameof(PercentCompleteTextMargin));
                 OnPropertyChanged(nameof(DevOpsTag));
                 OnPropertyChanged(nameof(DevOpsTooltip));
                 OnPropertyChanged(nameof(DevOpsBrush));
@@ -846,7 +858,16 @@ namespace NXProject.ViewModels
 
                 var normalized = Math.Clamp(value, 0, 100);
                 if (Math.Abs(_task.PercentComplete - normalized) < 0.0001)
+                {
+                    if (ApplyTaskStateFromPercent(normalized))
+                    {
+                        OnPropertyChanged(nameof(TfsState));
+                        OnPropertyChanged(nameof(DevOpsTag));
+                        OnPropertyChanged(nameof(DevOpsTooltip));
+                        OnPropertyChanged(nameof(DevOpsBrush));
+                    }
                     return;
+                }
 
                 // Concluindo (transição para 100%) com a sprint fora da faixa de
                 // período (o fim da atividade não cai na janela da sprint): confirma.
@@ -875,6 +896,7 @@ namespace NXProject.ViewModels
 
                 var wasZero = _task.PercentComplete < 0.0001;
                 _task.PercentComplete = normalized;
+                var stateChangedByPercent = ApplyTaskStateFromPercent(normalized);
                 NotifyDaily();
                 NotifySprintPeriodChanged();
 
@@ -962,7 +984,7 @@ namespace NXProject.ViewModels
                         OnPropertyChanged(nameof(DurationHours));
                         OnPropertyChanged(nameof(DisplayAsMilestone));
                         RecalcAncestorSummaries();
-                        ScheduleSuccessors?.Invoke(this);
+                        ScheduleSuccessorsDeferred();
                     }
                 }
                 else if (!_task.FinishFixed)
@@ -984,15 +1006,51 @@ namespace NXProject.ViewModels
                 }
 
                 OnPropertyChanged();
+                if (stateChangedByPercent)
+                    OnPropertyChanged(nameof(TfsState));
                 OnPropertyChanged(nameof(PercentCompleteTextBrush));
                 OnPropertyChanged(nameof(PercentCompleteTextAlignment));
                 OnPropertyChanged(nameof(PercentCompleteTextMargin));
+                if (stateChangedByPercent)
+                {
+                    OnPropertyChanged(nameof(DevOpsTag));
+                    OnPropertyChanged(nameof(DevOpsTooltip));
+                    OnPropertyChanged(nameof(DevOpsBrush));
+                }
                 OnPropertyChanged(nameof(OriginalEstimatedHoursDisplay));
                 OnPropertyChanged(nameof(OriginalEstimatedHoursText));
                 OnPropertyChanged(nameof(HasOriginalEstimate));
                 OnPropertyChanged(nameof(IsDurationReadOnly));
                 NotifyParentPercentChanged();
             }
+        }
+
+        private bool ApplyTaskStateFromPercent(double percentComplete)
+        {
+            if (percentComplete < 100 ||
+                !TfsImportService.IsTaskTypePublic(_task.TfsType) ||
+                string.Equals(_task.TfsState?.Trim(), "Closed", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            _task.TfsState = "Closed";
+            return true;
+        }
+
+        private void ScheduleSuccessorsDeferred()
+        {
+            if (ScheduleSuccessors == null)
+                return;
+
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher == null)
+            {
+                ScheduleSuccessors(this);
+                return;
+            }
+
+            dispatcher.BeginInvoke(
+                new Action(() => ScheduleSuccessors?.Invoke(this)),
+                System.Windows.Threading.DispatcherPriority.Background);
         }
 
         public bool CanEditPercentComplete => _task.Children.Count == 0;
