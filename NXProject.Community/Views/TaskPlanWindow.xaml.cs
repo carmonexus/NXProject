@@ -102,6 +102,7 @@ namespace NXProject.Views
                 var cur = dr[idCol]?.ToString()?.Trim() ?? "";
                 if (!byKey.TryGetValue(cur, out var e)) continue;
                 dr[idCol] = e.NewTaskId;
+                if (ApprovalCol is { } ac) dr[ac] = "Sim";
                 if (StoryIdCol is { } sc && !string.IsNullOrEmpty(e.NewStoryId)) dr[sc] = e.NewStoryId;
                 if (FeatureIdCol is { } fc && !string.IsNullOrEmpty(e.NewFeatureId)) dr[fc] = e.NewFeatureId;
                 updated++;
@@ -127,6 +128,10 @@ namespace NXProject.Views
                 _data = ExcelTaskPlanService.Load(path);
                 _path = path;
                 PathText.Text = path;
+                // Baseline ANTES de ajustar a tabela: o que vier a seguir (coluna nova de
+                // aprovação/cronograma, normalização de Sim/Nao) é diferença real contra o
+                // .xlsx e precisa manter o plano sujo para ser gravado no próximo salvar.
+                _dirty = false;
                 EnsureScheduleColumns();
                 UpdateFixedColumns();
                 // Valida antes do bind: as colunas __m_* precisam existir quando o grid gerar as colunas.
@@ -134,7 +139,6 @@ namespace NXProject.Views
                 ValidateAgainstSchedule();
                 BindTable();
                 ApplyEpicFilter();
-                _dirty = false;
                 ClearUndo();
                 _settings.LastFile = path;
                 TaskPlanSettingsStore.Save(_settings);
@@ -154,11 +158,14 @@ namespace NXProject.Views
         }
 
         // Colunas vinculadas ao cronograma: sempre existem (criadas se faltarem) e não podem ser excluídas.
-        private static readonly string[] ScheduleColumns = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status" };
+        private const string ApprovalColumn = "Aprovada";
+        private static readonly string[] ApprovalValues = ["Nao", "Sim"];
+        private static readonly string[] ScheduleColumns = { ApprovalColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status" };
 
         // Colunas de ID dos pais (preenchidas pelo Buscar/Merge/Aplicar/Ctrl+clique).
         private string? FeatureIdCol => FindColumn("ID Feature", "IdFeature", "ID_Feature");
         private string? StoryIdCol   => FindColumn("ID Story", "IdStory", "ID_Story");
+        private string? ApprovalCol  => FindColumn(ApprovalColumn, "Aprovado", "Aprovacao", "Aprovação", "Approved");
 
         private static string DisplayIdOf(ProjectTask t) => t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
 
@@ -176,6 +183,7 @@ namespace NXProject.Views
                || colName == FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task")
                || colName == FeatureIdCol
                || colName == StoryIdCol
+               || colName == ApprovalCol
                || colName == FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task")
                || colName == FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH")
                || colName == FindColumn("Status", "Estado", "State");
@@ -253,9 +261,11 @@ namespace NXProject.Views
 
             // Renomeia a coluna legada "Estimado" para "Estimado HH" (mantém a posição).
             RenameColumnPreservingPosition("Estimado", "Estimado HH");
+            EnsureApprovalColumn();
 
             string?[] found =
             {
+                ApprovalCol,
                 _data.Table.Columns.Cast<DataColumn>().Select(c => c.ColumnName)
                     .FirstOrDefault(n => n.Trim().StartsWith("EPIC", StringComparison.OrdinalIgnoreCase)
                                       || n.Trim().StartsWith("Épic", StringComparison.OrdinalIgnoreCase)),
@@ -286,6 +296,78 @@ namespace NXProject.Views
             }
             PlaceAfter(FeatureIdCol, FindColumn("Feature", "Nome da Feature"));
             PlaceAfter(StoryIdCol, FindColumn("Story", "Nome da Story"));
+            _data.Table.Columns[ApprovalCol!]!.SetOrdinal(0);
+            NormalizeApprovalValues();
+        }
+
+        private void EnsureApprovalColumn()
+        {
+            if (_data == null) return;
+            var existing = ApprovalCol;
+            if (existing == null)
+            {
+                _data.Table.Columns.Add(ApprovalColumn, typeof(string));
+                _data.Table.Columns[ApprovalColumn]!.SetOrdinal(0);
+                if (_data.ColumnSheetMap.Count > 0)
+                {
+                    foreach (var key in _data.ColumnSheetMap.Keys.ToList())
+                        _data.ColumnSheetMap[key]++;
+                    _data.ColumnSheetMap[ApprovalColumn] = 1;
+                    _data.InsertLeadingApprovalColumnOnSave = true;
+                }
+                _dirty = true;
+            }
+            else
+            {
+                RenameColumnPreservingPosition(existing, ApprovalColumn);
+                _data.Table.Columns[ApprovalColumn]!.SetOrdinal(0);
+            }
+        }
+
+        private static bool IsApprovalYes(string? value)
+        {
+            var v = (value ?? "").Trim();
+            return v.Equals("Sim", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("S", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("Yes", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("Y", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("True", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("1", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsApproved(DataRow row)
+            => ApprovalCol is { } col && IsApprovalYes(row[col]?.ToString());
+
+        private bool IsApprovedOrAlreadyTfs(DataRow row, string idCol)
+        {
+            if ((row[idCol]?.ToString()?.Trim() ?? "").EndsWith(":T", StringComparison.OrdinalIgnoreCase))
+            {
+                if (ApprovalCol is { } ac && !IsApprovalYes(row[ac]?.ToString()))
+                {
+                    row[ac] = "Sim";
+                    _dirty = true;
+                }
+                return true;
+            }
+            return IsApproved(row);
+        }
+
+        private void NormalizeApprovalValues()
+        {
+            if (_data == null || ApprovalCol is not { } approvalCol) return;
+            var idCol = FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task");
+            foreach (DataRow row in _data.Table.Rows)
+            {
+                var id = idCol != null ? row[idCol]?.ToString()?.Trim() ?? "" : "";
+                var target = id.EndsWith(":T", StringComparison.OrdinalIgnoreCase)
+                    ? "Sim"
+                    : IsApprovalYes(row[approvalCol]?.ToString()) ? "Sim" : "Nao";
+                if (!string.Equals(row[approvalCol]?.ToString(), target, StringComparison.Ordinal))
+                {
+                    row[approvalCol] = target;
+                    _dirty = true;
+                }
+            }
         }
 
         // Monta o plano a partir do cronograma aberto (quando não há Excel para abrir).
@@ -294,7 +376,7 @@ namespace NXProject.Views
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
 
             var table = new DataTable();
-            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { ApprovalColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             foreach (var t in Flatten(_vm.Project.Tasks).Where(t => IsType(t, "Task")))
@@ -307,6 +389,7 @@ namespace NXProject.Views
                 dr["ID Story"] = AncestorNode(t, "Story") is { } sn ? DisplayIdOf(sn) : "";
                 dr["Task"]    = t.Name ?? "";
                 dr["ID Task"]  = t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
+                dr[ApprovalColumn] = t.TfsId is > 0 ? "Sim" : "Nao";
                 dr["Prioridade"] = t.Priority?.ToString() ?? "";
                 dr["Estimado HH"] = t.EstimatedHours is > 0 ? t.EstimatedHours.Value.ToString("0.##") : "1";
                 dr["Status"]     = t.TfsState ?? "";
@@ -437,7 +520,7 @@ namespace NXProject.Views
         private void BuildEmptyPlan()
         {
             var table = new DataTable();
-            string[] cols = { "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { ApprovalColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             _data = new TaskPlanData { Table = table, SheetName = "Tarefas", HeaderRow = 1 };
@@ -509,6 +592,7 @@ namespace NXProject.Views
                         dr["ID Story"] = DisplayIdOf(story);
                         dr["Task"]    = t.Title;
                         dr["ID Task"]  = $"{t.TfsId}:T";
+                        dr[ApprovalColumn] = "Sim";
                         dr["Prioridade"] = t.Priority.ToString();
                         dr["Estimado HH"] = t.EstimatedHours > 0 ? t.EstimatedHours.ToString("0.##") : "1";
                         dr["Status"]     = t.State ?? "";
@@ -593,6 +677,7 @@ namespace NXProject.Views
         {
             if (_data == null) return false;
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            NormalizeApprovalValues();
             // A ordem visual das colunas (arrastadas na grade) vale para a gravação.
             SyncColumnOrderFromGrid();
             UpdateFixedColumns();
@@ -947,6 +1032,24 @@ namespace NXProject.Views
 
         private void OnColumnsGenerated(object? sender, EventArgs e)
         {
+            var approvalName = ApprovalCol;
+            if (approvalName != null && _data != null
+                && !PlanGrid.Columns.Any(c => c is DataGridComboBoxColumn
+                    && string.Equals(c.Header?.ToString(), approvalName, StringComparison.OrdinalIgnoreCase)))
+            {
+                var txtCol = PlanGrid.Columns.FirstOrDefault(c => c is DataGridTextColumn
+                    && string.Equals(c.Header?.ToString(), approvalName, StringComparison.OrdinalIgnoreCase));
+                if (txtCol != null)
+                {
+                    PlanGrid.Columns[PlanGrid.Columns.IndexOf(txtCol)] = new DataGridComboBoxColumn
+                    {
+                        Header = approvalName,
+                        ItemsSource = ApprovalValues,
+                        SelectedItemBinding = new System.Windows.Data.Binding($"[{approvalName}]")
+                    };
+                }
+            }
+
             // Status vira combo com os estados do DevOps (mesmos da grid de Tasks).
             // Nunca duplica: só troca a coluna de texto gerada e se a combo ainda não existe.
             var statusName = FindColumn("Status", "Estado", "State");
@@ -1632,6 +1735,7 @@ namespace NXProject.Views
             }
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            NormalizeApprovalValues();
             PushUndo();
             ReviewDuplicateIds(idCol);
             var flat = Flatten(_vm.Project.Tasks).ToList();
@@ -1697,6 +1801,7 @@ namespace NXProject.Views
                 {
                     log.AppendLine($"    Linha {ch.RowNumber}: \"{ch.From}\" → {ch.Dev.Info.TfsId}:T \"{ch.Dev.Info.Title}\"");
                     ch.Row[idCol] = $"{ch.Dev.Info.TfsId}:T";
+                    if (ApprovalCol is { } ac) ch.Row[ac] = "Sim";
                     if (prioCol != null) ch.Row[prioCol] = ch.Dev.Info.Priority.ToString();
                     if (estCol != null && ch.Dev.Info.EstimatedHours > 0) ch.Row[estCol] = ch.Dev.Info.EstimatedHours.ToString("0.##");
                     if (statusCol != null && !string.IsNullOrWhiteSpace(ch.Dev.Info.State)) ch.Row[statusCol] = ch.Dev.Info.State;
@@ -1713,9 +1818,10 @@ namespace NXProject.Views
                 foreach (var src in sources)
                 {
                     var displayId = $"{src.Info.TfsId}:T";
-                    var row = _data.Table.Rows.Cast<DataRow>().FirstOrDefault(r =>
+                    var approvedRows = _data.Table.Rows.Cast<DataRow>().Where(r => IsApprovedOrAlreadyTfs(r, idCol));
+                    var row = approvedRows.FirstOrDefault(r =>
                         string.Equals(r[idCol]?.ToString()?.Trim(), displayId, StringComparison.OrdinalIgnoreCase))
-                        ?? _data.Table.Rows.Cast<DataRow>().FirstOrDefault(r =>
+                        ?? approvedRows.FirstOrDefault(r =>
                             string.Equals(r[taskCol]?.ToString()?.Trim(), src.Info.Title.Trim(), StringComparison.OrdinalIgnoreCase)
                             && (storyCol == null
                                 || string.IsNullOrWhiteSpace(r[storyCol]?.ToString())
@@ -1723,6 +1829,7 @@ namespace NXProject.Views
                     if (row == null) continue;
 
                     row[idCol] = displayId;
+                    if (ApprovalCol is { } ac) row[ac] = "Sim";
                     if (storyCol != null && string.IsNullOrWhiteSpace(row[storyCol]?.ToString())) row[storyCol] = src.Story.Name;
                     if (prioCol != null) row[prioCol] = src.Info.Priority.ToString();
                     if (estCol != null && src.Info.EstimatedHours > 0) row[estCol] = src.Info.EstimatedHours.ToString("0.##");
@@ -1756,6 +1863,7 @@ namespace NXProject.Views
                 if (storyCol != null) dr[storyCol] = src.Story.Name ?? "";
                 dr[taskCol] = src.Info.Title;
                 dr[idCol] = $"{src.Info.TfsId}:T";
+                if (ApprovalCol is { } ac) dr[ac] = "Sim";
                 if (prioCol != null) dr[prioCol] = src.Info.Priority.ToString();
                 if (estCol != null && src.Info.EstimatedHours > 0) dr[estCol] = src.Info.EstimatedHours.ToString("0.##");
                 if (statusCol != null) dr[statusCol] = src.Info.State ?? "";
@@ -1820,7 +1928,7 @@ namespace NXProject.Views
             {
                 var id = r[idCol]?.ToString()?.Trim() ?? "";
                 var name = r[taskCol]?.ToString()?.Trim() ?? "";
-                if (!id.EndsWith(":T", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(name))
+                if (!id.EndsWith(":T", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(name) && IsApproved(r))
                     rows.Add((number, r));
                 number++;
             }
@@ -2014,6 +2122,7 @@ namespace NXProject.Views
         private void ValidateAgainstSchedule()
         {
             if (_data == null || _vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
+            NormalizeApprovalValues();
 
             // Estados por célula: "1" = encontrado (verde em EPIC/Task; Story/Feature
             // mostram a validade pelos IDs); "0" = preenchido mas NÃO existe no pai
@@ -2566,7 +2675,11 @@ namespace NXProject.Views
                 Fill("Story", FindColumn("Story", "Nome da Story"));
                 var idCol = FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task");
                 if (idCol != null)
+                {
                     dr[idCol] = picked.TfsId is > 0 ? $"{picked.TfsId.Value}:T" : $"{picked.Id}:I";
+                    if (picked.TfsId is > 0 && ApprovalCol is { } ac)
+                        dr[ac] = "Sim";
+                }
                 var prioCol = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
                 if (prioCol != null && picked.Priority is int prio)
                     dr[prioCol] = prio.ToString();
@@ -2622,6 +2735,7 @@ namespace NXProject.Views
                 foreach (DataRow dr in _data.Table.Rows)
                 {
                     var cur = dr[idCol]?.ToString()?.Trim() ?? "";
+                    if (!IsApprovedOrAlreadyTfs(dr, idCol)) continue;
                     // :T já vinculada ao DevOps; vazia ou :I são reavaliadas — o interno
                     // pode ter virado DevOps desde a última busca (aí promove para :T).
                     if (cur.EndsWith(":T", StringComparison.OrdinalIgnoreCase)) continue;
@@ -2640,6 +2754,7 @@ namespace NXProject.Views
                     {
                         // Padrão do cronograma: DevOps = "{TfsId}:T".
                         dr[idCol] = $"{match.TfsId!.Value}:T";
+                        if (ApprovalCol is { } ac) dr[ac] = "Sim";
                         if (prioCol != null && match.Priority is int mp)
                             dr[prioCol] = mp.ToString();
                         if (estCol != null && match.EstimatedHours is > 0)
@@ -2666,6 +2781,7 @@ namespace NXProject.Views
                     if (devTask != null)
                     {
                         dr[idCol] = $"{devTask.TfsId}:T";
+                        if (ApprovalCol is { } ac) dr[ac] = "Sim";
                         if (prioCol != null)
                             dr[prioCol] = devTask.Priority.ToString();
                         if (estCol != null && devTask.EstimatedHours > 0)
@@ -2721,15 +2837,19 @@ namespace NXProject.Views
             }
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            NormalizeApprovalValues();
             ReviewDuplicateIds(idCol);
 
             var flat = Flatten(_vm.Project.Tasks).ToList();
+            var approvedPlanRows = _data.Table.Rows.Cast<DataRow>()
+                .Where(r => IsApprovedOrAlreadyTfs(r, idCol))
+                .ToList();
 
             // Trava: todo EPIC informado nas linhas precisa existir no cronograma (o EPIC
             // é criado no DevOps, não pela planilha). Se faltar, avisa e NÃO aplica.
             if (_epicColumn != null)
             {
-                var missingEpics = _data.Table.Rows.Cast<DataRow>()
+                var missingEpics = approvedPlanRows
                     .Where(r => !string.IsNullOrWhiteSpace(r[taskCol]?.ToString()))
                     .Select(r => r[_epicColumn]?.ToString()?.Trim() ?? "")
                     .Where(v => v.Length > 0)
@@ -2750,7 +2870,7 @@ namespace NXProject.Views
             // Trava: a mesma Story não pode ter duas Tasks com o MESMO nome (a chave de
             // vínculo/merge é o nome dentro da Story). Considera EPIC+Feature+Story para
             // não confundir Stories homônimas de Features diferentes.
-            var dupTasks = _data.Table.Rows.Cast<DataRow>()
+            var dupTasks = approvedPlanRows
                 .Select(r => new
                 {
                     Task    = r[taskCol]?.ToString()?.Trim() ?? "",
@@ -2776,7 +2896,7 @@ namespace NXProject.Views
             // (o nome é a chave da alocação). Se não bater, avisa e NÃO aplica.
             if (resourceCol != null)
             {
-                var missingResources = _data.Table.Rows.Cast<DataRow>()
+                var missingResources = approvedPlanRows
                     .Where(r => !string.IsNullOrWhiteSpace(r[taskCol]?.ToString()))
                     .SelectMany(r => SplitResourceNames(r[resourceCol]?.ToString()))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -2808,7 +2928,7 @@ namespace NXProject.Views
             System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
             try
             {
-                foreach (DataRow dr in _data.Table.Rows)
+                foreach (DataRow dr in approvedPlanRows)
                 {
                     var taskName = dr[taskCol]?.ToString()?.Trim() ?? "";
                     if (string.IsNullOrEmpty(taskName)) continue;

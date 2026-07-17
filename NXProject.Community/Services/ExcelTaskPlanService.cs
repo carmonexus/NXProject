@@ -29,6 +29,9 @@ namespace NXProject.Community.Services
         /// <summary>Colunas com nome fixo (vinculadas ao cronograma): nunca recebem o
         /// prefixo "xx#_" — a posição delas é a física da planilha (muda só via Excel).</summary>
         public HashSet<string> FixedNameColumns { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>Quando uma planilha antiga não tem a coluna inicial de aprovação,
+        /// o Save insere uma coluna física no início antes de regravar a tabela.</summary>
+        public bool InsertLeadingApprovalColumnOnSave { get; set; }
     }
 
     /// <summary>
@@ -168,6 +171,11 @@ namespace NXProject.Community.Services
             using var wb = new XLWorkbook(path);
             var ws = wb.Worksheet(data.SheetName);
             int headerRow = data.HeaderRow;
+            if (data.InsertLeadingApprovalColumnOnSave)
+            {
+                ws.Column(1).InsertColumnsBefore(1);
+                data.InsertLeadingApprovalColumnOnSave = false;
+            }
             int lastUsedRow = ws.LastRowUsed()?.RowNumber() ?? headerRow;
 
             // Colunas visíveis da tabela (ignora as auxiliares __*).
