@@ -134,6 +134,10 @@ namespace NXProject.Models
         public string? SourcePlanPath { get; set; }
         public string? SourcePlanRowKey { get; set; }
 
+        // Observação da planilha de Task Plan: registrada como tramite (comentário)
+        // no DevOps quando a Task ganha o ID do TFS na sincronização.
+        public string? PlanObservation { get; set; }
+
         // Subtarefas
         public ObservableCollection<ProjectTask> Children { get; set; } = new();
 

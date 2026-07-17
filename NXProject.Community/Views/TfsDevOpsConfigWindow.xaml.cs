@@ -29,10 +29,26 @@ namespace NXProject.Views
             public string Values     { get; set; } = string.Empty;
         }
 
-        public TfsDevOpsConfigWindow(string storageKey = "NXProject.Community")
+        // Projeto (cronograma) aberto — habilita o campo do path da planilha de Task Plan.
+        private readonly string? _currentProjectName;
+
+        public TfsDevOpsConfigWindow(string storageKey = "NXProject.Community", string? currentProjectName = null)
         {
             InitializeComponent();
             _storageKey = string.IsNullOrWhiteSpace(storageKey) ? "NXProject.Community" : storageKey.Trim();
+            _currentProjectName = string.IsNullOrWhiteSpace(currentProjectName) ? null : currentProjectName.Trim();
+
+            // Planilha de Task Plan associada ao projeto aberto (configuração local).
+            if (_currentProjectName != null)
+            {
+                var tp = Community.Services.TaskPlanSettingsStore.Load();
+                TaskPlanFileBox.Text = tp.GetProjectFile(_currentProjectName) ?? "";
+            }
+            else
+            {
+                TaskPlanFileBox.IsEnabled = false;
+                TaskPlanFileBrowse.IsEnabled = false;
+            }
 
             var saved = TfsConnectionStore.Load(_storageKey);
             OrgUrlBox.Text = saved.OrganizationUrl;
@@ -150,8 +166,34 @@ namespace NXProject.Views
 
             var options = BuildOptions();
             TfsConnectionStore.Save(options, RememberTokenCheck.IsChecked == true, _storageKey);
+            SaveTaskPlanFileAssociation();
             DialogResult = true;
             Close();
+        }
+
+        private void SaveTaskPlanFileAssociation()
+        {
+            if (_currentProjectName == null) return;
+            var path = TaskPlanFileBox.Text?.Trim() ?? "";
+            var tp = Community.Services.TaskPlanSettingsStore.Load();
+            if (string.Equals(tp.GetProjectFile(_currentProjectName) ?? "", path, StringComparison.OrdinalIgnoreCase))
+                return;
+            tp.SetProjectFile(_currentProjectName, path);
+            Community.Services.TaskPlanSettingsStore.Save(tp);
+        }
+
+        private void OnBrowseTaskPlanFileClick(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = AppStrings.Get("Cfg_TaskPlanFile"),
+                Filter = "Planilha do Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*",
+                CheckFileExists = true
+            };
+            if (!string.IsNullOrWhiteSpace(TaskPlanFileBox.Text))
+                try { dlg.InitialDirectory = System.IO.Path.GetDirectoryName(TaskPlanFileBox.Text.Trim()); } catch { }
+            if (dlg.ShowDialog(this) == true)
+                TaskPlanFileBox.Text = dlg.FileName;
         }
 
         private TfsConnectionOptions BuildOptions() => new()

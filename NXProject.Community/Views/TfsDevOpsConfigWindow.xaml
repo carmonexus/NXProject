@@ -181,6 +181,18 @@
                         <TextBlock Text="{DynamicResource Cfg_FixedStartTag}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
                         <TextBox x:Name="FixedStartTagBox" Height="26" Padding="6,3" Width="220" HorizontalAlignment="Left"/>
                     </StackPanel>
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="{DynamicResource Cfg_TaskPlanFile}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TaskPlanFileBox" Grid.Column="0" Height="26" Padding="6,3"/>
+                            <Button x:Name="TaskPlanFileBrowse" Grid.Column="1" Content="..." Width="32" Height="26"
+                                    Margin="6,0,0,0" Click="OnBrowseTaskPlanFileClick"/>
+                        </Grid>
+                    </StackPanel>
                     <CheckBox x:Name="SyncPredecessorLinksCheck"
                               Content="{DynamicResource Cfg_SyncPredLinks}"
                               IsChecked="True" Margin="0,10,0,0" FontSize="11"/>

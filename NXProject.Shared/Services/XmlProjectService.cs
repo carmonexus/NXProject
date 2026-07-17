@@ -245,7 +245,8 @@ namespace NXProject.Services
                 new XElement(EXT + "DevopsTaskCount", task.DevopsTaskCount?.ToString() ?? ""),
                 new XElement(EXT + "Justificativa", task.Justificativa ?? ""),
                 new XElement(EXT + "SourcePlanPath", task.SourcePlanPath ?? ""),
-                new XElement(EXT + "SourcePlanRowKey", task.SourcePlanRowKey ?? "")
+                new XElement(EXT + "SourcePlanRowKey", task.SourcePlanRowKey ?? ""),
+                new XElement(EXT + "PlanObservation", task.PlanObservation ?? "")
             );
 
             // Predecessoras
@@ -522,6 +523,7 @@ namespace NXProject.Services
                 Justificativa = string.IsNullOrWhiteSpace(el.Element(EXT + "Justificativa")?.Value) ? null : el.Element(EXT + "Justificativa")?.Value,
                 SourcePlanPath = string.IsNullOrWhiteSpace(el.Element(EXT + "SourcePlanPath")?.Value) ? null : el.Element(EXT + "SourcePlanPath")?.Value,
                 SourcePlanRowKey = string.IsNullOrWhiteSpace(el.Element(EXT + "SourcePlanRowKey")?.Value) ? null : el.Element(EXT + "SourcePlanRowKey")?.Value,
+                PlanObservation = string.IsNullOrWhiteSpace(el.Element(EXT + "PlanObservation")?.Value) ? null : el.Element(EXT + "PlanObservation")?.Value,
                 Parent = parent
             };
 

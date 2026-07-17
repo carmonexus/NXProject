@@ -286,6 +286,14 @@
     <sys:String x:Key="TaskPlan_ApplyDupTasks">The same Story cannot have two Tasks with the same name:&#10;&#10;{0}&#10;&#10;Rename or remove the duplicates in the sheet before applying. Nothing was applied.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyMissingResources">The resources below do not exist as schedule people:&#10;&#10;{0}&#10;&#10;Register the person (or fix the name in the sheet) before applying. Nothing was applied.</sys:String>
     <sys:String x:Key="TaskPlan_PickNoPeople">There are no people registered in the schedule to select.</sys:String>
+    <sys:String x:Key="TaskPlan_ObsPosted">{0} note(s) posted as DevOps comments.</sys:String>
+    <sys:String x:Key="TaskPlan_AssocTitle">Associate sheet with project</sys:String>
+    <sys:String x:Key="TaskPlan_AssocProject">Which project (schedule) does this task plan belong to? When that project opens, the associated sheet opens automatically.</sys:String>
+    <sys:String x:Key="TaskPlan_AssocSkip">Don't associate</sys:String>
+    <sys:String x:Key="Cfg_TaskPlanFile">Task Plan sheet for this project (opens automatically in Task Plan)</sys:String>
+    <sys:String x:Key="TaskPlan_SpHelpButton">How to use with SharePoint...</sys:String>
+    <sys:String x:Key="TaskPlan_SpHelpTitle">Task Plan with SharePoint — step by step</sys:String>
+    <sys:String x:Key="TaskPlan_SpHelpText">The recommended way to use a SharePoint sheet is to sync it to a local folder with OneDrive:&#10;&#10;1️⃣  In the browser, open the SharePoint library that holds the sheet (e.g. the project site's Documents).&#10;&#10;2️⃣  Click "Sync" (or "Add shortcut to OneDrive") in the library toolbar.&#10;&#10;3️⃣  Windows creates a synced local folder — it shows up in Explorer under your organization (blue building icon).&#10;&#10;4️⃣  In Task Plan, use Open and pick the .xlsx inside that synced folder (don't paste the https:\\... link from the browser).&#10;&#10;5️⃣  Done: when you save in Task Plan, OneDrive pushes the change to SharePoint automatically — everyone syncing the same library gets the new version.&#10;&#10;⚠️  Avoid editing the sheet in Excel Online and Task Plan at the same time: the file may get locked or create version conflicts.</sys:String>
     <sys:String x:Key="TaskPlan_PickTitle">Search in schedule</sys:String>
     <sys:String x:Key="TaskPlan_PickHeader">Select {0} from the schedule</sys:String>
     <sys:String x:Key="TaskPlan_PickNone">Select an item from the list.</sys:String>

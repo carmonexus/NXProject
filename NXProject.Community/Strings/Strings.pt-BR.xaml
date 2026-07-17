@@ -68,6 +68,14 @@
     <sys:String x:Key="TaskPlan_ApplyDupTasks">A mesma Story não pode ter duas Tasks com o mesmo nome:&#10;&#10;{0}&#10;&#10;Renomeie ou remova as duplicadas na planilha antes de aplicar. Nada foi aplicado.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyMissingResources">Os Recursos abaixo não existem como pessoas do cronograma:&#10;&#10;{0}&#10;&#10;Cadastre a pessoa (ou corrija o nome na planilha) antes de aplicar. Nada foi aplicado.</sys:String>
     <sys:String x:Key="TaskPlan_PickNoPeople">Não há pessoas cadastradas no cronograma para selecionar.</sys:String>
+    <sys:String x:Key="TaskPlan_ObsPosted">{0} observação(ões) registrada(s) como tramite no DevOps.</sys:String>
+    <sys:String x:Key="TaskPlan_AssocTitle">Associar planilha ao projeto</sys:String>
+    <sys:String x:Key="TaskPlan_AssocProject">Este plano de tasks pertence a qual projeto (cronograma)? Ao abrir esse projeto, a planilha associada abre automaticamente.</sys:String>
+    <sys:String x:Key="TaskPlan_AssocSkip">Não associar</sys:String>
+    <sys:String x:Key="Cfg_TaskPlanFile">Planilha Task Plan deste projeto (abre automática no Task Plan)</sys:String>
+    <sys:String x:Key="TaskPlan_SpHelpButton">Como usar com SharePoint...</sys:String>
+    <sys:String x:Key="TaskPlan_SpHelpTitle">Task Plan com SharePoint — passo a passo</sys:String>
+    <sys:String x:Key="TaskPlan_SpHelpText">A forma recomendada de usar a planilha do SharePoint é sincronizá-la para uma pasta local com o OneDrive:&#10;&#10;1️⃣  No navegador, abra a biblioteca do SharePoint onde está a planilha (ex.: Documentos do site do projeto).&#10;&#10;2️⃣  Clique em "Sincronizar" (ou "Adicionar atalho ao OneDrive") na barra da biblioteca.&#10;&#10;3️⃣  O Windows cria uma pasta local sincronizada — ela aparece no Explorer, no grupo da sua empresa (ícone de prédio azul).&#10;&#10;4️⃣  No Task Plan, use Abrir e escolha o .xlsx dentro dessa pasta sincronizada (não cole o link https:\\... do navegador).&#10;&#10;5️⃣  Pronto: ao salvar no Task Plan, o OneDrive envia a alteração para o SharePoint automaticamente — e todos que sincronizam a mesma biblioteca recebem a versão nova.&#10;&#10;⚠️  Evite editar a planilha ao mesmo tempo no Excel Online e no Task Plan: o arquivo pode ficar bloqueado ou gerar conflito de versão.</sys:String>
     <sys:String x:Key="TaskPlan_PickTitle">Buscar no cronograma</sys:String>
     <sys:String x:Key="TaskPlan_PickHeader">Selecionar {0} do cronograma</sys:String>
     <sys:String x:Key="TaskPlan_PickNone">Selecione um item da lista.</sys:String>

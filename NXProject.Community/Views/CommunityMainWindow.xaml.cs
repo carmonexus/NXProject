@@ -1820,7 +1820,8 @@ namespace NXProject.Views
 
         private void OnConfigureAzureDevOpsClick(object sender, RoutedEventArgs e)
         {
-            new TfsDevOpsConfigWindow("NXProject.Community") { Owner = this }.ShowDialog();
+            var projectName = (DataContext as MainViewModel)?.Project?.Name;
+            new TfsDevOpsConfigWindow("NXProject.Community", projectName) { Owner = this }.ShowDialog();
             ApplyClassificationTypesToGrid();
         }
         private void OnImportTfsToolbarClick(object sender, RoutedEventArgs e) => OpenTfsImport();

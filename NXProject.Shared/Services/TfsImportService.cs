@@ -626,6 +626,7 @@ namespace NXProject.Services
                     task.IsPendingTfsCreate = false;
                     current[existingChild.Id] = existingChild;
                     report.LogSuccess($"{createType} - #{existingChild.Id} ({task.Name}): já existia no DevOps; vínculo recuperado pelo nome no mesmo pai.");
+                    await PostPlanObservationAsync(options, task, report, cancellationToken);
                     continue;
                 }
 
@@ -633,6 +634,7 @@ namespace NXProject.Services
                 var createStartRef  = ResolveForType(task.TfsType, c => c.StartField,         startRef);
                 var createFinishRef = ResolveForType(task.TfsType, c => c.FinishField,        finishRef);
                 var createPercAloc  = ResolveForType(task.TfsType, c => c.PercAlocField,      percAlocRef);
+                var createPercConc  = ResolveForType(task.TfsType, c => c.PercConclusaoField, percConclusaoRef);
 
                 options.TypeFieldMappings.TryGetValue(task.TfsType ?? "", out var cfgForClass);
                 if (cfgForClass == null) options.TypeFieldMappings.TryGetValue("*", out cfgForClass);
@@ -659,7 +661,8 @@ namespace NXProject.Services
                     remainingHoursRef: remainingHoursRef,
                     realizedHoursRef: realizedHoursRef,
                     extraFields: options.ExtraCreateFields,
-                    classificationFields: classFields);
+                    classificationFields: classFields,
+                    percConcRef: createPercConc);
                 var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
                 task.TfsId = newId;
                 task.TfsParentId = desiredParent;
@@ -667,6 +670,7 @@ namespace NXProject.Services
                 preCreatedIds.Add(newId);
                 report.Created++;
                 report.LogSuccess($"{createType} - #{newId} ({task.Name}): criado.");
+                await PostPlanObservationAsync(options, task, report, cancellationToken);
             }
 
             if (preCreatedIds.Count > 0)
@@ -778,16 +782,18 @@ namespace NXProject.Services
                             task.IsPendingTfsCreate = false;
                             current[existingChild.Id] = existingChild;
                             report.LogSuccess($"{createType} - #{existingChild.Id} ({task.Name}): já existia no DevOps; vínculo recuperado pelo nome no mesmo pai.");
+                            await PostPlanObservationAsync(options, task, report, cancellationToken);
                         }
                         else
                         {
-                            var createOps = BuildCreateOps(task, desiredParent, orgBase, createHoursRef, createStartRef, createFinishRef, tasksById, options.SyncPredecessorLinks, createPercAloc, originalHoursRef, remainingHoursRef, realizedHoursRef, options.ExtraCreateFields, classFields);
+                            var createOps = BuildCreateOps(task, desiredParent, orgBase, createHoursRef, createStartRef, createFinishRef, tasksById, options.SyncPredecessorLinks, createPercAloc, originalHoursRef, remainingHoursRef, realizedHoursRef, options.ExtraCreateFields, classFields, createPercConc);
                             var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
                             task.TfsId = newId;
                             task.TfsParentId = desiredParent;
                             task.IsPendingTfsCreate = false;
                             report.Created++;
                             report.LogSuccess($"{createType} - #{newId} ({task.Name}): criado.");
+                            await PostPlanObservationAsync(options, task, report, cancellationToken);
                             continue;
                         }
                     }
@@ -852,6 +858,19 @@ namespace NXProject.Services
                         {
                             ops.Add(PatchAdd("/fields/System.Description", desiredDesc));
                             changes.Add("descrição");
+                        }
+                    }
+
+                    // % conclusão (Perc_Conclusao) — a Task também tem o campo no DevOps.
+                    if (typePercConc != null)
+                    {
+                        var percConc = (int)Math.Round(Math.Clamp(task.PercentComplete, 0, 100));
+                        var currentConc = ReadDouble(wi, typePercConc);
+                        if (currentConc == null || Math.Abs(currentConc.Value - percConc) > 0.5)
+                        {
+                            ops.Add(PatchAdd($"/fields/{typePercConc}", percConc));
+                            var oldC = currentConc.HasValue ? $"{currentConc.Value:0}%→" : "";
+                            changes.Add($"% conclusão: {oldC}{percConc}%");
                         }
                     }
 
@@ -920,18 +939,6 @@ namespace NXProject.Services
                                 ops.Add(PatchAdd($"/fields/{typePercAloc}", primaryAloc));
                                 var oldA = currentAloc.HasValue ? $"{currentAloc.Value:0.##}%→" : "";
                                 changes.Add($"% aloc.: {oldA}{primaryAloc:0.##}%");
-                            }
-                        }
-
-                        if (typePercConc != null)
-                        {
-                            var percConc = (int)Math.Round(Math.Clamp(task.PercentComplete, 0, 100));
-                            var currentConc = ReadDouble(wi, typePercConc);
-                            if (currentConc == null || Math.Abs(currentConc.Value - percConc) > 0.5)
-                            {
-                                ops.Add(PatchAdd($"/fields/{typePercConc}", percConc));
-                                var oldC = currentConc.HasValue ? $"{currentConc.Value:0}%→" : "";
-                                changes.Add($"% conclusão: {oldC}{percConc}%");
                             }
                         }
 
@@ -1090,7 +1097,7 @@ namespace NXProject.Services
                         if (!task.Priority.HasValue && currentPriority.HasValue && currentPriority.Value > 0)
                             task.Priority = (int)currentPriority.Value;
 
-                        // Task não tem % conclusão no DevOps: 100% no cronograma fecha pelo estado.
+                        // Mesmo com Perc_Conclusao configurado, 100% no cronograma fecha a Task pelo estado.
                         if (task.PercentComplete >= 100)
                         {
                             var currentState = task.TfsState?.Trim();
@@ -1954,7 +1961,8 @@ namespace NXProject.Services
             string? remainingHoursRef = null,
             string? realizedHoursRef = null,
             IEnumerable<ExtraWorkItemField>? extraFields = null,
-            IReadOnlyList<ClassificationFieldDef>? classificationFields = null)
+            IReadOnlyList<ClassificationFieldDef>? classificationFields = null,
+            string? percConcRef = null)
         {
             bool isTaskCreate        = IsTaskType(task.TfsType);
             bool isEpicOrFeatureCreate = IsEpicOrFeatureType(task.TfsType);
@@ -1963,6 +1971,10 @@ namespace NXProject.Services
             {
                 PatchAdd("/fields/System.Title", task.Name ?? "Novo item")
             };
+
+            // % conclusão (Perc_Conclusao) — Task também tem o campo no DevOps.
+            if (percConcRef != null)
+                ops.Add(PatchAdd($"/fields/{percConcRef}", (int)Math.Round(Math.Clamp(task.PercentComplete, 0, 100))));
 
             // Campos de classificação (picklist obrigatórios na criação, ex.: Custom.Type).
             if (classificationFields != null)
@@ -2959,6 +2971,23 @@ namespace NXProject.Services
             return changedAt;
         }
 
+        // Cache por organização do mapa nome→referenceName dos campos (estável na sessão);
+        // evita uma chamada extra de API por Story no fetch das Tasks filhas.
+        private static readonly Dictionary<string, Dictionary<string, string>> FieldMapCache =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        private static async Task<Dictionary<string, string>> LoadFieldMapCachedAsync(
+            string orgBase, AuthenticationHeaderValue auth, CancellationToken ct)
+        {
+            lock (FieldMapCache)
+                if (FieldMapCache.TryGetValue(orgBase, out var cached))
+                    return cached;
+            var map = await LoadFieldMapAsync(orgBase, auth, ct);
+            lock (FieldMapCache)
+                FieldMapCache[orgBase] = map;
+            return map;
+        }
+
         private static async Task<Dictionary<string, string>> LoadFieldMapAsync(
             string orgBase, AuthenticationHeaderValue auth, CancellationToken ct)
         {
@@ -3101,7 +3130,8 @@ namespace NXProject.Services
             if (completedHours > 0 && estimatedHours > 0)
                 return Math.Min(100, completedHours / estimatedHours * 100);
 
-            return IsActiveState(state) ? 25 : 0;
+            // Active sem horas: a Task inicia com 10% (marca "começou").
+            return IsActiveState(state) ? 10 : 0;
         }
 
         public static bool ShouldBlockManualStoryCompletionWithoutDevOpsTasks(
@@ -3159,6 +3189,94 @@ namespace NXProject.Services
             public double? BacklogRank { get; init; }
             /// <summary>Data de criação (System.CreatedDate) do work item no DevOps, se disponível.</summary>
             public DateTime? CreatedDate { get; init; }
+            /// <summary>Quantidade de comentários (tramites) do work item — evita buscar o último quando é zero.</summary>
+            public int CommentCount { get; init; }
+        }
+
+        /// <summary>Último comentário (discussão/tramite) do work item, em texto plano; null se não houver.</summary>
+        public static async Task<string?> GetLastWorkItemCommentAsync(
+            TfsConnectionOptions options, int tfsId, CancellationToken ct = default)
+        {
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue(
+                "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+            // A API de comentários é por projeto e só existe na versão preview.
+            var url = $"{orgBase}/{Uri.EscapeDataString(options.TeamProject)}/_apis/wit/workItems/{tfsId}/comments?api-version=7.1-preview.3";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = auth;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("comments", out var arr) || arr.ValueKind != JsonValueKind.Array)
+                return null;
+
+            string? lastText = null;
+            DateTime lastDate = DateTime.MinValue;
+            foreach (var c in arr.EnumerateArray())
+            {
+                var text = c.TryGetProperty("text", out var tp) ? tp.GetString() : null;
+                var date = c.TryGetProperty("createdDate", out var dp)
+                    && DateTime.TryParse(dp.GetString(), CultureInfo.InvariantCulture,
+                        DateTimeStyles.AdjustToUniversal, out var d) ? d : DateTime.MinValue;
+                if (text != null && date >= lastDate) { lastDate = date; lastText = text; }
+            }
+            return lastText;
+        }
+
+        /// <summary>
+        /// Registra <paramref name="text"/> como comentário (tramite) do work item, mas só
+        /// quando difere do último comentário (comparação em texto plano, sem HTML).
+        /// Retorna true se registrou.
+        /// </summary>
+        public static async Task<bool> AddWorkItemCommentIfChangedAsync(
+            TfsConnectionOptions options, int tfsId, string text, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(text) || tfsId <= 0) return false;
+
+            var last = await GetLastWorkItemCommentAsync(options, tfsId, ct);
+            if (last != null && string.Equals(NormalizeCommentText(last), NormalizeCommentText(text), StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue(
+                "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+            var url = $"{orgBase}/{Uri.EscapeDataString(options.TeamProject)}/_apis/wit/workItems/{tfsId}/comments?api-version=7.1-preview.3";
+            var body = JsonSerializer.Serialize(new { text = text.Trim() });
+            using var req = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            };
+            req.Headers.Authorization = auth;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var resp = await Http.SendAsync(req, ct);
+            return resp.IsSuccessStatusCode;
+        }
+
+        /// <summary>Texto plano do comentário: remove tags HTML, decodifica entidades e colapsa espaços.</summary>
+        public static string NormalizeCommentText(string? html)
+        {
+            var text = Regex.Replace(html ?? "", "<[^>]+>", " ");
+            text = System.Net.WebUtility.HtmlDecode(text);
+            return Regex.Replace(text, @"\s+", " ").Trim();
+        }
+
+        /// <summary>Registra a Observação da planilha (PlanObservation) como tramite assim que a
+        /// Task ganha o ID do TFS. Falha de rede não interrompe o sync (fica registrada no log).</summary>
+        private static async Task PostPlanObservationAsync(
+            TfsConnectionOptions options, ProjectTask task, SyncReport report, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(task.PlanObservation) || task.TfsId is not > 0) return;
+            try
+            {
+                if (await AddWorkItemCommentIfChangedAsync(options, task.TfsId.Value, task.PlanObservation!, ct))
+                    report.LogSuccess($"Task - #{task.TfsId} ({task.Name}): observação registrada como tramite.");
+            }
+            catch (Exception ex)
+            {
+                report.LogError($"Task - #{task.TfsId} ({task.Name}): falha ao registrar a observação como tramite: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -3201,7 +3319,18 @@ namespace NXProject.Services
             const string CompletedRef    = "Microsoft.VSTS.Scheduling.CompletedWork";
             var ids = string.Join(",", childIds);
             const string ActivityRef = "Microsoft.VSTS.Common.Activity";
-            var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description,System.CreatedDate,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,Microsoft.VSTS.Common.StackRank,Microsoft.VSTS.Common.BacklogPriority,{ActivityRef}";
+
+            // % conclusão (Perc_Conclusao): a Task também tem o campo custom no DevOps.
+            string? percConcRef = null;
+            try
+            {
+                var fieldMap = await LoadFieldMapCachedAsync(orgBase, auth, ct);
+                percConcRef = ResolveField(fieldMap, options.PercConclusaoFieldName, PercConclusaoFieldNames);
+            }
+            catch { /* sem o campo, cai no cálculo por estado/horas */ }
+
+            var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description,System.CreatedDate,System.CommentCount,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,Microsoft.VSTS.Common.StackRank,Microsoft.VSTS.Common.BacklogPriority,{ActivityRef}";
+            if (percConcRef != null) fields += $",{percConcRef}";
             var batchUrl = $"{orgBase}/_apis/wit/workitems?ids={ids}&fields={fields}&{ApiVersion}";
             using var batchReq = new HttpRequestMessage(HttpMethod.Get, batchUrl);
             batchReq.Headers.Authorization = auth;
@@ -3245,8 +3374,12 @@ namespace NXProject.Services
                         }
                     }
 
-                    // Closed → 100%; Active/Actived → 25% quando não há CompletedWork calculável.
-                    var pct = PercentCompleteFromState(state, completed, hours);
+                    // Perc_Conclusao explícito manda (exceto Closed → sempre 100%);
+                    // sem o campo: Closed → 100%; Active → 10% sem CompletedWork calculável.
+                    var pct = percConcRef != null && !IsClosedState(state)
+                        && GetDoubleField(f, percConcRef) is { } cpc && cpc is >= 0 and <= 100
+                        ? cpc
+                        : PercentCompleteFromState(state, completed, hours);
 
                     var activity = f.TryGetProperty(ActivityRef, out var ap) && ap.ValueKind == JsonValueKind.String ? ap.GetString() : null;
                     var description = f.TryGetProperty("System.Description", out var dp) && dp.ValueKind == JsonValueKind.String ? dp.GetString() : null;
@@ -3265,7 +3398,9 @@ namespace NXProject.Services
                         PercentComplete = pct, AssignedTo = assignee, AssignedToDisplay = assigneeDisplay,
                         Priority = prio, Description = description, Activity = activity, Tags = tags,
                         BacklogRank = GetBacklogRank(f),
-                        CreatedDate = createdDate
+                        CreatedDate = createdDate,
+                        CommentCount = f.TryGetProperty("System.CommentCount", out var ccp) && ccp.ValueKind == JsonValueKind.Number
+                            ? ccp.GetInt32() : 0
                     });
                 }
             }

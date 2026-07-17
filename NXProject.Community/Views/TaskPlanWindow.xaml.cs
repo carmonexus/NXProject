@@ -55,6 +55,14 @@ namespace NXProject.Views
                 }
             };
             PlanGrid.CellEditEnding += (_, _) => _dirty = true;
+            // Atalho: digitar "+" na coluna DT_Registro vira a data de hoje.
+            PlanGrid.CellEditEnding += (_, args) =>
+            {
+                if (args.EditAction != DataGridEditAction.Commit) return;
+                if (!string.Equals(args.Column?.Header?.ToString(), RegisterDateCol, StringComparison.Ordinal)) return;
+                if (args.EditingElement is TextBox tb && tb.Text.Trim() == "+")
+                    tb.Text = FormatRegisterDate(DateTime.Today);
+            };
             PlanGrid.RowEditEnding += (_, _) =>
             {
                 _dirty = true;
@@ -71,16 +79,54 @@ namespace NXProject.Views
             _settings = TaskPlanSettingsStore.Load();
             Loaded += (_, _) =>
             {
-                // Reabre o último arquivo; senão o legado; senão monta do cronograma.
+                // Com cronograma aberto: só abre a planilha ASSOCIADA a este projeto
+                // (configuração local ou .nxp) — nunca a do cronograma anterior.
+                if (_vm?.Project != null)
+                {
+                    var associated = _settings.GetProjectFile(_vm.Project.Name) ?? _vm.Project.PlanSheetPath;
+                    if (!string.IsNullOrWhiteSpace(associated) && File.Exists(associated))
+                        LoadFile(associated!);
+                    else if (_vm.Project.Tasks.Count > 0)
+                        BuildFromSchedule();   // sem planilha associada: carrega o cronograma na grade
+                    else
+                        StatusText.Text = AppStrings.Get("TaskPlan_PickFile");
+                    return;
+                }
+
+                // Sem cronograma: reabre o último arquivo; senão o legado.
                 if (!string.IsNullOrWhiteSpace(_settings.LastFile) && File.Exists(_settings.LastFile))
                     LoadFile(_settings.LastFile);
                 else if (File.Exists(DefaultPath))
                     LoadFile(DefaultPath);
-                else if (_vm?.Project != null && _vm.Project.Tasks.Count > 0)
-                    BuildFromSchedule();   // sem Excel: carrega o cronograma aberto na grade
                 else
                     StatusText.Text = AppStrings.Get("TaskPlan_PickFile");
             };
+        }
+
+        // Mostra "pasta-pai\arquivo.xlsx" (o path completo fica no hint); clique abre o Explorer.
+        private void SetPathDisplay(string? fullPath)
+        {
+            if (string.IsNullOrWhiteSpace(fullPath))
+            {
+                PathText.ToolTip = null;
+                PathText.Cursor = null;
+                return;
+            }
+            var parent = Path.GetFileName(Path.GetDirectoryName(fullPath) ?? "");
+            PathText.Text = parent.Length > 0 ? $"{parent}\\{Path.GetFileName(fullPath)}" : Path.GetFileName(fullPath);
+            PathText.ToolTip = fullPath;
+            PathText.Cursor = System.Windows.Input.Cursors.Hand;
+        }
+
+        private void OnPathTextClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (string.IsNullOrEmpty(_path) || !File.Exists(_path)) return;
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    "explorer.exe", $"/select,\"{_path}\"") { UseShellExecute = true });
+            }
+            catch { /* Explorer indisponível não interrompe a tela */ }
         }
 
         // Aplica o log lateral de sincronização (IDs :I → :T) na planilha recém-aberta,
@@ -127,7 +173,7 @@ namespace NXProject.Views
             {
                 _data = ExcelTaskPlanService.Load(path);
                 _path = path;
-                PathText.Text = path;
+                SetPathDisplay(path);
                 // Baseline ANTES de ajustar a tabela: o que vier a seguir (coluna nova de
                 // aprovação/cronograma, normalização de Sim/Nao) é diferença real contra o
                 // .xlsx e precisa manter o plano sujo para ser gravado no próximo salvar.
@@ -160,8 +206,9 @@ namespace NXProject.Views
         // Colunas vinculadas ao cronograma: sempre existem (criadas se faltarem) e não podem ser excluídas.
         private const string ApprovalColumn = "Aprovada";
         private const string RegisterDateColumn = "DT_Registro";
+        private const string PercConclusaoColumn = "Perc_Conclusao";
         private static readonly string[] ApprovalValues = ["Nao", "Sim"];
-        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status" };
+        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Status" };
 
         // Colunas de ID dos pais (preenchidas pelo Buscar/Merge/Aplicar/Ctrl+clique).
         private string? FeatureIdCol => FindColumn("ID Feature", "IdFeature", "ID_Feature");
@@ -169,6 +216,8 @@ namespace NXProject.Views
         private string? ApprovalCol  => FindColumn(ApprovalColumn, "Aprovado", "Aprovacao", "Aprovação", "Approved");
         private string? RegisterDateCol => FindColumn(RegisterDateColumn, "DT Registro", "Data Registro",
             "Data de Registro", "Data de Inclusao", "Data de Inclusão", "Data Inclusao", "Register Date", "Registered");
+        private string? PercConclusaoCol => FindColumn(PercConclusaoColumn, "Perc Conclusao", "Perc_Conclusão",
+            "% Conclusão", "% Conclusao", "Percentual Conclusao", "Percent Complete", "PercentComplete");
 
         /// <summary>Data curta na cultura atual (pt-BR: dd/MM/yyyy; en-US: MM/dd/yyyy).</summary>
         private static string FormatRegisterDate(DateTime date) =>
@@ -192,6 +241,7 @@ namespace NXProject.Views
                || colName == StoryIdCol
                || colName == ApprovalCol
                || colName == RegisterDateCol
+               || colName == PercConclusaoCol
                || colName == FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task")
                || colName == FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH")
                || colName == FindColumn("Status", "Estado", "State");
@@ -287,6 +337,7 @@ namespace NXProject.Views
                 FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task"),
                 FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task"),
                 FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH"),
+                PercConclusaoCol,
                 FindColumn("Status", "Estado", "State"),
             };
             for (int i = 0; i < ScheduleColumns.Length; i++)
@@ -413,7 +464,7 @@ namespace NXProject.Views
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
 
             var table = new DataTable();
-            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Recurso", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             foreach (var t in Flatten(_vm.Project.Tasks).Where(t => IsType(t, "Task")))
@@ -430,6 +481,7 @@ namespace NXProject.Views
                 dr[RegisterDateColumn] = FormatRegisterDate(DateTime.Today);
                 dr["Prioridade"] = t.Priority?.ToString() ?? "";
                 dr["Estimado HH"] = t.EstimatedHours is > 0 ? t.EstimatedHours.Value.ToString("0.##") : "1";
+                dr[PercConclusaoColumn] = Math.Round(t.PercentComplete).ToString("0");
                 dr["Status"]     = t.TfsState ?? "";
                 dr["Recurso"]    = string.Join(", ", t.Resources
                     .Select(r => r.Resource?.Name ?? "")
@@ -447,6 +499,7 @@ namespace NXProject.Views
             for (int i = 0; i < cols.Length; i++)
                 _data.ColumnSheetMap[cols[i]] = i + 1;
             _path = null;
+            SetPathDisplay(null);
             PathText.Text = AppStrings.Get("TaskPlan_FromSchedule");
             UpdateFixedColumns();
             BuildEpicFilter();
@@ -558,7 +611,7 @@ namespace NXProject.Views
         private void BuildEmptyPlan()
         {
             var table = new DataTable();
-            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Recurso", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             _data = new TaskPlanData { Table = table, SheetName = "Tarefas", HeaderRow = 1 };
@@ -566,6 +619,7 @@ namespace NXProject.Views
                 _data.ColumnSheetMap[cols[i]] = i + 1;
 
             _path = null;
+            SetPathDisplay(null);
             PathText.Text = AppStrings.Get("TaskPlan_NewFile");
             _columnFilters.Clear();
             UpdateFixedColumns();
@@ -634,6 +688,7 @@ namespace NXProject.Views
                         dr[RegisterDateColumn] = FormatRegisterDate(t.CreatedDate ?? DateTime.Today);
                         dr["Prioridade"] = t.Priority.ToString();
                         dr["Estimado HH"] = t.EstimatedHours > 0 ? t.EstimatedHours.ToString("0.##") : "1";
+                        dr[PercConclusaoColumn] = Math.Round(t.PercentComplete).ToString("0");
                         dr["Status"]     = t.State ?? "";
                         _data.Table.Rows.Add(dr);
                         existingIds.Add(t.TfsId);
@@ -680,7 +735,67 @@ namespace NXProject.Views
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+            AskProjectAssociation(chosen);
             LoadFile(chosen);
+        }
+
+        // Pergunta a qual projeto (cronograma) a planilha pertence e grava a associação na
+        // configuração local — assim, ao abrir esse projeto, a planilha certa já aparece.
+        private void AskProjectAssociation(string path)
+        {
+            var known = _settings.ProjectFiles.Keys
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .OrderBy(k => k, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            var current = _vm?.Project?.Name?.Trim();
+            if (!string.IsNullOrEmpty(current) && !known.Contains(current, StringComparer.OrdinalIgnoreCase))
+                known.Insert(0, current!);
+            if (known.Count == 0) return;   // sem projeto aberto nem lista: nada a associar
+
+            var dlg = new Window
+            {
+                Title = AppStrings.Get("TaskPlan_AssocTitle"),
+                Owner = this,
+                Width = 420, SizeToContent = SizeToContent.Height,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize
+            };
+            var panel = new StackPanel { Margin = new Thickness(14) };
+            panel.Children.Add(new TextBlock
+            {
+                Text = AppStrings.Get("TaskPlan_AssocProject"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+            var combo = new ComboBox { IsEditable = true, ItemsSource = known, Height = 28 };
+            combo.Text = current ?? known[0];
+            panel.Children.Add(combo);
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+            var ok = new Button { Content = "OK", Width = 90, Height = 28, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+            var skip = new Button { Content = AppStrings.Get("TaskPlan_AssocSkip"), Width = 110, Height = 28, IsCancel = true };
+            ok.Click += (_, _) => dlg.DialogResult = true;
+            buttons.Children.Add(ok);
+            buttons.Children.Add(skip);
+            panel.Children.Add(buttons);
+            dlg.Content = panel;
+
+            if (dlg.ShowDialog() != true) return;
+            var name = combo.Text?.Trim();
+            if (string.IsNullOrEmpty(name)) return;
+
+            _settings.SetProjectFile(name!, path);
+            TaskPlanSettingsStore.Save(_settings);
+            // Se for o projeto aberto, persiste também no .nxp (backfill/associação existente).
+            if (_vm?.Project != null && string.Equals(name, _vm.Project.Name?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                _vm.Project.PlanSheetPath = path;
+                _vm.Project.IsDirty = true;
+            }
         }
 
         // Endereço web (ex.: https://...sharepoint.com/...) colado no diálogo Abrir.
@@ -760,7 +875,7 @@ namespace NXProject.Views
                 {
                     ExcelTaskPlanService.CreateNew(dlg.FileName, _data);
                     _path = dlg.FileName;
-                    PathText.Text = _path;
+                    SetPathDisplay(_path);
                     // Mapeia as colunas para o arquivo recém-criado (ordem da tabela, linha 1).
                     _data.HeaderRow = 1;
                     _data.ColumnSheetMap.Clear();
@@ -879,9 +994,52 @@ namespace NXProject.Views
                 spPanel.Children.Add(box);
                 return box;
             }
-            var spUrl    = AddField("TaskPlan_SpUrl", _settings.SharePointUrl);
+            // Projeto da URL/pasta: a URL do SharePoint é POR projeto/cronograma;
+            // o service principal (tenant/client) é o mesmo para todos.
+            var knownProjects = _settings.ProjectFiles.Keys
+                .Concat(_settings.ProjectSharePointUrls.Keys)
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(k => k, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            var openProject = _vm?.Project?.Name?.Trim();
+            if (!string.IsNullOrEmpty(openProject) && !knownProjects.Contains(openProject, StringComparer.OrdinalIgnoreCase))
+                knownProjects.Insert(0, openProject!);
+            spPanel.Children.Add(new TextBlock { Text = AppStrings.Get("TaskPlan_AssocTitle"), Margin = new Thickness(0, 6, 0, 2), FontSize = 12 });
+            var spProject = new ComboBox { IsEditable = true, ItemsSource = knownProjects, Height = 26 };
+            spProject.Text = openProject ?? knownProjects.FirstOrDefault() ?? "";
+            spPanel.Children.Add(spProject);
+
+            var spUrl = AddField("TaskPlan_SpUrl",
+                _settings.GetProjectSharePointUrl(spProject.Text) ?? _settings.SharePointUrl);
+
+            // Troca de projeto na combo: guarda a URL digitada e carrega a do projeto escolhido.
+            var editedUrls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var lastProject = spProject.Text;
+            spProject.SelectionChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!string.IsNullOrWhiteSpace(lastProject))
+                    editedUrls[lastProject.Trim()] = spUrl.Text?.Trim() ?? "";
+                var sel = spProject.Text?.Trim() ?? "";
+                spUrl.Text = editedUrls.TryGetValue(sel, out var pending)
+                    ? pending
+                    : _settings.GetProjectSharePointUrl(sel) ?? "";
+                lastProject = sel;
+            }), System.Windows.Threading.DispatcherPriority.Background);
+
             var spTenant = AddField("TaskPlan_SpTenant", _settings.SharePointTenantId);
             var spClient = AddField("TaskPlan_SpClient", _settings.SharePointClientId);
+
+            // Guia didático: como usar a planilha do SharePoint (sincronizada via OneDrive).
+            var spHelpBtn = new Button
+            {
+                Content = AppStrings.Get("TaskPlan_SpHelpButton"),
+                Height = 26, Padding = new Thickness(10, 0, 10, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            spHelpBtn.Click += (_, _) => ShowSharePointHowTo();
+            spPanel.Children.Add(spHelpBtn);
             spPanel.Children.Add(new TextBlock
             {
                 Text = AppStrings.Get("TaskPlan_SpNote"),
@@ -926,12 +1084,42 @@ namespace NXProject.Views
             if (dlg.ShowDialog() != true) return;
 
             _settings.DefaultFolder = folderBox.Text?.Trim() ?? "";
-            _settings.SharePointUrl = spUrl.Text?.Trim() ?? "";
+            // URL do SharePoint é por projeto (combo); tenant/client são globais.
+            if (!string.IsNullOrWhiteSpace(spProject.Text))
+                editedUrls[spProject.Text.Trim()] = spUrl.Text?.Trim() ?? "";
+            foreach (var kv in editedUrls)
+                _settings.SetProjectSharePointUrl(kv.Key, kv.Value);
             _settings.SharePointTenantId = spTenant.Text?.Trim() ?? "";
             _settings.SharePointClientId = spClient.Text?.Trim() ?? "";
             TaskPlanSettingsStore.Save(_settings);
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             StatusText.Text = AppStrings.Get("TaskPlan_SettingsSaved");
+        }
+
+        // Guia passo a passo: usar a planilha do SharePoint sincronizada via OneDrive.
+        private void ShowSharePointHowTo()
+        {
+            var win = new Window
+            {
+                Title = AppStrings.Get("TaskPlan_SpHelpTitle"),
+                Owner = this,
+                Width = 560, Height = 520,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+            var scroll = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Padding = new Thickness(18)
+            };
+            scroll.Content = new TextBlock
+            {
+                Text = AppStrings.Get("TaskPlan_SpHelpText"),
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 13,
+                LineHeight = 20
+            };
+            win.Content = scroll;
+            win.ShowDialog();
         }
 
         private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -1759,6 +1947,7 @@ namespace NXProject.Views
             var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
             var descCol    = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
             var regCol     = RegisterDateCol;
+            var pctCol     = PercConclusaoCol;
             if (idCol == null || taskCol == null)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_FetchNeedCols"),
@@ -1843,11 +2032,13 @@ namespace NXProject.Views
                     ch.Row[idCol] = $"{ch.Dev.Info.TfsId}:T";
                     if (ApprovalCol is { } ac) ch.Row[ac] = "Sim";
                     if (regCol != null && ch.Dev.Info.CreatedDate is { } cd) ch.Row[regCol] = FormatRegisterDate(cd);
+                    if (pctCol != null) ch.Row[pctCol] = Math.Round(ch.Dev.Info.PercentComplete).ToString("0");
                     if (prioCol != null) ch.Row[prioCol] = ch.Dev.Info.Priority.ToString();
                     if (estCol != null && ch.Dev.Info.EstimatedHours > 0) ch.Row[estCol] = ch.Dev.Info.EstimatedHours.ToString("0.##");
                     if (statusCol != null && !string.IsNullOrWhiteSpace(ch.Dev.Info.State)) ch.Row[statusCol] = ch.Dev.Info.State;
                     if (storyCol != null && string.IsNullOrWhiteSpace(ch.Row[storyCol]?.ToString()))
                         ch.Row[storyCol] = ch.Dev.Story.Name;
+                    await FillObservationFromLastCommentAsync(options, ch.Row, ch.Dev.Info);
                     matchedIds.Add(ch.Dev.Info.TfsId);
                     updated++;
                 }
@@ -1872,10 +2063,12 @@ namespace NXProject.Views
                     row[idCol] = displayId;
                     if (ApprovalCol is { } ac) row[ac] = "Sim";
                     if (regCol != null && src.Info.CreatedDate is { } cd) row[regCol] = FormatRegisterDate(cd);
+                    if (pctCol != null) row[pctCol] = Math.Round(src.Info.PercentComplete).ToString("0");
                     if (storyCol != null && string.IsNullOrWhiteSpace(row[storyCol]?.ToString())) row[storyCol] = src.Story.Name;
                     if (prioCol != null) row[prioCol] = src.Info.Priority.ToString();
                     if (estCol != null && src.Info.EstimatedHours > 0) row[estCol] = src.Info.EstimatedHours.ToString("0.##");
                     if (statusCol != null && !string.IsNullOrWhiteSpace(src.Info.State)) row[statusCol] = src.Info.State;
+                    await FillObservationFromLastCommentAsync(options, row, src.Info);
                     matchedIds.Add(src.Info.TfsId);
                     updated++;
                 }
@@ -1907,9 +2100,11 @@ namespace NXProject.Views
                 dr[idCol] = $"{src.Info.TfsId}:T";
                 if (ApprovalCol is { } ac) dr[ac] = "Sim";
                 if (regCol != null) dr[regCol] = FormatRegisterDate(src.Info.CreatedDate ?? DateTime.Today);
+                if (pctCol != null) dr[pctCol] = Math.Round(src.Info.PercentComplete).ToString("0");
                 if (prioCol != null) dr[prioCol] = src.Info.Priority.ToString();
                 if (estCol != null && src.Info.EstimatedHours > 0) dr[estCol] = src.Info.EstimatedHours.ToString("0.##");
                 if (statusCol != null) dr[statusCol] = src.Info.State ?? "";
+                await FillObservationFromLastCommentAsync(options, dr, src.Info);
                 _data.Table.Rows.Add(dr);
                 added++;
             }
@@ -2685,6 +2880,37 @@ namespace NXProject.Views
             return null;
         }
 
+        private static T? FindDescendant<T>(DependencyObject? d) where T : DependencyObject
+        {
+            if (d == null) return null;
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(d); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(d, i);
+                if (child is T t) return t;
+                if (FindDescendant<T>(child) is { } found) return found;
+            }
+            return null;
+        }
+
+        // Clique único nas colunas de combo (Aprovada/Status) já entra em edição e
+        // abre o dropdown — sem isso a combo só aparece no duplo clique.
+        private void OnGridPreviewMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if ((System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)
+                return;
+            var cell = FindAncestor<DataGridCell>(e.OriginalSource as DependencyObject);
+            if (cell is not { IsEditing: false, IsReadOnly: false } || cell.Column is not DataGridComboBoxColumn)
+                return;
+
+            PlanGrid.CurrentCell = new DataGridCellInfo(cell);
+            PlanGrid.BeginEdit();
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+            {
+                if (FindDescendant<ComboBox>(cell) is { } combo)
+                    combo.IsDropDownOpen = true;
+            });
+        }
+
         // Escreve o objeto escolhido na célula e traz os dados da hierarquia (pais; e ID/prioridade para Task).
         private void ApplyPickedItem(DataRow dr, string colName, string type, ProjectTask picked)
         {
@@ -2825,6 +3051,7 @@ namespace NXProject.Views
                     {
                         dr[idCol] = $"{devTask.TfsId}:T";
                         if (ApprovalCol is { } ac) dr[ac] = "Sim";
+                        if (PercConclusaoCol is { } pcc) dr[pcc] = Math.Round(devTask.PercentComplete).ToString("0");
                         if (prioCol != null)
                             dr[prioCol] = devTask.Priority.ToString();
                         if (estCol != null && devTask.EstimatedHours > 0)
@@ -2871,6 +3098,8 @@ namespace NXProject.Views
             var descCol    = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
             var prioCol    = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
             var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var pctCol     = PercConclusaoCol;
+            var statusCol  = FindColumn("Status", "Estado", "State");
             var resourceCol = ResourceCol;
             if (idCol == null || taskCol == null || storyCol == null)
             {
@@ -2992,6 +3221,16 @@ namespace NXProject.Views
                         }
                         if (resourceCol != null && AssignResourceFromPlan(match, dr[resourceCol]?.ToString()))
                             scheduleChanged = true;
+                        if (ApplyTaskPlanStateAndPercent(match, dr, statusCol, pctCol))
+                            scheduleChanged = true;
+                        // Observação viaja com a Task: se ainda for interna (:I), o sync
+                        // registra o tramite no DevOps assim que ela ganhar o ID do TFS.
+                        var matchObs = ObservationCol is { } moCol ? dr[moCol]?.ToString()?.Trim() : null;
+                        if (!string.IsNullOrEmpty(matchObs) && !string.Equals(match.PlanObservation ?? "", matchObs, StringComparison.Ordinal))
+                        {
+                            match.PlanObservation = matchObs;
+                            scheduleChanged = true;
+                        }
                         dr[idCol] = match.TfsId is > 0 ? $"{match.TfsId.Value}:T" : $"{match.Id}:I";
                         existing++;
                         continue;
@@ -3036,6 +3275,10 @@ namespace NXProject.Views
                         {
                             if (!pendingDevOps.TryGetValue(storyNode, out var list))
                                 pendingDevOps[storyNode] = list = new List<TaskReviewRow>();
+                            var planStatus = statusCol != null ? dr[statusCol]?.ToString()?.Trim() : null;
+                            var planPercent = ParseTaskPlanPercent(pctCol != null ? dr[pctCol]?.ToString() : null);
+                            if (planPercent == null && !string.IsNullOrWhiteSpace(planStatus))
+                                planPercent = TfsImportService.PercentCompleteFromState(planStatus);
                             list.Add(new TaskReviewRow
                             {
                                 StoryTask       = storyNode,
@@ -3043,10 +3286,12 @@ namespace NXProject.Views
                                 Title           = devTask.Title,
                                 Description     = NormalizeTaskPlanDescription(descCol != null ? dr[descCol]?.ToString() : null)
                                                   ?? devTask.Description ?? "",
-                                State           = devTask.State ?? "New",
+                                State           = !string.IsNullOrWhiteSpace(planStatus)
+                                    ? planStatus
+                                    : devTask.State ?? "New",
                                 EstimatedHours  = devTask.EstimatedHours,
                                 CompletedHours  = devTask.CompletedHours,
-                                PercentComplete = devTask.PercentComplete,
+                                PercentComplete = planPercent ?? devTask.PercentComplete,
                                 Priority        = devTask.Priority,
                                 BacklogRank     = devTask.BacklogRank,
                                 AssignedTo        = devTask.AssignedTo ?? "",
@@ -3069,6 +3314,9 @@ namespace NXProject.Views
                         task.Priority = prio;
                     if (resourceCol != null)
                         AssignResourceFromPlan(task, dr[resourceCol]?.ToString());
+                    ApplyTaskPlanStateAndPercent(task, dr, statusCol, pctCol);
+                    if (ObservationCol is { } noCol && dr[noCol]?.ToString()?.Trim() is { Length: > 0 } newObs)
+                        task.PlanObservation = newObs;
 
                     storyNode.Children.Add(task);
                     storyNode.IsSummary = true;
@@ -3109,8 +3357,110 @@ namespace NXProject.Views
             if (created + existing > 0) _dirty = true;
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
+
+            // Observações viram tramite (comentário) da Task no DevOps — sem duplicar:
+            // só registra quando o texto difere do último comentário do work item.
+            int obsPosted = 0;
+            if (canQueryDevOps)
+                obsPosted = await PostObservationsAsCommentsAsync(options, approvedPlanRows, idCol);
+
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
-            StatusText.Text = AppStrings.Get("TaskPlan_SyncDone", created, existing, noStory);
+            StatusText.Text = AppStrings.Get("TaskPlan_SyncDone", created, existing, noStory)
+                + (obsPosted > 0 ? " " + AppStrings.Get("TaskPlan_ObsPosted", obsPosted) : "");
+        }
+
+        // Coluna de observações da planilha (registrada como tramite no DevOps ao aplicar).
+        private string? ObservationCol => FindColumn(
+            "Observações", "Observacoes", "Observação", "Observacao", "Obs", "Notes", "Comentário", "Comentario");
+
+        private static double? ParseTaskPlanPercent(string? text)
+        {
+            var raw = (text ?? string.Empty).Trim().TrimEnd('%').Trim();
+            if (raw.Length == 0) return null;
+            if (!double.TryParse(raw, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.CurrentCulture, out var value)
+                && !double.TryParse(raw.Replace(',', '.'), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out value))
+                return null;
+            return Math.Clamp(value, 0, 100);
+        }
+
+        private static bool ApplyTaskPlanStateAndPercent(ProjectTask task, DataRow row, string? statusCol, string? pctCol)
+        {
+            bool changed = false;
+            var status = statusCol != null ? row[statusCol]?.ToString()?.Trim() : null;
+            var pct = pctCol != null ? ParseTaskPlanPercent(row[pctCol]?.ToString()) : null;
+            if (pct == null && !string.IsNullOrWhiteSpace(status))
+                pct = TfsImportService.PercentCompleteFromState(status);
+
+            if (!string.IsNullOrWhiteSpace(status)
+                && !string.Equals(task.TfsState ?? "", status, StringComparison.Ordinal))
+            {
+                task.TfsState = status;
+                changed = true;
+            }
+            if (pct.HasValue && Math.Abs(task.PercentComplete - pct.Value) > 0.0001)
+            {
+                task.PercentComplete = pct.Value;
+                changed = true;
+            }
+            return changed;
+        }
+
+        /// <summary>Load Task/Merge: traz o último tramite (comentário) do DevOps para a coluna
+        /// Observações — assim o Aplicar não registra de novo o que já é o último tramite.</summary>
+        private async Task FillObservationFromLastCommentAsync(
+            TfsConnectionOptions options, DataRow row, TfsImportService.DevOpsTaskInfo info)
+        {
+            if (ObservationCol is not { } obsCol || info.CommentCount <= 0) return;
+            try
+            {
+                var last = TfsImportService.NormalizeCommentText(
+                    await TfsImportService.GetLastWorkItemCommentAsync(options, info.TfsId));
+                if (last.Length == 0) return;
+                if (!string.Equals(row[obsCol]?.ToString()?.Trim() ?? "", last, StringComparison.Ordinal))
+                {
+                    row[obsCol] = last;
+                    _dirty = true;
+                }
+            }
+            catch { /* sem o tramite, a coluna fica como está */ }
+        }
+
+        /// <summary>Registra a Observação das linhas :T como comentário da Task no DevOps,
+        /// pulando as que já são o último comentário. Retorna quantas foram registradas.</summary>
+        private async Task<int> PostObservationsAsCommentsAsync(
+            TfsConnectionOptions options, List<DataRow> rows, string idCol)
+        {
+            if (ObservationCol is not { } obsCol) return 0;
+
+            int posted = 0;
+            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            try
+            {
+                foreach (var dr in rows)
+                {
+                    var obs = dr[obsCol]?.ToString()?.Trim();
+                    if (string.IsNullOrEmpty(obs)) continue;
+
+                    var id = dr[idCol]?.ToString()?.Trim() ?? "";
+                    if (!id.EndsWith(":T", StringComparison.OrdinalIgnoreCase)
+                        || !int.TryParse(id[..^2], out var tfsId) || tfsId <= 0)
+                        continue;
+
+                    try
+                    {
+                        if (await TfsImportService.AddWorkItemCommentIfChangedAsync(options, tfsId, obs))
+                            posted++;
+                    }
+                    catch { /* falha pontual de rede não interrompe o Aplicar */ }
+                }
+            }
+            finally
+            {
+                System.Windows.Input.Mouse.OverrideCursor = null;
+            }
+            return posted;
         }
 
         private static string? NormalizeTaskPlanDescription(string? value)

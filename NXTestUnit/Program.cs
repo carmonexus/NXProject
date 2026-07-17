@@ -1255,8 +1255,8 @@ internal static class Program
         AssertEqual(0, TfsImportService.PercentCompleteFromState("New", completedHours: 8, estimatedHours: 8),
             "Task New deve ficar 0% mesmo se o DevOps trouxer CompletedWork preenchido.");
         AssertEqual(100, TfsImportService.PercentCompleteFromState("Closed"), "Task Closed importada deve ficar 100%.");
-        AssertEqual(25, TfsImportService.PercentCompleteFromState("Active"), "Task Active importada sem horas deve ficar 25%.");
-        AssertEqual(25, TfsImportService.PercentCompleteFromState("Actived"), "Task Actived importada sem horas deve ficar 25%.");
+        AssertEqual(10, TfsImportService.PercentCompleteFromState("Active"), "Task Active importada sem horas deve iniciar com 10%.");
+        AssertEqual(10, TfsImportService.PercentCompleteFromState("Actived"), "Task Actived importada sem horas deve iniciar com 10%.");
         AssertEqual(50, TfsImportService.PercentCompleteFromState("Active", completedHours: 4, estimatedHours: 8),
             "Quando houver CompletedWork calculável, o percentual importado deve respeitar HH realizado/estimado.");
     }
@@ -1273,7 +1273,7 @@ internal static class Program
         var vm = new TaskViewModel(task);
 
         vm.TfsState = "Active";
-        AssertEqual(25, task.PercentComplete, "Editar estado para Active no cronograma deve ajustar para 25%.");
+        AssertEqual(10, task.PercentComplete, "Editar estado para Active no cronograma deve ajustar para 10%.");
 
         vm.TfsState = "Closed";
         AssertEqual(100, task.PercentComplete, "Editar estado para Closed no cronograma deve ajustar para 100%.");
