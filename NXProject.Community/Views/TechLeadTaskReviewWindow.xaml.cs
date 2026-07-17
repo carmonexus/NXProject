@@ -177,6 +177,7 @@ namespace NXProject.Views
                         CompletedHours  = t.CompletedHours,
                         PercentComplete = t.PercentComplete,
                         Priority        = t.Priority,
+                        BacklogRank     = t.BacklogRank,
                         AssignedTo        = t.AssignedTo ?? "",
                         AssignedToDisplay = t.AssignedToDisplay ?? t.AssignedTo ?? "",
                         Activity          = t.Activity ?? "",
@@ -1037,6 +1038,8 @@ namespace NXProject.Views
 
         private int _priority = 5;
         public int Priority { get => _priority; set { if (_priority == value) return; _priority = value; OnPropertyChanged(); } }
+
+        public double? BacklogRank { get; set; }
 
         private string _activity = "";
         public string Activity { get => _activity; set { if (_activity == value) return; _activity = value; OnPropertyChanged(); } }

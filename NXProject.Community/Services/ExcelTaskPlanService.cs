@@ -29,9 +29,10 @@ namespace NXProject.Community.Services
         /// <summary>Colunas com nome fixo (vinculadas ao cronograma): nunca recebem o
         /// prefixo "xx#_" — a posição delas é a física da planilha (muda só via Excel).</summary>
         public HashSet<string> FixedNameColumns { get; init; } = new(StringComparer.OrdinalIgnoreCase);
-        /// <summary>Quando uma planilha antiga não tem a coluna inicial de aprovação,
-        /// o Save insere uma coluna física no início antes de regravar a tabela.</summary>
-        public bool InsertLeadingApprovalColumnOnSave { get; set; }
+        /// <summary>Posições físicas (1-based) onde o Save deve inserir uma coluna em branco
+        /// antes de regravar a tabela — usado para trazer as colunas de controle (Aprovada,
+        /// DT_Registro) para o início de planilhas antigas. Aplicadas na ordem da lista.</summary>
+        public List<int> InsertBlankLeadingColumnsOnSave { get; init; } = new();
     }
 
     /// <summary>
@@ -171,11 +172,9 @@ namespace NXProject.Community.Services
             using var wb = new XLWorkbook(path);
             var ws = wb.Worksheet(data.SheetName);
             int headerRow = data.HeaderRow;
-            if (data.InsertLeadingApprovalColumnOnSave)
-            {
-                ws.Column(1).InsertColumnsBefore(1);
-                data.InsertLeadingApprovalColumnOnSave = false;
-            }
+            foreach (var pos in data.InsertBlankLeadingColumnsOnSave)
+                ws.Column(pos).InsertColumnsBefore(1);
+            data.InsertBlankLeadingColumnsOnSave.Clear();
             int lastUsedRow = ws.LastRowUsed()?.RowNumber() ?? headerRow;
 
             // Colunas visíveis da tabela (ignora as auxiliares __*).

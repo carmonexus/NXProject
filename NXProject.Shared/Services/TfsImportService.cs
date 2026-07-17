@@ -157,7 +157,8 @@ namespace NXProject.Services
             {
                 "System.Id", "System.Title", "System.WorkItemType", "System.State",
                 "System.AssignedTo", "System.IterationPath", "System.Description", "System.Tags",
-                "Microsoft.VSTS.Common.StackRank"
+                "Microsoft.VSTS.Common.StackRank",
+                "Microsoft.VSTS.Common.BacklogPriority"
             };
             var syncVersionRef = ResolveField(fieldMap, options.SyncVersionFieldName, new[] { "Sync_version", "SyncVersion", "Sync Version" });
             var syncNameRef    = ResolveField(fieldMap, options.SyncNameFieldName,    new[] { "Sync_Name", "SyncName", "Sync Name" });
@@ -570,6 +571,8 @@ namespace NXProject.Services
             if (syncVersionRef != null) requested.Add(syncVersionRef);
             if (syncNameRef != null) requested.Add(syncNameRef);
             requested.Add("Microsoft.VSTS.Common.Priority"); // Priority para Tasks
+            requested.Add("Microsoft.VSTS.Common.StackRank");
+            requested.Add("Microsoft.VSTS.Common.BacklogPriority");
 
             // Campos Custom DevOps — necessário para comparar valor atual antes de enviar patch
             foreach (var kv in options.TypeFieldMappings)
@@ -865,7 +868,7 @@ namespace NXProject.Services
                         // Ordem (StackRank) — sincroniza se o rank desejado mudou.
                         if (task.TfsStackRank.HasValue)
                         {
-                            var currentRank = ReadDouble(wi, "Microsoft.VSTS.Common.StackRank");
+                            var currentRank = GetBacklogRank(wi.Fields);
                             if (currentRank == null || Math.Abs(currentRank.Value - task.TfsStackRank.Value) > 0.0001)
                             {
                                 ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.StackRank", task.TfsStackRank.Value));
@@ -2726,12 +2729,16 @@ namespace NXProject.Services
             if (!childrenByParent.TryGetValue(parentId, out var list))
                 yield break;
 
-            // Ordena irmãos pelo StackRank (backlog do DevOps); sem rank vai por último.
+            // Ordena irmãos pelo rank do backlog do DevOps. Alguns processos usam
+            // StackRank; outros expõem a mesma ordem como BacklogPriority. Sem rank,
+            // preserva a ordem da consulta de hierarquia em vez de cair para ID.
             var ordered = list
-                .OrderBy(id => items.TryGetValue(id, out var w) && w.StackRank.HasValue
+                .Select((id, index) => (id, index))
+                .OrderBy(x => items.TryGetValue(x.id, out var w) && w.StackRank.HasValue
                     ? w.StackRank!.Value
                     : double.MaxValue)
-                .ThenBy(id => id);
+                .ThenBy(x => x.index)
+                .Select(x => x.id);
 
             foreach (var id in ordered)
                 yield return id;
@@ -3149,6 +3156,9 @@ namespace NXProject.Services
             public string? Description { get; init; }
             public string? Activity { get; init; }
             public string? Tags { get; init; }
+            public double? BacklogRank { get; init; }
+            /// <summary>Data de criação (System.CreatedDate) do work item no DevOps, se disponível.</summary>
+            public DateTime? CreatedDate { get; init; }
         }
 
         /// <summary>
@@ -3191,7 +3201,7 @@ namespace NXProject.Services
             const string CompletedRef    = "Microsoft.VSTS.Scheduling.CompletedWork";
             var ids = string.Join(",", childIds);
             const string ActivityRef = "Microsoft.VSTS.Common.Activity";
-            var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,{ActivityRef}";
+            var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description,System.CreatedDate,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,Microsoft.VSTS.Common.StackRank,Microsoft.VSTS.Common.BacklogPriority,{ActivityRef}";
             var batchUrl = $"{orgBase}/_apis/wit/workitems?ids={ids}&fields={fields}&{ApiVersion}";
             using var batchReq = new HttpRequestMessage(HttpMethod.Get, batchUrl);
             batchReq.Headers.Authorization = auth;
@@ -3241,13 +3251,21 @@ namespace NXProject.Services
                     var activity = f.TryGetProperty(ActivityRef, out var ap) && ap.ValueKind == JsonValueKind.String ? ap.GetString() : null;
                     var description = f.TryGetProperty("System.Description", out var dp) && dp.ValueKind == JsonValueKind.String ? dp.GetString() : null;
                     var tags     = f.TryGetProperty("System.Tags", out var tgp) && tgp.ValueKind == JsonValueKind.String ? tgp.GetString() : null;
+                    DateTime? createdDate = f.TryGetProperty("System.CreatedDate", out var cdp)
+                        && cdp.ValueKind == JsonValueKind.String
+                        && DateTime.TryParse(cdp.GetString(), CultureInfo.InvariantCulture,
+                            DateTimeStyles.AdjustToUniversal, out var cd)
+                        ? cd.ToLocalTime()
+                        : null;
 
                     result.Add(new DevOpsTaskInfo
                     {
                         TfsId = tid, Title = title, State = state,
                         EstimatedHours = hours, CompletedHours = completed,
                         PercentComplete = pct, AssignedTo = assignee, AssignedToDisplay = assigneeDisplay,
-                        Priority = prio, Description = description, Activity = activity, Tags = tags
+                        Priority = prio, Description = description, Activity = activity, Tags = tags,
+                        BacklogRank = GetBacklogRank(f),
+                        CreatedDate = createdDate
                     });
                 }
             }
@@ -4581,7 +4599,7 @@ namespace NXProject.Services
                         IterationPath = GetString(f, "System.IterationPath") ?? string.Empty,
                         Description = GetString(f, "System.Description") ?? string.Empty,
                         Tags = GetString(f, "System.Tags") ?? string.Empty,
-                        StackRank = GetDoubleField(f, "Microsoft.VSTS.Common.StackRank"),
+                        StackRank = GetBacklogRank(f),
                         Fields = f.Clone(),
                         Relations = wi.TryGetProperty("relations", out var relEl) &&
                                     relEl.ValueKind == JsonValueKind.Array
@@ -4965,6 +4983,10 @@ namespace NXProject.Services
                 _ => null
             };
         }
+
+        private static double? GetBacklogRank(JsonElement fields) =>
+            GetDoubleField(fields, "Microsoft.VSTS.Common.StackRank")
+            ?? GetDoubleField(fields, "Microsoft.VSTS.Common.BacklogPriority");
 
         private static string GetIdentityName(JsonElement fields, string refName)
         {

@@ -159,13 +159,20 @@ namespace NXProject.Views
 
         // Colunas vinculadas ao cronograma: sempre existem (criadas se faltarem) e não podem ser excluídas.
         private const string ApprovalColumn = "Aprovada";
+        private const string RegisterDateColumn = "DT_Registro";
         private static readonly string[] ApprovalValues = ["Nao", "Sim"];
-        private static readonly string[] ScheduleColumns = { ApprovalColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status" };
+        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Status" };
 
         // Colunas de ID dos pais (preenchidas pelo Buscar/Merge/Aplicar/Ctrl+clique).
         private string? FeatureIdCol => FindColumn("ID Feature", "IdFeature", "ID_Feature");
         private string? StoryIdCol   => FindColumn("ID Story", "IdStory", "ID_Story");
         private string? ApprovalCol  => FindColumn(ApprovalColumn, "Aprovado", "Aprovacao", "Aprovação", "Approved");
+        private string? RegisterDateCol => FindColumn(RegisterDateColumn, "DT Registro", "Data Registro",
+            "Data de Registro", "Data de Inclusao", "Data de Inclusão", "Data Inclusao", "Register Date", "Registered");
+
+        /// <summary>Data curta na cultura atual (pt-BR: dd/MM/yyyy; en-US: MM/dd/yyyy).</summary>
+        private static string FormatRegisterDate(DateTime date) =>
+            date.ToString("d", System.Globalization.CultureInfo.CurrentCulture);
 
         private static string DisplayIdOf(ProjectTask t) => t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
 
@@ -184,6 +191,7 @@ namespace NXProject.Views
                || colName == FeatureIdCol
                || colName == StoryIdCol
                || colName == ApprovalCol
+               || colName == RegisterDateCol
                || colName == FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task")
                || colName == FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH")
                || colName == FindColumn("Status", "Estado", "State");
@@ -262,10 +270,12 @@ namespace NXProject.Views
             // Renomeia a coluna legada "Estimado" para "Estimado HH" (mantém a posição).
             RenameColumnPreservingPosition("Estimado", "Estimado HH");
             EnsureApprovalColumn();
+            EnsureRegisterDateColumn();
 
             string?[] found =
             {
                 ApprovalCol,
+                RegisterDateCol,
                 _data.Table.Columns.Cast<DataColumn>().Select(c => c.ColumnName)
                     .FirstOrDefault(n => n.Trim().StartsWith("EPIC", StringComparison.OrdinalIgnoreCase)
                                       || n.Trim().StartsWith("Épic", StringComparison.OrdinalIgnoreCase)),
@@ -297,31 +307,39 @@ namespace NXProject.Views
             PlaceAfter(FeatureIdCol, FindColumn("Feature", "Nome da Feature"));
             PlaceAfter(StoryIdCol, FindColumn("Story", "Nome da Story"));
             _data.Table.Columns[ApprovalCol!]!.SetOrdinal(0);
+            if (RegisterDateCol is { } rc) _data.Table.Columns[rc]!.SetOrdinal(1);
             NormalizeApprovalValues();
         }
 
-        private void EnsureApprovalColumn()
+        private void EnsureApprovalColumn()   => EnsureLeadingControlColumn(ApprovalColumn, ApprovalCol, 0);
+        private void EnsureRegisterDateColumn() => EnsureLeadingControlColumn(RegisterDateColumn, RegisterDateCol, 1);
+
+        /// <summary>Garante uma coluna de controle fixa no início (posição de visão
+        /// <paramref name="viewOrdinal"/>). Se a planilha já tem colunas físicas e esta é
+        /// nova, agenda a inserção de uma coluna física em branco na posição correspondente
+        /// e reindexa o mapa — assim ela nasce no início do .xlsx, não no fim com prefixo.</summary>
+        private void EnsureLeadingControlColumn(string canonical, string? existing, int viewOrdinal)
         {
             if (_data == null) return;
-            var existing = ApprovalCol;
-            if (existing == null)
+            if (existing != null)
             {
-                _data.Table.Columns.Add(ApprovalColumn, typeof(string));
-                _data.Table.Columns[ApprovalColumn]!.SetOrdinal(0);
-                if (_data.ColumnSheetMap.Count > 0)
-                {
-                    foreach (var key in _data.ColumnSheetMap.Keys.ToList())
+                RenameColumnPreservingPosition(existing, canonical);
+                _data.Table.Columns[canonical]!.SetOrdinal(viewOrdinal);
+                return;
+            }
+
+            _data.Table.Columns.Add(canonical, typeof(string));
+            _data.Table.Columns[canonical]!.SetOrdinal(viewOrdinal);
+            if (_data.ColumnSheetMap.Count > 0)
+            {
+                int pos = viewOrdinal + 1;   // posição física (1-based) desejada no início
+                foreach (var key in _data.ColumnSheetMap.Keys.ToList())
+                    if (_data.ColumnSheetMap[key] >= pos)
                         _data.ColumnSheetMap[key]++;
-                    _data.ColumnSheetMap[ApprovalColumn] = 1;
-                    _data.InsertLeadingApprovalColumnOnSave = true;
-                }
-                _dirty = true;
+                _data.ColumnSheetMap[canonical] = pos;
+                _data.InsertBlankLeadingColumnsOnSave.Add(pos);
             }
-            else
-            {
-                RenameColumnPreservingPosition(existing, ApprovalColumn);
-                _data.Table.Columns[ApprovalColumn]!.SetOrdinal(0);
-            }
+            _dirty = true;
         }
 
         private static bool IsApprovalYes(string? value)
@@ -354,7 +372,9 @@ namespace NXProject.Views
 
         private void NormalizeApprovalValues()
         {
-            if (_data == null || ApprovalCol is not { } approvalCol) return;
+            if (_data == null) return;
+            EnsureRegisterDates();
+            if (ApprovalCol is not { } approvalCol) return;
             var idCol = FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task");
             foreach (DataRow row in _data.Table.Rows)
             {
@@ -370,13 +390,30 @@ namespace NXProject.Views
             }
         }
 
+        /// <summary>Carimba a data de inclusão (hoje) nas linhas com Task e sem DT_Registro.
+        /// As linhas :T aprovadas recebem a data real de criação do TFS no Load Task.</summary>
+        private void EnsureRegisterDates()
+        {
+            if (_data == null || RegisterDateCol is not { } regCol) return;
+            var taskCol = FindColumn("Task", "Tarefa", "Nome da Task");
+            if (taskCol == null) return;
+            var today = FormatRegisterDate(DateTime.Today);
+            foreach (DataRow row in _data.Table.Rows)
+            {
+                if (string.IsNullOrWhiteSpace(row[taskCol]?.ToString())) continue;
+                if (!string.IsNullOrWhiteSpace(row[regCol]?.ToString())) continue;
+                row[regCol] = today;
+                _dirty = true;
+            }
+        }
+
         // Monta o plano a partir do cronograma aberto (quando não há Excel para abrir).
         private void BuildFromSchedule()
         {
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
 
             var table = new DataTable();
-            string[] cols = { ApprovalColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             foreach (var t in Flatten(_vm.Project.Tasks).Where(t => IsType(t, "Task")))
@@ -390,6 +427,7 @@ namespace NXProject.Views
                 dr["Task"]    = t.Name ?? "";
                 dr["ID Task"]  = t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
                 dr[ApprovalColumn] = t.TfsId is > 0 ? "Sim" : "Nao";
+                dr[RegisterDateColumn] = FormatRegisterDate(DateTime.Today);
                 dr["Prioridade"] = t.Priority?.ToString() ?? "";
                 dr["Estimado HH"] = t.EstimatedHours is > 0 ? t.EstimatedHours.Value.ToString("0.##") : "1";
                 dr["Status"]     = t.TfsState ?? "";
@@ -520,7 +558,7 @@ namespace NXProject.Views
         private void BuildEmptyPlan()
         {
             var table = new DataTable();
-            string[] cols = { ApprovalColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", "Recurso", "Status", "Descrição da Task", "Observações" };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             _data = new TaskPlanData { Table = table, SheetName = "Tarefas", HeaderRow = 1 };
@@ -593,6 +631,7 @@ namespace NXProject.Views
                         dr["Task"]    = t.Title;
                         dr["ID Task"]  = $"{t.TfsId}:T";
                         dr[ApprovalColumn] = "Sim";
+                        dr[RegisterDateColumn] = FormatRegisterDate(t.CreatedDate ?? DateTime.Today);
                         dr["Prioridade"] = t.Priority.ToString();
                         dr["Estimado HH"] = t.EstimatedHours > 0 ? t.EstimatedHours.ToString("0.##") : "1";
                         dr["Status"]     = t.State ?? "";
@@ -1719,6 +1758,7 @@ namespace NXProject.Views
             var statusCol  = FindColumn("Status", "Estado", "State");
             var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
             var descCol    = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
+            var regCol     = RegisterDateCol;
             if (idCol == null || taskCol == null)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_FetchNeedCols"),
@@ -1802,6 +1842,7 @@ namespace NXProject.Views
                     log.AppendLine($"    Linha {ch.RowNumber}: \"{ch.From}\" → {ch.Dev.Info.TfsId}:T \"{ch.Dev.Info.Title}\"");
                     ch.Row[idCol] = $"{ch.Dev.Info.TfsId}:T";
                     if (ApprovalCol is { } ac) ch.Row[ac] = "Sim";
+                    if (regCol != null && ch.Dev.Info.CreatedDate is { } cd) ch.Row[regCol] = FormatRegisterDate(cd);
                     if (prioCol != null) ch.Row[prioCol] = ch.Dev.Info.Priority.ToString();
                     if (estCol != null && ch.Dev.Info.EstimatedHours > 0) ch.Row[estCol] = ch.Dev.Info.EstimatedHours.ToString("0.##");
                     if (statusCol != null && !string.IsNullOrWhiteSpace(ch.Dev.Info.State)) ch.Row[statusCol] = ch.Dev.Info.State;
@@ -1830,6 +1871,7 @@ namespace NXProject.Views
 
                     row[idCol] = displayId;
                     if (ApprovalCol is { } ac) row[ac] = "Sim";
+                    if (regCol != null && src.Info.CreatedDate is { } cd) row[regCol] = FormatRegisterDate(cd);
                     if (storyCol != null && string.IsNullOrWhiteSpace(row[storyCol]?.ToString())) row[storyCol] = src.Story.Name;
                     if (prioCol != null) row[prioCol] = src.Info.Priority.ToString();
                     if (estCol != null && src.Info.EstimatedHours > 0) row[estCol] = src.Info.EstimatedHours.ToString("0.##");
@@ -1864,6 +1906,7 @@ namespace NXProject.Views
                 dr[taskCol] = src.Info.Title;
                 dr[idCol] = $"{src.Info.TfsId}:T";
                 if (ApprovalCol is { } ac) dr[ac] = "Sim";
+                if (regCol != null) dr[regCol] = FormatRegisterDate(src.Info.CreatedDate ?? DateTime.Today);
                 if (prioCol != null) dr[prioCol] = src.Info.Priority.ToString();
                 if (estCol != null && src.Info.EstimatedHours > 0) dr[estCol] = src.Info.EstimatedHours.ToString("0.##");
                 if (statusCol != null) dr[statusCol] = src.Info.State ?? "";
@@ -3005,6 +3048,7 @@ namespace NXProject.Views
                                 CompletedHours  = devTask.CompletedHours,
                                 PercentComplete = devTask.PercentComplete,
                                 Priority        = devTask.Priority,
+                                BacklogRank     = devTask.BacklogRank,
                                 AssignedTo        = devTask.AssignedTo ?? "",
                                 AssignedToDisplay = devTask.AssignedToDisplay ?? devTask.AssignedTo ?? "",
                             });

@@ -36,6 +36,8 @@ internal static class Program
         ("Cronograma: arrasto permite mover Task para outra Story", DragDropMovesTaskToAnotherStory),
         ("Cronograma: arrasto entre pais aceita soltar sobre irmao destino", DragDropMovesHierarchyItemsToSiblingInAnotherParent),
         ("Cronograma: arrasto bloqueia troca fora da hierarquia DevOps", DragDropBlocksInvalidHierarchyMoves),
+        ("Cronograma: Feature e Story preservam ordem do DevOps independente da prioridade", RebuildPreservesDevOpsHierarchyOrderIgnoringPriority),
+        ("Cronograma: Task ordena por prioridade e desempata pela ordem do DevOps", RebuildOrdersTasksByPriorityThenDevOpsRank),
         ("Cronograma: botao marco cria Marco-Devops irmao para selecao DevOps", AddMilestoneCreatesDevOpsSiblingForDevOpsSelection),
         ("Cronograma: Ctrl botao marco cria Marco-Devops filho", AddMilestoneCreatesDevOpsChildWithCtrl),
         ("Cronograma: Ctrl botao marco nao cria filho em marco", AddMilestoneDoesNotCreateChildUnderMilestone),
@@ -914,6 +916,152 @@ internal static class Program
         AssertEqual(story.Id, task.Parent?.Id ?? -1, "Task bloqueada deve continuar na Story original.");
         AssertEqual(feature.Id, story.Parent?.Id ?? -1, "Story bloqueada deve continuar na Feature original.");
         AssertEqual(epic.Id, feature.Parent?.Id ?? -1, "Feature bloqueada deve continuar no Epic original.");
+    }
+
+    private static void RebuildPreservesDevOpsHierarchyOrderIgnoringPriority()
+    {
+        var epic = new ProjectTask { Id = 1000, Name = "Epic", TfsType = "Epic", Level = 0, IsSummary = true };
+        var featureFirst = new ProjectTask
+        {
+            Id = 1001,
+            Name = "Feature primeira no DevOps",
+            TfsType = "Feature",
+            Parent = epic,
+            Level = 1,
+            Priority = 4,
+            TfsStackRank = 2000,
+            IsSummary = true
+        };
+        var featureSecond = new ProjectTask
+        {
+            Id = 1002,
+            Name = "Feature segunda no DevOps",
+            TfsType = "Feature",
+            Parent = epic,
+            Level = 1,
+            Priority = 1,
+            TfsStackRank = 1000,
+            IsSummary = true
+        };
+        var storyFirst = new ProjectTask
+        {
+            Id = 1003,
+            Name = "Story primeira no DevOps",
+            TfsType = "Story",
+            Parent = featureFirst,
+            Level = 2,
+            Priority = 4,
+            TfsStackRank = 2000
+        };
+        var storySecond = new ProjectTask
+        {
+            Id = 1004,
+            Name = "Story segunda no DevOps",
+            TfsType = "Story",
+            Parent = featureFirst,
+            Level = 2,
+            Priority = 1,
+            TfsStackRank = 1000
+        };
+
+        featureFirst.Children.Add(storyFirst);
+        featureFirst.Children.Add(storySecond);
+        epic.Children.Add(featureFirst);
+        epic.Children.Add(featureSecond);
+
+        var project = new Project { Name = "Ordem hierarquia", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(epic);
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+
+        vm.RebuildFlatTasks();
+
+        AssertEqual(featureFirst.Id, epic.Children[0].Id,
+            "Feature deve preservar a sequencia importada do DevOps, mesmo com prioridade maior.");
+        AssertEqual(featureSecond.Id, epic.Children[1].Id,
+            "Feature com prioridade menor nao deve subir se o DevOps deixou depois.");
+        AssertEqual(storyFirst.Id, featureFirst.Children[0].Id,
+            "Story deve preservar a sequencia importada do DevOps, mesmo com prioridade maior.");
+        AssertEqual(storySecond.Id, featureFirst.Children[1].Id,
+            "Story com prioridade menor nao deve subir se o DevOps deixou depois.");
+    }
+
+    private static void RebuildOrdersTasksByPriorityThenDevOpsRank()
+    {
+        var story = new ProjectTask
+        {
+            Id = 1100,
+            Name = "Story",
+            TfsType = "Story",
+            Level = 0,
+            IsSummary = true,
+            Start = new DateTime(2026, 7, 6),
+            Finish = new DateTime(2026, 7, 9),
+            OriginalEstimatedHours = 24
+        };
+        var lowPriorityEarlyRank = new ProjectTask
+        {
+            Id = 1101,
+            Name = "Prioridade 3 rank cedo",
+            TfsType = "Task",
+            Parent = story,
+            Level = 1,
+            Priority = 3,
+            TfsStackRank = 100,
+            OriginalEstimatedHours = 8
+        };
+        var highPriorityLateRank = new ProjectTask
+        {
+            Id = 1102,
+            Name = "Prioridade 1 rank tarde",
+            TfsType = "Task",
+            Parent = story,
+            Level = 1,
+            Priority = 1,
+            TfsStackRank = 900,
+            OriginalEstimatedHours = 8
+        };
+        var samePriorityLateRank = new ProjectTask
+        {
+            Id = 1103,
+            Name = "Prioridade 2 rank tarde",
+            TfsType = "Task",
+            Parent = story,
+            Level = 1,
+            Priority = 2,
+            TfsStackRank = 800,
+            OriginalEstimatedHours = 8
+        };
+        var samePriorityEarlyRank = new ProjectTask
+        {
+            Id = 1104,
+            Name = "Prioridade 2 rank cedo",
+            TfsType = "Task",
+            Parent = story,
+            Level = 1,
+            Priority = 2,
+            TfsStackRank = 200,
+            OriginalEstimatedHours = 8
+        };
+
+        story.Children.Add(lowPriorityEarlyRank);
+        story.Children.Add(samePriorityLateRank);
+        story.Children.Add(samePriorityEarlyRank);
+        story.Children.Add(highPriorityLateRank);
+
+        var project = new Project { Name = "Ordem tasks", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(story);
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+
+        vm.RebuildFlatTasks();
+
+        var orderedIds = story.Children.Select(t => t.Id).ToList();
+        var expected = new[] { highPriorityLateRank.Id, samePriorityEarlyRank.Id, samePriorityLateRank.Id, lowPriorityEarlyRank.Id };
+        if (!orderedIds.SequenceEqual(expected))
+        {
+            throw new InvalidOperationException(
+                "Tasks devem ordenar por Prioridade e, na mesma Prioridade, pela sequencia/rank do DevOps. " +
+                $"Esperado: {string.Join(", ", expected)}; Atual: {string.Join(", ", orderedIds)}.");
+        }
     }
 
     private static void MoveByDrop(MainViewModel vm, int sourceId, int targetId, bool insertAfter, string message)

@@ -996,6 +996,7 @@ namespace NXProject.Views
                     CurrentHours     = r.CompletedHours > 0 ? r.CompletedHours : null,
                     PercentComplete  = r.PercentComplete,
                     Priority         = r.Priority > 0 ? r.Priority : 5,
+                    TfsStackRank     = r.BacklogRank,
                     TfsState         = r.State,
                     TfsIterationPath = story.TfsIterationPath,
                     SprintNumber     = story.SprintNumber,

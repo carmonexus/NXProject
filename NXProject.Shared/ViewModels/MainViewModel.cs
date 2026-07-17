@@ -3055,9 +3055,12 @@ namespace NXProject.ViewModels
             {
                 // Separa Tasks dos outros filhos (mantendo posições relativas dos não-Task)
                 var taskChildren = t.Children
-                    .Where(c => string.Equals(c.TfsType?.Trim(), "Task", StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(c => c.Priority ?? 5)
-                    .ThenBy(c => c.Id)
+                    .Select((child, index) => (child, index))
+                    .Where(x => string.Equals(x.child.TfsType?.Trim(), "Task", StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(x => x.child.Priority ?? 5)
+                    .ThenBy(x => x.child.TfsStackRank ?? double.MaxValue)
+                    .ThenBy(x => x.index)
+                    .Select(x => x.child)
                     .ToList();
 
                 if (taskChildren.Count > 0)
