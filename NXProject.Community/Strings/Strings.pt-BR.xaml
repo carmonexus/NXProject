@@ -66,7 +66,7 @@
     <sys:String x:Key="TaskPlan_SyncDone">{0} task(s) criada(s) no cronograma; {1} já existiam; {2} sem Story correspondente.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyMissingEpics">Os EPICs abaixo não existem no cronograma:&#10;&#10;{0}&#10;&#10;O EPIC precisa ser criado no DevOps (e importado no cronograma) antes de aplicar. Nada foi aplicado.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyDupTasks">A mesma Story não pode ter duas Tasks com o mesmo nome:&#10;&#10;{0}&#10;&#10;Renomeie ou remova as duplicadas na planilha antes de aplicar. Nada foi aplicado.</sys:String>
-    <sys:String x:Key="TaskPlan_ApplyMissingResources">Os Recursos abaixo não existem como pessoas do cronograma:&#10;&#10;{0}&#10;&#10;Cadastre a pessoa (ou corrija o nome na planilha) antes de aplicar. Nada foi aplicado.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyMissingResources">Os Responsáveis abaixo não existem como pessoas do cronograma:&#10;&#10;{0}&#10;&#10;Cadastre a pessoa (ou corrija o nome na planilha) antes de aplicar. Nada foi aplicado.</sys:String>
     <sys:String x:Key="TaskPlan_ApplyIdNameConflicts">O mesmo ID aparece com nomes diferentes na planilha:&#10;&#10;{0}&#10;&#10;O ID é o vínculo com o cronograma/DevOps — corrija os nomes (ou os IDs) antes de aplicar. Nada foi aplicado.</sys:String>
     <sys:String x:Key="TaskPlan_PickNoPeople">Não há pessoas cadastradas no cronograma para selecionar.</sys:String>
     <sys:String x:Key="TaskPlan_ObsPosted">{0} observação(ões) registrada(s) como tramite no DevOps.</sys:String>
@@ -76,6 +76,8 @@
     <sys:String x:Key="TaskPlan_IdVisAlways">Mostrar IDs sempre</sys:String>
     <sys:String x:Key="TaskPlan_IdVisHidden">Ocultar IDs</sys:String>
     <sys:String x:Key="TaskPlan_IdVisInternal">Mostrar só quando houver ID interno (:I)</sys:String>
+    <sys:String x:Key="TaskPlan_IdVisSave">Salvar configuração</sys:String>
+    <sys:String x:Key="TaskPlan_IdVisSaved">Configuração de IDs salva.</sys:String>
     <sys:String x:Key="TaskPlan_FillDown">Preencher para baixo (sequência)</sys:String>
     <sys:String x:Key="TaskPlan_FillDownHint">Ctrl+D preenche para baixo continuando a sequência</sys:String>
     <sys:String x:Key="TaskPlan_FillDownDone">{0} célula(s) preenchida(s) pela sequência.</sys:String>
@@ -137,6 +139,8 @@
     <sys:String x:Key="TaskPlan_CapClear">Limpar</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadAll">Carregar</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadTask">Load Task</sys:String>
+    <sys:String x:Key="TaskPlan_EnableAI">Ativar IA</sys:String>
+    <sys:String x:Key="TaskPlan_EnableAITip">Quando marcado, o Merge usa IA e pede confirmação do de/para antes de aplicar. Desmarcado, usa apenas o merge determinístico.</sys:String>
     <sys:String x:Key="TaskPlan_LoadTaskTip">Carrega as Tasks do cronograma/TFS na planilha (como o Merge), perguntando se traz também as Tasks já concluídas (Closed)</sys:String>
     <sys:String x:Key="TaskPlan_LoadTaskClosed">Trazer também as Tasks já concluídas (Closed)?&#10;&#10;Padrão: Não — só as não concluídas. As Closed que já estão na planilha continuam sendo atualizadas.</sys:String>
     <sys:String x:Key="TaskPlan_BackfillAsk">{0} Task(s) criada(s) por planilha(s) de Plan Task ({1} arquivo(s)) ganharam ID no DevOps.&#10;&#10;Atualizar agora o ID interno para o ID DevOps na(s) planilha(s)?&#10;(Se alguma estiver aberta no Excel, será atualizada ao abri-la no Task Plan.)</sys:String>

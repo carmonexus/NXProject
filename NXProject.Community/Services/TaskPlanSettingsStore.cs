@@ -9,6 +9,7 @@ namespace NXProject.Community.Services
     {
         public string DefaultFolder { get; set; } = string.Empty;
         public string LastFile { get; set; } = string.Empty;
+        public string IdColumnsMode { get; set; } = string.Empty;
 
         /// <summary>Planilha de Task Plan associada a cada projeto (nome do cronograma → caminho
         /// do .xlsx). Evita abrir a planilha do cronograma anterior ao trocar de projeto.</summary>

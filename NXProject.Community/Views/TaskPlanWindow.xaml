@@ -139,9 +139,17 @@
                                       IsCheckable="True" Click="OnIdVisModeClick" Tag="Hidden"/>
                             <MenuItem x:Name="IdVisInternalItem" Header="{DynamicResource TaskPlan_IdVisInternal}"
                                       IsCheckable="True" Click="OnIdVisModeClick" Tag="OnlyInternal"/>
+                            <Separator/>
+                            <MenuItem Header="{DynamicResource TaskPlan_IdVisSave}" Click="OnIdVisSaveClick"/>
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
+                <CheckBox x:Name="EnableAiCheckBox"
+                          Content="{DynamicResource TaskPlan_EnableAI}"
+                          IsChecked="False"
+                          VerticalAlignment="Center"
+                          Margin="8,0,4,2"
+                          ToolTip="{DynamicResource TaskPlan_EnableAITip}"/>
 
             </WrapPanel>
         </Border>
