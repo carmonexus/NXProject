@@ -326,7 +326,7 @@ namespace NXProject.Services
             public void LogWarning(string msg) => Log.Add(new SyncLogEntry(SyncLogLevel.Warning, msg));
             public void LogError(string msg)   => Log.Add(new SyncLogEntry(SyncLogLevel.Error,   msg));
 
-            public bool HasIssues => Log.Any(e => e.Level != SyncLogLevel.Success);
+            public bool HasIssues => Log.Any(e => e.Level == SyncLogLevel.Error);
         }
 
         public sealed class ImportResult
@@ -1426,13 +1426,16 @@ namespace NXProject.Services
         }
 
         /// <summary>
-        /// Task só pode ficar sob uma STORY no DevOps. Retorna o tipo do pai inválido
-        /// quando o ancestral vinculado mais próximo NÃO é Story (ex.: Feature/Epic —
-        /// acontece se a Story pai ainda não ganhou o ID DevOps); null se ok.
+        /// Task comum só pode ficar sob uma STORY no DevOps. Marco-DevOps é exceção:
+        /// ele é criado como Task com tag MARCO-PROJECT e pode ficar sob Epic/Feature/Story
+        /// ou outro tipo vinculado usado como contêiner do marco.
+        /// Retorna o tipo do pai inválido quando o ancestral vinculado mais próximo NÃO é
+        /// Story; null se ok.
         /// </summary>
         public static string? TaskParentViolation(ProjectTask task)
         {
             if (!IsTaskType(task.TfsType)) return null;
+            if (IsDevOpsMilestoneType(task.TfsType)) return null;
             for (var p = task.Parent; p != null; p = p.Parent)
                 if (p.TfsId is > 0)
                     return IsStoryType(p.TfsType) ? null : (p.TfsType ?? "?");
@@ -1452,7 +1455,14 @@ namespace NXProject.Services
             var p = task.Parent;
             while (p != null)
             {
-                if (p.TfsId is > 0) return p.TfsId.Value;
+                if (p.TfsId is > 0)
+                {
+                    // Marco-DevOps pode ficar sob Epic/Feature/Story ou outro item vinculado,
+                    // mas nunca direto sob o Work Item Project raiz.
+                    if (IsDevOpsMilestoneType(task.TfsType) && p.TfsId.Value == rootWorkItemId)
+                        return 0;
+                    return p.TfsId.Value;
+                }
                 // Pai com TfsId=0 pode ter acabado de ser criado neste loop — valor já atualizado.
                 // Pai "No DevOps" (TfsId negativo) é transparente: sobe para o avô.
                 p = p.Parent;
@@ -3161,6 +3171,11 @@ namespace NXProject.Services
         public static void RepositionMarcosAfterPredecessorsForTests(
             System.Collections.ObjectModel.ObservableCollection<ProjectTask> roots) =>
             RepositionMarcosAfterPredecessors(roots);
+
+        public static List<int> ApplyTfsPredecessorsForTests(
+            System.Collections.ObjectModel.ObservableCollection<ProjectTask> roots,
+            List<(int predecessor, int successor)> depLinks) =>
+            ApplyTfsPredecessors(roots, depLinks);
 
         /// <summary>
         /// Busca os HH das Tasks filhas usando o campo padrão Microsoft.VSTS.Scheduling.OriginalEstimate.

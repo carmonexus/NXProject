@@ -152,7 +152,7 @@ namespace NXProject.Views
                 DialogResult = true;
                 Close();
 
-                if (importResult.Report.HasIssues)
+                if (importResult.Report.Log.Count > 0)
                 {
                     var reportWin = new ImportResultWindow(importResult.Report) { Owner = System.Windows.Application.Current.MainWindow };
                     reportWin.Show();

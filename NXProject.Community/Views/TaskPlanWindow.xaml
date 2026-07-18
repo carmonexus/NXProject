@@ -47,6 +47,9 @@
                         <MenuItem Header="{DynamicResource TaskPlan_Save}" Click="OnSaveClick" Foreground="#222">
                             <MenuItem.Icon><TextBlock Text="&#x1F4BE;"/></MenuItem.Icon>
                         </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_SaveAs}" Click="OnSaveAsClick" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F4C4;"/></MenuItem.Icon>
+                        </MenuItem>
                         <Separator/>
                         <MenuItem Header="{DynamicResource TaskPlan_Settings}" Click="OnSettingsClick" Foreground="#222">
                             <MenuItem.Icon><TextBlock Text="&#x2699;"/></MenuItem.Icon>
@@ -121,6 +124,24 @@
                                    HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button x:Name="IdVisibilityBtn" Height="46" Width="52" Margin="0,0,4,2" Click="OnIdVisibilityClick"
+                        ToolTip="{DynamicResource TaskPlan_IdVisTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="IdVisibilityIcon" Text="ID" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapIds}" FontSize="10"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem x:Name="IdVisAlwaysItem" Header="{DynamicResource TaskPlan_IdVisAlways}"
+                                      IsCheckable="True" IsChecked="True" Click="OnIdVisModeClick" Tag="Always"/>
+                            <MenuItem x:Name="IdVisHiddenItem" Header="{DynamicResource TaskPlan_IdVisHidden}"
+                                      IsCheckable="True" Click="OnIdVisModeClick" Tag="Hidden"/>
+                            <MenuItem x:Name="IdVisInternalItem" Header="{DynamicResource TaskPlan_IdVisInternal}"
+                                      IsCheckable="True" Click="OnIdVisModeClick" Tag="OnlyInternal"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
 
             </WrapPanel>
         </Border>
@@ -162,6 +183,7 @@
                     <Separator/>
                     <MenuItem Header="{DynamicResource TaskPlan_Copy}" InputGestureText="Ctrl+C" Click="OnCopyClick"/>
                     <MenuItem Header="{DynamicResource TaskPlan_Paste}" InputGestureText="Ctrl+V" Click="OnPasteClick"/>
+                    <MenuItem Header="{DynamicResource TaskPlan_FillDown}" InputGestureText="Ctrl+D" Click="OnFillDownClick"/>
                     <Separator/>
                     <MenuItem Header="{DynamicResource TaskPlan_ViewInSchedule}" Click="OnViewInScheduleClick"/>
                     <MenuItem Header="{DynamicResource TaskPlan_OpenInTfs}" Click="OnOpenInTfsClick"/>

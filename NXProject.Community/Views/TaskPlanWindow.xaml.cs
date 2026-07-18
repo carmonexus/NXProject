@@ -207,10 +207,12 @@ namespace NXProject.Views
         private const string ApprovalColumn = "Aprovada";
         private const string RegisterDateColumn = "DT_Registro";
         private const string PercConclusaoColumn = "Perc_Conclusao";
+        private const string ObservationColumn = "Observação Tramite";
         private static readonly string[] ApprovalValues = ["Nao", "Sim"];
-        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Status" };
+        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Status" };
 
         // Colunas de ID dos pais (preenchidas pelo Buscar/Merge/Aplicar/Ctrl+clique).
+        private string? EpicIdCol    => FindColumn("ID EPIC", "ID Epic", "IdEpic", "ID_EPIC", "ID_Epic");
         private string? FeatureIdCol => FindColumn("ID Feature", "IdFeature", "ID_Feature");
         private string? StoryIdCol   => FindColumn("ID Story", "IdStory", "ID_Story");
         private string? ApprovalCol  => FindColumn(ApprovalColumn, "Aprovado", "Aprovacao", "Aprovação", "Approved");
@@ -225,6 +227,34 @@ namespace NXProject.Views
 
         private static string DisplayIdOf(ProjectTask t) => t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
 
+        private static int? ParsePlanIdNumber(string? value, string suffix)
+        {
+            var v = value?.Trim() ?? "";
+            if (!v.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) return null;
+            return int.TryParse(v[..^suffix.Length], out var n) && n > 0 ? n : null;
+        }
+
+        private static bool MatchesPlanId(ProjectTask? task, string? value)
+        {
+            if (task == null || string.IsNullOrWhiteSpace(value)) return true;
+            if (ParsePlanIdNumber(value, ":T") is { } tfsId)
+                return task.TfsId == tfsId;
+            // :I e interno da planilha/cronograma; nao e identidade TFS e nao bloqueia
+            // a busca da Task real quando nome/hierarquia batem.
+            return true;
+        }
+
+        private void FillHierarchyIdsFromNode(DataRow row, ProjectTask? task)
+        {
+            if (task == null) return;
+            if (EpicIdCol is { } epicIdCol && AncestorNode(task, "Epic") is { } epic)
+                row[epicIdCol] = DisplayIdOf(epic);
+            if (FeatureIdCol is { } featureIdCol && AncestorNode(task, "Feature") is { } feature)
+                row[featureIdCol] = DisplayIdOf(feature);
+            if (StoryIdCol is { } storyIdCol && AncestorNode(task, "Story") is { } story)
+                row[storyIdCol] = DisplayIdOf(story);
+        }
+
         // Nó ancestral (não só o nome) — para preencher os IDs de Feature/Story.
         private static ProjectTask? AncestorNode(ProjectTask task, string tfsType)
         {
@@ -237,6 +267,7 @@ namespace NXProject.Views
         private bool IsScheduleColumn(string colName)
             => HierarchyType(colName) != null
                || colName == FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task")
+               || colName == EpicIdCol
                || colName == FeatureIdCol
                || colName == StoryIdCol
                || colName == ApprovalCol
@@ -319,6 +350,10 @@ namespace NXProject.Views
 
             // Renomeia a coluna legada "Estimado" para "Estimado HH" (mantém a posição).
             RenameColumnPreservingPosition("Estimado", "Estimado HH");
+            // "Observações" legada vira "Observação Tramite" — o nome indica que o texto
+            // é registrado como tramite (comentário) da Task no DevOps.
+            if (ObservationCol is { } legacyObs && !string.Equals(legacyObs, ObservationColumn, StringComparison.Ordinal))
+                RenameColumnPreservingPosition(legacyObs, ObservationColumn);
             EnsureApprovalColumn();
             EnsureRegisterDateColumn();
 
@@ -329,6 +364,7 @@ namespace NXProject.Views
                 _data.Table.Columns.Cast<DataColumn>().Select(c => c.ColumnName)
                     .FirstOrDefault(n => n.Trim().StartsWith("EPIC", StringComparison.OrdinalIgnoreCase)
                                       || n.Trim().StartsWith("Épic", StringComparison.OrdinalIgnoreCase)),
+                EpicIdCol,
                 FindColumn("Feature", "Nome da Feature"),
                 FeatureIdCol,
                 FindColumn("Story", "Nome da Story"),
@@ -355,10 +391,38 @@ namespace NXProject.Views
                 var target = Math.Min(_data.Table.Columns[parentCol]!.Ordinal + 1, _data.Table.Columns.Count - 1);
                 _data.Table.Columns[idCol]!.SetOrdinal(target);
             }
+            PlaceAfter(EpicIdCol, _data.Table.Columns.Cast<DataColumn>().Select(c => c.ColumnName)
+                .FirstOrDefault(n => n.Trim().StartsWith("EPIC", StringComparison.OrdinalIgnoreCase)
+                                  || n.Trim().StartsWith("Épic", StringComparison.OrdinalIgnoreCase)));
             PlaceAfter(FeatureIdCol, FindColumn("Feature", "Nome da Feature"));
             PlaceAfter(StoryIdCol, FindColumn("Story", "Nome da Story"));
             _data.Table.Columns[ApprovalCol!]!.SetOrdinal(0);
             if (RegisterDateCol is { } rc) _data.Table.Columns[rc]!.SetOrdinal(1);
+
+            // Ordem da visão: Estimado HH e Perc_Conclusao antes do Status; ID Task e
+            // Recurso imediatamente antes da Descrição da Task; Observações por último.
+            var estName    = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var statusName = FindColumn("Status", "Estado", "State");
+            if (estName != null && statusName != null
+                && _data.Table.Columns[estName]!.Ordinal > _data.Table.Columns[statusName]!.Ordinal)
+                _data.Table.Columns[estName]!.SetOrdinal(_data.Table.Columns[statusName]!.Ordinal);
+            PlaceAfter(PercConclusaoCol, estName);
+
+            void PlaceBefore(string? col, string? beforeCol)
+            {
+                if (col == null || beforeCol == null) return;
+                if (!_data.Table.Columns.Contains(col) || !_data.Table.Columns.Contains(beforeCol)) return;
+                var self = _data.Table.Columns[col]!;
+                var target = _data.Table.Columns[beforeCol]!.Ordinal;
+                self.SetOrdinal(self.Ordinal < target ? Math.Max(target - 1, 0) : target);
+            }
+            var descName = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
+            PlaceBefore(FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task"), descName);
+            PlaceBefore(ResourceCol, descName);
+
+            if (ObservationCol is { } obsName)
+                _data.Table.Columns[obsName]!.SetOrdinal(_data.Table.Columns.Count - 1);
+
             NormalizeApprovalValues();
         }
 
@@ -464,7 +528,7 @@ namespace NXProject.Views
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
 
             var table = new DataTable();
-            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Recurso", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Recurso", "Status", "Descrição da Task", ObservationColumn };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             foreach (var t in Flatten(_vm.Project.Tasks).Where(t => IsType(t, "Task")))
@@ -472,11 +536,10 @@ namespace NXProject.Views
                 var dr = table.NewRow();
                 dr["EPIC"]    = Ancestor(t, "Epic");
                 dr["Feature"] = Ancestor(t, "Feature");
-                dr["ID Feature"] = AncestorNode(t, "Feature") is { } fn ? DisplayIdOf(fn) : "";
                 dr["Story"]   = Ancestor(t, "Story");
-                dr["ID Story"] = AncestorNode(t, "Story") is { } sn ? DisplayIdOf(sn) : "";
                 dr["Task"]    = t.Name ?? "";
                 dr["ID Task"]  = t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
+                FillHierarchyIdsFromNode(dr, t);
                 dr[ApprovalColumn] = t.TfsId is > 0 ? "Sim" : "Nao";
                 dr[RegisterDateColumn] = FormatRegisterDate(DateTime.Today);
                 dr["Prioridade"] = t.Priority?.ToString() ?? "";
@@ -611,7 +674,7 @@ namespace NXProject.Views
         private void BuildEmptyPlan()
         {
             var table = new DataTable();
-            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Recurso", "Status", "Descrição da Task", "Observações" };
+            string[] cols = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Recurso", "Status", "Descrição da Task", ObservationColumn };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             _data = new TaskPlanData { Table = table, SheetName = "Tarefas", HeaderRow = 1 };
@@ -679,11 +742,10 @@ namespace NXProject.Views
                         var dr = _data.Table.NewRow();
                         dr["EPIC"]    = Ancestor(story, "Epic");
                         dr["Feature"] = Ancestor(story, "Feature");
-                        dr["ID Feature"] = AncestorNode(story, "Feature") is { } fn ? DisplayIdOf(fn) : "";
                         dr["Story"]   = story.Name ?? "";
-                        dr["ID Story"] = DisplayIdOf(story);
                         dr["Task"]    = t.Title;
                         dr["ID Task"]  = $"{t.TfsId}:T";
+                        FillHierarchyIdsFromNode(dr, story);
                         dr[ApprovalColumn] = "Sim";
                         dr[RegisterDateColumn] = FormatRegisterDate(t.CreatedDate ?? DateTime.Today);
                         dr["Prioridade"] = t.Priority.ToString();
@@ -826,6 +888,45 @@ namespace NXProject.Views
         }
 
         private void OnSaveClick(object sender, RoutedEventArgs e) => TrySave();
+
+        // Salvar como: copia o .xlsx atual para o destino (preserva resumo/fórmulas fora
+        // da tabela), passa a usar a cópia e grava nela o conteúdo atual da grade.
+        private void OnSaveAsClick(object sender, RoutedEventArgs e)
+        {
+            if (_data == null) return;
+            // Plano ainda sem arquivo: o Salvar normal já pergunta onde criar.
+            if (string.IsNullOrEmpty(_path)) { TrySave(); return; }
+
+            PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = AppStrings.Get("TaskPlan_SaveAs"),
+                Filter = ExcelTaskPlanService.FileFilter,
+                InitialDirectory = DialogFolder,
+                FileName = Path.GetFileName(_path)
+            };
+            if (dlg.ShowDialog(this) != true) return;
+            var target = dlg.FileName;
+            if (string.Equals(target, _path, StringComparison.OrdinalIgnoreCase)) { TrySave(); return; }
+
+            try
+            {
+                File.Copy(_path!, target, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_SaveError", ex.Message),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            _path = target;
+            SetPathDisplay(_path);
+            _settings.LastFile = _path;
+            TaskPlanSettingsStore.Save(_settings);
+            if (TrySave())
+                AskProjectAssociation(_path!);
+        }
 
         private bool TrySave()
         {
@@ -1103,21 +1204,92 @@ namespace NXProject.Views
             {
                 Title = AppStrings.Get("TaskPlan_SpHelpTitle"),
                 Owner = this,
-                Width = 560, Height = 520,
+                Width = 640,
+                SizeToContent = SizeToContent.Height,
+                MaxHeight = 620,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
             var scroll = new ScrollViewer
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Padding = new Thickness(18)
+                Padding = new Thickness(20)
             };
-            scroll.Content = new TextBlock
+
+            var panel = new StackPanel();
+            panel.Children.Add(new TextBlock
             {
-                Text = AppStrings.Get("TaskPlan_SpHelpText"),
+                Text = AppStrings.Get("TaskPlan_SpHelpIntro"),
                 TextWrapping = TextWrapping.Wrap,
                 FontSize = 13,
-                LineHeight = 20
-            };
+                LineHeight = 20,
+                Margin = new Thickness(0, 0, 0, 14)
+            });
+
+            void AddStep(int number, string key)
+            {
+                var row = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                var badge = new Border
+                {
+                    Width = 22,
+                    Height = 22,
+                    CornerRadius = new CornerRadius(11),
+                    Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1E, 0x5A, 0x96)),
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Child = new TextBlock
+                    {
+                        Text = number.ToString(),
+                        Foreground = System.Windows.Media.Brushes.White,
+                        FontWeight = FontWeights.SemiBold,
+                        FontSize = 12,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        TextAlignment = TextAlignment.Center
+                    }
+                };
+                Grid.SetColumn(badge, 0);
+                row.Children.Add(badge);
+
+                var text = new TextBlock
+                {
+                    Text = AppStrings.Get(key),
+                    TextWrapping = TextWrapping.Wrap,
+                    FontSize = 13,
+                    LineHeight = 20,
+                    VerticalAlignment = VerticalAlignment.Top
+                };
+                Grid.SetColumn(text, 1);
+                row.Children.Add(text);
+
+                panel.Children.Add(row);
+            }
+
+            AddStep(1, "TaskPlan_SpHelpStep1");
+            AddStep(2, "TaskPlan_SpHelpStep2");
+            AddStep(3, "TaskPlan_SpHelpStep3");
+            AddStep(4, "TaskPlan_SpHelpStep4");
+            AddStep(5, "TaskPlan_SpHelpStep5");
+
+            panel.Children.Add(new Border
+            {
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0xF7, 0xD6)),
+                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE0, 0xB2, 0x40)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(12, 9, 12, 9),
+                Margin = new Thickness(0, 6, 0, 0),
+                Child = new TextBlock
+                {
+                    Text = AppStrings.Get("TaskPlan_SpHelpWarning"),
+                    TextWrapping = TextWrapping.Wrap,
+                    FontSize = 13,
+                    LineHeight = 20
+                }
+            });
+
+            scroll.Content = panel;
             win.Content = scroll;
             win.ShowDialog();
         }
@@ -1235,8 +1407,13 @@ namespace NXProject.Views
                 ? $"{ToExcelColumn(sheetCol)}{excelRow}"
                 : $"{colName} — {AppStrings.Get("TaskPlan_NewColRef")}";
 
+            // Hint do Ctrl+D: seleção de 2+ células na MESMA coluna preenche a sequência.
+            bool sameColumn = PlanGrid.SelectedCells.Count > 1
+                && PlanGrid.SelectedCells.All(c =>
+                    string.Equals(c.Column?.Header?.ToString(), colName, StringComparison.Ordinal));
+
             CellRefText.Text = PlanGrid.SelectedCells.Count > 1
-                ? $"{text}  ({PlanGrid.SelectedCells.Count})"
+                ? $"{text}  ({PlanGrid.SelectedCells.Count})" + (sameColumn ? "  —  " + AppStrings.Get("TaskPlan_FillDownHint") : "")
                 : text;
         }
 
@@ -1367,6 +1544,7 @@ namespace NXProject.Views
                 }
             }
             ApplyEpicColumnVisibility();
+            ApplyIdColumnsVisibility();
         }
 
         // Filtros por coluna estilo Excel (tela própria de filtro), combinados com o de EPIC.
@@ -1832,6 +2010,14 @@ namespace NXProject.Views
             if ((System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == 0)
                 return;
 
+            // Ctrl+D: preencher para baixo entendendo a sequência (alça do Excel).
+            if (e.Key == System.Windows.Input.Key.D && e.OriginalSource is not TextBox)
+            {
+                FillDownFromSelection();
+                e.Handled = true;
+                return;
+            }
+
             // Ctrl+Z é tratado no PreviewKeyDown da janela (global).
             if (e.Key != System.Windows.Input.Key.V)
                 return;
@@ -1849,6 +2035,192 @@ namespace NXProject.Views
             => System.Windows.Input.ApplicationCommands.Copy.Execute(null, PlanGrid);
 
         private void OnPasteClick(object sender, RoutedEventArgs e) => PasteFromClipboard();
+
+        // ── Visibilidade das colunas de ID (ID Feature/ID Story/ID Task) ─────────────
+        // Padrão ao abrir: sempre mostrar. "OnlyInternal" mostra a coluna apenas se ela
+        // tiver algum ID interno (:I) — o que ainda precisa de atenção do gestor.
+        private enum IdColumnsMode { Always, Hidden, OnlyInternal }
+        private IdColumnsMode _idColsMode = IdColumnsMode.Always;
+
+        private void OnIdVisibilityClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.ContextMenu == null) return;
+            btn.ContextMenu.PlacementTarget = btn;
+            btn.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            btn.ContextMenu.IsOpen = true;
+        }
+
+        private void OnIdVisModeClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem item) return;
+            _idColsMode = item.Tag?.ToString() switch
+            {
+                "Hidden"       => IdColumnsMode.Hidden,
+                "OnlyInternal" => IdColumnsMode.OnlyInternal,
+                _              => IdColumnsMode.Always
+            };
+            IdVisAlwaysItem.IsChecked   = _idColsMode == IdColumnsMode.Always;
+            IdVisHiddenItem.IsChecked   = _idColsMode == IdColumnsMode.Hidden;
+            IdVisInternalItem.IsChecked = _idColsMode == IdColumnsMode.OnlyInternal;
+            IdVisibilityIcon.Text = _idColsMode switch
+            {
+                IdColumnsMode.Hidden       => "--",
+                IdColumnsMode.OnlyInternal => ":I",
+                _                          => "ID"
+            };
+            ApplyIdColumnsVisibility();
+        }
+
+        /// <summary>Aplica o modo de visibilidade às colunas de ID da grade.</summary>
+        private void ApplyIdColumnsVisibility()
+        {
+            if (_data == null || PlanGrid.Columns.Count == 0) return;
+            var idCols = new[]
+                {
+                    EpicIdCol, FeatureIdCol, StoryIdCol,
+                    FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task")
+                }
+                .Where(n => n != null)
+                .Cast<string>()
+                .ToList();
+            if (idCols.Count == 0) return;
+
+            foreach (var col in PlanGrid.Columns)
+            {
+                var name = col.Header?.ToString() ?? "";
+                if (!idCols.Contains(name, StringComparer.Ordinal)) continue;
+                col.Visibility = _idColsMode switch
+                {
+                    IdColumnsMode.Always       => Visibility.Visible,
+                    IdColumnsMode.Hidden       => Visibility.Collapsed,
+                    _ => ColumnHasInternalId(name) ? Visibility.Visible : Visibility.Collapsed
+                };
+            }
+        }
+
+        private bool ColumnHasInternalId(string colName)
+            => _data != null && _data.Table.Columns.Contains(colName)
+               && _data.Table.Rows.Cast<DataRow>().Any(r =>
+                   (r[colName]?.ToString()?.Trim() ?? "").EndsWith(":I", StringComparison.OrdinalIgnoreCase));
+
+        // ── Preencher para baixo (Ctrl+D): como a alça de preenchimento do Excel ─────
+        private void OnFillDownClick(object sender, RoutedEventArgs e) => FillDownFromSelection();
+
+        /// <summary>Preenche a coluna da seleção para baixo até a última linha com conteúdo
+        /// em outras colunas, continuando a sequência (números, datas, prefixo+número);
+        /// sem sequência reconhecível, repete o bloco selecionado (como no Excel).</summary>
+        private void FillDownFromSelection()
+        {
+            if (_data == null || PlanGrid.SelectedCells.Count == 0) return;
+            PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+            var colName = PlanGrid.SelectedCells[0].Column?.Header?.ToString();
+            if (string.IsNullOrEmpty(colName) || colName.StartsWith("__", StringComparison.Ordinal)) return;
+            // ID Task nunca é preenchido por sequência: o vínculo pertence a cada linha.
+            if (IsTaskIdColumn(colName!)) return;
+            // Só faz sentido com a seleção inteira na MESMA coluna.
+            if (PlanGrid.SelectedCells.Any(c => !string.Equals(c.Column?.Header?.ToString(), colName, StringComparison.Ordinal)))
+                return;
+
+            var items = PlanGrid.Items.OfType<DataRowView>().ToList();
+            var selIdx = PlanGrid.SelectedCells
+                .Select(c => c.Item as DataRowView)
+                .Where(r => r != null)
+                .Distinct()
+                .Select(r => items.IndexOf(r!))
+                .Where(i => i >= 0)
+                .OrderBy(i => i)
+                .ToList();
+            if (selIdx.Count == 0) return;
+
+            var values = selIdx.Select(i => items[i].Row[colName!]?.ToString()?.Trim() ?? "").ToList();
+            if (values.All(string.IsNullOrEmpty)) return;
+            int lastSel = selIdx[^1];
+
+            // Preenche até a última linha seguida que tem conteúdo em alguma OUTRA coluna.
+            var otherCols = _data.Table.Columns.Cast<DataColumn>()
+                .Select(c => c.ColumnName)
+                .Where(n => !n.StartsWith("__", StringComparison.Ordinal)
+                         && !string.Equals(n, colName, StringComparison.Ordinal))
+                .ToList();
+            int end = lastSel;
+            for (int i = lastSel + 1; i < items.Count; i++)
+            {
+                if (otherCols.Any(c => !string.IsNullOrWhiteSpace(items[i].Row[c]?.ToString()))) end = i;
+                else break;
+            }
+            if (end <= lastSel) return;
+
+            PushUndo();
+            var next = BuildSequenceGenerator(values);
+            for (int i = lastSel + 1; i <= end; i++)
+                items[i].Row[colName!] = next();
+
+            _dirty = true;
+            ValidateAgainstSchedule();
+            PlanGrid.Items.Refresh();
+            StatusText.Foreground = System.Windows.Media.Brushes.Green;
+            StatusText.Text = AppStrings.Get("TaskPlan_FillDownDone", end - lastSel);
+        }
+
+        // Próximos valores da sequência: números (passo dos 2 últimos), datas (passo em
+        // dias; 1 data → +1 dia), "prefixo N" (incrementa N); senão repete o bloco.
+        private static Func<string> BuildSequenceGenerator(List<string> values)
+        {
+            var culture = System.Globalization.CultureInfo.CurrentCulture;
+
+            var nums = new List<double>();
+            bool allNums = values.Count > 0 && values.All(v =>
+                double.TryParse(v, System.Globalization.NumberStyles.Any, culture, out _));
+            if (allNums)
+            {
+                foreach (var v in values)
+                {
+                    double.TryParse(v, System.Globalization.NumberStyles.Any, culture, out var d);
+                    nums.Add(d);
+                }
+                double step = nums.Count >= 2 ? nums[^1] - nums[^2] : 0;
+                double cur = nums[^1];
+                bool ints = nums.All(n => Math.Abs(n % 1) < 1e-9) && Math.Abs(step % 1) < 1e-9;
+                return () =>
+                {
+                    cur += step;
+                    return ints ? ((long)Math.Round(cur)).ToString(culture) : cur.ToString(culture);
+                };
+            }
+
+            var dates = new List<DateTime>();
+            bool allDates = values.Count > 0 && values.All(v =>
+                DateTime.TryParse(v, culture, System.Globalization.DateTimeStyles.None, out _));
+            if (allDates)
+            {
+                foreach (var v in values)
+                {
+                    DateTime.TryParse(v, culture, System.Globalization.DateTimeStyles.None, out var d);
+                    dates.Add(d);
+                }
+                var step = dates.Count >= 2 ? dates[^1] - dates[^2] : TimeSpan.FromDays(1);
+                var cur = dates[^1];
+                return () => { cur = cur.Add(step); return cur.ToString("d", culture); };
+            }
+
+            // "Prefixo N" com o mesmo prefixo em todas: incrementa o número (preserva zeros).
+            var matches = values.Select(v => System.Text.RegularExpressions.Regex.Match(v, @"^(.*?)(\d+)\s*$")).ToList();
+            if (matches.Count > 0 && matches.All(m => m.Success)
+                && matches.Select(m => m.Groups[1].Value).Distinct(StringComparer.Ordinal).Count() == 1)
+            {
+                long lastN = long.Parse(matches[^1].Groups[2].Value);
+                long stepN = matches.Count >= 2 ? lastN - long.Parse(matches[^2].Groups[2].Value) : 1;
+                var prefix = matches[^1].Groups[1].Value;
+                var width = matches[^1].Groups[2].Value.Length;
+                long curN = lastN;
+                return () => { curN += stepN; return prefix + curN.ToString(new string('0', width)); };
+            }
+
+            // Sem padrão: repete o bloco selecionado ciclicamente.
+            int idx = 0;
+            return () => values[idx++ % values.Count];
+        }
 
         // Cola o bloco da área de transferência a partir da célula atual. True se colou.
         private bool PasteFromClipboard()
@@ -1888,8 +2260,27 @@ namespace NXProject.Views
                     drv = _data.Table.DefaultView.AddNew();
 
                 var cells = lines[li].Split('\t');
+                bool taskNameChanged = false;
+                var taskNameCol = FindColumn("Task", "Tarefa", "Nome da Task");
                 for (int ci = 0; ci < cells.Length && startCol + ci < visibleCols.Count; ci++)
-                    drv.Row[visibleCols[startCol + ci]] = cells[ci];
+                {
+                    var targetCol = visibleCols[startCol + ci];
+                    var value = cells[ci];
+                    // ID Task não viaja no copiar/colar: o vínculo (:I/:T) pertence à linha
+                    // de origem. A linha colada fica sem ID — o Buscar/Aplicar reassocia.
+                    if (IsTaskIdColumn(targetCol) && EndsWithIdSuffix(value))
+                        value = "";
+                    if (string.Equals(targetCol, taskNameCol, StringComparison.Ordinal)
+                        && !string.Equals(drv.Row[targetCol]?.ToString()?.Trim() ?? "", value.Trim(), StringComparison.Ordinal))
+                        taskNameChanged = true;
+                    drv.Row[targetCol] = value;
+                }
+                // Nome da Task mudou pelo colar: o ID antigo da linha destino não vale mais —
+                // limpa MESMO com a coluna de ID oculta (ela fica fora do fluxo de colagem).
+                if (taskNameChanged
+                    && FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task") is { } idTaskCol
+                    && EndsWithIdSuffix(drv.Row[idTaskCol]?.ToString()))
+                    drv.Row[idTaskCol] = "";
                 drv.EndEdit();
             }
 
@@ -1897,6 +2288,18 @@ namespace NXProject.Views
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
             return true;
+        }
+
+        private bool IsTaskIdColumn(string colName)
+            => string.Equals(colName,
+                FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task"),
+                StringComparison.Ordinal);
+
+        private static bool EndsWithIdSuffix(string? value)
+        {
+            var v = value?.Trim() ?? "";
+            return v.EndsWith(":I", StringComparison.OrdinalIgnoreCase)
+                || v.EndsWith(":T", StringComparison.OrdinalIgnoreCase);
         }
 
         // ── merge com o cronograma (busca as Tasks de cada Story no TFS) ─────
@@ -2038,6 +2441,7 @@ namespace NXProject.Views
                     if (statusCol != null && !string.IsNullOrWhiteSpace(ch.Dev.Info.State)) ch.Row[statusCol] = ch.Dev.Info.State;
                     if (storyCol != null && string.IsNullOrWhiteSpace(ch.Row[storyCol]?.ToString()))
                         ch.Row[storyCol] = ch.Dev.Story.Name;
+                    FillHierarchyIdsFromNode(ch.Row, ch.Dev.Story);
                     await FillObservationFromLastCommentAsync(options, ch.Row, ch.Dev.Info);
                     matchedIds.Add(ch.Dev.Info.TfsId);
                     updated++;
@@ -2068,6 +2472,7 @@ namespace NXProject.Views
                     if (prioCol != null) row[prioCol] = src.Info.Priority.ToString();
                     if (estCol != null && src.Info.EstimatedHours > 0) row[estCol] = src.Info.EstimatedHours.ToString("0.##");
                     if (statusCol != null && !string.IsNullOrWhiteSpace(src.Info.State)) row[statusCol] = src.Info.State;
+                    FillHierarchyIdsFromNode(row, src.Story);
                     await FillObservationFromLastCommentAsync(options, row, src.Info);
                     matchedIds.Add(src.Info.TfsId);
                     updated++;
@@ -2098,6 +2503,7 @@ namespace NXProject.Views
                 if (storyCol != null) dr[storyCol] = src.Story.Name ?? "";
                 dr[taskCol] = src.Info.Title;
                 dr[idCol] = $"{src.Info.TfsId}:T";
+                FillHierarchyIdsFromNode(dr, src.Story);
                 if (ApprovalCol is { } ac) dr[ac] = "Sim";
                 if (regCol != null) dr[regCol] = FormatRegisterDate(src.Info.CreatedDate ?? DateTime.Today);
                 if (pctCol != null) dr[pctCol] = Math.Round(src.Info.PercentComplete).ToString("0");
@@ -2146,6 +2552,7 @@ namespace NXProject.Views
         private async Task<List<MergeChange>?> BuildAiMergeChangesAsync(
             List<MergeSource> sources, string idCol, string taskCol, string? storyCol, System.Text.StringBuilder log)
         {
+            var featureCol = FindColumn("Feature", "Nome da Feature");
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
             if (string.IsNullOrWhiteSpace(settings.ApiKey))
@@ -2158,6 +2565,10 @@ namespace NXProject.Views
                 .FirstOrDefault(a => a.Name == AIActionType.MergeExternalActionName)?.Prompt;
             if (string.IsNullOrWhiteSpace(systemPrompt))
                 systemPrompt = AISettingsStore.MergeExternalActionPrompt;
+            systemPrompt +=
+                "\n\nRegra obrigatória do Task Plan: ID Task com sufixo :T é vínculo TFS real; ID Task com sufixo :I é interno temporário e deve ser usado apenas para rastreio local. " +
+                "Quando a linha tiver ID Task :I, procure a Task TFS correspondente pelo nome da Task dentro da Story/Feature/EPIC informada. " +
+                "IDs de Story/Feature/EPIC com sufixo :T devem ser respeitados como vínculo real; se forem :I, use nome e hierarquia como referência, sem tratá-los como ID TFS.";
 
             // Linhas candidatas: sem ID DevOps (:T) e com nome de task.
             var rows = new List<(int Number, DataRow Row)>();
@@ -2177,12 +2588,17 @@ namespace NXProject.Views
             foreach (var (n, r) in rows)
             {
                 var story = storyCol != null ? r[storyCol]?.ToString()?.Trim() : "";
-                sb.AppendLine($"{n}. Task=\"{r[taskCol]}\"; Story=\"{story}\"; ID=\"{r[idCol]}\"");
+                var feature = featureCol != null ? r[featureCol]?.ToString()?.Trim() : "";
+                var epic = _epicColumn != null ? r[_epicColumn]?.ToString()?.Trim() : "";
+                var storyId = StoryIdCol != null ? r[StoryIdCol]?.ToString()?.Trim() : "";
+                var featureId = FeatureIdCol != null ? r[FeatureIdCol]?.ToString()?.Trim() : "";
+                var epicId = EpicIdCol != null ? r[EpicIdCol]?.ToString()?.Trim() : "";
+                sb.AppendLine($"{n}. Task=\"{r[taskCol]}\"; ID=\"{r[idCol]}\"; Story=\"{story}\"; ID Story=\"{storyId}\"; Feature=\"{feature}\"; ID Feature=\"{featureId}\"; EPIC=\"{epic}\"; ID EPIC=\"{epicId}\"");
             }
             sb.AppendLine();
             sb.AppendLine("TASKS_DEVOPS:");
             foreach (var s in sources)
-                sb.AppendLine($"- id={s.Info.TfsId}; titulo=\"{s.Info.Title}\"; story=\"{s.Story.Name}\"; estado={s.Info.State}; prioridade={s.Info.Priority}");
+                sb.AppendLine($"- id={s.Info.TfsId}; titulo=\"{s.Info.Title}\"; story=\"{s.Story.Name}\"; story_id=\"{DisplayIdOf(s.Story)}\"; feature=\"{Ancestor(s.Story, "Feature")}\"; feature_id=\"{(AncestorNode(s.Story, "Feature") is { } f ? DisplayIdOf(f) : "")}\"; epic=\"{Ancestor(s.Story, "Epic")}\"; epic_id=\"{(AncestorNode(s.Story, "Epic") is { } e ? DisplayIdOf(e) : "")}\"; estado={s.Info.State}; prioridade={s.Info.Priority}");
 
             string raw;
             System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
@@ -2222,13 +2638,11 @@ namespace NXProject.Views
                     if (!item.TryGetProperty("id_devops", out var ip) || !ip.TryGetInt32(out var devId)) continue;
                     if (!byNumber.TryGetValue(line, out var row) || !byId.TryGetValue(devId, out var src)) continue;
 
-                    // Trava de hierarquia: se a linha tem Story, a Task só pode vir daquela Story
-                    // (a IA é instruída, mas aqui é garantido — nunca associa Task de outra Feature/Story).
-                    var rowStory = storyCol != null ? row[storyCol]?.ToString()?.Trim() : null;
-                    if (!string.IsNullOrEmpty(rowStory)
-                        && !string.Equals(rowStory, (src.Story.Name ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                    // Trava de hierarquia: valida nomes e IDs dos pais. A IA pode sugerir,
+                    // mas o código não deixa associar Task de outra Story/Feature/EPIC.
+                    if (!RowMatchesSourceHierarchy(row, src, storyCol, featureCol))
                     {
-                        log.AppendLine($"    Linha {line}: descartada — a IA sugeriu a Task {devId} da Story \"{src.Story.Name}\", mas a linha é da Story \"{rowStory}\".");
+                        log.AppendLine($"    Linha {line}: descartada — a IA sugeriu a Task {devId} fora da hierarquia/ID informado na linha.");
                         continue;
                     }
 
@@ -2243,6 +2657,27 @@ namespace NXProject.Views
                 ShowMergeError(ex.Message, log);
                 return null;
             }
+        }
+
+        private bool RowMatchesSourceHierarchy(DataRow row, MergeSource src, string? storyCol, string? featureCol)
+        {
+            static bool EqText(string? expected, string? actual)
+                => string.IsNullOrWhiteSpace(expected)
+                   || string.Equals(expected.Trim(), (actual ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+
+            var storyName = storyCol != null ? row[storyCol]?.ToString()?.Trim() : null;
+            var featureName = featureCol != null ? row[featureCol]?.ToString()?.Trim() : null;
+            var epicName = _epicColumn != null ? row[_epicColumn]?.ToString()?.Trim() : null;
+
+            if (!EqText(storyName, src.Story.Name)) return false;
+            if (!EqText(featureName, Ancestor(src.Story, "Feature"))) return false;
+            if (!EqText(epicName, Ancestor(src.Story, "Epic"))) return false;
+
+            if (StoryIdCol is { } storyIdCol && !MatchesPlanId(src.Story, row[storyIdCol]?.ToString())) return false;
+            if (FeatureIdCol is { } featureIdCol && !MatchesPlanId(AncestorNode(src.Story, "Feature"), row[featureIdCol]?.ToString())) return false;
+            if (EpicIdCol is { } epicIdCol && !MatchesPlanId(AncestorNode(src.Story, "Epic"), row[epicIdCol]?.ToString())) return false;
+
+            return true;
         }
 
         // Lista o de/para encontrado pela IA e pede confirmação antes de concluir.
@@ -2316,7 +2751,7 @@ namespace NXProject.Views
         // Coluna do responsável/recurso na planilha (nome da pessoa do cronograma).
         private string? ResourceCol => FindColumn(
             "Recurso", "Recursos", "Responsável", "Responsavel",
-            "Responsible", "Owner", "Atribuído a", "Atribuido a", "Assigned To", "AssignedTo");
+            "Resp", "Responsible", "Owner", "Atribuído a", "Atribuido a", "Assigned To", "AssignedTo");
 
         /// <summary>Pessoa (recurso Work) do cronograma cujo nome bate com <paramref name="name"/>.</summary>
         private Resource? FindScheduleResource(string? name)
@@ -2327,6 +2762,90 @@ namespace NXProject.Views
                 r.Type == ResourceType.Work
                 && (string.Equals(r.Name?.Trim(), n, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(r.DisplayName?.TrimStart('*').Trim(), n, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        private static string ResourcePlanName(Resource r) => r.Name?.Trim() ?? "";
+
+        private Resource? FindScheduleResourceInText(string? text)
+        {
+            var value = text?.Trim();
+            if (string.IsNullOrEmpty(value) || _vm?.Project == null) return null;
+
+            return _vm.Project.Resources
+                .Where(r => r.Type == ResourceType.Work)
+                .SelectMany(r => new[]
+                    {
+                        r.Name?.Trim(),
+                        r.DisplayName?.TrimStart('*').Trim()
+                    }
+                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Select(k => (Resource: r, Key: k!)))
+                .Where(x => x.Key.Length >= 3 && ContainsResourceName(value, x.Key))
+                .OrderByDescending(x => x.Key.Length)
+                .Select(x => x.Resource)
+                .FirstOrDefault();
+        }
+
+        private static bool ContainsResourceName(string text, string name)
+        {
+            int start = 0;
+            while (start < text.Length)
+            {
+                var index = text.IndexOf(name, start, StringComparison.OrdinalIgnoreCase);
+                if (index < 0) return false;
+
+                var beforeOk = index == 0 || IsResourceNameBoundary(text[index - 1]);
+                var afterIndex = index + name.Length;
+                var afterOk = afterIndex >= text.Length || IsResourceNameBoundary(text[afterIndex]);
+                if (beforeOk && afterOk) return true;
+
+                start = index + 1;
+            }
+            return false;
+        }
+
+        private static bool IsResourceNameBoundary(char ch)
+            => !char.IsLetterOrDigit(ch) && ch != '@' && ch != '.' && ch != '_';
+
+        private List<Resource> ResolveScheduleResources(string? cell)
+        {
+            var result = new List<Resource>();
+            foreach (var name in SplitResourceNames(cell))
+            {
+                var res = FindScheduleResource(name) ?? FindScheduleResourceInText(name);
+                if (res != null && !result.Any(r => r.Id == res.Id))
+                    result.Add(res);
+            }
+            return result;
+        }
+
+        private List<string> FindUnresolvedResourceInputs(string? cell)
+        {
+            var missing = new List<string>();
+            foreach (var name in SplitResourceNames(cell))
+            {
+                if ((FindScheduleResource(name) ?? FindScheduleResourceInText(name)) == null)
+                    missing.Add(name);
+            }
+            return missing;
+        }
+
+        private bool NormalizeResourceCell(DataRow row, string resourceCol)
+        {
+            var value = row[resourceCol]?.ToString();
+            if (string.IsNullOrWhiteSpace(value)) return false;
+
+            var resources = ResolveScheduleResources(value);
+            if (resources.Count == 0 || FindUnresolvedResourceInputs(value).Count > 0) return false;
+
+            var normalized = string.Join(", ", resources.Select(ResourcePlanName).Where(n => n.Length > 0));
+            if (string.IsNullOrWhiteSpace(normalized)
+                || string.Equals(row[resourceCol]?.ToString()?.Trim(), normalized, StringComparison.Ordinal))
+                return false;
+
+            row[resourceCol] = normalized;
+            return true;
         }
 
         /// <summary>Nomes de pessoas em uma célula de Recurso (separados por vírgula/ponto-e-vírgula).</summary>
@@ -2341,10 +2860,9 @@ namespace NXProject.Views
         private bool AssignResourceFromPlan(ProjectTask task, string? cell)
         {
             bool changed = false;
-            foreach (var name in SplitResourceNames(cell))
+            foreach (var res in ResolveScheduleResources(cell))
             {
-                var res = FindScheduleResource(name);
-                if (res == null || task.Resources.Any(tr => tr.ResourceId == res.Id)) continue;
+                if (task.Resources.Any(tr => tr.ResourceId == res.Id)) continue;
                 task.Resources.Add(new TaskResource
                 {
                     ResourceId = res.Id,
@@ -2411,7 +2929,14 @@ namespace NXProject.Views
                     && TaskPlanScheduleRules.ParseEstimatedHours(dr[estColV]?.ToString()) == null)
                     dr[estColV] = "1";
 
-                // Atualiza os IDs de Feature/Story conforme a digitação (hierarquia estrita).
+                // Atualiza os IDs de EPIC/Feature/Story conforme a digitação (hierarquia estrita).
+                if (EpicIdCol is { } ec)
+                {
+                    var epicNode = string.IsNullOrEmpty(epic) ? null
+                        : flat.FirstOrDefault(x => IsType(x, "Epic")
+                            && string.Equals((x.Name ?? "").Trim(), epic, StringComparison.OrdinalIgnoreCase));
+                    dr[ec] = epicNode != null ? DisplayIdOf(epicNode) : "";
+                }
                 if (FeatureIdCol is { } fc)
                 {
                     var featureNode = string.IsNullOrEmpty(feature) ? null
@@ -2439,9 +2964,11 @@ namespace NXProject.Views
                     // Recurso: valida cada nome contra as pessoas (recursos Work) do cronograma.
                     if (string.Equals(col, resourceCol, StringComparison.Ordinal))
                     {
+                        NormalizeResourceCell(dr, col);
+                        value = dr[col]?.ToString()?.Trim() ?? "";
                         var names = SplitResourceNames(value);
                         dr[MatchColPrefix + col] =
-                            names.Count > 0 && names.All(n => FindScheduleResource(n) != null) ? "1" : "0";
+                            names.Count > 0 && names.All(n => ResolveScheduleResources(n).Count > 0) ? "1" : "0";
                         continue;
                     }
 
@@ -2460,6 +2987,10 @@ namespace NXProject.Views
                     dr[MatchColPrefix + col] = ok ? "1" : "0";
                 }
             }
+
+            // Modo "só com ID interno": reavalia — um :I promovido a :T pode ocultar a coluna.
+            if (_idColsMode == IdColumnsMode.OnlyInternal)
+                ApplyIdColumnsVisibility();
         }
 
         // ── Ctrl+clique na célula EPIC/Feature/Story/Task abre a busca ───────
@@ -2939,6 +3470,7 @@ namespace NXProject.Views
                 Fill("Epic", _epicColumn);
             if (type is "Task" or "Story")
                 Fill("Feature", FindColumn("Feature", "Nome da Feature"));
+            FillHierarchyIdsFromNode(dr, picked);
             if (type is "Task")
             {
                 Fill("Story", FindColumn("Story", "Nome da Story"));
@@ -3018,7 +3550,8 @@ namespace NXProject.Views
                     var epic    = _epicColumn != null ? dr[_epicColumn]?.ToString()?.Trim() : null;
 
                     // 1) Task já no cronograma?
-                    var match = FindTaskInSchedule(flat, taskName, story, feature, epic);
+                    var match = FindTaskByPlanId(flat, cur)
+                        ?? FindTaskInSchedule(flat, taskName, story, feature, epic);
                     if (match?.TfsId is > 0)
                     {
                         // Padrão do cronograma: DevOps = "{TfsId}:T".
@@ -3028,13 +3561,15 @@ namespace NXProject.Views
                             dr[prioCol] = mp.ToString();
                         if (estCol != null && match.EstimatedHours is > 0)
                             dr[estCol] = match.EstimatedHours.Value.ToString("0.##");
+                        FillHierarchyIdsFromNode(dr, match);
                         matched++;
                         continue;
                     }
 
                     // 2) Acha a Story no cronograma e busca as Tasks filhas direto no DevOps.
                     TfsImportService.DevOpsTaskInfo? devTask = null;
-                    var storyNode = FindStoryInSchedule(flat, story, feature, epic);
+                    var storyNode = FindStoryByPlanId(flat, StoryIdCol != null ? dr[StoryIdCol]?.ToString() : null)
+                        ?? FindStoryInSchedule(flat, story, feature, epic);
                     if (canQueryDevOps && storyNode?.TfsId is > 0)
                     {
                         if (!devOpsCache.TryGetValue(storyNode.TfsId.Value, out var children))
@@ -3056,6 +3591,7 @@ namespace NXProject.Views
                             dr[prioCol] = devTask.Priority.ToString();
                         if (estCol != null && devTask.EstimatedHours > 0)
                             dr[estCol] = devTask.EstimatedHours.ToString("0.##");
+                        FillHierarchyIdsFromNode(dr, storyNode);
                         matched++;
                     }
                     else if (!hadInternal)
@@ -3111,6 +3647,7 @@ namespace NXProject.Views
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
             NormalizeApprovalValues();
             ReviewDuplicateIds(idCol);
+            ValidateAgainstSchedule();
 
             var flat = Flatten(_vm.Project.Tasks).ToList();
             var approvedPlanRows = _data.Table.Rows.Cast<DataRow>()
@@ -3168,11 +3705,13 @@ namespace NXProject.Views
             // (o nome é a chave da alocação). Se não bater, avisa e NÃO aplica.
             if (resourceCol != null)
             {
+                foreach (var row in approvedPlanRows)
+                    NormalizeResourceCell(row, resourceCol);
+
                 var missingResources = approvedPlanRows
                     .Where(r => !string.IsNullOrWhiteSpace(r[taskCol]?.ToString()))
-                    .SelectMany(r => SplitResourceNames(r[resourceCol]?.ToString()))
+                    .SelectMany(r => FindUnresolvedResourceInputs(r[resourceCol]?.ToString()))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Where(v => FindScheduleResource(v) == null)
                     .OrderBy(v => v, StringComparer.CurrentCultureIgnoreCase)
                     .ToList();
                 if (missingResources.Count > 0)
@@ -3182,6 +3721,33 @@ namespace NXProject.Views
                         AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+            }
+
+            // Trava: o MESMO ID não pode aparecer com nomes diferentes — vale para
+            // ID Feature, ID Story e ID Task (o ID é o vínculo; nome divergente é erro).
+            var idNameConflicts = new List<string>();
+            void CheckIdNameConflicts(string? idColName, string? nameColName, string label)
+            {
+                if (idColName == null || nameColName == null) return;
+                var conflicts = approvedPlanRows
+                    .Select(r => (Id: r[idColName]?.ToString()?.Trim() ?? "", Name: r[nameColName]?.ToString()?.Trim() ?? ""))
+                    .Where(x => x.Id.Length > 0 && x.Name.Length > 0)
+                    .GroupBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+                    .Where(g => g.Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1);
+                foreach (var g in conflicts)
+                    idNameConflicts.Add($"{label} {g.Key}: " +
+                        string.Join(" / ", g.Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase)));
+            }
+            CheckIdNameConflicts(EpicIdCol, _epicColumn, "ID EPIC");
+            CheckIdNameConflicts(FeatureIdCol, featureCol, "ID Feature");
+            CheckIdNameConflicts(StoryIdCol, storyCol, "ID Story");
+            CheckIdNameConflicts(idCol, taskCol, "ID Task");
+            if (idNameConflicts.Count > 0)
+            {
+                MessageBox.Show(this,
+                    AppStrings.Get("TaskPlan_ApplyIdNameConflicts", "• " + string.Join("\n• ", idNameConflicts)),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
 
             int created = 0, existing = 0, noStory = 0;
@@ -3371,6 +3937,7 @@ namespace NXProject.Views
 
         // Coluna de observações da planilha (registrada como tramite no DevOps ao aplicar).
         private string? ObservationCol => FindColumn(
+            ObservationColumn, "Observacao Tramite", "Observação do Tramite",
             "Observações", "Observacoes", "Observação", "Observacao", "Obs", "Notes", "Comentário", "Comentario");
 
         private static double? ParseTaskPlanPercent(string? text)
@@ -3611,6 +4178,21 @@ namespace NXProject.Views
                     max = n;
             }
             return max + 1;
+        }
+
+        private static ProjectTask? FindTaskByPlanId(List<ProjectTask> flat, string? value)
+        {
+            if (ParsePlanIdNumber(value, ":T") is { } tfsId)
+                return flat.FirstOrDefault(t => t.TfsId == tfsId);
+            if (ParsePlanIdNumber(value, ":I") is { } internalId)
+                return flat.FirstOrDefault(t => t.Id == internalId);
+            return null;
+        }
+
+        private static ProjectTask? FindStoryByPlanId(List<ProjectTask> flat, string? value)
+        {
+            var task = FindTaskByPlanId(flat, value);
+            return task != null && IsType(task, "Story") ? task : null;
         }
 
         // Casa por nome seguindo a hierarquia EPIC → Feature → Story → Task.

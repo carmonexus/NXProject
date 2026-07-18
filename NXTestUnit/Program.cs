@@ -52,6 +52,7 @@ internal static class Program
         ("Sync TFS: Marco-Devops sem irmao anterior usa pai como predecessora implicita", DevOpsMilestoneUsesParentAsImplicitPredecessor),
         ("Sync TFS: Marco-Devops resolve predecessora explicita com filhos", DevOpsMilestoneResolvesExplicitPredecessorWithChildren),
         ("Import TFS: Marco-Devops ignora predecessora fora da hierarquia para posicionar", DevOpsMilestonePositionIgnoresExternalHierarchyPredecessor),
+        ("Import TFS: predecessora externa gera aviso sem erro", ExternalPredecessorWarnsWithoutImportError),
         ("Import TFS: Marco-Devops usa pai como ancora de posicionamento", DevOpsMilestonePositionUsesParentAnchor),
         ("Import TFS: NoDevOps preserva posicao para predecessora virtual", ImportPreservesNoDevOpsSiblingPosition),
         ("Import TFS: atividades internas DevOps sao vinculadas por nome ou preservadas", ImportMatchesOrPreservesInternalDevOpsActivities),
@@ -91,6 +92,7 @@ internal static class Program
         ("Arquivo: leitura normaliza ID interno duplicado de arquivo legado", LoadNormalizesDuplicateTaskIds),
         ("Sync TFS: ID interno duplicado bloqueia a sincronizacao", SyncBlocksDuplicateTaskIds),
         ("Sync TFS: Task so grava sob Story (pai Feature/Epic e bloqueado)", SyncBlocksTaskWithoutStoryParent),
+        ("Sync TFS: Marco-Devops pode ficar fora de Story", SyncAllowsDevOpsMilestoneOutsideStory),
         ("Sync TFS: duas Tasks de mesmo nome na Story bloqueiam a sincronizacao", SyncBlocksDuplicateTaskNamesInStory)
     ];
 
@@ -1528,6 +1530,62 @@ internal static class Program
         AssertEqual(previousLate.Id, parent.Children[1].Id, "Predecessora fora da hierarquia nao deve influenciar a posicao do marco.");
     }
 
+    private static void ExternalPredecessorWarnsWithoutImportError()
+    {
+        var parent = new ProjectTask { Id = 200, TfsId = 2000, TfsType = "Feature", Name = "Feature" };
+        var marco = new ProjectTask
+        {
+            Id = 201,
+            TfsId = 2010,
+            TfsType = "Marco-Devops",
+            Name = "Marco",
+            Parent = parent,
+            IsMilestone = true
+        };
+        parent.Children.Add(marco);
+
+        var roots = new System.Collections.ObjectModel.ObservableCollection<ProjectTask> { parent };
+        var external = TfsImportService.ApplyTfsPredecessorsForTests(
+            roots,
+            new List<(int predecessor, int successor)> { (1013393, 2010) });
+
+        AssertEqual(1, external.Count, "Predecessora externa deve ser reportada como aviso PRED EXTERNA.");
+        AssertEqual(1013393, marco.PredecessorIds.Single(), "Marco-Devops deve manter o TfsId externo da predecessora.");
+
+        var previous = new ProjectTask
+        {
+            Id = 202,
+            TfsId = 2020,
+            TfsType = "Story",
+            Name = "Irmao anterior",
+            Parent = parent
+        };
+        var anchoredMarco = new ProjectTask
+        {
+            Id = 203,
+            TfsId = 2030,
+            TfsType = "Marco-Devops",
+            Name = "Marco ancorado",
+            Parent = parent,
+            IsMilestone = true
+        };
+        parent.Children.Clear();
+        parent.Children.Add(previous);
+        parent.Children.Add(anchoredMarco);
+
+        external = TfsImportService.ApplyTfsPredecessorsForTests(
+            roots,
+            new List<(int predecessor, int successor)> { (1013393, 2020) });
+
+        AssertEqual(1, external.Count, "Predecessora externa no irmao anterior do Marco tambem deve ser reportada como aviso.");
+        AssertEqual(1013393, previous.PredecessorIds.Single(), "Irmao anterior do Marco deve manter o TfsId externo da predecessora.");
+
+        var report = new TfsImportService.ImportReport();
+        report.LogWarning("[PRED EXTERNA] #1013393 \"Inteligência de Riscos - Fases 2 e 3\" fora de escopo (type=Ideia, state=L2 - Planejada).");
+        if (report.HasIssues)
+            throw new InvalidOperationException("Aviso de predecessora externa nao deve fazer o import ser tratado como erro.");
+    }
+
     private static void DevOpsMilestonePositionUsesParentAnchor()
     {
         var parent = new ProjectTask { Id = 130, TfsId = 1300, TfsType = "Feature", Name = "Feature" };
@@ -2718,6 +2776,75 @@ internal static class Program
         // Story/Feature não são afetadas pela regra (só Task).
         if (TfsImportService.TaskParentViolation(story) != null)
             throw new InvalidOperationException("A regra vale apenas para o tipo Task.");
+    }
+
+    private static void SyncAllowsDevOpsMilestoneOutsideStory()
+    {
+        var feature = new ProjectTask { Id = 1, TfsId = 901, TfsType = "Feature", Name = "Feature A" };
+        var marcoFeature = new ProjectTask
+        {
+            Id = 2,
+            TfsId = 0,
+            TfsType = "Marco-Devops",
+            Tags = "MARCO-PROJECT",
+            Name = "Marco sob Feature",
+            Parent = feature
+        };
+        feature.Children.Add(marcoFeature);
+
+        if (TfsImportService.TaskParentViolation(marcoFeature) != null)
+            throw new InvalidOperationException("Marco-Devops deve poder ficar sob Feature, mesmo sendo criado como Task no DevOps.");
+        AssertEqual(901, TfsImportService.ResolveDesiredParentForTests(marcoFeature, 999),
+            "Marco-Devops sob Feature deve usar a Feature como pai DevOps.");
+
+        var epic = new ProjectTask { Id = 3, TfsId = 1000, TfsType = "Epic", Name = "Epic comum" };
+        var marcoEpic = new ProjectTask
+        {
+            Id = 4,
+            TfsId = 0,
+            TfsType = "Marco-DevOps",
+            Tags = "MARCO-PROJECT",
+            Name = "Marco sob Epic",
+            Parent = epic
+        };
+        epic.Children.Add(marcoEpic);
+
+        if (TfsImportService.TaskParentViolation(marcoEpic) != null)
+            throw new InvalidOperationException("Marco-Devops deve poder ficar sob Epic comum quando estiver no nivel de Feature.");
+        AssertEqual(1000, TfsImportService.ResolveDesiredParentForTests(marcoEpic, 999),
+            "Marco-Devops sob Epic comum deve usar o Epic como pai DevOps.");
+
+        var rootWorkItemProject = new ProjectTask { Id = 5, TfsId = 999, TfsType = "Epic", Name = "Work Item Project" };
+        var marcoRoot = new ProjectTask
+        {
+            Id = 6,
+            TfsId = 0,
+            TfsType = "Marco-DevOps",
+            Tags = "MARCO-PROJECT",
+            Name = "Marco no raiz",
+            Parent = rootWorkItemProject
+        };
+        rootWorkItemProject.Children.Add(marcoRoot);
+
+        AssertEqual(0, TfsImportService.ResolveDesiredParentForTests(marcoRoot, 999),
+            "Marco-Devops nao pode ser criado direto no Work Item Project raiz.");
+
+        var ideia = new ProjectTask { Id = 7, TfsId = 1013393, TfsType = "Ideia", Name = "Ideia vinculada" };
+        var marcoIdeia = new ProjectTask
+        {
+            Id = 8,
+            TfsId = 0,
+            TfsType = "Marco-DevOps",
+            Tags = "MARCO-PROJECT",
+            Name = "Marco sob Ideia",
+            Parent = ideia
+        };
+        ideia.Children.Add(marcoIdeia);
+
+        if (TfsImportService.TaskParentViolation(marcoIdeia) != null)
+            throw new InvalidOperationException("Marco-Devops deve poder ficar sob tipo customizado vinculado, como Ideia.");
+        AssertEqual(1013393, TfsImportService.ResolveDesiredParentForTests(marcoIdeia, 999),
+            "Marco-Devops sob Ideia deve usar a Ideia como pai DevOps.");
     }
 
     private static void SyncBlocksDuplicateTaskNamesInStory()

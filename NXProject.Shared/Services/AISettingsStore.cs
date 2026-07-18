@@ -57,16 +57,33 @@ namespace NXProject.Services
         private const string LegacyScheduleDevOpsActionName = "Fazer Cronograma Devops";
         private const string LegacyScheduleNoDevOpsActionName = "Cronograma NoDevops";
 
-        // Versao atual do schema de acoes (v2: "Fazer Cronograma DevOps"; v3: merge de arquivo externo).
-        private const int CurrentActionsSchemaVersion = 3;
+        // Versao atual do schema de acoes (v2: "Fazer Cronograma DevOps"; v3: merge de arquivo externo; v4: merge por hierarquia/ID; v5: ID interno nao bloqueia busca TFS).
+        private const int CurrentActionsSchemaVersion = 5;
 
         /// <summary>Prompt do merge de planilha externa (Task Plan) com as Tasks do DevOps.</summary>
-        public const string MergeExternalActionPrompt =
+        private const string LegacyMergeExternalActionPrompt =
             "Você é um assistente do NXProject que faz merge entre um arquivo externo de plano de tasks " +
             "e as Tasks reais do Azure DevOps. Você recebe duas listas: LINHAS (linhas do arquivo, com número, " +
             "nome da task, story e ID atual) e TASKS_DEVOPS (id, título, story, estado, prioridade). " +
             "Associe cada linha à Task do DevOps correspondente comparando os nomes (podem ter pequenas " +
             "diferenças de escrita, abreviações ou acentos), respeitando a Story quando informada. " +
+            "Responda SOMENTE com um JSON válido, sem comentários, no formato: " +
+            "[{\"linha\": 1, \"id_devops\": 123, \"task_devops\": \"título\", \"confianca\": \"alta|media|baixa\"}]. " +
+            "Inclua apenas linhas com correspondência; não invente IDs.";
+
+        public const string MergeExternalActionPrompt =
+            "Você é um assistente do NXProject que faz merge entre um arquivo externo de plano de tasks " +
+            "e as Tasks reais do Azure DevOps. Você recebe duas listas: LINHAS (linhas do arquivo, com número, " +
+            "nome da task, ID Task atual, EPIC, ID EPIC, Feature, ID Feature, Story e ID Story) e TASKS_DEVOPS " +
+            "(id, título, story, story_id, feature, feature_id, epic, epic_id, estado, prioridade). " +
+            "Associe cada linha à Task do DevOps correspondente comparando os nomes (podem ter pequenas " +
+            "diferenças de escrita, abreviações ou acentos), mas respeite rigorosamente a hierarquia e os IDs. " +
+            "ID Task terminado em :T é vínculo TFS real; ID Task terminado em :I é apenas ID interno temporário e NÃO deve bloquear a busca: " +
+            "nesse caso procure a Task TFS correspondente pelo nome da Task dentro da Story/Feature/EPIC informada. " +
+            "Se a linha informar ID Story, ID Feature ou ID EPIC, só associe com uma Task cuja Story/Feature/EPIC tenha o mesmo ID. " +
+            "Para IDs de Story/Feature/EPIC terminados em :I, use o nome e a hierarquia como referência; não trate :I como ID TFS real. " +
+            "Se a linha informar Story, Feature ou EPIC por nome, só associe dentro dessa mesma hierarquia. " +
+            "Nunca associe uma Task de uma Story de mesmo nome quando ela estiver em Feature ou EPIC diferente. " +
             "Responda SOMENTE com um JSON válido, sem comentários, no formato: " +
             "[{\"linha\": 1, \"id_devops\": 123, \"task_devops\": \"título\", \"confianca\": \"alta|media|baixa\"}]. " +
             "Inclua apenas linhas com correspondência; não invente IDs.";
@@ -152,6 +169,11 @@ namespace NXProject.Services
                 // v3: garante a acao de merge de arquivo externo (usada pelo Task Plan).
                 if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.MergeExternalActionName))
                     workspace.ActionTypes.Add(GetDefaultActions().First(a => a.Name == AIActionType.MergeExternalActionName));
+
+                // v4/v5: atualiza apenas prompts padrao antigos; prompts editados pelo usuario ficam preservados.
+                var merge = workspace.ActionTypes.FirstOrDefault(a => a.Name == AIActionType.MergeExternalActionName);
+                if (merge != null && IsDefaultMergeExternalPrompt(merge.Prompt))
+                    merge.Prompt = MergeExternalActionPrompt;
             }
 
             workspace.ActionsSchemaVersion = CurrentActionsSchemaVersion;
@@ -159,6 +181,16 @@ namespace NXProject.Services
             if (string.IsNullOrWhiteSpace(workspace.SelectedAction) ||
                 !workspace.ActionTypes.Any(a => a.Name == workspace.SelectedAction))
                 workspace.SelectedAction = workspace.ActionTypes.FirstOrDefault()?.Name ?? AIActionType.ScheduleDevOpsActionName;
+        }
+
+        private static bool IsDefaultMergeExternalPrompt(string? prompt)
+        {
+            var currentWithoutInternalRule = MergeExternalActionPrompt
+                .Replace("ID Task terminado em :T é vínculo TFS real; ID Task terminado em :I é apenas ID interno temporário e NÃO deve bloquear a busca: nesse caso procure a Task TFS correspondente pelo nome da Task dentro da Story/Feature/EPIC informada. ", "", StringComparison.Ordinal)
+                .Replace("Para IDs de Story/Feature/EPIC terminados em :I, use o nome e a hierarquia como referência; não trate :I como ID TFS real. ", "", StringComparison.Ordinal);
+
+            return string.Equals(prompt, LegacyMergeExternalActionPrompt, StringComparison.Ordinal)
+                || string.Equals(prompt, currentWithoutInternalRule, StringComparison.Ordinal);
         }
 
         /// <summary>Carrega a configuracao completa (perfis + padrao + modo de cronograma).</summary>
