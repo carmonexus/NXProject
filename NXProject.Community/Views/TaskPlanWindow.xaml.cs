@@ -70,7 +70,10 @@ namespace NXProject.Views
                 // conforme a digitação e as cores de EPIC/Task).
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    RenumberTaskPlanRows();
+                    if (NumberCol is { } numberCol
+                        && _data?.Table.Rows.Cast<DataRow>().Any(r =>
+                            string.IsNullOrWhiteSpace(r[numberCol]?.ToString())) == true)
+                        RenumberTaskPlanRows();
                     ValidateAgainstSchedule();
                 }), System.Windows.Threading.DispatcherPriority.Background);
             };
@@ -207,6 +210,7 @@ namespace NXProject.Views
 
         // Colunas vinculadas ao cronograma: sempre existem (criadas se faltarem) e não podem ser excluídas.
         private const string NumberColumn = "Nr";
+        private const string NumberSortColumn = "__nr_sort";
         private const string ApprovalColumn = "Aprovada";
         private const string RegisterDateColumn = "DT_Registro";
         private const string PercConclusaoColumn = "Perc_Conclusao";
@@ -362,10 +366,13 @@ namespace NXProject.Views
                 RenameColumnPreservingPosition(legacyObs, ObservationColumn);
             if (ResourceCol is { } legacyResource && !string.Equals(legacyResource, ResponsibleColumn, StringComparison.Ordinal))
                 RenameColumnPreservingPosition(legacyResource, ResponsibleColumn);
-            EnsureNumberColumn();
+            var numberCreated = EnsureNumberColumn();
             EnsureApprovalColumn();
             EnsureRegisterDateColumn();
-            RenumberTaskPlanRows();
+            if (numberCreated)
+                RenumberTaskPlanRows();
+            else
+                RefreshNumberSortColumn();
 
             string?[] found =
             {
@@ -437,7 +444,7 @@ namespace NXProject.Views
             NormalizeApprovalValues();
         }
 
-        private void EnsureNumberColumn()   => EnsureLeadingControlColumn(NumberColumn, NumberCol, 0);
+        private bool EnsureNumberColumn()   => EnsureLeadingControlColumn(NumberColumn, NumberCol, 0);
         private void EnsureApprovalColumn()   => EnsureLeadingControlColumn(ApprovalColumn, ApprovalCol, 1);
         private void EnsureRegisterDateColumn() => EnsureLeadingControlColumn(RegisterDateColumn, RegisterDateCol, 2);
 
@@ -445,14 +452,14 @@ namespace NXProject.Views
         /// <paramref name="viewOrdinal"/>). Se a planilha já tem colunas físicas e esta é
         /// nova, agenda a inserção de uma coluna física em branco na posição correspondente
         /// e reindexa o mapa — assim ela nasce no início do .xlsx, não no fim com prefixo.</summary>
-        private void EnsureLeadingControlColumn(string canonical, string? existing, int viewOrdinal)
+        private bool EnsureLeadingControlColumn(string canonical, string? existing, int viewOrdinal)
         {
-            if (_data == null) return;
+            if (_data == null) return false;
             if (existing != null)
             {
                 RenameColumnPreservingPosition(existing, canonical);
                 _data.Table.Columns[canonical]!.SetOrdinal(viewOrdinal);
-                return;
+                return false;
             }
 
             _data.Table.Columns.Add(canonical, typeof(string));
@@ -467,6 +474,7 @@ namespace NXProject.Views
                 _data.InsertBlankLeadingColumnsOnSave.Add(pos);
             }
             _dirty = true;
+            return true;
         }
 
         private void RenumberTaskPlanRows()
@@ -475,6 +483,22 @@ namespace NXProject.Views
             int n = 1;
             foreach (DataRow row in _data.Table.Rows)
                 row[numberCol] = (n++).ToString();
+            RefreshNumberSortColumn();
+        }
+
+        private void RefreshNumberSortColumn()
+        {
+            if (_data == null || NumberCol is not { } numberCol) return;
+            if (!_data.Table.Columns.Contains(NumberSortColumn))
+                _data.Table.Columns.Add(NumberSortColumn, typeof(int));
+
+            int fallback = 1;
+            foreach (DataRow row in _data.Table.Rows)
+            {
+                var text = row[numberCol]?.ToString()?.Trim() ?? "";
+                row[NumberSortColumn] = int.TryParse(text, out var n) ? n : fallback;
+                fallback++;
+            }
         }
 
         private static bool IsApprovalYes(string? value)
@@ -585,6 +609,7 @@ namespace NXProject.Views
             _path = null;
             SetPathDisplay(null);
             PathText.Text = AppStrings.Get("TaskPlan_FromSchedule");
+            RefreshNumberSortColumn();
             UpdateFixedColumns();
             BuildEpicFilter();
             ValidateAgainstSchedule();
@@ -697,6 +722,7 @@ namespace NXProject.Views
             var table = new DataTable();
             string[] cols = { NumberColumn, ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, ResponsibleColumn, "Status", "Descrição da Task", ObservationColumn };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
+            table.Rows.Add(table.NewRow());
 
             _data = new TaskPlanData { Table = table, SheetName = "Tarefas", HeaderRow = 1 };
             for (int i = 0; i < cols.Length; i++)
@@ -706,6 +732,7 @@ namespace NXProject.Views
             SetPathDisplay(null);
             PathText.Text = AppStrings.Get("TaskPlan_NewFile");
             _columnFilters.Clear();
+            RenumberTaskPlanRows();
             UpdateFixedColumns();
             BuildEpicFilter();
             ValidateAgainstSchedule();
@@ -785,6 +812,8 @@ namespace NXProject.Views
                 System.Windows.Input.Mouse.OverrideCursor = null;
             }
 
+            if (added > 0)
+                RenumberTaskPlanRows();
             BuildEpicFilter();
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
@@ -953,7 +982,6 @@ namespace NXProject.Views
         {
             if (_data == null) return false;
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
-            RenumberTaskPlanRows();
             NormalizeApprovalValues();
             // A ordem visual das colunas (arrastadas na grade) vale para a gravação.
             SyncColumnOrderFromGrid();
@@ -1452,9 +1480,18 @@ namespace NXProject.Views
             return s;
         }
 
-        // Numeração das linhas no cabeçalho, como no Excel.
+        // Numeração das linhas no cabeçalho, como no Excel. O "*" é o placeholder
+        // automático do DataGrid: ainda não é uma linha real da planilha.
         private void OnLoadingRow(object? sender, DataGridRowEventArgs e)
-            => e.Row.Header = (e.Row.GetIndex() + 1).ToString();
+            => e.Row.Header = ReferenceEquals(e.Row.Item, System.Windows.Data.CollectionView.NewItemPlaceholder)
+                ? "*"
+                : (e.Row.GetIndex() + 1).ToString();
+
+        private void OnInitializingNewItem(object? sender, InitializingNewItemEventArgs e)
+        {
+            if (_data == null || e.NewItem is not DataRowView || NumberCol == null) return;
+            RenumberTaskPlanRows();
+        }
 
         private void OnColumnsGenerated(object? sender, EventArgs e)
         {
@@ -1470,6 +1507,7 @@ namespace NXProject.Views
                     PlanGrid.Columns[PlanGrid.Columns.IndexOf(txtCol)] = new DataGridComboBoxColumn
                     {
                         Header = approvalName,
+                        SortMemberPath = approvalName,
                         ItemsSource = ApprovalValues,
                         SelectedItemBinding = new System.Windows.Data.Binding($"[{approvalName}]")
                     };
@@ -1497,6 +1535,7 @@ namespace NXProject.Views
                     PlanGrid.Columns[PlanGrid.Columns.IndexOf(txtCol)] = new DataGridComboBoxColumn
                     {
                         Header = statusName,
+                        SortMemberPath = statusName,
                         ItemsSource = items,
                         SelectedItemBinding = new System.Windows.Data.Binding($"[{statusName}]")
                     };
@@ -1516,6 +1555,7 @@ namespace NXProject.Views
                     PlanGrid.Columns[PlanGrid.Columns.IndexOf(txtCol)] = new DataGridComboBoxColumn
                     {
                         Header = responsibleName,
+                        SortMemberPath = responsibleName,
                         Width = new DataGridLength(128),
                         ItemsSource = ResponsibleSuggestions(),
                         SelectedItemBinding = new System.Windows.Data.Binding($"[{responsibleName}]")
@@ -1535,8 +1575,13 @@ namespace NXProject.Views
                 }
                 if (col is DataGridTextColumn tc && _data != null)
                 {
+                    if (_data.Table.Columns.Contains(name))
+                        col.SortMemberPath = name;
+
                     if (string.Equals(name, NumberCol, StringComparison.Ordinal))
                     {
+                        if (_data.Table.Columns.Contains(NumberSortColumn))
+                            col.SortMemberPath = NumberSortColumn;
                         col.Width = new DataGridLength(56);
                         col.IsReadOnly = true;
                     }
@@ -2096,6 +2141,17 @@ namespace NXProject.Views
                 return;
             }
 
+            // Insert fora da edição cria uma linha abaixo da linha atual, sem reativar
+            // a linha automática do DataGrid.
+            if (e.Key == System.Windows.Input.Key.Insert
+                && e.OriginalSource is not TextBox
+                && e.OriginalSource is not ComboBox)
+            {
+                InsertRow(above: false, anchorRow: CurrentGridRow());
+                e.Handled = true;
+                return;
+            }
+
             if ((System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == 0)
                 return;
 
@@ -2357,6 +2413,7 @@ namespace NXProject.Views
             var lines = text.Replace("\r\n", "\n").Split('\n');
             if (lines.Length > 0 && lines[^1].Length == 0) lines = lines[..^1];
 
+            bool addedRows = false;
             for (int li = 0; li < lines.Length; li++)
             {
                 DataRowView drv;
@@ -2364,7 +2421,10 @@ namespace NXProject.Views
                 if (idx < _data.Table.DefaultView.Count)
                     drv = _data.Table.DefaultView[idx];
                 else
+                {
                     drv = _data.Table.DefaultView.AddNew();
+                    addedRows = true;
+                }
 
                 var cells = lines[li].Split('\t');
                 bool taskNameChanged = false;
@@ -2395,7 +2455,8 @@ namespace NXProject.Views
             }
 
             _dirty = true;
-            RenumberTaskPlanRows();
+            if (addedRows)
+                RenumberTaskPlanRows();
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
             return true;
@@ -2626,6 +2687,8 @@ namespace NXProject.Views
             }
 
             if (updated + added > 0) _dirty = true;
+            if (added > 0)
+                RenumberTaskPlanRows();
             BuildEpicFilter();
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
@@ -3000,7 +3063,6 @@ namespace NXProject.Views
         private void ValidateAgainstSchedule()
         {
             if (_data == null || _vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
-            RenumberTaskPlanRows();
             NormalizeApprovalValues();
 
             // Estados por célula: "1" = encontrado (verde em EPIC/Task; Story/Feature
@@ -3439,12 +3501,22 @@ namespace NXProject.Views
         }
 
         // ── operações tipo Excel (menu do botão direito) ─────────────────────
-        private void InsertRow(bool above)
+        private DataRow? CurrentGridRow()
+        {
+            if (PlanGrid.CurrentCell.Item is DataRowView current)
+                return current.Row;
+            return PlanGrid.SelectedCells
+                .Select(c => (c.Item as DataRowView)?.Row)
+                .FirstOrDefault(r => r != null);
+        }
+
+        private void InsertRow(bool above, DataRow? anchorRow = null)
         {
             if (_data == null) return;
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
             PushUndo();
-            var idx = _ctxRow != null ? _data.Table.Rows.IndexOf(_ctxRow) : -1;
+            var targetRow = anchorRow ?? _ctxRow;
+            var idx = targetRow != null ? _data.Table.Rows.IndexOf(targetRow) : -1;
             var newRow = _data.Table.NewRow();
             if (idx < 0)
                 _data.Table.Rows.Add(newRow);

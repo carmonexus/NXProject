@@ -178,6 +178,7 @@
                   GridLinesVisibility="All" HeadersVisibility="All"
                   RowHeaderWidth="38" RowHeight="24" FontSize="12"
                   LoadingRow="OnLoadingRow"
+                  InitializingNewItem="OnInitializingNewItem"
                   AlternatingRowBackground="#F7F9FC"
                   SelectionUnit="CellOrRowHeader"
                   SelectionMode="Extended"
