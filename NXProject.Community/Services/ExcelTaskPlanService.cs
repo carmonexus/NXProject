@@ -54,6 +54,8 @@ namespace NXProject.Community.Services
         /// <summary>Prefixo das colunas auxiliares que guardam a cor de fundo (hex #RRGGBB) das células.</summary>
         public const string ColorColPrefix = "__c_";
 
+        public const int BackupRetentionDays = 15;
+
         /// <summary>Lê a planilha (mesmo com o Excel aberto — FileShare.ReadWrite).</summary>
         public static TaskPlanData Load(string path)
         {
@@ -254,6 +256,79 @@ namespace NXProject.Community.Services
             }
 
             wb.Save();
+        }
+
+        /// <summary>
+        /// Copia o .xlsx atual para a subpasta Backup antes de uma gravação de risco
+        /// e remove backups do mesmo arquivo com mais de 15 dias.
+        /// </summary>
+        public static string CreateBackupBeforeSave(
+            string path,
+            string functionName,
+            string userName,
+            DateTime timestamp,
+            int retentionDays = BackupRetentionDays)
+        {
+            var sourceDir = Path.GetDirectoryName(path);
+            if (string.IsNullOrWhiteSpace(sourceDir))
+                sourceDir = Directory.GetCurrentDirectory();
+
+            var backupDir = Path.Combine(sourceDir, "Backup");
+            Directory.CreateDirectory(backupDir);
+
+            var baseName = SanitizeFileNamePart(Path.GetFileNameWithoutExtension(path));
+            var ext = Path.GetExtension(path);
+            if (string.IsNullOrWhiteSpace(ext))
+                ext = ".xlsx";
+
+            var safeFunction = SanitizeFileNamePart(functionName);
+            var safeUser = SanitizeFileNamePart(userName);
+            var stamp = timestamp.ToString("yyyy_MM_dd_HH_mm_ss", CultureInfo.InvariantCulture);
+            var backupName = $"{baseName}_bkp_{stamp}_{safeFunction}_{safeUser}{ext}";
+            var backupPath = Path.Combine(backupDir, backupName);
+
+            var n = 1;
+            while (File.Exists(backupPath))
+            {
+                backupName = $"{baseName}_bkp_{stamp}_{safeFunction}_{safeUser}_{n++}{ext}";
+                backupPath = Path.Combine(backupDir, backupName);
+            }
+
+            File.Copy(path, backupPath, overwrite: false);
+            File.SetLastWriteTime(backupPath, timestamp);
+            DeleteExpiredBackups(backupDir, baseName, timestamp, retentionDays);
+            return backupPath;
+        }
+
+        private static void DeleteExpiredBackups(string backupDir, string baseName, DateTime now, int retentionDays)
+        {
+            if (retentionDays <= 0) return;
+
+            var cutoff = now.AddDays(-retentionDays);
+            var prefix = $"{baseName}_bkp_";
+            foreach (var file in Directory.EnumerateFiles(backupDir, $"{baseName}_bkp_*.xlsx"))
+            {
+                var name = Path.GetFileName(file);
+                if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+
+                try
+                {
+                    if (File.GetLastWriteTime(file) < cutoff)
+                        File.Delete(file);
+                }
+                catch
+                {
+                    // Retenção é higiene; não bloqueia o salvamento se um backup antigo estiver travado.
+                }
+            }
+        }
+
+        private static string SanitizeFileNamePart(string? value)
+        {
+            var text = string.IsNullOrWhiteSpace(value) ? "sem_nome" : value.Trim();
+            foreach (var ch in Path.GetInvalidFileNameChars())
+                text = text.Replace(ch, '_');
+            return text.Replace(' ', '_');
         }
 
         /// <summary>

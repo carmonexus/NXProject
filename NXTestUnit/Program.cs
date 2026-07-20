@@ -83,6 +83,7 @@ internal static class Program
         ("Task Plan: criar e reabrir xlsx preserva colunas e linhas", TaskPlanCreateAndLoadRoundTrip),
         ("Task Plan: cabecalho detectado abaixo do bloco de resumo", TaskPlanDetectsHeaderBelowSummary),
         ("Task Plan: salvar preserva valores e cor de fundo", TaskPlanSavePreservesValuesAndColors),
+        ("Task Plan: backup antes de salvar cria copia e aplica retencao", TaskPlanBackupBeforeSaveCreatesCopyAndRetains15Days),
         ("Task Plan: coluna nova grava no fim com prefixo e volta na posicao", TaskPlanNewColumnKeepsViewPosition),
         ("Task Plan: coluna excluida some da planilha ao salvar", TaskPlanDeletedColumnClearedOnSave),
         ("Task Plan: aplicar cria task interna no padrao do cronograma", TaskPlanApplyCreatesInternalTaskLikeSchedule),
@@ -2568,6 +2569,51 @@ internal static class Program
                 throw new InvalidOperationException($"Cor de fundo nao voltou do arquivo (obtido: '{color}').");
         }
         finally { File.Delete(path); }
+    }
+
+    private static void TaskPlanBackupBeforeSaveCreatesCopyAndRetains15Days()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"nx-taskplan-backup-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "Plano Oficial.xlsx");
+        try
+        {
+            var data = NewPlan("Aprovada", "Task", "ID Task");
+            data.Table.Rows.Add("Nao", "Tarefa interna", "77:I");
+            ExcelTaskPlanService.CreateNew(path, data);
+
+            var backupDir = Path.Combine(dir, "Backup");
+            Directory.CreateDirectory(backupDir);
+            var oldBackup = Path.Combine(backupDir, "Plano_Oficial_bkp_2026_01_01_10_00_00_merge_user.xlsx");
+            File.Copy(path, oldBackup);
+            File.SetLastWriteTime(oldBackup, new DateTime(2026, 6, 1, 10, 0, 0));
+
+            var backup = ExcelTaskPlanService.CreateBackupBeforeSave(
+                path,
+                "merge",
+                @"DOMINIO\usuario teste",
+                new DateTime(2026, 7, 20, 12, 34, 56));
+
+            if (!File.Exists(backup))
+                throw new InvalidOperationException("Backup nao foi criado.");
+            var name = Path.GetFileName(backup);
+            if (name != "Plano_Oficial_bkp_2026_07_20_12_34_56_merge_DOMINIO_usuario_teste.xlsx")
+                throw new InvalidOperationException($"Nome do backup inesperado: {name}");
+            if (File.Exists(oldBackup))
+                throw new InvalidOperationException("Backup antigo deveria ter sido removido pela retencao de 15 dias.");
+
+            data.Table.Rows[0]["ID Task"] = "123:T";
+            ExcelTaskPlanService.Save(path, data);
+
+            var backupData = ExcelTaskPlanService.Load(backup);
+            if (backupData.Table.Rows[0]["ID Task"]?.ToString() != "77:I")
+                throw new InvalidOperationException("Backup deve preservar o conteudo anterior ao salvar.");
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, recursive: true);
+        }
     }
 
     private static void TaskPlanNewColumnKeepsViewPosition()

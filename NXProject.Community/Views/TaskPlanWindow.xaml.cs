@@ -21,6 +21,7 @@ namespace NXProject.Views
         private string? _epicColumn;   // nome da coluna EPIC (se houver)
         private bool _suppressEpic;
         private bool _dirty;           // alterações não salvas no .xlsx
+        private string? _pendingBackupFunction;
         private TaskPlanSettings _settings = new();
 
         // Arquivo base do primeiro teste (Downloads) — usado só se não houver configuração.
@@ -216,6 +217,9 @@ namespace NXProject.Views
         private const string PercConclusaoColumn = "Perc_Conclusao";
         private const string ResponsibleColumn = "Responsável";
         private const string ObservationColumn = "Observação Tramite";
+        private const string BackupFunctionLoad = "load";
+        private const string BackupFunctionMerge = "merge";
+        private const string BackupFunctionClear = "clear";
         private static readonly string[] ApprovalValues = ["Nao", "Sim"];
         private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Status" };
 
@@ -512,8 +516,44 @@ namespace NXProject.Views
                 || v.Equals("1", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static bool IsApprovalNo(string? value)
+        {
+            var v = (value ?? "").Trim();
+            return v.Equals("Nao", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("Não", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("N", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("No", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("False", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("0", StringComparison.OrdinalIgnoreCase);
+        }
+
         private bool IsApproved(DataRow row)
             => ApprovalCol is { } col && IsApprovalYes(row[col]?.ToString());
+
+        private bool HasUnapprovedInternalTask()
+        {
+            if (_data == null) return false;
+            if (ApprovalCol is not { } approvalCol) return false;
+            var idCol = FindColumn("ID Task", "IdTask", "ID_Task", "ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops");
+            if (idCol == null) return false;
+            var taskCol = FindColumn("Task", "Tarefa", "Nome da Task");
+
+            foreach (DataRow row in _data.Table.Rows)
+            {
+                if (!IsApprovalNo(row[approvalCol]?.ToString())) continue;
+                if (!(row[idCol]?.ToString()?.Trim() ?? "").EndsWith(":I", StringComparison.OrdinalIgnoreCase)) continue;
+                if (taskCol != null && string.IsNullOrWhiteSpace(row[taskCol]?.ToString())) continue;
+                return true;
+            }
+
+            return false;
+        }
+
+        private void MarkBackupFunction(string functionName)
+        {
+            if (!string.IsNullOrWhiteSpace(_path))
+                _pendingBackupFunction = functionName;
+        }
 
         private bool IsApprovedOrAlreadyTfs(DataRow row, string idCol)
         {
@@ -629,7 +669,11 @@ namespace NXProject.Views
                 var r = MessageBox.Show(this, AppStrings.Get("TaskPlan_ConfirmSave"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (r == MessageBoxResult.Cancel) return;
-                if (r == MessageBoxResult.Yes && !TrySave()) return;
+                if (r == MessageBoxResult.Yes)
+                {
+                    MarkBackupFunction(BackupFunctionClear);
+                    if (!TrySave()) return;
+                }
             }
 
             var choice = AskNewPlanSource();
@@ -659,7 +703,11 @@ namespace NXProject.Views
                 var r = MessageBox.Show(this, AppStrings.Get("TaskPlan_ConfirmSave"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (r == MessageBoxResult.Cancel) return;
-                if (r == MessageBoxResult.Yes && !TrySave()) return;
+                if (r == MessageBoxResult.Yes)
+                {
+                    MarkBackupFunction(BackupFunctionLoad);
+                    if (!TrySave()) return;
+                }
             }
             if (!HasSchedule()) return;
             await BuildFromScheduleWithTfsAsync();
@@ -1059,8 +1107,17 @@ namespace NXProject.Views
             }
             try
             {
+                if (_pendingBackupFunction is { } functionName && HasUnapprovedInternalTask())
+                {
+                    ExcelTaskPlanService.CreateBackupBeforeSave(
+                        _path,
+                        functionName,
+                        Environment.UserName,
+                        DateTime.Now);
+                }
                 ExcelTaskPlanService.Save(_path, _data);
                 _dirty = false;
+                _pendingBackupFunction = null;
                 StatusText.Foreground = System.Windows.Media.Brushes.Green;
                 StatusText.Text = AppStrings.Get("TaskPlan_Saved");
                 return true;
@@ -2484,7 +2541,7 @@ namespace NXProject.Views
 
         // Merge: só atualiza/adiciona Task Closed se ela JÁ estiver na planilha.
         private async void OnMergeScheduleClick(object sender, RoutedEventArgs e)
-            => await RunMergeAsync(includeNewClosed: false);
+            => await RunMergeAsync(includeNewClosed: false, backupFunction: BackupFunctionMerge);
 
         // Load Task: carrega do cronograma/TFS como o Merge, perguntando se traz as Closed.
         private async void OnLoadTaskClick(object sender, RoutedEventArgs e)
@@ -2500,10 +2557,10 @@ namespace NXProject.Views
             var r = MessageBox.Show(this, AppStrings.Get("TaskPlan_LoadTaskClosed"),
                 AppStrings.Get("TaskPlan_Title"), MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (r == MessageBoxResult.Cancel) return;
-            await RunMergeAsync(includeNewClosed: r == MessageBoxResult.Yes);
+            await RunMergeAsync(includeNewClosed: r == MessageBoxResult.Yes, backupFunction: BackupFunctionLoad);
         }
 
-        private async Task RunMergeAsync(bool includeNewClosed)
+        private async Task RunMergeAsync(bool includeNewClosed, string backupFunction)
         {
             if (_data == null) return;
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0)
@@ -2686,7 +2743,11 @@ namespace NXProject.Views
                 added++;
             }
 
-            if (updated + added > 0) _dirty = true;
+            if (updated + added > 0)
+            {
+                _dirty = true;
+                MarkBackupFunction(backupFunction);
+            }
             if (added > 0)
                 RenumberTaskPlanRows();
             BuildEpicFilter();
@@ -3821,7 +3882,11 @@ namespace NXProject.Views
                 System.Windows.Input.Mouse.OverrideCursor = null;
             }
 
-            if (matched + internalAssigned > 0) _dirty = true;
+            if (matched + internalAssigned > 0)
+            {
+                _dirty = true;
+                MarkBackupFunction(BackupFunctionLoad);
+            }
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
