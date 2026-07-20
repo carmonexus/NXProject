@@ -1713,23 +1713,17 @@ namespace NXProject.Views
                             }));
                     }
 
-                    // Colunas de hierarquia: verde = encontrado (EPIC/Task); vermelho =
-                    // preenchido mas NÃO existe no pai (todas — fica até a edição corrigir).
+                    // Colunas de hierarquia: encontrado ganha um marcador no texto; vermelho =
+                    // preenchido mas NÃO existe no pai (fica até a edição corrigir).
                     if ((HierarchyType(name) != null || isResourceCol) && _data.Table.Columns.Contains(MatchColPrefix + name))
                     {
-                        if (HierarchyType(name) is "Epic" or "Task" || isResourceCol)
+                        var textBinding = new System.Windows.Data.MultiBinding
                         {
-                            var okTrig = new System.Windows.DataTrigger
-                            {
-                                Binding = new System.Windows.Data.Binding($"[{MatchColPrefix + name}]"),
-                                Value = "1"
-                            };
-                            okTrig.Setters.Add(new Setter(System.Windows.Controls.TextBlock.BackgroundProperty,
-                                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC8, 0xE6, 0xC9))));
-                            okTrig.Setters.Add(new Setter(System.Windows.Controls.TextBlock.ForegroundProperty,
-                                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1B, 0x5E, 0x20))));
-                            style.Triggers.Add(okTrig);
-                        }
+                            Converter = MatchMarkerTextConverter.Instance
+                        };
+                        textBinding.Bindings.Add(new System.Windows.Data.Binding($"[{name}]"));
+                        textBinding.Bindings.Add(new System.Windows.Data.Binding($"[{MatchColPrefix + name}]"));
+                        style.Setters.Add(new Setter(System.Windows.Controls.TextBlock.TextProperty, textBinding));
 
                         var badTrig = new System.Windows.DataTrigger
                         {
@@ -3704,6 +3698,23 @@ namespace NXProject.Views
 
             public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
                 => System.Windows.Data.Binding.DoNothing;
+        }
+
+        private sealed class MatchMarkerTextConverter : System.Windows.Data.IMultiValueConverter
+        {
+            public static readonly MatchMarkerTextConverter Instance = new();
+
+            public object Convert(object[] values, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+            {
+                var text = values.Length > 0 ? values[0]?.ToString() ?? "" : "";
+                var state = values.Length > 1 ? values[1]?.ToString() ?? "" : "";
+                if (string.IsNullOrWhiteSpace(text) || state != "1")
+                    return text;
+                return text.EndsWith("✓", StringComparison.Ordinal) ? text : text + "  ✓";
+            }
+
+            public object[] ConvertBack(object value, Type[] targetTypes, object? parameter, System.Globalization.CultureInfo culture)
+                => targetTypes.Select(_ => System.Windows.Data.Binding.DoNothing).ToArray();
         }
 
         // Aplica a cor (hex; vazio = sem cor) nas células selecionadas — como no Excel.

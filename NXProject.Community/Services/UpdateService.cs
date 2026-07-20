@@ -244,7 +244,7 @@ public static class UpdateService
             Remove-Item -Path $src_dir -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path (Split-Path $src_dir) -Recurse -Force -ErrorAction SilentlyContinue
 
-            Start-Process (Join-Path $app_dir $exe_name)
+            Start-Process -FilePath (Join-Path $app_dir $exe_name) -WindowStyle Normal
 
             Start-Sleep -Seconds 1
             Remove-Item -Path $script_path -Force -ErrorAction SilentlyContinue

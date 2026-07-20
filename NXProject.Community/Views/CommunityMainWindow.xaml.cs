@@ -249,6 +249,7 @@ namespace NXProject.Views
             };
 
             Loaded += OnCommunityWindowLoaded;
+            ContentRendered += (_, _) => BringMainWindowToFront();
             Closing += OnCommunityWindowClosing;
             PreviewKeyDown += (_, e) =>
             {
@@ -260,6 +261,26 @@ namespace NXProject.Views
                 }
             };
             ApplyLayoutMode(expanded: false);
+        }
+
+        private void BringMainWindowToFront()
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
+            {
+                if (WindowState == WindowState.Minimized)
+                    WindowState = WindowState.Normal;
+
+                Show();
+                Activate();
+                Focus();
+
+                // Após atualização, algumas máquinas deixam o processo novo atrás/minimizado.
+                // O pulso de Topmost força a janela a reaparecer sem deixá-la sempre no topo.
+                var wasTopmost = Topmost;
+                Topmost = true;
+                Topmost = wasTopmost;
+                Activate();
+            });
         }
 
         private void OnExitClick(object sender, RoutedEventArgs e)
