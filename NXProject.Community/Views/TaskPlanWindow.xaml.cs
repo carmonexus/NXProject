@@ -1753,6 +1753,7 @@ namespace NXProject.Views
 
         // Filtros por coluna estilo Excel (tela própria de filtro), combinados com o de EPIC.
         private readonly Dictionary<string, List<string>> _columnFilters = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _columnColorFilters = new(StringComparer.OrdinalIgnoreCase);
 
         private List<string> ResponsibleSuggestions()
         {
@@ -1798,6 +1799,22 @@ namespace NXProject.Views
                 var values = string.Join(",", kv.Value.Select(v => $"'{v.Replace("'", "''")}'"));
                 parts.Add($"[{kv.Key}] IN ({values})");
             }
+            foreach (var kv in _columnColorFilters)
+            {
+                var colorCol = ExcelTaskPlanService.ColorColPrefix + kv.Key;
+                if (!_data.Table.Columns.Contains(colorCol))
+                {
+                    if (string.IsNullOrEmpty(kv.Value))
+                        continue;
+                    parts.Add("1 = 0");
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(kv.Value))
+                    parts.Add($"([{colorCol}] IS NULL OR [{colorCol}] = '')");
+                else
+                    parts.Add($"[{colorCol}] = '{kv.Value.Replace("'", "''")}'");
+            }
 
             _data.Table.DefaultView.RowFilter = string.Join(" AND ", parts);
             ApplyEpicColumnVisibility();
@@ -1806,6 +1823,7 @@ namespace NXProject.Views
         private void OnClearFiltersClick(object sender, RoutedEventArgs e)
         {
             _columnFilters.Clear();
+            _columnColorFilters.Clear();
             if (OpenTasksOnlyCheckBox != null)
                 OpenTasksOnlyCheckBox.IsChecked = false;
             if (EpicFilterCombo.Items.Count > 0) EpicFilterCombo.SelectedIndex = 0;
@@ -1837,8 +1855,16 @@ namespace NXProject.Views
             };
             filterItem.Click += (_, _) => ShowColumnFilterDialog(colName);
             menu.Items.Add(filterItem);
+            var colorFilter = BuildColorFilterMenu(colName);
+            if (colorFilter != null)
+                menu.Items.Add(colorFilter);
             var clear = new MenuItem { Header = AppStrings.Get("TaskPlan_FilterClearColumn") };
-            clear.Click += (_, _) => { _columnFilters.Remove(colName); ApplyEpicFilter(); };
+            clear.Click += (_, _) =>
+            {
+                _columnFilters.Remove(colName);
+                _columnColorFilters.Remove(colName);
+                ApplyEpicFilter();
+            };
             menu.Items.Add(clear);
 
             // Operações de coluna (tipo Excel).
@@ -1877,6 +1903,114 @@ namespace NXProject.Views
 
             menu.PlacementTarget = header;
             menu.IsOpen = true;
+        }
+
+        private MenuItem? BuildColorFilterMenu(string colName)
+        {
+            if (_data == null) return null;
+            var colorCol = ExcelTaskPlanService.ColorColPrefix + colName;
+            bool hasColorCol = _data.Table.Columns.Contains(colorCol);
+            bool hasBlankColor = !hasColorCol || _data.Table.Rows.Cast<DataRow>()
+                .Any(r => string.IsNullOrWhiteSpace(r[colorCol]?.ToString()));
+            var colors = hasColorCol
+                ? _data.Table.Rows.Cast<DataRow>()
+                    .Select(r => NormalizeColorHex(r[colorCol]?.ToString()))
+                    .Where(v => v.Length > 0)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(v => ColorFilterLabel(v), StringComparer.CurrentCultureIgnoreCase)
+                    .ToList()
+                : new List<string>();
+
+            if (colors.Count == 0 && !hasBlankColor && !_columnColorFilters.ContainsKey(colName))
+                return null;
+
+            var root = new MenuItem
+            {
+                Header = AppStrings.Get("TaskPlan_FilterByColor"),
+                FontWeight = _columnColorFilters.ContainsKey(colName) ? FontWeights.SemiBold : FontWeights.Normal
+            };
+
+            foreach (var hex in colors)
+            {
+                var item = new MenuItem
+                {
+                    Header = ColorFilterLabel(hex),
+                    Tag = hex,
+                    IsCheckable = true,
+                    IsChecked = IsColorFilterChecked(colName, hex)
+                };
+                item.Icon = new Border
+                {
+                    Background = (System.Windows.Media.Brush?)HexBrushConverter.Instance.Convert(
+                        hex, typeof(System.Windows.Media.Brush), null, System.Globalization.CultureInfo.CurrentCulture),
+                    BorderBrush = System.Windows.Media.Brushes.Gray,
+                    BorderThickness = new Thickness(1),
+                    Width = 14,
+                    Height = 14
+                };
+                item.Click += (_, _) =>
+                {
+                    _columnColorFilters[colName] = hex;
+                    ApplyEpicFilter();
+                };
+                root.Items.Add(item);
+            }
+
+            if (colors.Count > 0)
+                root.Items.Add(new Separator());
+
+            var noColor = new MenuItem
+            {
+                Header = AppStrings.Get("TaskPlan_ColorNone"),
+                Tag = "",
+                IsCheckable = true,
+                IsChecked = IsColorFilterChecked(colName, "")
+            };
+            noColor.Click += (_, _) =>
+            {
+                _columnColorFilters[colName] = "";
+                ApplyEpicFilter();
+            };
+            root.Items.Add(noColor);
+
+            var clear = new MenuItem { Header = AppStrings.Get("TaskPlan_FilterClearColor") };
+            clear.Click += (_, _) =>
+            {
+                _columnColorFilters.Remove(colName);
+                ApplyEpicFilter();
+            };
+            root.Items.Add(new Separator());
+            root.Items.Add(clear);
+
+            return root;
+        }
+
+        private bool IsColorFilterChecked(string colName, string hex)
+        {
+            return _columnColorFilters.TryGetValue(colName, out var current)
+                && string.Equals(current, hex, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizeColorHex(string? value)
+        {
+            var v = value?.Trim() ?? "";
+            return v.StartsWith("#", StringComparison.Ordinal) ? v.ToUpperInvariant() : "";
+        }
+
+        private static string ColorFilterLabel(string hex)
+        {
+            var key = hex.ToUpperInvariant() switch
+            {
+                "#FFF2CC" => "TaskPlan_ColorYellow",
+                "#C6EFCE" => "TaskPlan_ColorGreen",
+                "#BDD7EE" => "TaskPlan_ColorBlue",
+                "#FFC7CE" => "TaskPlan_ColorRed",
+                "#FCE4D6" => "TaskPlan_ColorOrange",
+                "#D9D9D9" => "TaskPlan_ColorGray",
+                "#E4DFEC" => "TaskPlan_ColorPurple",
+                _ => null
+            };
+            return key != null ? AppStrings.Get(key) : hex;
         }
 
         // Tela de filtro da coluna (estilo Excel): pesquisa + checkboxes + marcar/desmarcar todos.
@@ -3455,6 +3589,7 @@ namespace NXProject.Views
         // ── Ver no cronograma (botão direito na célula) ──────────────────────
         private DataRow? _ctxRow;
         private string? _ctxCol;
+        private string? _copiedCellColor;
 
         private void OnGridPreviewMouseRightDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
@@ -3576,10 +3711,45 @@ namespace NXProject.Views
         {
             if (_data == null || sender is not MenuItem mi) return;
             var hex = mi.Tag as string ?? "";
+            ApplyCellColorToSelection(hex);
+        }
+
+        private void OnCopyCellColorClick(object sender, RoutedEventArgs e)
+        {
+            if (_data == null) return;
+            var row = _ctxRow ?? CurrentGridRow();
+            var colName = _ctxCol ?? PlanGrid.SelectedCells.FirstOrDefault().Column?.Header?.ToString();
+            if (row == null || string.IsNullOrWhiteSpace(colName) || !_data.Table.Columns.Contains(colName))
+                return;
+
+            var colorCol = ExcelTaskPlanService.ColorColPrefix + colName;
+            _copiedCellColor = _data.Table.Columns.Contains(colorCol)
+                ? NormalizeColorHex(row[colorCol]?.ToString())
+                : "";
+        }
+
+        private void OnPasteCellColorClick(object sender, RoutedEventArgs e)
+        {
+            if (_copiedCellColor == null) return;
+            ApplyCellColorToSelection(_copiedCellColor);
+        }
+
+        private void ApplyCellColorToSelection(string hex)
+        {
+            if (_data == null) return;
+            hex = NormalizeColorHex(hex);
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
             PushUndo();
 
             var cells = PlanGrid.SelectedCells.ToList();
+            if (cells.Count == 0 && _ctxRow != null && _ctxCol != null)
+            {
+                var col = PlanGrid.Columns.FirstOrDefault(c =>
+                    string.Equals(c.Header?.ToString(), _ctxCol, StringComparison.OrdinalIgnoreCase));
+                if (col != null)
+                    cells.Add(new DataGridCellInfo(_ctxRow.Table.DefaultView[_ctxRow.Table.Rows.IndexOf(_ctxRow)], col));
+            }
+
             bool newColumns = false;
             foreach (var cell in cells)
             {

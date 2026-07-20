@@ -331,6 +331,8 @@
     <sys:String x:Key="TaskPlan_FilterColumn">Filter: {0}</sys:String>
     <sys:String x:Key="TaskPlan_FilterClearColumn">Clear this column's filter</sys:String>
     <sys:String x:Key="TaskPlan_FilterOption">Filter...</sys:String>
+    <sys:String x:Key="TaskPlan_FilterByColor">Filter by color</sys:String>
+    <sys:String x:Key="TaskPlan_FilterClearColor">Clear color filter</sys:String>
     <sys:String x:Key="TaskPlan_FilterSelectAll">(Select all)</sys:String>
     <sys:String x:Key="TaskPlan_FilterEmpty">(empty)</sys:String>
     <sys:String x:Key="TaskPlan_Settings">Task Plan Settings</sys:String>
@@ -400,6 +402,8 @@
     <sys:String x:Key="TaskPlan_ColorGray">Gray</sys:String>
     <sys:String x:Key="TaskPlan_ColorPurple">Purple</sys:String>
     <sys:String x:Key="TaskPlan_ColorNone">No color</sys:String>
+    <sys:String x:Key="TaskPlan_CopyColor">Copy color</sys:String>
+    <sys:String x:Key="TaskPlan_PasteColor">Paste color</sys:String>
     <sys:String x:Key="TaskPlan_ClearCells">Clear cell contents</sys:String>
     <sys:String x:Key="TaskPlan_DeleteRows">Delete row(s)</sys:String>
     <sys:String x:Key="TaskPlan_DeleteRowsConfirm">Delete {0} selected row(s)?</sys:String>

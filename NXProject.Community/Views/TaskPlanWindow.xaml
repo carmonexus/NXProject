@@ -233,6 +233,8 @@
                         <Separator/>
                         <MenuItem Header="{DynamicResource TaskPlan_ColorNone}" Tag="" Click="OnCellColorClick"/>
                     </MenuItem>
+                    <MenuItem Header="{DynamicResource TaskPlan_CopyColor}" Click="OnCopyCellColorClick"/>
+                    <MenuItem Header="{DynamicResource TaskPlan_PasteColor}" Click="OnPasteCellColorClick"/>
                     <MenuItem Header="{DynamicResource TaskPlan_ClearCells}" Click="OnClearCellsClick"/>
                     <MenuItem Header="{DynamicResource TaskPlan_DeleteRows}" Click="OnDeleteRowsClick"/>
                     <Separator/>

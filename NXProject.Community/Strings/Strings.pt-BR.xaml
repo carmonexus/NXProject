@@ -113,6 +113,8 @@
     <sys:String x:Key="TaskPlan_FilterColumn">Filtrar: {0}</sys:String>
     <sys:String x:Key="TaskPlan_FilterClearColumn">Limpar filtro desta coluna</sys:String>
     <sys:String x:Key="TaskPlan_FilterOption">Filtro...</sys:String>
+    <sys:String x:Key="TaskPlan_FilterByColor">Filtrar por cor</sys:String>
+    <sys:String x:Key="TaskPlan_FilterClearColor">Limpar filtro de cor</sys:String>
     <sys:String x:Key="TaskPlan_FilterSelectAll">(Selecionar tudo)</sys:String>
     <sys:String x:Key="TaskPlan_FilterEmpty">(vazio)</sys:String>
     <sys:String x:Key="TaskPlan_Settings">Configurações do Task Plan</sys:String>
@@ -182,6 +184,8 @@
     <sys:String x:Key="TaskPlan_ColorGray">Cinza</sys:String>
     <sys:String x:Key="TaskPlan_ColorPurple">Roxo</sys:String>
     <sys:String x:Key="TaskPlan_ColorNone">Sem cor</sys:String>
+    <sys:String x:Key="TaskPlan_CopyColor">Copiar cor</sys:String>
+    <sys:String x:Key="TaskPlan_PasteColor">Colar cor</sys:String>
     <sys:String x:Key="TaskPlan_ClearCells">Limpar conteúdo das células</sys:String>
     <sys:String x:Key="TaskPlan_DeleteRows">Excluir linha(s)</sys:String>
     <sys:String x:Key="TaskPlan_DeleteRowsConfirm">Excluir {0} linha(s) selecionada(s)?</sys:String>
