@@ -23,6 +23,7 @@ namespace NXProject.Views
         private bool _dirty;           // alterações não salvas no .xlsx
         private string? _pendingBackupFunction;
         private TaskPlanSettings _settings = new();
+        private bool _clearLegacyMatchColorsOnNextValidation;
 
         // Arquivo base do primeiro teste (Downloads) — usado só se não houver configuração.
         private static readonly string DefaultPath = Path.Combine(
@@ -188,6 +189,7 @@ namespace NXProject.Views
                 UpdateFixedColumns();
                 // Valida antes do bind: as colunas __m_* precisam existir quando o grid gerar as colunas.
                 BuildEpicFilter();
+                _clearLegacyMatchColorsOnNextValidation = true;
                 ValidateAgainstSchedule();
                 BindTable();
                 ApplyEpicFilter();
@@ -227,6 +229,7 @@ namespace NXProject.Views
         private string? EpicIdCol    => FindColumn("ID EPIC", "ID Epic", "IdEpic", "ID_EPIC", "ID_Epic");
         private string? FeatureIdCol => FindColumn("ID Feature", "IdFeature", "ID_Feature");
         private string? StoryIdCol   => FindColumn("ID Story", "IdStory", "ID_Story");
+        private string? TaskIdCol    => FindColumn("ID Task", "IdTask", "ID_Task", "ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops");
         private string? NumberCol    => FindColumn(NumberColumn, "Nº", "No", "Nro", "Numero", "Número");
         private string? ApprovalCol  => FindColumn(ApprovalColumn, "Aprovado", "Aprovacao", "Aprovação", "Approved");
         private string? RegisterDateCol => FindColumn(RegisterDateColumn, "DT Registro", "Data Registro",
@@ -585,6 +588,13 @@ namespace NXProject.Views
                 ? info.AssignedToDisplay.Trim()
                 : info.AssignedTo?.Trim() ?? "";
 
+        private static void FillTaskDescriptionFromDevOps(DataRow row, string? descCol, TfsImportService.DevOpsTaskInfo info)
+        {
+            if (descCol == null || !row.Table.Columns.Contains(descCol)) return;
+            if (!string.IsNullOrWhiteSpace(info.Description))
+                row[descCol] = info.Description;
+        }
+
         private bool IsApprovedOrAlreadyTfs(DataRow row, string idCol)
         {
             if ((row[idCol]?.ToString()?.Trim() ?? "").EndsWith(":T", StringComparison.OrdinalIgnoreCase))
@@ -879,6 +889,7 @@ namespace NXProject.Views
                         dr[PercConclusaoColumn] = Math.Round(t.PercentComplete).ToString("0");
                         dr[ResponsibleColumn] = TaskPlanAssignee(t);
                         dr["Status"]     = t.State ?? "";
+                        FillTaskDescriptionFromDevOps(dr, "Descrição da Task", t);
                         _data.Table.Rows.Add(dr);
                         existingIds.Add(t.TfsId);
                         added++;
@@ -1654,7 +1665,9 @@ namespace NXProject.Views
                 }
             }
 
-            // Oculta as colunas auxiliares de validação (__m_*) e pinta as validadas.
+            ReplaceValidatedTextColumnsWithTemplates();
+
+            // Oculta as colunas auxiliares de validação (__m_*) e pinta as inválidas.
             foreach (var col in PlanGrid.Columns)
             {
                 var name = col.Header?.ToString() ?? "";
@@ -1812,6 +1825,95 @@ namespace NXProject.Views
 
             _data.Table.DefaultView.RowFilter = string.Join(" AND ", parts);
             ApplyEpicColumnVisibility();
+        }
+
+        private void ReplaceValidatedTextColumnsWithTemplates()
+        {
+            if (_data == null) return;
+
+            for (int i = 0; i < PlanGrid.Columns.Count; i++)
+            {
+                if (PlanGrid.Columns[i] is not DataGridTextColumn tc) continue;
+                var name = tc.Header?.ToString() ?? "";
+                if (string.IsNullOrEmpty(name) || !_data.Table.Columns.Contains(name)) continue;
+                if (HierarchyType(name) == null) continue;
+                if (!_data.Table.Columns.Contains(MatchColPrefix + name)) continue;
+
+                PlanGrid.Columns[i] = new DataGridTemplateColumn
+                {
+                    Header = name,
+                    SortMemberPath = string.IsNullOrWhiteSpace(tc.SortMemberPath) ? name : tc.SortMemberPath,
+                    Width = tc.Width,
+                    MinWidth = tc.MinWidth,
+                    MaxWidth = tc.MaxWidth,
+                    IsReadOnly = tc.IsReadOnly,
+                    CellTemplate = BuildValidatedDisplayTemplate(name),
+                    CellEditingTemplate = BuildTextEditingTemplate(name)
+                };
+            }
+        }
+
+        private DataTemplate BuildValidatedDisplayTemplate(string name)
+        {
+            var textBlock = new FrameworkElementFactory(typeof(TextBlock));
+            textBlock.SetValue(TextBlock.TextWrappingProperty, TextWrapping.Wrap);
+            textBlock.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+
+            var textBinding = new System.Windows.Data.MultiBinding
+            {
+                Converter = MatchMarkerTextConverter.Instance
+            };
+            textBinding.Bindings.Add(new System.Windows.Data.Binding($"[{name}]"));
+            textBinding.Bindings.Add(new System.Windows.Data.Binding($"[{MatchColPrefix + name}]"));
+            textBlock.SetBinding(TextBlock.TextProperty, textBinding);
+
+            var style = new Style(typeof(TextBlock));
+            var colorCol = ExcelTaskPlanService.ColorColPrefix + name;
+            if (_data?.Table.Columns.Contains(colorCol) == true)
+            {
+                style.Setters.Add(new Setter(TextBlock.BackgroundProperty,
+                    new System.Windows.Data.Binding($"[{colorCol}]")
+                    {
+                        Converter = HexBrushConverter.Instance
+                    }));
+            }
+
+            var badBinding = new System.Windows.Data.MultiBinding
+            {
+                Converter = MatchInvalidBrushConverter.Instance
+            };
+            badBinding.Bindings.Add(new System.Windows.Data.Binding($"[{name}]"));
+            badBinding.Bindings.Add(new System.Windows.Data.Binding($"[{MatchColPrefix + name}]"));
+            style.Setters.Add(new Setter(TextBlock.ForegroundProperty,
+                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Black)));
+            style.Setters.Add(new Setter(TextBlock.TagProperty, badBinding));
+
+            var badTrig = new Trigger
+            {
+                Property = TextBlock.TagProperty,
+                Value = "1"
+            };
+            badTrig.Setters.Add(new Setter(TextBlock.BackgroundProperty,
+                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0xC7, 0xCE))));
+            badTrig.Setters.Add(new Setter(TextBlock.ForegroundProperty,
+                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x9C, 0x00, 0x06))));
+            style.Triggers.Add(badTrig);
+            textBlock.SetValue(TextBlock.StyleProperty, style);
+
+            return new DataTemplate { VisualTree = textBlock };
+        }
+
+        private static DataTemplate BuildTextEditingTemplate(string name)
+        {
+            var textBox = new FrameworkElementFactory(typeof(TextBox));
+            textBox.SetValue(TextBox.BorderThicknessProperty, new Thickness(0));
+            textBox.SetValue(TextBox.PaddingProperty, new Thickness(2, 0, 2, 0));
+            textBox.SetBinding(TextBox.TextProperty, new System.Windows.Data.Binding($"[{name}]")
+            {
+                Mode = System.Windows.Data.BindingMode.TwoWay,
+                UpdateSourceTrigger = System.Windows.Data.UpdateSourceTrigger.LostFocus
+            });
+            return new DataTemplate { VisualTree = textBox };
         }
 
         private void OnClearFiltersClick(object sender, RoutedEventArgs e)
@@ -2836,6 +2938,7 @@ namespace NXProject.Views
                     if (estCol != null && ch.Dev.Info.EstimatedHours > 0) ch.Row[estCol] = ch.Dev.Info.EstimatedHours.ToString("0.##");
                     if (resourceCol != null) ch.Row[resourceCol] = TaskPlanAssignee(ch.Dev.Info);
                     if (statusCol != null && !string.IsNullOrWhiteSpace(ch.Dev.Info.State)) ch.Row[statusCol] = ch.Dev.Info.State;
+                    FillTaskDescriptionFromDevOps(ch.Row, descCol, ch.Dev.Info);
                     if (storyCol != null && string.IsNullOrWhiteSpace(ch.Row[storyCol]?.ToString()))
                         ch.Row[storyCol] = ch.Dev.Story.Name;
                     FillHierarchyIdsFromNode(ch.Row, ch.Dev.Story);
@@ -2870,6 +2973,7 @@ namespace NXProject.Views
                     if (estCol != null && src.Info.EstimatedHours > 0) row[estCol] = src.Info.EstimatedHours.ToString("0.##");
                     if (resourceCol != null) row[resourceCol] = TaskPlanAssignee(src.Info);
                     if (statusCol != null && !string.IsNullOrWhiteSpace(src.Info.State)) row[statusCol] = src.Info.State;
+                    FillTaskDescriptionFromDevOps(row, descCol, src.Info);
                     FillHierarchyIdsFromNode(row, src.Story);
                     await FillObservationFromLastCommentAsync(options, row, src.Info);
                     matchedIds.Add(src.Info.TfsId);
@@ -2909,6 +3013,7 @@ namespace NXProject.Views
                 if (estCol != null && src.Info.EstimatedHours > 0) dr[estCol] = src.Info.EstimatedHours.ToString("0.##");
                 if (resourceCol != null) dr[resourceCol] = TaskPlanAssignee(src.Info);
                 if (statusCol != null) dr[statusCol] = src.Info.State ?? "";
+                FillTaskDescriptionFromDevOps(dr, descCol, src.Info);
                 await FillObservationFromLastCommentAsync(options, dr, src.Info);
                 _data.Table.Rows.Add(dr);
                 added++;
@@ -3139,8 +3244,13 @@ namespace NXProject.Views
             return dlg.ShowDialog() == true;
         }
 
-        // ── validação contra o cronograma (pinta células encontradas) ────────
+        // ── validação contra o cronograma ────────────────────────────────────
         private const string MatchColPrefix = "__m_";
+        private static readonly HashSet<string> LegacyMatchHighlightColors = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "#C6EFCE",
+            "#FFC6EFCE"
+        };
 
         // Tipo do cronograma correspondente à coluna da planilha (ou null).
         private string? HierarchyType(string colName)
@@ -3400,9 +3510,12 @@ namespace NXProject.Views
 
                     // Validação hierárquica: Story exige Story+Feature (e EPIC);
                     // Feature exige Feature+EPIC — homônimo fora do pai NÃO valida.
+                    var tfsTaskId = TaskIdCol is { } taskIdColumn
+                        ? ParsePlanIdNumber(dr[taskIdColumn]?.ToString(), ":T")
+                        : null;
                     bool ok = HierarchyType(col) switch
                     {
-                        "Task"  => FindTaskInSchedule(flat, value, story, feature, epic) != null,
+                        "Task"  => tfsTaskId is > 0 || FindTaskInSchedule(flat, value, story, feature, epic) != null,
                         "Story" => (StoryIdCol is { } storyIdColumn && NodeMatchesText(FindStoryByPlanId(flat, dr[storyIdColumn]?.ToString()), value))
                             || FindStoryInSchedule(flat, value, feature, epic) != null,
                         "Feature" => flat.Any(x => IsType(x, "Feature")
@@ -3412,8 +3525,11 @@ namespace NXProject.Views
                         var t   => flat.Any(x => IsType(x, t!) && string.Equals((x.Name ?? "").Trim(), value, StringComparison.OrdinalIgnoreCase)),
                     };
                     dr[MatchColPrefix + col] = ok ? "1" : "0";
+                    if (ok && _clearLegacyMatchColorsOnNextValidation)
+                        ClearLegacyMatchHighlightColor(dr, col);
                 }
             }
+            _clearLegacyMatchColorsOnNextValidation = false;
 
             // Modo "só com ID interno": reavalia — um :I promovido a :T pode ocultar a coluna.
             if (_idColsMode == IdColumnsMode.OnlyInternal)
@@ -3700,21 +3816,57 @@ namespace NXProject.Views
                 => System.Windows.Data.Binding.DoNothing;
         }
 
+        private static void ClearLegacyMatchHighlightColor(DataRow row, string col)
+        {
+            var colorCol = ExcelTaskPlanService.ColorColPrefix + col;
+            if (!row.Table.Columns.Contains(colorCol)) return;
+
+            var color = row[colorCol]?.ToString()?.Trim();
+            if (color != null && LegacyMatchHighlightColors.Contains(color))
+                row[colorCol] = "";
+        }
+
         private sealed class MatchMarkerTextConverter : System.Windows.Data.IMultiValueConverter
         {
             public static readonly MatchMarkerTextConverter Instance = new();
 
             public object Convert(object[] values, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
             {
-                var text = values.Length > 0 ? values[0]?.ToString() ?? "" : "";
-                var state = values.Length > 1 ? values[1]?.ToString() ?? "" : "";
+                var text = BindingValueToString(values.Length > 0 ? values[0] : null);
+                var state = BindingValueToString(values.Length > 1 ? values[1] : null);
                 if (string.IsNullOrWhiteSpace(text) || state != "1")
                     return text;
-                return text.EndsWith("✓", StringComparison.Ordinal) ? text : text + "  ✓";
+                return text.StartsWith("✓ ", StringComparison.Ordinal) ? text : "✓ " + text;
             }
 
             public object[] ConvertBack(object value, Type[] targetTypes, object? parameter, System.Globalization.CultureInfo culture)
                 => targetTypes.Select(_ => System.Windows.Data.Binding.DoNothing).ToArray();
+        }
+
+        private sealed class MatchInvalidBrushConverter : System.Windows.Data.IMultiValueConverter
+        {
+            public static readonly MatchInvalidBrushConverter Instance = new();
+
+            public object Convert(object[] values, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+            {
+                var text = BindingValueToString(values.Length > 0 ? values[0] : null);
+                var state = BindingValueToString(values.Length > 1 ? values[1] : null);
+                return !string.IsNullOrWhiteSpace(text) && state == "0" ? "1" : "";
+            }
+
+            public object[] ConvertBack(object value, Type[] targetTypes, object? parameter, System.Globalization.CultureInfo culture)
+                => targetTypes.Select(_ => System.Windows.Data.Binding.DoNothing).ToArray();
+        }
+
+        private static string BindingValueToString(object? value)
+        {
+            if (value == null ||
+                value == DependencyProperty.UnsetValue ||
+                value == System.Windows.Data.Binding.DoNothing ||
+                value == DBNull.Value)
+                return "";
+
+            return value.ToString() ?? "";
         }
 
         // Aplica a cor (hex; vazio = sem cor) nas células selecionadas — como no Excel.
