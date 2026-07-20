@@ -540,10 +540,11 @@ namespace NXProject.Views
 
             foreach (DataRow row in _data.Table.Rows)
             {
-                if (!IsApprovalNo(row[approvalCol]?.ToString())) continue;
-                if (!(row[idCol]?.ToString()?.Trim() ?? "").EndsWith(":I", StringComparison.OrdinalIgnoreCase)) continue;
+                // Linha vazia (sem Task) não conta como trabalho local a preservar.
                 if (taskCol != null && string.IsNullOrWhiteSpace(row[taskCol]?.ToString())) continue;
-                return true;
+                // Trabalho local em risco: Aprovada=Não OU ID interno (:I).
+                if (IsApprovalNo(row[approvalCol]?.ToString())) return true;
+                if ((row[idCol]?.ToString()?.Trim() ?? "").EndsWith(":I", StringComparison.OrdinalIgnoreCase)) return true;
             }
 
             return false;
