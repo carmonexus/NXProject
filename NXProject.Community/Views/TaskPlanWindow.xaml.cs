@@ -221,7 +221,7 @@ namespace NXProject.Views
         private const string BackupFunctionMerge = "merge";
         private const string BackupFunctionClear = "clear";
         private static readonly string[] ApprovalValues = ["Nao", "Sim"];
-        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, "Status" };
+        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, ResponsibleColumn, "Status" };
 
         // Colunas de ID dos pais (preenchidas pelo Buscar/Merge/Aplicar/Ctrl+clique).
         private string? EpicIdCol    => FindColumn("ID EPIC", "ID Epic", "IdEpic", "ID_EPIC", "ID_Epic");
@@ -395,6 +395,7 @@ namespace NXProject.Views
                 FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task"),
                 FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH"),
                 PercConclusaoCol,
+                ResourceCol,
                 FindColumn("Status", "Estado", "State"),
             };
             for (int i = 0; i < ScheduleColumns.Length; i++)
@@ -550,11 +551,39 @@ namespace NXProject.Views
             return false;
         }
 
+        private bool RemoveBlankTaskPlanRows()
+        {
+            if (_data == null) return false;
+            var controlCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (NumberCol is { } numberCol) controlCols.Add(numberCol);
+            if (ApprovalCol is { } approvalCol) controlCols.Add(approvalCol);
+            if (RegisterDateCol is { } registerDateCol) controlCols.Add(registerDateCol);
+
+            var rows = _data.Table.Rows.Cast<DataRow>()
+                .Where(row => _data.Table.Columns.Cast<DataColumn>()
+                    .Where(c => !c.ColumnName.StartsWith("__", StringComparison.Ordinal)
+                             && !controlCols.Contains(c.ColumnName))
+                    .All(c => string.IsNullOrWhiteSpace(row[c]?.ToString())))
+                .ToList();
+
+            foreach (var row in rows)
+                _data.Table.Rows.Remove(row);
+
+            if (rows.Count == 0) return false;
+            RenumberTaskPlanRows();
+            return true;
+        }
+
         private void MarkBackupFunction(string functionName)
         {
             if (!string.IsNullOrWhiteSpace(_path))
                 _pendingBackupFunction = functionName;
         }
+
+        private static string TaskPlanAssignee(TfsImportService.DevOpsTaskInfo info)
+            => !string.IsNullOrWhiteSpace(info.AssignedToDisplay)
+                ? info.AssignedToDisplay.Trim()
+                : info.AssignedTo?.Trim() ?? "";
 
         private bool IsApprovedOrAlreadyTfs(DataRow row, string idCol)
         {
@@ -848,6 +877,7 @@ namespace NXProject.Views
                         dr["Prioridade"] = t.Priority.ToString();
                         dr["Estimado HH"] = t.EstimatedHours > 0 ? t.EstimatedHours.ToString("0.##") : "1";
                         dr[PercConclusaoColumn] = Math.Round(t.PercentComplete).ToString("0");
+                        dr[ResponsibleColumn] = TaskPlanAssignee(t);
                         dr["Status"]     = t.State ?? "";
                         _data.Table.Rows.Add(dr);
                         existingIds.Add(t.TfsId);
@@ -1031,6 +1061,7 @@ namespace NXProject.Views
         {
             if (_data == null) return false;
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            RemoveBlankTaskPlanRows();
             NormalizeApprovalValues();
             // A ordem visual das colunas (arrastadas na grade) vale para a gravação.
             SyncColumnOrderFromGrid();
@@ -1481,6 +1512,8 @@ namespace NXProject.Views
             ApplyEpicFilter();
         }
 
+        private void OnOpenTasksOnlyChanged(object sender, RoutedEventArgs e) => ApplyEpicFilter();
+
         // Bind central da tabela: limpa as colunas antes (as inseridas manualmente,
         // como a combo de Status, não são removidas pela regeneração automática).
         private void BindTable()
@@ -1756,6 +1789,9 @@ namespace NXProject.Views
             var featureSel = FeatureFilterCombo.SelectedItem as string;
             if (featureCol != null && !string.IsNullOrEmpty(featureSel) && featureSel != allLabel)
                 parts.Add($"[{featureCol}] = '{featureSel.Replace("'", "''")}'");
+            var statusCol = FindColumn("Status", "Estado", "State");
+            if (OpenTasksOnlyCheckBox?.IsChecked == true && statusCol != null)
+                parts.Add($"([{statusCol}] IS NULL OR [{statusCol}] = '' OR [{statusCol}] <> 'Closed')");
             foreach (var kv in _columnFilters)
             {
                 if (!_data.Table.Columns.Contains(kv.Key) || kv.Value.Count == 0) continue;
@@ -1770,6 +1806,8 @@ namespace NXProject.Views
         private void OnClearFiltersClick(object sender, RoutedEventArgs e)
         {
             _columnFilters.Clear();
+            if (OpenTasksOnlyCheckBox != null)
+                OpenTasksOnlyCheckBox.IsChecked = false;
             if (EpicFilterCombo.Items.Count > 0) EpicFilterCombo.SelectedIndex = 0;
             ApplyEpicFilter();
         }
@@ -2579,6 +2617,7 @@ namespace NXProject.Views
             var statusCol  = FindColumn("Status", "Estado", "State");
             var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
             var descCol    = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
+            var resourceCol = ResourceCol;
             var regCol     = RegisterDateCol;
             var pctCol     = PercConclusaoCol;
             if (idCol == null || taskCol == null)
@@ -2667,6 +2706,7 @@ namespace NXProject.Views
                     if (pctCol != null) ch.Row[pctCol] = Math.Round(ch.Dev.Info.PercentComplete).ToString("0");
                     if (prioCol != null) ch.Row[prioCol] = ch.Dev.Info.Priority.ToString();
                     if (estCol != null && ch.Dev.Info.EstimatedHours > 0) ch.Row[estCol] = ch.Dev.Info.EstimatedHours.ToString("0.##");
+                    if (resourceCol != null) ch.Row[resourceCol] = TaskPlanAssignee(ch.Dev.Info);
                     if (statusCol != null && !string.IsNullOrWhiteSpace(ch.Dev.Info.State)) ch.Row[statusCol] = ch.Dev.Info.State;
                     if (storyCol != null && string.IsNullOrWhiteSpace(ch.Row[storyCol]?.ToString()))
                         ch.Row[storyCol] = ch.Dev.Story.Name;
@@ -2700,6 +2740,7 @@ namespace NXProject.Views
                     if (storyCol != null && string.IsNullOrWhiteSpace(row[storyCol]?.ToString())) row[storyCol] = src.Story.Name;
                     if (prioCol != null) row[prioCol] = src.Info.Priority.ToString();
                     if (estCol != null && src.Info.EstimatedHours > 0) row[estCol] = src.Info.EstimatedHours.ToString("0.##");
+                    if (resourceCol != null) row[resourceCol] = TaskPlanAssignee(src.Info);
                     if (statusCol != null && !string.IsNullOrWhiteSpace(src.Info.State)) row[statusCol] = src.Info.State;
                     FillHierarchyIdsFromNode(row, src.Story);
                     await FillObservationFromLastCommentAsync(options, row, src.Info);
@@ -2738,6 +2779,7 @@ namespace NXProject.Views
                 if (pctCol != null) dr[pctCol] = Math.Round(src.Info.PercentComplete).ToString("0");
                 if (prioCol != null) dr[prioCol] = src.Info.Priority.ToString();
                 if (estCol != null && src.Info.EstimatedHours > 0) dr[estCol] = src.Info.EstimatedHours.ToString("0.##");
+                if (resourceCol != null) dr[resourceCol] = TaskPlanAssignee(src.Info);
                 if (statusCol != null) dr[statusCol] = src.Info.State ?? "";
                 await FillObservationFromLastCommentAsync(options, dr, src.Info);
                 _data.Table.Rows.Add(dr);
@@ -3783,6 +3825,7 @@ namespace NXProject.Views
             var featureCol = FindColumn("Feature", "Nome da Feature");
             var prioCol    = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
             var estCol     = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var resourceCol = ResourceCol;
             if (idCol == null || taskCol == null)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_FetchNeedCols"),
@@ -3836,6 +3879,10 @@ namespace NXProject.Views
                             dr[prioCol] = mp.ToString();
                         if (estCol != null && match.EstimatedHours is > 0)
                             dr[estCol] = match.EstimatedHours.Value.ToString("0.##");
+                        if (resourceCol != null)
+                            dr[resourceCol] = string.Join(", ", match.Resources
+                                .Select(r => r.Resource != null ? ResourcePlanName(r.Resource) : "")
+                                .Where(n => n.Length > 0));
                         FillHierarchyIdsFromNode(dr, match);
                         matched++;
                         continue;
@@ -3866,6 +3913,8 @@ namespace NXProject.Views
                             dr[prioCol] = devTask.Priority.ToString();
                         if (estCol != null && devTask.EstimatedHours > 0)
                             dr[estCol] = devTask.EstimatedHours.ToString("0.##");
+                        if (resourceCol != null)
+                            dr[resourceCol] = TaskPlanAssignee(devTask);
                         FillHierarchyIdsFromNode(dr, storyNode);
                         matched++;
                     }

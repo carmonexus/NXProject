@@ -150,6 +150,14 @@
                           VerticalAlignment="Center"
                           Margin="8,0,4,2"
                           ToolTip="{DynamicResource TaskPlan_EnableAITip}"/>
+                <CheckBox x:Name="OpenTasksOnlyCheckBox"
+                          Content="{DynamicResource TaskPlan_OpenTasksOnly}"
+                          IsChecked="False"
+                          VerticalAlignment="Center"
+                          Margin="8,0,4,2"
+                          Checked="OnOpenTasksOnlyChanged"
+                          Unchecked="OnOpenTasksOnlyChanged"
+                          ToolTip="{DynamicResource TaskPlan_OpenTasksOnlyTip}"/>
 
             </WrapPanel>
         </Border>

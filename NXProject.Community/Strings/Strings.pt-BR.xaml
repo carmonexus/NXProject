@@ -141,6 +141,8 @@
     <sys:String x:Key="TaskPlan_CapLoadTask">Load Task</sys:String>
     <sys:String x:Key="TaskPlan_EnableAI">Ativar IA</sys:String>
     <sys:String x:Key="TaskPlan_EnableAITip">Quando marcado, o Merge usa IA e pede confirmação do de/para antes de aplicar. Desmarcado, usa apenas o merge determinístico.</sys:String>
+    <sys:String x:Key="TaskPlan_OpenTasksOnly">Tarefas em Aberto</sys:String>
+    <sys:String x:Key="TaskPlan_OpenTasksOnlyTip">Quando marcado, mostra somente linhas com Status diferente de Closed.</sys:String>
     <sys:String x:Key="TaskPlan_LoadTaskTip">Carrega as Tasks do cronograma/TFS na planilha (como o Merge), perguntando se traz também as Tasks já concluídas (Closed)</sys:String>
     <sys:String x:Key="TaskPlan_LoadTaskClosed">Trazer também as Tasks já concluídas (Closed)?&#10;&#10;Padrão: Não — só as não concluídas. As Closed que já estão na planilha continuam sendo atualizadas.</sys:String>
     <sys:String x:Key="TaskPlan_BackfillAsk">{0} Task(s) criada(s) por planilha(s) de Plan Task ({1} arquivo(s)) ganharam ID no DevOps.&#10;&#10;Atualizar agora o ID interno para o ID DevOps na(s) planilha(s)?&#10;(Se alguma estiver aberta no Excel, será atualizada ao abri-la no Task Plan.)</sys:String>

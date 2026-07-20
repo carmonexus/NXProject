@@ -359,6 +359,8 @@
     <sys:String x:Key="TaskPlan_CapLoadTask">Load Task</sys:String>
     <sys:String x:Key="TaskPlan_EnableAI">Enable AI</sys:String>
     <sys:String x:Key="TaskPlan_EnableAITip">When checked, Merge uses AI and asks you to confirm the from/to mapping before applying. When unchecked, it uses only deterministic merge.</sys:String>
+    <sys:String x:Key="TaskPlan_OpenTasksOnly">Open Tasks</sys:String>
+    <sys:String x:Key="TaskPlan_OpenTasksOnlyTip">When checked, shows only rows whose Status is not Closed.</sys:String>
     <sys:String x:Key="TaskPlan_LoadTaskTip">Loads the schedule/TFS Tasks into the sheet (like Merge), asking whether to also bring the already completed (Closed) tasks</sys:String>
     <sys:String x:Key="TaskPlan_LoadTaskClosed">Also bring the already completed (Closed) tasks?&#10;&#10;Default: No — only unfinished ones. Closed tasks already in the sheet keep being updated.</sys:String>
     <sys:String x:Key="TaskPlan_BackfillAsk">{0} Task(s) created from Plan Task sheet(s) ({1} file(s)) got a DevOps ID.&#10;&#10;Update the internal ID to the DevOps ID in the sheet(s) now?&#10;(If any is open in Excel, it will be updated when opened in Task Plan.)</sys:String>
