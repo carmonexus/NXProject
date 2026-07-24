@@ -155,6 +155,52 @@ namespace NXProject.Views
             }
         }
 
+        // ── Crédito de horas: Story cheia + Task de outra pessoa ──────────────
+        // A Story conta CHEIA para quem responde por ela, mesmo tendo Tasks filhas — quem
+        // responde pela Story não perde horas por delegar, pois ainda precisa revisar o que
+        // a outra pessoa fez. As Tasks filhas entram como crédito ADITIVO, e só para quem
+        // NÃO é responsável da Story (senão as horas dela seriam contadas duas vezes).
+        private static IEnumerable<ProjectTask> GetChargeableTasks(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var t in tasks)
+            {
+                if (IsStoryNode(t))
+                {
+                    yield return t;                                                  // Story conta cheia
+                    foreach (var c in GetChargeableTasks(t.Children)) yield return c; // + Tasks filhas
+                }
+                else if (t.Children.Count == 0) yield return t;
+                else foreach (var c in GetChargeableTasks(t.Children)) yield return c;
+            }
+        }
+
+        private static bool IsStoryNode(ProjectTask t)
+            => TfsImportService.IsStoryTypePublic(t.TfsType);
+
+        private static ProjectTask? FindParentStory(ProjectTask task)
+        {
+            var p = task.Parent;
+            while (p != null)
+            {
+                if (IsStoryNode(p)) return p;
+                p = p.Parent;
+            }
+            return null;
+        }
+
+        /// <summary>Task filha de Story só credita horas para quem NÃO responde pela Story
+        /// (a Story já conta cheia para o responsável dela). Story e itens fora de Story
+        /// creditam sempre.</summary>
+        private static bool CreditsResource(ProjectTask task, string? resourceName)
+        {
+            if (string.IsNullOrWhiteSpace(resourceName)) return false;
+            if (IsStoryNode(task)) return true;
+            var story = FindParentStory(task);
+            if (story == null) return true;
+            return !story.Resources.Any(r =>
+                string.Equals(r.Resource?.Name, resourceName, StringComparison.OrdinalIgnoreCase));
+        }
+
         private bool OnlyCurrentHours => OnlyCurrentHoursBox?.IsChecked == true;
 
         private static double GetRemainingHours(ProjectTask task, TaskResource tr) =>
@@ -198,8 +244,9 @@ namespace NXProject.Views
                                             bool onlyCurrentHours = false)
         {
             double total = 0;
-            foreach (var task in GetLeafTasks(project.Tasks))
+            foreach (var task in GetChargeableTasks(project.Tasks))
             {
+                if (!CreditsResource(task, resourceName)) continue;
                 foreach (var tr in task.Resources)
                 {
                     if (!string.Equals(tr.Resource?.Name, resourceName, StringComparison.OrdinalIgnoreCase))
@@ -638,8 +685,9 @@ namespace NXProject.Views
             DateTime monthStart, DateTime monthEnd)
         {
             var result = new List<ProjectTask>();
-            foreach (var task in GetLeafTasks(project.Tasks))
+            foreach (var task in GetChargeableTasks(project.Tasks))
             {
+                if (!CreditsResource(task, resName)) continue;
                 bool hasRes = task.Resources.Any(r =>
                     string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
                 if (!hasRes) continue;
@@ -1260,9 +1308,10 @@ namespace NXProject.Views
             // Coleta todos os recursos
             var allRes = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var proj in _projects)
-                foreach (var task in GetLeafTasks(proj.Data.Tasks))
+                foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                     foreach (var tr in task.Resources)
-                        if (!string.IsNullOrWhiteSpace(tr.Resource?.Name) && tr.Resource!.Kind == ResourceKind.Project)
+                        if (!string.IsNullOrWhiteSpace(tr.Resource?.Name) && tr.Resource!.Kind == ResourceKind.Project
+                            && CreditsResource(task, tr.Resource!.Name))
                             allRes.Add(tr.Resource!.Name);
 
             // Para cada recurso × projeto × mês, calcula horas
@@ -1525,13 +1574,14 @@ namespace NXProject.Views
 
             foreach (var proj in _projects)
             {
-                foreach (var task in GetLeafTasks(proj.Data.Tasks))
+                foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                 {
                     foreach (var tr in task.Resources)
                     {
                         var rname = tr.Resource?.Name;
                         if (string.IsNullOrWhiteSpace(rname)) continue;
                         if (tr.Resource?.Kind != ResourceKind.Project) continue;
+                        if (!CreditsResource(task, rname)) continue;
 
                         var mh = new double[months.Count];
                         bool any = false;
@@ -1922,13 +1972,14 @@ namespace NXProject.Views
 
             foreach (var proj in _projects)
             {
-                foreach (var task in GetLeafTasks(proj.Data.Tasks))
+                foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                 {
                     foreach (var tr in task.Resources)
                     {
                         var rname = tr.Resource?.Name;
                         if (string.IsNullOrWhiteSpace(rname)) continue;
                         if (tr.Resource?.Kind != ResourceKind.Internal) continue;
+                        if (!CreditsResource(task, rname)) continue;
 
                         var mh = new double[months.Count];
                         bool any = false;
@@ -2378,9 +2429,10 @@ namespace NXProject.Views
             // Reconstrói os dados do rateio
             var allRes = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var proj in _projects)
-                foreach (var task in GetLeafTasks(proj.Data.Tasks))
+                foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                     foreach (var tr in task.Resources)
-                        if (!string.IsNullOrWhiteSpace(tr.Resource?.Name) && tr.Resource!.Kind == targetKind)
+                        if (!string.IsNullOrWhiteSpace(tr.Resource?.Name) && tr.Resource!.Kind == targetKind
+                            && CreditsResource(task, tr.Resource!.Name))
                             allRes.Add(tr.Resource!.Name);
 
             var data = new Dictionary<string, double[][]>(StringComparer.OrdinalIgnoreCase);
@@ -2493,13 +2545,14 @@ namespace NXProject.Views
 
             foreach (var proj in _projects)
             {
-                foreach (var task in GetLeafTasks(proj.Data.Tasks))
+                foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                 {
                     foreach (var tr in task.Resources)
                     {
                         var rname = tr.Resource?.Name;
                         if (string.IsNullOrWhiteSpace(rname)) continue;
                         if (tr.Resource?.Kind != ResourceKind.Project) continue;
+                        if (!CreditsResource(task, rname)) continue;
 
                         var mh = new double[months.Count];
                         bool any = false;

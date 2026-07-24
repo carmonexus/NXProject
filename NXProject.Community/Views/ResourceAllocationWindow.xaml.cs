@@ -173,7 +173,8 @@ namespace NXProject.Views
         private DateTime? GetLastActivityDate(Resource resource)
         {
             var tasks = _vm.FlatTasks
-                .Where(t => IsLeafTask(t) && t.Model.Resources.Any(r => r.ResourceId == resource.Id))
+                .Where(t => IsChargeableNode(t) && CreditsResource(t, resource.Id)
+                         && t.Model.Resources.Any(r => r.ResourceId == resource.Id))
                 .ToList();
             if (tasks.Count == 0) return null;
             return tasks.Max(t => t.Model.Finish);
@@ -390,8 +391,9 @@ namespace NXProject.Views
                 ? (Func<TaskViewModel, bool>)(t => OverlapsWithSprint(t, sprint))
                 : t => BelongsToSprint(t, sprint);
 
-            foreach (var task in _vm.FlatTasks.Where(t => IsLeafTask(t) && filter(t)))
+            foreach (var task in _vm.FlatTasks.Where(t => IsChargeableNode(t) && filter(t)))
             {
+                if (!CreditsResource(task, resource.Id)) continue;
                 var assignment = task.Model.Resources.FirstOrDefault(r => r.ResourceId == resource.Id);
                 if (assignment == null)
                     continue;
@@ -452,8 +454,9 @@ namespace NXProject.Views
         {
             var hasDates = sprint.Start != default && sprint.End != default;
             return _vm.FlatTasks
-                .Where(t => IsLeafTask(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
-                .SelectMany(t => t.Model.Resources.Where(r => r.ResourceId == resource.Id)
+                .Where(t => IsChargeableNode(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
+                .SelectMany(t => t.Model.Resources
+                    .Where(r => r.ResourceId == resource.Id && CreditsResource(t, resource.Id))
                     .Select(r => hasDates
                         ? ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint)
                         : TaskScheduleService.GetAssignmentHours(t.Model, r)))
@@ -464,8 +467,9 @@ namespace NXProject.Views
         {
             var hasDates = sprint.Start != default && sprint.End != default;
             var assignments = _vm.FlatTasks
-                .Where(t => IsLeafTask(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
-                .SelectMany(t => t.Model.Resources.Where(r => r.ResourceId == resource.Id)
+                .Where(t => IsChargeableNode(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
+                .SelectMany(t => t.Model.Resources
+                    .Where(r => r.ResourceId == resource.Id && CreditsResource(t, resource.Id))
                     .Select(r => new
                     {
                         Hours = hasDates
@@ -529,6 +533,35 @@ namespace NXProject.Views
 
         private static bool IsLeafTask(TaskViewModel task) =>
             task.Model.Children.Count == 0;
+
+        // ── Crédito de horas: Story cheia + Task de outra pessoa ──────────────
+        // A Story conta CHEIA para quem responde por ela mesmo tendo Tasks filhas (o
+        // responsável não perde horas por delegar — ainda precisa revisar). As Tasks filhas
+        // creditam de forma ADITIVA, só para quem NÃO é responsável da Story (senão dobra).
+        private static bool IsStoryNode(TaskViewModel t) => TfsImportService.IsStoryTypePublic(t.Model.TfsType);
+
+        // Conta a Story (mesmo com filhas) e as folhas; ignora resumos Epic/Feature.
+        private static bool IsChargeableNode(TaskViewModel t) => IsStoryNode(t) || t.Model.Children.Count == 0;
+
+        private static ProjectTask? FindParentStory(ProjectTask task)
+        {
+            var p = task.Parent;
+            while (p != null)
+            {
+                if (TfsImportService.IsStoryTypePublic(p.TfsType)) return p;
+                p = p.Parent;
+            }
+            return null;
+        }
+
+        // Task filha de Story só credita para quem NÃO responde pela Story.
+        private static bool CreditsResource(TaskViewModel t, int resourceId)
+        {
+            if (IsStoryNode(t)) return true;
+            var story = FindParentStory(t.Model);
+            if (story == null) return true;
+            return !story.Resources.Any(r => r.ResourceId == resourceId);
+        }
 
         private System.Collections.Generic.IEnumerable<SprintColumn> BuildSprintColumns()
         {
