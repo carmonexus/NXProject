@@ -71,7 +71,8 @@ namespace NXProject.Views
             if (dlg.ShowDialog() == true)
             {
                 var newPath = dlg.ResultFilePath ?? string.Empty;
-                LoadProjectList(newPath);
+                // Pré-seleciona na combo o projeto que estava marcado na grid do portfólio.
+                LoadProjectList(newPath, dlg.SelectedProject?.RootWorkItemId ?? 0);
 
                 var saved = TfsConnectionStore.Load(_storageKey);
                 saved.DevOpsProjectListPath = newPath;

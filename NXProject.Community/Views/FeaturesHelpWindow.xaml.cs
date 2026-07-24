@@ -594,6 +594,20 @@ namespace NXProject.Views
                 "Para que o NXProject troque informações com o Azure DevOps, alguns campos personalizados precisam existir nos work items. Esta seção explica quais são, como criá-los e como ajustar os nomes caso a sua organização já use nomes diferentes.",
                 new()
                 {
+                    ("O que é preciso para sincronizar",
+                     "Para importar e sincronizar com o Azure DevOps você precisa de:\n\n" +
+                     "1. Conexão: URL da organização, Team Project e um PAT (Personal Access Token) com permissão de leitura e escrita de work items.\n" +
+                     "2. Um item raiz do projeto (veja 'Item raiz e hierarquia' abaixo).\n" +
+                     "3. Os campos personalizados em Story, Feature e Epic (veja 'Campos obrigatórios' abaixo). A Task usa só campos padrão.\n\n" +
+                     "Sem os campos personalizados a importação até funciona parcialmente, mas a sincronização de datas, alocação e o controle de concorrência (Sync_version/Sync_Name) não operam corretamente."),
+                    ("Item raiz e hierarquia (tipo Project)",
+                     "O NXProject monta o cronograma na hierarquia: Project → Epic → Feature → Story → Task.\n\n" +
+                     "IMPORTANTE: 'Project' NÃO é um tipo de work item padrão do Azure DevOps (o padrão vai só até Epic). É um tipo personalizado que serve de 'container' acima dos Epics, agrupando o projeto inteiro. Muitas organizações criam esse tipo no processo.\n\n" +
+                     "Como o item raiz é usado:\n" +
+                     "• Importação manual: você informa o ID do item raiz na tela de importação. O NXProject importa os descendentes (Epic → Feature → Story → Task) desse item. O tipo do raiz NÃO precisa ser exatamente 'Project' — pode ser qualquer work item que seja pai dos Epics (inclusive um Epic, se quiser importar só ele).\n" +
+                     "• Discovery (Portfólio → Discovery DevOps): lista automaticamente os work items do tipo 'Project' sem pai no Team Project. Para o Discovery automático funcionar, o tipo personalizado 'Project' precisa existir.\n\n" +
+                     "Resumo: se a sua organização não usa um tipo 'Project', você ainda importa apontando o ID raiz para um Epic (ou outro container) — apenas o Discovery automático depende do tipo 'Project'.\n\n" +
+                     "Campos no tipo 'Project': como ele fica no topo da hierarquia, crie nele os MESMOS campos personalizados do Epic (HH Estimado, Data_Inicio, Data_Fim, Sync_version, Sync_Name). Na prática o tipo 'Project' costuma ser uma cópia do Epic. O NXProject lê a data de início do projeto (Data_Inicio) direto do item raiz."),
                     ("Campos obrigatórios no Azure DevOps",
                      "O NXProject lê e escreve campos personalizados em Stories, Features e Epics. Os campos precisam existir no processo da organização e ser adicionados a cada tipo de work item que você quer sincronizar.\n\n" +
                      "Campos de planejamento (Story, Feature e Epic):\n" +
@@ -605,7 +619,14 @@ namespace NXProject.Views
                      "• Perc_Conclusao — percentual de conclusão (lido na importação, gravado na sincronização). Tipo: Inteiro (0–100).\n\n" +
                      "Campos de controle de concorrência (Story, Feature e Epic):\n" +
                      "• Sync_version — contador de versão, gerenciado automaticamente pelo NXProject. Tipo: Inteiro.\n" +
-                     "• Sync_Name — usuário que fez a última sincronização, gerenciado automaticamente. Tipo: Texto (linha simples — não use o tipo Identidade)."),
+                     "• Sync_Name — usuário que fez a última sincronização, gerenciado automaticamente. Tipo: Texto (linha simples — não use o tipo Identidade).\n\n" +
+                     "Campos da Task (nenhum campo personalizado é necessário):\n" +
+                     "A Task usa apenas campos PADRÃO do Azure DevOps, que já existem no tipo Task — você não precisa criar nada:\n" +
+                     "• HH Estimado → Original Estimate (Microsoft.VSTS.Scheduling.OriginalEstimate).\n" +
+                     "• HH Atual → Completed Work (Microsoft.VSTS.Scheduling.CompletedWork).\n" +
+                     "• Prioridade → Priority (Microsoft.VSTS.Common.Priority; o DevOps aceita 1–4).\n" +
+                     "• Responsável → Assigned To; Estado → State; Categoria → Activity (Microsoft.VSTS.Common.Activity).\n" +
+                     "As datas, o percentual de alocação e o Sync_version/Sync_Name NÃO se aplicam à Task — o planejamento (datas/duração) é derivado da Story pai."),
                     ("Controle de concorrência (Sync_version / Sync_Name)",
                      "Quando dois usuários sincronizam ao mesmo tempo, a última gravação poderia sobrescrever a primeira. O NXProject evita isso:\n\n" +
                      "• A cada sincronização que grava alguma alteração, Sync_version é incrementado em 1 e Sync_Name recebe o usuário Windows atual.\n" +
@@ -1331,6 +1352,20 @@ namespace NXProject.Views
                 "For NXProject to exchange data with Azure DevOps, a few custom fields must exist on the work items. This section explains which ones, how to create them, and how to adjust their names if your organization already uses different names.",
                 new()
                 {
+                    ("What you need to sync",
+                     "To import and sync with Azure DevOps you need:\n\n" +
+                     "1. Connection: organization URL, Team Project and a PAT (Personal Access Token) with work item read and write permission.\n" +
+                     "2. A project root work item (see 'Root work item and hierarchy' below).\n" +
+                     "3. The custom fields on Story, Feature and Epic (see 'Required fields' below). Tasks use standard fields only.\n\n" +
+                     "Without the custom fields the import partially works, but date/allocation sync and the concurrency control (Sync_version/Sync_Name) won't operate correctly."),
+                    ("Root work item and hierarchy (Project type)",
+                     "NXProject builds the schedule on the hierarchy: Project → Epic → Feature → Story → Task.\n\n" +
+                     "IMPORTANT: 'Project' is NOT a standard Azure DevOps work item type (the standard tops out at Epic). It's a custom type that acts as a 'container' above Epics, grouping the whole project. Many organizations create this type in their process.\n\n" +
+                     "How the root is used:\n" +
+                     "• Manual import: you enter the root work item ID in the import screen. NXProject imports the descendants (Epic → Feature → Story → Task) of that item. The root type does NOT have to be exactly 'Project' — it can be any work item that is the parent of the Epics (even an Epic, if you only want to import that one).\n" +
+                     "• Discovery (Portfolio → Discovery DevOps): automatically lists work items of type 'Project' with no parent in the Team Project. For automatic Discovery to work, the custom 'Project' type must exist.\n\n" +
+                     "Summary: if your organization doesn't use a 'Project' type, you can still import by pointing the root ID at an Epic (or other container) — only automatic Discovery depends on the 'Project' type.\n\n" +
+                     "Fields on the 'Project' type: since it sits at the top of the hierarchy, create the SAME custom fields on it as on the Epic (Estimated HH, Data_Inicio, Data_Fim, Sync_version, Sync_Name). In practice the 'Project' type is usually a copy of the Epic. NXProject reads the project start date (Data_Inicio) directly from the root item."),
                     ("Required fields in Azure DevOps",
                      "NXProject reads and writes custom fields on Stories, Features and Epics. The fields must exist in the organization process and be added to each work item type you want to sync.\n\n" +
                      "Planning fields (Story, Feature and Epic):\n" +
@@ -1342,7 +1377,14 @@ namespace NXProject.Views
                      "• Perc_Conclusao — % completion (read on import, written on sync). Type: Integer (0–100).\n\n" +
                      "Concurrency control fields (Story, Feature and Epic):\n" +
                      "• Sync_version — version counter, auto-managed by NXProject. Type: Integer.\n" +
-                     "• Sync_Name — user who last synced, auto-managed. Type: Text (single line — do NOT use the Identity type)."),
+                     "• Sync_Name — user who last synced, auto-managed. Type: Text (single line — do NOT use the Identity type).\n\n" +
+                     "Task fields (no custom fields required):\n" +
+                     "Tasks use only STANDARD Azure DevOps fields, which already exist on the Task type — you don't need to create anything:\n" +
+                     "• Estimated HH → Original Estimate (Microsoft.VSTS.Scheduling.OriginalEstimate).\n" +
+                     "• Current HH → Completed Work (Microsoft.VSTS.Scheduling.CompletedWork).\n" +
+                     "• Priority → Priority (Microsoft.VSTS.Common.Priority; DevOps accepts 1–4).\n" +
+                     "• Assigned To; State; Activity (Microsoft.VSTS.Common.Activity).\n" +
+                     "Dates, allocation percentage and Sync_version/Sync_Name do NOT apply to Tasks — planning (dates/duration) is derived from the parent Story."),
                     ("Concurrency control (Sync_version / Sync_Name)",
                      "When two users sync at the same time, the last write could overwrite the first. NXProject prevents this:\n\n" +
                      "• On every sync that writes at least one change, Sync_version is incremented by 1 and Sync_Name is set to the current Windows user.\n" +

@@ -20,6 +20,9 @@ namespace NXProject.Views
         /// <summary>Lista salva após fechar com OK.</summary>
         public ObservableCollection<DevOpsProject> ResultProjects => _projects;
 
+        /// <summary>Projeto selecionado na grid ao fechar com OK (para pré-selecionar na importação).</summary>
+        public DevOpsProject? SelectedProject { get; private set; }
+
         public DevOpsProjectListWindow(string? initialFilePath = null, TfsConnectionOptions? connectionOptions = null)
         {
             InitializeComponent();
@@ -99,6 +102,7 @@ namespace NXProject.Views
             {
                 _projects.Add(dlg.Result);
                 ProjectsGrid.SelectedItem = dlg.Result;
+                ProjectsGrid.ScrollIntoView(dlg.Result);
                 SaveIfPathSet();
             }
         }
@@ -149,15 +153,23 @@ namespace NXProject.Views
             if (dlg.ShowDialog() != true) return;
 
             int added = 0;
+            DevOpsProject? lastAdded = null;
             foreach (var p in dlg.SelectedProjects)
             {
                 if (_projects.Any(x => x.RootWorkItemId == p.RootWorkItemId)) continue;
                 _projects.Add(p);
+                lastAdded = p;
                 added++;
             }
 
             if (added > 0)
             {
+                // Deixa o projeto recém-adicionado selecionado na grid (para pré-selecionar na importação).
+                if (lastAdded != null)
+                {
+                    ProjectsGrid.SelectedItem = lastAdded;
+                    ProjectsGrid.ScrollIntoView(lastAdded);
+                }
                 SaveIfPathSet();
                 MessageBox.Show(AppStrings.Get("Port_AddedMsg", added), AppStrings.Get("Port_DiscoveryTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -202,6 +214,7 @@ namespace NXProject.Views
                 return;
             }
             DevOpsProjectListService.Save(_projects, ResultFilePath);
+            SelectedProject = ProjectsGrid.SelectedItem as DevOpsProject;
             DialogResult = true;
             Close();
         }

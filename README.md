@@ -174,6 +174,23 @@ Manage multiple DevOps projects in a shared file across your team. Each project 
 
 ---
 
+### Root work item and hierarchy (`Project` type)
+
+NXProject builds the schedule on the **Project → Epic → Feature → Story → Task** hierarchy.
+
+> ⚠️ **`Project` is NOT a standard Azure DevOps work item type** (the standard tops out at Epic). It's a **custom** type that acts as a "container" above Epics, grouping the whole project. Many organizations create this type in their process.
+
+How the root is used:
+
+- **Manual import:** you enter the **root work item ID** in the import screen; NXProject imports the descendants (Epic → Feature → Story → Task). The root type does **not** have to be exactly `Project` — it can be any work item that is the parent of the Epics (even an Epic, if you only want to import that one).
+- **Discovery** (Portfolio → Discovery DevOps): automatically lists work items **of type `Project`** with no parent in the Team Project. For automatic Discovery to work, the custom `Project` type must exist.
+
+If your organization doesn't use a `Project` type, you can still import by pointing the root ID at an Epic (or other container) — only automatic Discovery depends on the `Project` type.
+
+> **Fields on the `Project` type:** since it sits at the top of the hierarchy, create the **same custom fields on it as on the Epic** (`Estimated HH`, `Data_Inicio`, `Data_Fim`, `Sync_version`, `Sync_Name`). In practice the `Project` type is usually a copy of the Epic. NXProject reads the project start date (`Data_Inicio`) directly from the root item.
+
+---
+
 ### Required custom fields (Story, Feature and Epic)
 
 NXProject reads and writes custom fields on **Stories, Features and Epics** in Azure DevOps. You must create them in your process template under **Organization Settings → Process → [Your Process]** and add them to each work item type you want to sync (Story, Feature, Epic).
@@ -192,6 +209,19 @@ NXProject reads and writes custom fields on **Stories, Features and Epics** in A
 > If your fields have different display names, set them in NXProject under **Configure Azure DevOps → Advanced fields**, where all field names are configurable: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, Sync_version and Sync_Name.
 
 > **Tip:** create the fields once at the process level and then add them to Story, Feature and Epic work item types — they share the same field definition across types.
+
+#### Task fields (no custom fields required)
+
+The **Task** uses only **standard** Azure DevOps fields, which already exist on the Task type — you do **not** need to create any custom field:
+
+| NXProject concept | Standard field (reference) | Note |
+|---|---|---|
+| Estimated HH | `Microsoft.VSTS.Scheduling.OriginalEstimate` | Task estimated effort |
+| Current HH | `Microsoft.VSTS.Scheduling.CompletedWork` | Completed work |
+| Priority | `Microsoft.VSTS.Common.Priority` | DevOps accepts 1–4 |
+| Assigned To / State / Activity | `System.AssignedTo` / `System.State` / `Microsoft.VSTS.Common.Activity` | — |
+
+> Dates, `Perc_Alocacao` and `Sync_version`/`Sync_Name` do **not** apply to Tasks — planning (dates and duration) is derived from the parent Story.
 
 #### Concurrency control (`Sync_version` / `Sync_Name`)
 

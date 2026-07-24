@@ -64,6 +64,11 @@
                       AlternatingRowBackground="#F9FAFB"
                       ColumnHeaderHeight="32"
                       RowHeight="30">
+                <DataGrid.Resources>
+                    <!-- Mantém a linha selecionada azul mesmo sem foco na grid (senão fica cinza). -->
+                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#3399FF"/>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+                </DataGrid.Resources>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{DynamicResource Port_ColName}" Binding="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                         Width="*" MinWidth="160"/>

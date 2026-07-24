@@ -174,6 +174,23 @@ Gerencie múltiplos projetos DevOps em um arquivo compartilhado entre toda a equ
 
 ---
 
+### Item raiz e hierarquia (tipo `Project`)
+
+O NXProject monta o cronograma na hierarquia **Project → Epic → Feature → Story → Task**.
+
+> ⚠️ **`Project` não é um tipo de work item padrão do Azure DevOps** (o padrão vai só até Epic). É um tipo **personalizado** que funciona como "container" acima dos Epics, agrupando o projeto inteiro. Muitas organizações criam esse tipo no processo.
+
+Como o item raiz é usado:
+
+- **Importação manual:** você informa o **ID do item raiz** na tela de importação; o NXProject importa os descendentes (Epic → Feature → Story → Task). O tipo do raiz **não** precisa ser exatamente `Project` — pode ser qualquer work item que seja pai dos Epics (inclusive um Epic, se quiser importar só ele).
+- **Discovery** (Portfólio → Discovery DevOps): lista automaticamente os work items **do tipo `Project`** sem pai no Team Project. Para o Discovery automático funcionar, o tipo personalizado `Project` precisa existir.
+
+Se a sua organização não usa um tipo `Project`, você ainda importa apontando o ID raiz para um Epic (ou outro container) — apenas o Discovery automático depende do tipo `Project`.
+
+> **Campos no tipo `Project`:** como ele fica no topo da hierarquia, crie nele os **mesmos campos personalizados do Epic** (`HH Estimado`, `Data_Inicio`, `Data_Fim`, `Sync_version`, `Sync_Name`). Na prática o tipo `Project` costuma ser uma cópia do Epic. O NXProject lê a data de início do projeto (`Data_Inicio`) direto do item raiz.
+
+---
+
 ### Campos customizados obrigatórios (Story, Feature e Epic)
 
 O NXProject lê e grava campos customizados em **Stories, Features e Epics** do Azure DevOps. É necessário criá-los no template de processo em **Configurações da Organização → Processo → [Seu Processo]** e adicioná-los a cada tipo de work item que você quer sincronizar (Story, Feature, Epic).
@@ -192,6 +209,19 @@ O NXProject lê e grava campos customizados em **Stories, Features e Epics** do 
 > Se os seus campos tiverem nomes diferentes, ajuste-os no NXProject em **Configuração Integração Azure DevOps → Campos avançados**, onde todos os nomes são configuráveis: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, Sync_version e Sync_Name.
 
 > **Dica:** crie os campos uma vez no nível do processo e adicione-os a Story, Feature e Epic — todos os tipos compartilham a mesma definição de campo.
+
+#### Campos da Task (nenhum campo customizado necessário)
+
+A **Task** usa apenas campos **padrão** do Azure DevOps, que já existem no tipo Task — você **não** precisa criar nenhum campo customizado:
+
+| Conceito no NXProject | Campo padrão (referência) | Observação |
+|---|---|---|
+| HH Estimado | `Microsoft.VSTS.Scheduling.OriginalEstimate` | Esforço estimado da Task |
+| HH Atual | `Microsoft.VSTS.Scheduling.CompletedWork` | Trabalho concluído |
+| Prioridade | `Microsoft.VSTS.Common.Priority` | O DevOps aceita 1–4 |
+| Responsável / Estado / Categoria | `System.AssignedTo` / `System.State` / `Microsoft.VSTS.Common.Activity` | — |
+
+> Datas, `Perc_Alocacao` e `Sync_version`/`Sync_Name` **não** se aplicam à Task — o planejamento (datas e duração) é derivado da Story pai.
 
 #### Controle de concorrência (`Sync_version` / `Sync_Name`)
 
