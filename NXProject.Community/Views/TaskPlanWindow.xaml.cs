@@ -2964,6 +2964,134 @@ namespace NXProject.Views
                 || v.EndsWith(":T", StringComparison.OrdinalIgnoreCase);
         }
 
+        // ── Gravar/Ler no DevOps SOMENTE a Task da linha selecionada ─────────
+        // Só campos da Task (nome, HH estimado, prioridade, responsável, status). Datas e o
+        // restante do planejamento continuam indo pelo Sincronizar do cronograma.
+        // Exige ID Task no padrão DevOps (nnn:T): Task interna (:I) não grava nem lê.
+
+        private void TaskPlanInfo(string key)
+            => MessageBox.Show(this, AppStrings.Get(key), AppStrings.Get("TaskPlan_Title"),
+                   MessageBoxButton.OK, MessageBoxImage.Information);
+
+        // Aceita "8", "8,5" e "8.5" (planilha pode vir com qualquer separador).
+        private static bool TryParsePlanNumber(string? text, out double value)
+        {
+            var s = text?.Trim() ?? "";
+            return double.TryParse(s, System.Globalization.NumberStyles.Any,
+                       System.Globalization.CultureInfo.CurrentCulture, out value)
+                || double.TryParse(s.Replace(',', '.'), System.Globalization.NumberStyles.Any,
+                       System.Globalization.CultureInfo.InvariantCulture, out value);
+        }
+
+        // Linha selecionada + ID Task :T (null se a ação não puder rodar; já avisa o usuário).
+        private (DataRow Row, int TaskId)? SelectedRowWithTfsTask()
+        {
+            if (_data == null) return null;
+            PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            var row = _ctxRow ?? CurrentGridRow();
+            if (row == null) { TaskPlanInfo("TaskPlan_SelRowNeeded"); return null; }
+
+            var taskId = TaskIdCol is { } idCol ? ParsePlanIdNumber(row[idCol]?.ToString(), ":T") : null;
+            if (taskId is not > 0) { TaskPlanInfo("TaskPlan_SelNeedsTfsId"); return null; }
+            return (row, taskId.Value);
+        }
+
+        private async void OnSaveSelectedTfsClick(object sender, RoutedEventArgs e)
+        {
+            if (SelectedRowWithTfsTask() is not { } sel) return;
+            var (row, taskId) = sel;
+
+            var taskCol   = FindColumn("Task", "Tarefa", "Nome da Task");
+            var estCol    = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var prioCol   = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
+            var statusCol = FindColumn("Status", "Estado", "State");
+
+            var title    = taskCol   != null ? row[taskCol]?.ToString()?.Trim()   : null;
+            var state    = statusCol != null ? row[statusCol]?.ToString()?.Trim() : null;
+            var assignee = ResourceCol is { } rc ? row[rc]?.ToString()?.Trim() : null;
+
+            // -1 / 0 = não envia o campo (não zera o que está no DevOps).
+            double est = -1;
+            if (estCol != null && TryParsePlanNumber(row[estCol]?.ToString(), out var h) && h >= 0) est = h;
+            int prio = 0;
+            if (prioCol != null && int.TryParse(row[prioCol]?.ToString()?.Trim(), out var p) && p > 0)
+                prio = Math.Clamp(p, 1, 4);
+
+            StatusText.Foreground = System.Windows.Media.Brushes.Green;
+            StatusText.Text = AppStrings.Get("TaskPlan_SelSaving", taskId);
+            try
+            {
+                var options = TfsConnectionStore.Load("NXProject.Community");
+                await TfsImportService.UpdateTaskFieldsAsync(options, taskId,
+                    estimatedHours: est,
+                    completedHours: -1,   // Task Plan não tem HH Atual: não mexe no Completed Work
+                    priority: prio,
+                    assignedTo: string.IsNullOrWhiteSpace(assignee) ? null : assignee,
+                    state: string.IsNullOrWhiteSpace(state) ? null : state,
+                    title: string.IsNullOrWhiteSpace(title) ? null : title);
+                StatusText.Text = AppStrings.Get("TaskPlan_SelSaved", taskId);
+            }
+            catch (Exception ex)
+            {
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = AppStrings.Get("TaskPlan_SelTfsError", ex.Message);
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_SelTfsError", ex.Message),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private async void OnReadSelectedTfsClick(object sender, RoutedEventArgs e)
+        {
+            if (SelectedRowWithTfsTask() is not { } sel) return;
+            var (row, taskId) = sel;
+
+            // Para achar a Task no DevOps usamos a Story pai (busca as filhas dela).
+            var storyId = StoryIdCol is { } sc ? ParsePlanIdNumber(row[sc]?.ToString(), ":T") : null;
+            if (storyId is not > 0) { TaskPlanInfo("TaskPlan_SelNeedsStoryId"); return; }
+
+            StatusText.Foreground = System.Windows.Media.Brushes.Green;
+            StatusText.Text = AppStrings.Get("TaskPlan_SelReading", taskId);
+            try
+            {
+                var options  = TfsConnectionStore.Load("NXProject.Community");
+                var children = await TfsImportService.FetchChildTasksFromDevOpsAsync(options, storyId.Value);
+                var t = children?.FirstOrDefault(x => x.TfsId == taskId);
+                if (t == null)
+                {
+                    StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                    StatusText.Text = AppStrings.Get("TaskPlan_SelNotFound", taskId);
+                    return;
+                }
+
+                PushUndo();
+                var taskCol   = FindColumn("Task", "Tarefa", "Nome da Task");
+                var estCol    = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+                var prioCol   = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
+                var statusCol = FindColumn("Status", "Estado", "State");
+                var descCol   = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
+
+                if (taskCol != null && !string.IsNullOrWhiteSpace(t.Title)) row[taskCol] = t.Title;
+                if (estCol != null && t.EstimatedHours > 0) row[estCol] = t.EstimatedHours.ToString("0.##");
+                if (prioCol != null && t.Priority > 0) row[prioCol] = t.Priority.ToString();
+                if (ResourceCol is { } rc) row[rc] = TaskPlanAssignee(t);
+                if (statusCol != null && !string.IsNullOrWhiteSpace(t.State)) row[statusCol] = t.State;
+                if (PercConclusaoCol is { } pc) row[pc] = Math.Round(t.PercentComplete).ToString("0");
+                FillTaskDescriptionFromDevOps(row, descCol, t);
+
+                _dirty = true;
+                ValidateAgainstSchedule();
+                PlanGrid.Items.Refresh();
+                StatusText.Text = AppStrings.Get("TaskPlan_SelRead", taskId);
+            }
+            catch (Exception ex)
+            {
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = AppStrings.Get("TaskPlan_SelTfsError", ex.Message);
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_SelTfsError", ex.Message),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         // ── merge com o cronograma (busca as Tasks de cada Story no TFS) ─────
         private sealed record MergeSource(TfsImportService.DevOpsTaskInfo Info, ProjectTask Story);
         private sealed record MergeChange(DataRow Row, int RowNumber, string From, MergeSource Dev, string Confidence);

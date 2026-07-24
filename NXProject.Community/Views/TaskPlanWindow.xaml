@@ -100,6 +100,24 @@
                                    HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button Width="64" Height="46" Margin="0,0,4,2" Click="OnReadSelectedTfsClick"
+                        Background="#01579B" ToolTip="{DynamicResource TaskPlan_ReadSelTfsTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x2B07;" FontSize="14" Foreground="White" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapReadSelTfs}" FontSize="9" Foreground="White"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Width="64" Height="46" Margin="0,0,4,2" Click="OnSaveSelectedTfsClick"
+                        Background="#1B5E20" ToolTip="{DynamicResource TaskPlan_SaveSelTfsTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x2B06;" FontSize="14" Foreground="White" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapSaveSelTfs}" FontSize="9" Foreground="White"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnApplyScheduleClick"
                         Background="#6A1B9A" ToolTip="{DynamicResource TaskPlan_ApplyScheduleTip}">
                     <StackPanel VerticalAlignment="Center">
