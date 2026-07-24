@@ -596,11 +596,16 @@ namespace NXProject.Views
                 ? info.AssignedToDisplay.Trim()
                 : info.AssignedTo?.Trim() ?? "";
 
+        /// <summary>Traz a descrição da Task do DevOps para a planilha como TEXTO PURO — a
+        /// descrição no DevOps é HTML e apareceria como "&lt;div&gt;..." na célula. O HTML
+        /// original (formatação, imagens) fica intacto no DevOps: a planilha nunca grava a
+        /// descrição de volta, então nada de conteúdo rico é perdido.</summary>
         private static void FillTaskDescriptionFromDevOps(DataRow row, string? descCol, TfsImportService.DevOpsTaskInfo info)
         {
             if (descCol == null || !row.Table.Columns.Contains(descCol)) return;
-            if (!string.IsNullOrWhiteSpace(info.Description))
-                row[descCol] = info.Description;
+            var text = TfsImportService.ToPlainTextPublic(info.Description);
+            if (!string.IsNullOrWhiteSpace(text))
+                row[descCol] = text;
         }
 
         private bool IsApprovedOrAlreadyTfs(DataRow row, string idCol)
@@ -3022,14 +3027,45 @@ namespace NXProject.Views
             try
             {
                 var options = TfsConnectionStore.Load("NXProject.Community");
+
+                // Descrição: a planilha só conhece TEXTO. Se no DevOps ela tiver conteúdo rico
+                // (imagem, tabela, lista, link), gravar o texto apagaria esse conteúdo — então
+                // não grava e avisa para editar no DevOps. Se for só texto, grava o que foi editado.
+                string? descHtml = null;
+                bool blockedByRich = false;
+                var descCol = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
+                if (descCol != null)
+                {
+                    var cellText  = row[descCol]?.ToString()?.Trim() ?? "";
+                    var currentHtml = await TfsImportService.LoadWorkItemDescriptionHtmlAsync(options, taskId);
+                    var currentText = TfsImportService.ToPlainTextPublic(currentHtml).Trim();
+
+                    if (!string.Equals(cellText, currentText, StringComparison.Ordinal))
+                    {
+                        if (TfsImportService.HasRichDescriptionContent(currentHtml))
+                            blockedByRich = true;   // preserva o conteúdo rico: não grava a descrição
+                        else
+                            descHtml = TfsImportService.PlainTextToSimpleHtml(cellText);
+                    }
+                }
+
                 await TfsImportService.UpdateTaskFieldsAsync(options, taskId,
                     estimatedHours: est,
                     completedHours: -1,   // Task Plan não tem HH Atual: não mexe no Completed Work
                     priority: prio,
                     assignedTo: string.IsNullOrWhiteSpace(assignee) ? null : assignee,
                     state: string.IsNullOrWhiteSpace(state) ? null : state,
-                    title: string.IsNullOrWhiteSpace(title) ? null : title);
+                    title: string.IsNullOrWhiteSpace(title) ? null : title,
+                    descriptionHtml: descHtml);
+
                 StatusText.Text = AppStrings.Get("TaskPlan_SelSaved", taskId);
+                if (blockedByRich)
+                {
+                    StatusText.Foreground = System.Windows.Media.Brushes.DarkOrange;
+                    StatusText.Text = AppStrings.Get("TaskPlan_SelDescRich", taskId);
+                    MessageBox.Show(this, AppStrings.Get("TaskPlan_SelDescRichMsg"),
+                        AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -3038,6 +3074,26 @@ namespace NXProject.Views
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_SelTfsError", ex.Message),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+
+        // Abre no navegador a Task da linha selecionada (usa o ID :T do DevOps).
+        private void OnOpenSelectedTfsClick(object sender, RoutedEventArgs e)
+        {
+            if (SelectedRowWithTfsTask() is not { } sel) return;
+            OpenWorkItemInBrowser(sel.TaskId);
+        }
+
+        private void OpenWorkItemInBrowser(int tfsId)
+        {
+            var conn = TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(conn.OrganizationUrl) || string.IsNullOrWhiteSpace(conn.TeamProject))
+            {
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_PickNoDevOps"),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var url = $"{conn.OrganizationUrl.TrimEnd('/')}/{Uri.EscapeDataString(conn.TeamProject.Trim())}/_workitems/edit/{tfsId}";
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
         }
 
         private async void OnReadSelectedTfsClick(object sender, RoutedEventArgs e)

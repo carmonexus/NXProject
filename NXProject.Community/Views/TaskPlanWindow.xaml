@@ -100,6 +100,15 @@
                                    HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button Width="64" Height="46" Margin="0,0,4,2" Click="OnOpenSelectedTfsClick"
+                        Background="#455A64" ToolTip="{DynamicResource TaskPlan_OpenSelTfsTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F517;" FontSize="14" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapOpenSelTfs}" FontSize="9" Foreground="White"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Button Width="64" Height="46" Margin="0,0,4,2" Click="OnReadSelectedTfsClick"
                         Background="#01579B" ToolTip="{DynamicResource TaskPlan_ReadSelTfsTip}">
                     <StackPanel VerticalAlignment="Center">

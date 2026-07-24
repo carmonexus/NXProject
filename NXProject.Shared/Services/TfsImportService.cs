@@ -854,7 +854,16 @@ namespace NXProject.Services
                     if (task.Description != null || !string.IsNullOrWhiteSpace(task.Justificativa))
                     {
                         var desiredDesc = MergeJustificativa(task.Description, task.Justificativa);
-                        if (!string.Equals(desiredDesc.Trim(), (wi.Description ?? string.Empty).Trim(), StringComparison.Ordinal))
+                        var currentDesc = wi.Description ?? string.Empty;
+                        // A descrição no DevOps é HTML (pode ter formatação, tabelas e imagens),
+                        // mas em grades/planilhas ela circula como texto puro. Se o texto desejado
+                        // for só a projeção em texto do HTML atual, NÃO regrava: seria trocar o
+                        // conteúdo rico por texto simples sem o usuário ter mudado nada.
+                        bool sameAsPlainText =
+                            !string.IsNullOrWhiteSpace(currentDesc) &&
+                            string.Equals(ToPlainText(desiredDesc), ToPlainText(currentDesc), StringComparison.Ordinal);
+
+                        if (!string.Equals(desiredDesc.Trim(), currentDesc.Trim(), StringComparison.Ordinal) && !sameAsPlainText)
                         {
                             ops.Add(PatchAdd("/fields/System.Description", desiredDesc));
                             changes.Add("descrição");
@@ -3126,6 +3135,29 @@ namespace NXProject.Services
         public static bool IsStoryTypePublic(string? type) => IsStoryType(type);
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
 
+        /// <summary>Converte a descrição HTML do work item em texto puro (para exibir em grade/planilha).
+        /// O HTML original permanece no DevOps — este texto é só para leitura.</summary>
+        public static string ToPlainTextPublic(string? html) => ToPlainText(html);
+
+        /// <summary>Indica se a descrição HTML tem conteúdo que se perderia ao regravar como texto
+        /// puro (imagem, tabela, lista, link ou anexo). Usado para bloquear a gravação vinda de
+        /// telas em grade/planilha, que só conhecem o texto.</summary>
+        public static bool HasRichDescriptionContent(string? html)
+        {
+            if (string.IsNullOrWhiteSpace(html)) return false;
+            return Regex.IsMatch(html, @"<\s*(img|table|tr|td|ul|ol|li|a|video|iframe|object|embed)\b",
+                RegexOptions.IgnoreCase);
+        }
+
+        /// <summary>Converte texto puro em HTML simples (um &lt;div&gt; por linha), no formato que o
+        /// DevOps usa no campo Description.</summary>
+        public static string PlainTextToSimpleHtml(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            return string.Concat(lines.Select(l => $"<div>{System.Net.WebUtility.HtmlEncode(l)}</div>"));
+        }
+
         public static double PercentCompleteFromState(
             string? state,
             double completedHours = 0,
@@ -3630,6 +3662,7 @@ namespace NXProject.Services
             int priority = 5, string? assignedTo = null,
             string? state = null, string? title = null,
             string? activity = null, string? tags = null,
+            string? descriptionHtml = null,
             CancellationToken ct = default)
         {
             if (options == null || taskId <= 0) return;
@@ -3654,6 +3687,10 @@ namespace NXProject.Services
                 ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Activity", activity));
             if (tags != null)
                 ops.Add(PatchAdd("/fields/System.Tags", tags));
+            // Só grava a descrição quando explicitamente informada (null = não mexe no que
+            // está no DevOps, preservando formatação/imagens).
+            if (descriptionHtml != null)
+                ops.Add(PatchAdd("/fields/System.Description", descriptionHtml));
 
             if (ops.Count == 0) return;
 

@@ -153,6 +153,10 @@
     <sys:String x:Key="TaskPlan_SelRead">Task #{0} atualizada com os dados do DevOps.</sys:String>
     <sys:String x:Key="TaskPlan_SelNotFound">Task #{0} não encontrada no DevOps (pode ter sido excluída ou movida de Story).</sys:String>
     <sys:String x:Key="TaskPlan_SelTfsError">Falha ao falar com o DevOps: {0}</sys:String>
+    <sys:String x:Key="TaskPlan_CapOpenSelTfs">Abrir no DevOps</sys:String>
+    <sys:String x:Key="TaskPlan_OpenSelTfsTip">Abre no navegador a Task da linha selecionada, usando o ID do DevOps (nnn:T), para editar direto no Azure DevOps.</sys:String>
+    <sys:String x:Key="TaskPlan_SelDescRich">Task #{0} gravada — a descrição foi preservada (conteúdo formatado no DevOps).</sys:String>
+    <sys:String x:Key="TaskPlan_SelDescRichMsg">Os demais campos da Task foram gravados, mas a DESCRIÇÃO não.&#x0a;&#x0a;No DevOps ela tem conteúdo formatado (imagem, tabela, lista ou link) e a planilha só conhece o texto puro — regravar apagaria esse conteúdo.&#x0a;&#x0a;Para alterar a descrição, use uma destas opções:&#x0a;• Abrir no DevOps — edite a descrição direto no Azure DevOps (botão na barra).&#x0a;• Aplicar no cronograma e sincronizar — edite pela janela Descrição da Atividade, que preserva o HTML.</sys:String>
     <sys:String x:Key="TaskPlan_SaveFilterTip">Grava a visão atual (filtros de coluna, cor, EPIC/Feature e Tarefas em Aberto) na configuração local desta planilha. Ao reabrir, a planilha volta com essa visão. Não altera o arquivo.</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadAll">Carregar</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadTask">Load Task</sys:String>
