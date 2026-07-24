@@ -57,6 +57,7 @@ internal static class Program
         ("Import TFS: NoDevOps preserva posicao para predecessora virtual", ImportPreservesNoDevOpsSiblingPosition),
         ("Import TFS: atividades internas DevOps sao vinculadas por nome ou preservadas", ImportMatchesOrPreservesInternalDevOpsActivities),
         ("Resumo: datas e percentual consolidam filhos", SummaryRollupUsesChildrenDatesAndHours),
+        ("Alocacao: decompoe HH da Story (restante p/ responsavel, corte se estoura)", AllocationStoryDecompositionFactors),
         ("Predecessor virtual: aplica fila por mesmo recurso e recalcula fim", VirtualPredecessorQueuesSameResourceSiblings),
         ("Predecessor virtual: mudanca de duracao recalcula inicio e fim das seguintes", VirtualPredecessorDurationChangeCascadesFinish),
         ("Predecessor virtual: recalculo geral reposiciona tarefa com andamento", VirtualPredecessorRecalcMovesStartedSibling),
@@ -1956,6 +1957,44 @@ internal static class Program
         var restoredResource = vm.Project.Resources.Single(r => r.Name == "Dev");
         AssertEqual(50, restoredResource.AvailabilityPercent,
             "Reimportar do TFS nao deve sobrescrever o AvailabilityPercent ja configurado no projeto atual com o padrao 100% do import.");
+    }
+
+    private static void AllocationStoryDecompositionFactors()
+    {
+        static void Near(double actual, double expected, string what)
+        {
+            if (Math.Abs(actual - expected) > 0.0001)
+                throw new InvalidOperationException($"{what}: esperado {expected:0.####}, veio {actual:0.####}.");
+        }
+
+        // Story 40h, tasks somam 22h (cabem): responsavel fica com 18/40; tasks inteiras.
+        Near(NXProject.Services.TaskScheduleService.StoryResponsibleFactor(40, 22), 18.0 / 40.0, "restante responsavel (cabe)");
+        Near(NXProject.Services.TaskScheduleService.StoryTaskCutFactor(40, 22), 1.0, "corte task (cabe)");
+
+        // Tasks somam 50h (estouram 40): responsavel 0; tasks cortadas por 40/50.
+        Near(NXProject.Services.TaskScheduleService.StoryResponsibleFactor(40, 50), 0.0, "restante responsavel (estoura)");
+        Near(NXProject.Services.TaskScheduleService.StoryTaskCutFactor(40, 50), 40.0 / 50.0, "corte task (estoura)");
+
+        // Sem tasks: responsavel fica com a Story inteira.
+        Near(NXProject.Services.TaskScheduleService.StoryResponsibleFactor(40, 0), 1.0, "restante sem tasks");
+
+        // Uma unica task maior que a Story: cortada para caber (trava).
+        Near(NXProject.Services.TaskScheduleService.StoryTaskCutFactor(40, 60), 40.0 / 60.0, "trava task > story");
+
+        // Story sem estimativa (0): nao capa nada.
+        Near(NXProject.Services.TaskScheduleService.StoryResponsibleFactor(0, 10), 1.0, "story sem estimativa (resp)");
+        Near(NXProject.Services.TaskScheduleService.StoryTaskCutFactor(0, 10), 1.0, "story sem estimativa (task)");
+
+        // Total fecha: responsavel + tasks(cortadas) = HH da Story.
+        double storyHours = 40, taskSum = 50;
+        double respHours = storyHours * NXProject.Services.TaskScheduleService.StoryResponsibleFactor(storyHours, taskSum);
+        double tasksHours = taskSum * NXProject.Services.TaskScheduleService.StoryTaskCutFactor(storyHours, taskSum);
+        Near(respHours + tasksHours, storyHours, "total = HH da Story (estoura)");
+
+        storyHours = 40; taskSum = 22;
+        respHours = storyHours * NXProject.Services.TaskScheduleService.StoryResponsibleFactor(storyHours, taskSum);
+        tasksHours = taskSum * NXProject.Services.TaskScheduleService.StoryTaskCutFactor(storyHours, taskSum);
+        Near(respHours + tasksHours, storyHours, "total = HH da Story (cabe)");
     }
 
     private static void SummaryRollupUsesChildrenDatesAndHours()

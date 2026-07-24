@@ -7,6 +7,28 @@ namespace NXProject.Services
 {
     public static class TaskScheduleService
     {
+        // ── Decomposição do HH da Story entre os recursos ─────────────────────
+        // Total por Story = HH da Story. O responsável fica com o RESTANTE (HH da Story −
+        // soma das Tasks); cada Task credita seu HH ao seu recurso, cortado proporcional se
+        // as Tasks estouram o HH da Story (trava). Se a Story não tem estimativa (≤0), não
+        // capa nada. Os métodos retornam FATORES (0..1) aplicáveis às horas da atribuição.
+
+        /// <summary>Fração do HH próprio da Story que fica com o responsável (o restante após
+        /// descontar a soma das Tasks). Story sem estimativa → 1 (sem desconto).</summary>
+        public static double StoryResponsibleFactor(double storyHours, double taskSum)
+        {
+            if (storyHours <= 0) return 1.0;
+            return Math.Max(storyHours - taskSum, 0) / storyHours;
+        }
+
+        /// <summary>Fator aplicado às horas de cada Task filha: 1, ou o corte proporcional
+        /// quando a soma das Tasks passa do HH da Story. Story sem estimativa → 1.</summary>
+        public static double StoryTaskCutFactor(double storyHours, double taskSum)
+        {
+            if (storyHours <= 0 || taskSum <= storyHours) return 1.0;
+            return storyHours / taskSum;
+        }
+
         public static double NormalizeAllocationPercent(double allocationPercent) =>
             double.IsNaN(allocationPercent) || allocationPercent <= 0
                 ? 100.0

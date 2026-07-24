@@ -155,18 +155,19 @@ namespace NXProject.Views
             }
         }
 
-        // ── Crédito de horas: Story cheia + Task de outra pessoa ──────────────
-        // A Story conta CHEIA para quem responde por ela, mesmo tendo Tasks filhas — quem
-        // responde pela Story não perde horas por delegar, pois ainda precisa revisar o que
-        // a outra pessoa fez. As Tasks filhas entram como crédito ADITIVO, e só para quem
-        // NÃO é responsável da Story (senão as horas dela seriam contadas duas vezes).
+        // ── Decomposição do HH da Story entre os recursos ─────────────────────
+        // O total por Story = HH da Story (não infla o projeto). O responsável fica com o
+        // RESTANTE (HH da Story − soma das Tasks); cada Task credita seu HH estimado ao seu
+        // recurso. Se a soma das Tasks estoura o HH da Story, aplica fator proporcional
+        // (trava: nenhuma Task maior que a Story). Como a distribuição por mês/sprint é linear
+        // nas horas, basta multiplicar as horas da atribuição por este fator.
         private static IEnumerable<ProjectTask> GetChargeableTasks(IEnumerable<ProjectTask> tasks)
         {
             foreach (var t in tasks)
             {
                 if (IsStoryNode(t))
                 {
-                    yield return t;                                                  // Story conta cheia
+                    yield return t;                                                  // Story (só o restante)
                     foreach (var c in GetChargeableTasks(t.Children)) yield return c; // + Tasks filhas
                 }
                 else if (t.Children.Count == 0) yield return t;
@@ -188,17 +189,36 @@ namespace NXProject.Views
             return null;
         }
 
-        /// <summary>Task filha de Story só credita horas para quem NÃO responde pela Story
-        /// (a Story já conta cheia para o responsável dela). Story e itens fora de Story
-        /// creditam sempre.</summary>
-        private static bool CreditsResource(ProjectTask task, string? resourceName)
+        private static double AssignmentEstimated(ProjectTask task, TaskResource tr)
+            => NXProject.Services.TaskScheduleService.GetAssignmentHours(task, tr);
+
+        private static double StoryEstimatedHours(ProjectTask story)
+            => story.Resources.Sum(r => AssignmentEstimated(story, r));
+
+        private static double StoryTaskSum(ProjectTask story)
+            => GetLeafTasks(story.Children).SelectMany(t => t.Resources.Select(r => AssignmentEstimated(t, r))).Sum();
+
+        /// <summary>Fator (0..1) que a atribuição (task,recurso) contribui, após decompor o HH
+        /// da Story. Story → fração do restante que fica com o responsável; Task → 1, ou o fator
+        /// de corte se as Tasks estouram o HH da Story. Fora de Story → 1.</summary>
+        private static double DecompositionFactor(ProjectTask task, TaskResource tr)
         {
-            if (string.IsNullOrWhiteSpace(resourceName)) return false;
-            if (IsStoryNode(task)) return true;
+            if (IsStoryNode(task))
+                return NXProject.Services.TaskScheduleService.StoryResponsibleFactor(
+                    StoryEstimatedHours(task), StoryTaskSum(task));
             var story = FindParentStory(task);
-            if (story == null) return true;
-            return !story.Resources.Any(r =>
-                string.Equals(r.Resource?.Name, resourceName, StringComparison.OrdinalIgnoreCase));
+            if (story == null) return 1.0;
+            return NXProject.Services.TaskScheduleService.StoryTaskCutFactor(
+                StoryEstimatedHours(story), StoryTaskSum(story));
+        }
+
+        // Horas da atribuição no período, já decompostas pelo HH da Story.
+        private static double ChargedHoursForTask(ProjectTask task, TaskResource tr,
+            DateTime monthStart, DateTime monthEnd, bool onlyCurrentHours)
+        {
+            double factor = DecompositionFactor(task, tr);
+            if (factor <= 0) return 0;
+            return ComputeHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours) * factor;
         }
 
         private bool OnlyCurrentHours => OnlyCurrentHoursBox?.IsChecked == true;
@@ -246,13 +266,12 @@ namespace NXProject.Views
             double total = 0;
             foreach (var task in GetChargeableTasks(project.Tasks))
             {
-                if (!CreditsResource(task, resourceName)) continue;
                 foreach (var tr in task.Resources)
                 {
                     if (!string.Equals(tr.Resource?.Name, resourceName, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    total += ComputeHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours);
+                    total += ChargedHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours);
                 }
             }
             return total;
@@ -687,7 +706,6 @@ namespace NXProject.Views
             var result = new List<ProjectTask>();
             foreach (var task in GetChargeableTasks(project.Tasks))
             {
-                if (!CreditsResource(task, resName)) continue;
                 bool hasRes = task.Resources.Any(r =>
                     string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
                 if (!hasRes) continue;
@@ -779,7 +797,7 @@ namespace NXProject.Views
                     {
                         if (!string.Equals(tr.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase))
                             continue;
-                        monthH += ComputeHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours);
+                        monthH += ChargedHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours);
                     }
                     totalMonthHours += monthH;
                     string hhMes = monthH > 0.01 ? $"{monthH:0.#}h" : "–";
@@ -1310,8 +1328,7 @@ namespace NXProject.Views
             foreach (var proj in _projects)
                 foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                     foreach (var tr in task.Resources)
-                        if (!string.IsNullOrWhiteSpace(tr.Resource?.Name) && tr.Resource!.Kind == ResourceKind.Project
-                            && CreditsResource(task, tr.Resource!.Name))
+                        if (!string.IsNullOrWhiteSpace(tr.Resource?.Name) && tr.Resource!.Kind == ResourceKind.Project)
                             allRes.Add(tr.Resource!.Name);
 
             // Para cada recurso × projeto × mês, calcula horas
@@ -1581,15 +1598,13 @@ namespace NXProject.Views
                         var rname = tr.Resource?.Name;
                         if (string.IsNullOrWhiteSpace(rname)) continue;
                         if (tr.Resource?.Kind != ResourceKind.Project) continue;
-                        if (!CreditsResource(task, rname)) continue;
-
                         var mh = new double[months.Count];
                         bool any = false;
                         for (int mi = 0; mi < months.Count; mi++)
                         {
                             var ms = months[mi];
                             var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                            double h = ComputeHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
+                            double h = ChargedHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
                             mh[mi] = h;
                             if (h > 0.01) any = true;
                         }
@@ -1979,15 +1994,13 @@ namespace NXProject.Views
                         var rname = tr.Resource?.Name;
                         if (string.IsNullOrWhiteSpace(rname)) continue;
                         if (tr.Resource?.Kind != ResourceKind.Internal) continue;
-                        if (!CreditsResource(task, rname)) continue;
-
                         var mh = new double[months.Count];
                         bool any = false;
                         for (int mi = 0; mi < months.Count; mi++)
                         {
                             var ms = months[mi];
                             var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                            double h = ComputeHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
+                            double h = ChargedHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
                             mh[mi] = h;
                             if (h > 0.01) any = true;
                         }
@@ -2431,8 +2444,7 @@ namespace NXProject.Views
             foreach (var proj in _projects)
                 foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                     foreach (var tr in task.Resources)
-                        if (!string.IsNullOrWhiteSpace(tr.Resource?.Name) && tr.Resource!.Kind == targetKind
-                            && CreditsResource(task, tr.Resource!.Name))
+                        if (!string.IsNullOrWhiteSpace(tr.Resource?.Name) && tr.Resource!.Kind == targetKind)
                             allRes.Add(tr.Resource!.Name);
 
             var data = new Dictionary<string, double[][]>(StringComparer.OrdinalIgnoreCase);
@@ -2552,15 +2564,13 @@ namespace NXProject.Views
                         var rname = tr.Resource?.Name;
                         if (string.IsNullOrWhiteSpace(rname)) continue;
                         if (tr.Resource?.Kind != ResourceKind.Project) continue;
-                        if (!CreditsResource(task, rname)) continue;
-
                         var mh = new double[months.Count];
                         bool any = false;
                         for (int mi = 0; mi < months.Count; mi++)
                         {
                             var ms = months[mi];
                             var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                            double h = ComputeHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
+                            double h = ChargedHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
                             mh[mi] = h;
                             if (h > 0.01) any = true;
                         }

@@ -442,6 +442,14 @@ namespace NXProject.Views
                      "• O checkbox 'Apenas HH atual (alocado)' é um modo de análise da aba Horas por Projeto; Distribuição por Pessoa, Stories por Recurso, Rateio e Interno usam sempre HH Atual + HH Restante.\n" +
                      "• Quando há mais de um recurso na mesma atividade, o HH Atual é rateado entre os recursos pela proporção do HH Restante de cada assignment; se não houver essa base, usa a proporção da % de alocação.\n\n" +
                      "Essa regra evita jogar HH já realizado em meses futuros ou HH restante em meses passados."),
+                    ("Story com Tasks de outra pessoa (decomposição do HH)",
+                     "Quando uma Story tem Tasks de recursos diferentes do responsável, o HH da Story é DECOMPOSTO entre as pessoas — o total continua sendo o HH da Story (não infla o projeto):\n\n" +
+                     "• Cada Task credita o seu HH estimado para o recurso da Task.\n" +
+                     "• O responsável da Story fica com o RESTANTE: HH da Story menos a soma das Tasks. Assim ele não perde tudo por delegar (ainda revisa o que foi feito), mas o total fecha no HH da Story.\n" +
+                     "• Trava: nenhuma Task pode passar do HH da Story. Se a soma das Tasks estoura o HH da Story, as Tasks são cortadas proporcionalmente (HH da Story ÷ soma das Tasks) e o responsável fica com 0.\n" +
+                     "• Se o responsável não tem Task própria, ele fica com a sobra (sem Tasks de outros, fica com a Story inteira).\n" +
+                     "• Se a Story não tem HH estimado, nada é cortado — as Tasks aparecem com o HH delas.\n\n" +
+                     "A conta usa o modelo (não a árvore visível), então as Tasks de outro recurso entram mesmo com a Story recolhida no cronograma. Vale para o Mapa de Alocação e para a Alocação de Recurso por Sprint."),
                     ("% de capacidade",
                      "O percentual exibido ao lado das horas nas abas de capacidade é calculado sobre a capacidade mensal do calendário e do recurso: horas/dia úteis × dias úteis do mês, considerando a configuração da pessoa.\n\n" +
                      "Na aba Rateio, o % representa a fatia daquele projeto no total de horas do recurso no mês — não em relação à capacidade total."),
@@ -1211,6 +1219,14 @@ namespace NXProject.Views
                      "• The 'Only current HH (allocated)' checkbox is an analysis mode for the Hours by Project tab; Distribution by Person, Stories by Resource, Rateio and Internal always use Current HH + Remaining HH.\n" +
                      "• When multiple resources are assigned to the same activity, Current HH is split by each assignment's Remaining HH proportion; if that base is missing, allocation % is used.\n\n" +
                      "This prevents work already done from being pushed into future months, and remaining work from being counted in past months."),
+                    ("Story with Tasks from another person (HH decomposition)",
+                     "When a Story has Tasks from resources other than the responsible, the Story's HH is DECOMPOSED among the people — the total stays equal to the Story HH (it does not inflate the project):\n\n" +
+                     "• Each Task credits its estimated HH to the Task's resource.\n" +
+                     "• The Story responsible keeps the REMAINDER: Story HH minus the sum of the Tasks. So they don't lose everything by delegating (they still review the work), while the total closes at the Story HH.\n" +
+                     "• Cap: no Task can exceed the Story HH. If the Tasks sum exceeds the Story HH, Tasks are cut proportionally (Story HH ÷ sum of Tasks) and the responsible gets 0.\n" +
+                     "• If the responsible has no Task of their own, they keep the remainder (with no other Tasks, they keep the whole Story).\n" +
+                     "• If the Story has no estimated HH, nothing is cut — Tasks show their own HH.\n\n" +
+                     "The math uses the model (not the visible tree), so Tasks from another resource count even when the Story is collapsed in the schedule. Applies to the Allocation Map and to Resource Allocation by Sprint."),
                     ("Capacity percentage",
                      "The percentage shown beside hours in capacity tabs is calculated against the monthly calendar and resource capacity: working hours/day × working days in the month, considering the person's configuration.\n\n" +
                      "In the Rateio tab, the % represents that project's share of the resource's total hours in the month — not relative to full capacity."),
