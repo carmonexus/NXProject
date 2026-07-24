@@ -84,6 +84,7 @@ internal static class Program
         ("Task Plan: cabecalho detectado abaixo do bloco de resumo", TaskPlanDetectsHeaderBelowSummary),
         ("Task Plan: salvar preserva valores e cor de fundo", TaskPlanSavePreservesValuesAndColors),
         ("Task Plan: backup antes de salvar cria copia e aplica retencao", TaskPlanBackupBeforeSaveCreatesCopyAndRetains15Days),
+        ("Task Plan: visao de filtro (EPIC/cor/coluna) sobrevive a serializacao", TaskPlanFilterViewRoundTrips),
         ("Task Plan: coluna nova grava no fim com prefixo e volta na posicao", TaskPlanNewColumnKeepsViewPosition),
         ("Task Plan: coluna excluida some da planilha ao salvar", TaskPlanDeletedColumnClearedOnSave),
         ("Task Plan: aplicar cria task interna no padrao do cronograma", TaskPlanApplyCreatesInternalTaskLikeSchedule),
@@ -2569,6 +2570,34 @@ internal static class Program
                 throw new InvalidOperationException($"Cor de fundo nao voltou do arquivo (obtido: '{color}').");
         }
         finally { File.Delete(path); }
+    }
+
+    private static void TaskPlanFilterViewRoundTrips()
+    {
+        var settings = new TaskPlanSettings();
+        var view = new TaskPlanFilterView { Epic = "EPIC A", Feature = "Feature 1", OpenTasksOnly = true };
+        view.ColumnFilters["Status"] = new System.Collections.Generic.List<string> { "Active", "New" };
+        view.ColorFilters["Task"] = "#FFF2CC";
+        settings.SetFilterView(@"C:\Planos\Plano Oficial.xlsx", view);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(settings);
+        var back = System.Text.Json.JsonSerializer.Deserialize<TaskPlanSettings>(json)
+            ?? throw new InvalidOperationException("Desserializacao retornou nulo.");
+
+        // A chave deve resolver por caminho normalizado, case-insensitive.
+        var got = back.GetFilterView(@"c:\planos\plano oficial.xlsx")
+            ?? throw new InvalidOperationException("Visao de filtro nao sobreviveu a serializacao.");
+        if (got.Epic != "EPIC A") throw new InvalidOperationException($"EPIC perdido: '{got.Epic}'.");
+        if (got.Feature != "Feature 1") throw new InvalidOperationException($"Feature perdida: '{got.Feature}'.");
+        if (!got.OpenTasksOnly) throw new InvalidOperationException("OpenTasksOnly perdido.");
+        if (!got.ColumnFilters.TryGetValue("Status", out var st) || st.Count != 2)
+            throw new InvalidOperationException("Filtro de coluna Status perdido.");
+        if (!got.ColorFilters.TryGetValue("Task", out var cor) || cor != "#FFF2CC")
+            throw new InvalidOperationException("Filtro de cor perdido.");
+
+        settings.RemoveFilterView(@"C:\PLANOS\PLANO OFICIAL.XLSX");
+        if (settings.GetFilterView(@"C:\Planos\Plano Oficial.xlsx") != null)
+            throw new InvalidOperationException("RemoveFilterView nao removeu por caminho case-insensitive.");
     }
 
     private static void TaskPlanBackupBeforeSaveCreatesCopyAndRetains15Days()

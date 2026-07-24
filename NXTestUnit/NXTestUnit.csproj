@@ -41,6 +41,9 @@
     <Compile Include="..\NXProject.Community\Services\TaskPlanScheduleRules.cs">
       <Link>Services\TaskPlanScheduleRules.cs</Link>
     </Compile>
+    <Compile Include="..\NXProject.Community\Services\TaskPlanSettingsStore.cs">
+      <Link>Services\TaskPlanSettingsStore.cs</Link>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>

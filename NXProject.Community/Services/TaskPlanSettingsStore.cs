@@ -50,6 +50,69 @@ namespace NXProject.Community.Services
         public string SharePointTenantId { get; set; } = string.Empty;
         public string SharePointClientId { get; set; } = string.Empty;
         public string SharePointUrl { get; set; } = string.Empty;
+
+        /// <summary>Última visão de filtros gravada por planilha (caminho do .xlsx → filtros).
+        /// Guardada só na configuração local — nunca dentro do arquivo — para reabrir o Task Plan
+        /// na mesma visão. A chave é o caminho completo (case-insensitive).</summary>
+        public System.Collections.Generic.Dictionary<string, TaskPlanFilterView> FilterViews { get; set; } = new();
+
+        public TaskPlanFilterView? GetFilterView(string? path)
+        {
+            var key = NormalizeFilterKey(path);
+            if (key == null) return null;
+            foreach (var kv in FilterViews)
+                if (string.Equals(NormalizeFilterKey(kv.Key), key, StringComparison.OrdinalIgnoreCase))
+                    return kv.Value;
+            return null;
+        }
+
+        public void SetFilterView(string path, TaskPlanFilterView view)
+        {
+            var key = NormalizeFilterKey(path);
+            if (key == null) return;
+            foreach (var existing in FilterViews.Keys)
+                if (string.Equals(NormalizeFilterKey(existing), key, StringComparison.OrdinalIgnoreCase))
+                {
+                    FilterViews[existing] = view;
+                    return;
+                }
+            FilterViews[key] = view;
+        }
+
+        public void RemoveFilterView(string path)
+        {
+            var key = NormalizeFilterKey(path);
+            if (key == null) return;
+            foreach (var existing in FilterViews.Keys)
+                if (string.Equals(NormalizeFilterKey(existing), key, StringComparison.OrdinalIgnoreCase))
+                {
+                    FilterViews.Remove(existing);
+                    return;
+                }
+        }
+
+        private static string? NormalizeFilterKey(string? path)
+        {
+            var p = path?.Trim();
+            if (string.IsNullOrEmpty(p)) return null;
+            try { return Path.GetFullPath(p); }
+            catch { return p; }
+        }
+    }
+
+    /// <summary>Visão de filtros do Task Plan persistida na configuração local (não no .xlsx).</summary>
+    public sealed class TaskPlanFilterView
+    {
+        /// <summary>Filtros estilo Excel por coluna (coluna → valores permitidos).</summary>
+        public System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>> ColumnFilters { get; set; } = new();
+        /// <summary>Filtro por cor de fundo por coluna (coluna → hex; "" = sem cor).</summary>
+        public System.Collections.Generic.Dictionary<string, string> ColorFilters { get; set; } = new();
+        /// <summary>EPIC selecionado no combo ("" = Todos).</summary>
+        public string Epic { get; set; } = string.Empty;
+        /// <summary>Feature selecionada no combo ("" = Todos).</summary>
+        public string Feature { get; set; } = string.Empty;
+        /// <summary>Checkbox "Tarefas em Aberto".</summary>
+        public bool OpenTasksOnly { get; set; }
     }
 
     public static class TaskPlanSettingsStore
