@@ -133,12 +133,23 @@ namespace NXProject.Views
                 },
                 "Use Arquivo → Importar → TFS / Azure DevOps para criar o cronograma a partir do seu backlog existente."
             ),
-            // ── Tópico 1: Epic / Feature / Story / Task ──────────────────────
+            // ── Tópico 1: Project / Epic / Feature / Story / Task ────────────
             (
-                "Epic / Feature / Story / Task",
+                "Project / Epic / Feature / Story / Task",
                 "Entenda o papel de cada nível da hierarquia do Azure DevOps no NXProject e as regras que governam campos, datas e sincronização.",
                 new()
                 {
+                    ("Project (item raiz)",
+                     "O Project é o item raiz do cronograma: o work item que agrupa todos os Epics do projeto.\n\n" +
+                     "ATENÇÃO: 'Project' NÃO é um tipo de work item padrão do Azure DevOps — o padrão vai só até o Epic. É um tipo PERSONALIZADO que a organização cria no processo para servir de container acima dos Epics.\n\n" +
+                     "No NXProject:\n" +
+                     "• Não é uma linha do cronograma nem uma barra do Gantt — ele É o projeto aberto.\n" +
+                     "• O título do item raiz vira o nome do projeto no NXProject.\n" +
+                     "• A data de início do projeto é lida do campo Data_Inicio do item raiz (quando não há sprint para ancorar).\n" +
+                     "• O responsável (Assigned To) do item raiz vira o dono do projeto.\n" +
+                     "• Os filhos do item raiz são importados seguindo Epic → Feature → Story → Task.\n\n" +
+                     "Campos: crie no tipo 'Project' os MESMOS campos personalizados do Epic (HH Estimado, Data_Inicio, Data_Fim, Sync_version, Sync_Name) — na prática ele costuma ser uma cópia do Epic.\n\n" +
+                     "Na importação: informe o ID do item raiz. O tipo dele não precisa ser exatamente 'Project' — pode ser qualquer work item pai dos Epics (até um Epic, se quiser importar só ele). Já o Discovery (Portfólio → Discovery DevOps) procura automaticamente work items do tipo 'Project', então para ele funcionar o tipo personalizado precisa existir."),
                     ("Epic",
                      "O Epic representa uma grande iniciativa ou objetivo estratégico, geralmente com duração de meses.\n\n" +
                      "No NXProject:\n" +
@@ -177,7 +188,7 @@ namespace NXProject.Views
                      "• Grid de Tasks: acessível pelo menu de contexto da Story → 'Grid de Tasks (DevOps)'. Permite editar, ratear HH, reordenar por drag-drop e sincronizar com o DevOps.\n" +
                      "• Sincroniza: Title, Original Estimate, Completed Work, Priority, AssignedTo, State e Activity.")
                 },
-                "A hierarquia Epic → Feature → Story → Task espelha o backlog do Azure DevOps. O NXProject planeja até a Story e oferece visibilidade das Tasks sem engessá-las."
+                "A hierarquia Project → Epic → Feature → Story → Task espelha o backlog do Azure DevOps (sendo 'Project' um tipo personalizado no topo). O NXProject planeja até a Story e oferece visibilidade das Tasks sem engessá-las."
             ),
             // ── Tópico 2: Tech Lead ──────────────────────────────────────────
             (
@@ -905,6 +916,17 @@ namespace NXProject.Views
                 "Understand the role of each Azure DevOps hierarchy level in NXProject and the rules governing fields, dates and sync.",
                 new()
                 {
+                    ("Project (root item)",
+                     "The Project is the schedule's root item: the work item that groups all the project's Epics.\n\n" +
+                     "NOTE: 'Project' is NOT a standard Azure DevOps work item type — the standard tops out at Epic. It's a CUSTOM type the organization creates in its process to act as a container above the Epics.\n\n" +
+                     "In NXProject:\n" +
+                     "• It is not a schedule row nor a Gantt bar — it IS the open project.\n" +
+                     "• The root item's title becomes the project name in NXProject.\n" +
+                     "• The project start date is read from the root item's Data_Inicio field (when there is no sprint to anchor to).\n" +
+                     "• The root item's Assigned To becomes the project owner.\n" +
+                     "• The root item's children are imported following Epic → Feature → Story → Task.\n\n" +
+                     "Fields: create on the 'Project' type the SAME custom fields as the Epic (Estimated HH, Data_Inicio, Data_Fim, Sync_version, Sync_Name) — in practice it is usually a copy of the Epic.\n\n" +
+                     "On import: enter the root work item ID. Its type does not have to be exactly 'Project' — it can be any work item that parents the Epics (even an Epic, if you only want to import that one). Discovery (Portfolio → Discovery DevOps), however, automatically looks for work items of type 'Project', so that custom type must exist for it to work."),
                     ("Epic",
                      "An Epic represents a large initiative or strategic objective, typically spanning months.\n\n" +
                      "In NXProject:\n" +
@@ -939,7 +961,7 @@ namespace NXProject.Views
                      "• Task Grid: accessible via Story context menu → 'Task Grid (DevOps)'. Allows editing, reordering by drag-drop and syncing with DevOps.\n" +
                      "• Syncs: Title, Original Estimate, Completed Work, Priority, AssignedTo, State and Activity.")
                 },
-                "The Epic → Feature → Story → Task hierarchy mirrors the Azure DevOps backlog. NXProject plans down to the Story and provides Task visibility without constraining them."
+                "The Project → Epic → Feature → Story → Task hierarchy mirrors the Azure DevOps backlog ('Project' being a custom type at the top). NXProject plans down to the Story and provides Task visibility without constraining them."
             ),
             (
                 "Tech Lead",
