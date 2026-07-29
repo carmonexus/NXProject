@@ -3,9 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource PMap_Title}"
         Width="1200" Height="700"
-        MinWidth="800" MinHeight="460"
+        MinWidth="640" MinHeight="460"
         WindowStartupLocation="CenterOwner"
-        WindowState="Maximized"
         Background="White">
 
     <Grid Margin="12">
@@ -24,13 +23,26 @@
 
         <!-- Controles -->
         <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="{DynamicResource PMap_SelectProjects}"
-                    Height="28" Padding="10,0" Margin="0,0,8,0"
-                    Click="OnSelectProjectsClick"/>
-            <Button x:Name="ImportBtn"
-                    Content="{DynamicResource PMap_ImportDevOps}"
-                    Height="28" Padding="10,0" Margin="0,0,16,0"
-                    Click="OnImportFromDevOpsClick"/>
+            <Menu VerticalAlignment="Center" Background="Transparent" Margin="0,0,16,0">
+                <MenuItem x:Name="SourceBtn" Header="{DynamicResource PMap_Source}"
+                          Height="28" Padding="12,0" Background="#EEF1F5" BorderBrush="#C9D3DC">
+                    <MenuItem Header="{DynamicResource PMap_SelectProjects}"
+                              ToolTip="{DynamicResource PMap_SelectProjectsTip}"
+                              Click="OnSelectProjectsClick">
+                        <MenuItem.Icon><TextBlock Text="&#x2601;"/></MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource PMap_OpenFiles}"
+                              ToolTip="{DynamicResource PMap_OpenFilesTip}"
+                              Click="OnOpenFilesClick">
+                        <MenuItem.Icon><TextBlock Text="&#x1F4C2;"/></MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem x:Name="OpenScheduleItem" Header="{DynamicResource PMap_OpenSchedule}"
+                              ToolTip="{DynamicResource PMap_OpenScheduleTip}"
+                              Click="OnUseOpenScheduleClick">
+                        <MenuItem.Icon><TextBlock Text="&#x1F5D3;"/></MenuItem.Icon>
+                    </MenuItem>
+                </MenuItem>
+            </Menu>
 
             <TextBlock Text="{DynamicResource PMap_StartMonth}" VerticalAlignment="Center" Margin="0,0,4,0" FontSize="12"/>
             <ComboBox x:Name="StartMonthBox" Width="110" Height="28" Margin="0,0,8,0" FontSize="12"
@@ -52,6 +64,13 @@
                       FontSize="12" IsChecked="False"
                       ToolTip="{DynamicResource PMap_CompletedHHTip}"
                       Click="OnFilterChanged"/>
+
+            <CheckBox x:Name="ShowZeroStoriesBox"
+                      Content="{DynamicResource PMap_ShowZeroStories}"
+                      VerticalAlignment="Center" Margin="0,0,12,0"
+                      FontSize="12" IsChecked="False"
+                      ToolTip="{DynamicResource PMap_ShowZeroStoriesTip}"
+                      Click="OnShowZeroStoriesChanged"/>
 
             <Button Content="{DynamicResource PMap_ExportExcel}" Height="28" Padding="10,0"
                     Click="OnExportExcelClick"/>

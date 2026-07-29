@@ -931,6 +931,18 @@
     <sys:String x:Key="PMap_Title">Mapa de Alocação para Projetos</sys:String>
     <sys:String x:Key="PMap_SelectProjects">☑ Selecionar Projetos</sys:String>
     <sys:String x:Key="PMap_ImportDevOps">☁ Importar do DevOps</sys:String>
+    <sys:String x:Key="PMap_Source">▼ Fonte de dados</sys:String>
+    <sys:String x:Key="PMap_SelectProjectsTip">Escolhe os projetos do portfólio DevOps e importa (roda a importação ao confirmar).</sys:String>
+    <sys:String x:Key="PMap_OpenFiles">📂 Abrir arquivo(s)</sys:String>
+    <sys:String x:Key="PMap_OpenFilesTip">Adiciona um ou mais cronogramas salvos (.nxp) para analisar no mapa, sem precisar importar do DevOps.</sys:String>
+    <sys:String x:Key="PMap_OpenSchedule">🗓 Cronograma aberto</sys:String>
+    <sys:String x:Key="PMap_OpenScheduleTip">Adiciona o cronograma aberto no NXProject para analisar no mapa.</sys:String>
+    <sys:String x:Key="PMap_NoOpenSchedule">Não há cronograma aberto para analisar.</sys:String>
+    <sys:String x:Key="PMap_AddedProjects">{0} projeto(s) adicionado(s) para análise.</sys:String>
+    <sys:String x:Key="PMap_ShowZeroStories">Stories zeradas (revisão)</sys:String>
+    <sys:String x:Key="PMap_ShowZeroStoriesTip">Só na aba Stories por Recurso: mostra também as Stories cujo responsável ficou com 0h (todo o HH foi para as tasks de outras pessoas), para revisão.</sys:String>
+    <sys:String x:Key="PMap_NoSummaryImportAsk">Atualizar do DevOps agora para revisar as Stories zeradas (dono/horas das tasks)?&#x0a;&#x0a;Sim = importa e recarrega   ·   Não = só aplica o filtro com os dados atuais.</sys:String>
+    <sys:String x:Key="PMap_NoSummaryInfo">Os projetos carregados vieram de arquivo/cronograma aberto e ainda não têm o resumo de tasks. Rode um Sync (ou importe pelo mapa via "Selecionar do DevOps") para gerar o resumo e identificar as Stories zeradas.</sys:String>
     <sys:String x:Key="PMap_StartMonth">Mês inicial:</sys:String>
     <sys:String x:Key="PMap_EndMonth">Mês final:</sys:String>
     <sys:String x:Key="PMap_HideZeroed">Ocultar linhas/colunas zeradas</sys:String>
@@ -951,6 +963,13 @@
     <sys:String x:Key="PMap_InternalHeader">Recursos Internos — horas por story/tarefa</sys:String>
     <sys:String x:Key="PMap_NoProjectSelected">Nenhum projeto selecionado. Use '☑ Selecionar Projetos' para adicionar.</sys:String>
     <sys:String x:Key="PMap_StoriesTitle">Stories de {0}  —  {1:MMMM/yyyy}  —  {2}</sys:String>
+    <sys:String x:Key="PMap_SrColType">Tipo</sys:String>
+    <sys:String x:Key="PMap_SrColStoryName">Story</sys:String>
+    <sys:String x:Key="PMap_SrColQtdTasks">Qtd Tasks</sys:String>
+    <sys:String x:Key="PMap_OpenStoryTasks">Abrir tasks</sys:String>
+    <sys:String x:Key="PMap_OnlyComposition">Mostrar só as atividades que compõem estas horas — desmarque para ver todas as stories do mês</sys:String>
+    <sys:String x:Key="PMap_SrTypeStory">Story</sys:String>
+    <sys:String x:Key="PMap_SrTypeTask">Task</sys:String>
     <sys:String x:Key="PMap_SrColHHTotal">HH Total</sys:String>
     <sys:String x:Key="PMap_SrColHHMonth">HH Mês</sys:String>
     <sys:String x:Key="PMap_SrColPctDone">% Concl.</sys:String>
@@ -972,6 +991,7 @@
     <sys:String x:Key="PMap_NoRootMsg">Nenhum projeto selecionado tem ID raiz configurado.&#10;&#10;Edite o Portfólio de Projetos (Visualizar → Portfólio de Projetos) e informe o ID raiz de cada projeto.</sys:String>
     <sys:String x:Key="PMap_NoRootTitle">ID raiz não configurado</sys:String>
     <sys:String x:Key="PMap_Importing">Importando {0}/{1}: {2}...</sys:String>
+    <sys:String x:Key="PMap_ImportingTasks2">Importando {0}/{1}: {2} — {3}</sys:String>
     <sys:String x:Key="PMap_ImportErrors">Erros durante a importação:&#10;&#10;{0}</sys:String>
     <sys:String x:Key="PMap_PartialImport">Importação parcial</sys:String>
     <sys:String x:Key="PMap_NoDataToExport">Nenhum dado para exportar. Importe os projetos primeiro.</sys:String>
@@ -1863,6 +1883,8 @@
     <sys:String x:Key="Grid_BlockedStoryLabel">⛔ BLOCK</sys:String>
     <sys:String x:Key="Grid_BlockedByChildLabel">🔴 BLOCK</sys:String>
     <sys:String x:Key="Grid_OpenTasksGridTip">Abre a grid de Tasks desta Story para editar e incluir no cronograma</sys:String>
+    <sys:String x:Key="Grid_TaskAllocSummary">👥 Resumo de tasks (alocação)</sys:String>
+    <sys:String x:Key="Grid_TaskAllocSummaryTip">Mostra o resumo por recurso (dono + horas) das Tasks desta Story no DevOps, usado na decomposição da alocação. É gravado no Sync e no import do Mapa de Alocação.</sys:String>
     <sys:String x:Key="Grid_IncludeTasksTip">Inclui as Tasks desta Story diretamente no cronograma</sys:String>
     <sys:String x:Key="Grid_KeepStoryNoTasksTip">Mantém a Story sem Tasks no cronograma — duração e HH passam a ser editáveis diretamente</sys:String>
     <sys:String x:Key="Grid_RemoveChildTasksTip">Remove todas as Tasks filhas desta Story do cronograma (não apaga no DevOps)</sys:String>

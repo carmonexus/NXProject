@@ -1900,6 +1900,7 @@ namespace NXProject.ViewModels
                 Project.FilePath = path;
                 Project.IsDirty = false;
                 StatusMessage = $"Salvo: {path}";
+                ProjectFileChanged?.Invoke();
             }
             catch (Exception ex)
             {
@@ -2909,8 +2910,13 @@ namespace NXProject.ViewModels
                     yield return ft;
         }
 
+        /// <summary>Disparado quando o projeto é aberto, criado ou salvo — para a UI atualizar o
+        /// título com o nome do arquivo (Project.FilePath muda sem notificação própria).</summary>
+        public event Action? ProjectFileChanged;
+
         partial void OnProjectChanged(Project value)
         {
+            ProjectFileChanged?.Invoke();
             RebuildSprintCollections();
             if (!string.IsNullOrEmpty(value?.LastZoom))
                 SelectedZoom = value.LastZoom;

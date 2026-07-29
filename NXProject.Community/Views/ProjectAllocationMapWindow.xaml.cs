@@ -65,16 +65,90 @@ namespace NXProject.Views
         private const double CcWidth     = 120;
         private const double TotalColW   = 90;
 
+        private readonly Project? _openProject;
+
         // ── Construtor ────────────────────────────────────────────────────────
-        public ProjectAllocationMapWindow()
+        public ProjectAllocationMapWindow(Project? openProject = null)
         {
             InitializeComponent();
+            _openProject = openProject;
             PopulateMonthCombos();
 
             var opts = TfsConnectionStore.Load();
             LoadProjects(opts);
 
-            Loaded += (_, _) => BuildGrid();
+            Loaded += (_, _) =>
+            {
+                if (OpenScheduleItem != null)
+                    OpenScheduleItem.IsEnabled = _openProject != null && _openProject.Tasks.Count > 0;
+                BuildGrid();
+            };
+        }
+
+        // Adiciona o cronograma aberto no NXProject como um projeto para análise.
+        private void OnUseOpenScheduleClick(object sender, RoutedEventArgs e)
+        {
+            if (_openProject == null || _openProject.Tasks.Count == 0)
+            {
+                MessageBox.Show(this, AppStrings.Get("PMap_NoOpenSchedule"),
+                    AppStrings.Get("PMap_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var name = !string.IsNullOrWhiteSpace(_openProject.Name) ? _openProject.Name
+                     : !string.IsNullOrWhiteSpace(_openProject.FilePath) ? System.IO.Path.GetFileNameWithoutExtension(_openProject.FilePath)
+                     : "Cronograma aberto";
+            AddLoadedProjects(new[] { (_openProject.FilePath ?? "", name, _openProject) });
+        }
+
+        // Abre um ou mais cronogramas salvos (.nxp) para análise.
+        private void OnOpenFilesClick(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = AppStrings.Get("PMap_OpenFiles"),
+                Filter = "NXProject (*.nxp;*.xml)|*.nxp;*.xml|Todos (*.*)|*.*",
+                Multiselect = true
+            };
+            if (dlg.ShowDialog(this) != true) return;
+
+            var loaded = new List<(string, string, Project)>();
+            foreach (var path in dlg.FileNames)
+            {
+                try
+                {
+                    var project = XmlProjectService.Load(path);
+                    var name = !string.IsNullOrWhiteSpace(project.Name) ? project.Name
+                             : System.IO.Path.GetFileNameWithoutExtension(path);
+                    loaded.Add((path, name, project));
+                }
+                catch { /* arquivo inválido — ignora */ }
+            }
+            AddLoadedProjects(loaded);
+        }
+
+        // Acrescenta projetos ao mapa (sem duplicar pelo caminho) e reconstrói.
+        private void AddLoadedProjects(IEnumerable<(string FilePath, string Name, Project Data)> items)
+        {
+            int added = 0;
+            foreach (var (filePath, name, data) in items)
+            {
+                bool dup = !string.IsNullOrWhiteSpace(filePath)
+                    && _projects.Any(p => string.Equals(p.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+                if (dup) continue;
+                ResourceKindConfigService.ApplyTo(data.Resources);
+                _projects.Add(new LoadedProject
+                {
+                    FilePath         = filePath,
+                    Name             = name,
+                    IsOpex           = false,
+                    CostCenter       = string.Empty,
+                    CostCenterSource = "CAPEX",
+                    Data             = data
+                });
+                added++;
+            }
+            RebuildCurrentTab();
+            StatusText.Text = AppStrings.Get("PMap_AddedProjects", added);
         }
 
         // ── Período ───────────────────────────────────────────────────────────
@@ -161,14 +235,18 @@ namespace NXProject.Views
         // recurso. Se a soma das Tasks estoura o HH da Story, aplica fator proporcional
         // (trava: nenhuma Task maior que a Story). Como a distribuição por mês/sprint é linear
         // nas horas, basta multiplicar as horas da atribuição por este fator.
+        // Story com resumo de tasks (TaskAllocations) representa as tasks pelo resumo — não
+        // desce nos filhos (senão contaria duas vezes). Sem resumo, mantém o comportamento
+        // antigo (Story + folhas).
         private static IEnumerable<ProjectTask> GetChargeableTasks(IEnumerable<ProjectTask> tasks)
         {
             foreach (var t in tasks)
             {
                 if (IsStoryNode(t))
                 {
-                    yield return t;                                                  // Story (só o restante)
-                    foreach (var c in GetChargeableTasks(t.Children)) yield return c; // + Tasks filhas
+                    yield return t;
+                    if (t.TaskAllocations.Count == 0)
+                        foreach (var c in GetChargeableTasks(t.Children)) yield return c;
                 }
                 else if (t.Children.Count == 0) yield return t;
                 else foreach (var c in GetChargeableTasks(t.Children)) yield return c;
@@ -189,36 +267,117 @@ namespace NXProject.Views
             return null;
         }
 
-        private static double AssignmentEstimated(ProjectTask task, TaskResource tr)
-            => NXProject.Services.TaskScheduleService.GetAssignmentHours(task, tr);
+        // task.Finish é EXCLUSIVO; para distribuir horas do resumo por mês usa-se o fim inclusivo.
+        private static DateTime InclusiveFinish(ProjectTask task)
+            => NXProject.Services.ProjectCalendarService.GetInclusiveFinishDate(task.Start, task.Finish).Date;
 
-        private static double StoryEstimatedHours(ProjectTask story)
-            => story.Resources.Sum(r => AssignmentEstimated(story, r));
+        // Base da decomposição = HH TOTAL da atribuição (atual + restante). Usar só "restante"
+        // (GetAssignmentHours) zera em Story fechada e quebraria a decomposição.
+        private static double AssignmentTotalHours(ProjectTask task, TaskResource tr)
+            => NXProject.Services.TaskScheduleService.GetAssignmentCurrentHours(task, tr)
+             + NXProject.Services.TaskScheduleService.GetAssignmentRemainingHours(task, tr);
 
-        private static double StoryTaskSum(ProjectTask story)
-            => GetLeafTasks(story.Children).SelectMany(t => t.Resources.Select(r => AssignmentEstimated(t, r))).Sum();
+        private static double StoryTotalHours(ProjectTask story)
+            => story.Resources.Sum(r => AssignmentTotalHours(story, r));
 
-        /// <summary>Fator (0..1) que a atribuição (task,recurso) contribui, após decompor o HH
-        /// da Story. Story → fração do restante que fica com o responsável; Task → 1, ou o fator
-        /// de corte se as Tasks estouram o HH da Story. Fora de Story → 1.</summary>
-        private static double DecompositionFactor(ProjectTask task, TaskResource tr)
+        private static double StorySummarySum(ProjectTask story)
+            => story.TaskAllocations.Sum(a => a.Hours);
+
+        // ── Contribuições decompostas de um nó (por recurso, horas/mês) ────────
+        // Story COM resumo: responsável fica com o restante (fator), cada pessoa do resumo ganha
+        // suas horas (cortadas se estoura), distribuídas na janela da Story. Demais nós: recurso
+        // ganha as horas cheias. É a fonte única usada por todas as abas do Mapa.
+        private List<(string Resource, double[] MonthHours)> StoryChargeRows(
+            ProjectTask task, List<DateTime> months, bool onlyCurrentHours)
         {
-            if (IsStoryNode(task))
-                return NXProject.Services.TaskScheduleService.StoryResponsibleFactor(
-                    StoryEstimatedHours(task), StoryTaskSum(task));
-            var story = FindParentStory(task);
-            if (story == null) return 1.0;
-            return NXProject.Services.TaskScheduleService.StoryTaskCutFactor(
-                StoryEstimatedHours(story), StoryTaskSum(story));
+            var rows = new List<(string, double[])>();
+            void Add(string? res, Func<DateTime, DateTime, double> hoursFn)
+            {
+                if (string.IsNullOrWhiteSpace(res)) return;
+                var arr = new double[months.Count];
+                for (int mi = 0; mi < months.Count; mi++)
+                {
+                    var ms = months[mi];
+                    var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
+                    arr[mi] = hoursFn(ms, me);
+                }
+                rows.Add((res!, arr));
+            }
+
+            if (IsStoryNode(task) && task.TaskAllocations.Count > 0)
+            {
+                double storyTotal = StoryTotalHours(task);
+                double taskSum    = StorySummarySum(task);
+                double respFactor = NXProject.Services.TaskScheduleService.StoryResponsibleFactor(storyTotal, taskSum);
+                double cutFactor  = NXProject.Services.TaskScheduleService.StoryTaskCutFactor(storyTotal, taskSum);
+
+                foreach (var tr in task.Resources)
+                {
+                    var t = task; var a = tr;
+                    Add(a.Resource?.Name, (ms, me) => ComputeHoursForTask(t, a, ms, me, onlyCurrentHours) * respFactor);
+                }
+                var finishInc = InclusiveFinish(task);
+                foreach (var alloc in task.TaskAllocations)
+                {
+                    var t = task; var al = alloc;
+                    Add(al.Resource, (ms, me) => AllocateHoursInPeriod(al.Hours * cutFactor, t.Start, finishInc, ms, me));
+                }
+            }
+            else
+            {
+                foreach (var tr in task.Resources)
+                {
+                    var t = task; var a = tr;
+                    Add(a.Resource?.Name, (ms, me) => ComputeHoursForTask(t, a, ms, me, onlyCurrentHours));
+                }
+            }
+
+            // Um mesmo recurso pode aparecer duas vezes (responsável com sobra + task própria):
+            // consolida numa única linha por recurso somando as horas.
+            if (rows.Count > 1)
+            {
+                var merged = new List<(string, double[])>();
+                foreach (var (res, arr) in rows)
+                {
+                    var existing = merged.FindIndex(x =>
+                        string.Equals(x.Item1, res, StringComparison.OrdinalIgnoreCase));
+                    if (existing < 0) merged.Add((res, arr));
+                    else for (int mi = 0; mi < arr.Length; mi++) merged[existing].Item2[mi] += arr[mi];
+                }
+                return merged;
+            }
+            return rows;
         }
 
-        // Horas da atribuição no período, já decompostas pelo HH da Story.
-        private static double ChargedHoursForTask(ProjectTask task, TaskResource tr,
-            DateTime monthStart, DateTime monthEnd, bool onlyCurrentHours)
+        // Todos os nomes de recurso que recebem horas (atribuídos + pessoas do resumo de tasks).
+        private static IEnumerable<string> ResourceNamesWithCharges(Project project)
         {
-            double factor = DecompositionFactor(task, tr);
-            if (factor <= 0) return 0;
-            return ComputeHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours) * factor;
+            foreach (var task in GetChargeableTasks(project.Tasks))
+            {
+                foreach (var tr in task.Resources)
+                    if (!string.IsNullOrWhiteSpace(tr.Resource?.Name)) yield return tr.Resource!.Name!;
+                if (IsStoryNode(task))
+                    foreach (var a in task.TaskAllocations)
+                        if (!string.IsNullOrWhiteSpace(a.Resource)) yield return a.Resource;
+            }
+        }
+
+        private static HashSet<string> InternalResourceNames(Project project)
+            => new(project.Resources.Where(r => r.Kind == ResourceKind.Internal && !string.IsNullOrWhiteSpace(r.Name)).Select(r => r.Name!),
+                   StringComparer.OrdinalIgnoreCase);
+
+        // Recursos do tipo Projeto de um projeto para as abas de alocação: os atribuídos +
+        // as pessoas das tasks (resumo) que não sejam recursos Internos.
+        private static IEnumerable<string> ProjectChargeResourceNames(Project project)
+        {
+            var internalNames = new HashSet<string>(
+                project.Resources.Where(r => r.Kind == ResourceKind.Internal && !string.IsNullOrWhiteSpace(r.Name)).Select(r => r.Name!),
+                StringComparer.OrdinalIgnoreCase);
+            return project.Resources
+                .Where(r => r.Type == ResourceType.Work && r.Kind == ResourceKind.Project && !string.IsNullOrWhiteSpace(r.Name))
+                .Select(r => r.Name!)
+                .Concat(ResourceNamesWithCharges(project).Where(n => !internalNames.Contains(n)))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
         }
 
         private bool OnlyCurrentHours => OnlyCurrentHoursBox?.IsChecked == true;
@@ -259,21 +418,16 @@ namespace NXProject.Views
             return today;
         }
 
-        private static double ComputeHours(Project project, string resourceName,
-                                            DateTime monthStart, DateTime monthEnd,
-                                            bool onlyCurrentHours = false)
+        private double ComputeHours(Project project, string resourceName,
+                                    DateTime monthStart, DateTime monthEnd,
+                                    bool onlyCurrentHours = false)
         {
+            var months = new List<DateTime> { monthStart };
             double total = 0;
             foreach (var task in GetChargeableTasks(project.Tasks))
-            {
-                foreach (var tr in task.Resources)
-                {
-                    if (!string.Equals(tr.Resource?.Name, resourceName, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    total += ChargedHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours);
-                }
-            }
+                foreach (var (res, mh) in StoryChargeRows(task, months, onlyCurrentHours))
+                    if (string.Equals(res, resourceName, StringComparison.OrdinalIgnoreCase))
+                        total += mh[0];
             return total;
         }
 
@@ -301,10 +455,7 @@ namespace NXProject.Views
 
             foreach (var proj in _projects)
             {
-                var resources = proj.Data.Resources
-                    .Where(r => r.Type == ResourceType.Work && r.Kind == ResourceKind.Project && !string.IsNullOrWhiteSpace(r.Name))
-                    .Select(r => r.Name!)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                var resources = ProjectChargeResourceNames(proj.Data)
                     .OrderBy(n => n)
                     .ToList();
 
@@ -707,7 +858,9 @@ namespace NXProject.Views
             foreach (var task in GetChargeableTasks(project.Tasks))
             {
                 bool hasRes = task.Resources.Any(r =>
-                    string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
+                        string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase))
+                    || task.TaskAllocations.Any(a =>
+                        string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase));
                 if (!hasRes) continue;
 
                 var tStart = task.Start.Date;
@@ -721,9 +874,12 @@ namespace NXProject.Views
 
         // ── Popup de stories ──────────────────────────────────────────────────
         private void ShowStoriesPopup(LoadedProject proj, string resName,
-            DateTime monthStart, DateTime monthEnd)
+            DateTime monthStart, DateTime monthEnd, IEnumerable<ProjectTask>? composingTasks = null)
         {
-            var stories = GetStoriesInMonth(proj.Data, resName, monthStart, monthEnd);
+            // Se o chamador já sabe exatamente quais stories/tasks compõem a célula (aba
+            // Stories por Recurso, onde cada linha é UMA story), usa essa lista; senão coleta o mês.
+            var stories = composingTasks?.ToList()
+                          ?? GetStoriesInMonth(proj.Data, resName, monthStart, monthEnd);
 
             var opts   = TfsConnectionStore.Load();
             var orgUrl = opts.OrganizationUrl?.TrimEnd('/') ?? "";
@@ -743,9 +899,10 @@ namespace NXProject.Views
             };
 
             var grid = new Grid { Margin = new Thickness(12) };
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // 0 título
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // 1 filtro
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // 2 lista
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // 3 rodapé
 
             // Título
             var header = new TextBlock
@@ -759,64 +916,29 @@ namespace NXProject.Views
             Grid.SetRow(header, 0);
             grid.Children.Add(header);
 
+            // Filtro: por padrão mostra só a composição do total clicado (linhas com horas no mês).
+            var filterBox = new CheckBox
+            {
+                Content    = AppStrings.Get("PMap_OnlyComposition"),
+                IsChecked  = true,
+                FontSize   = 11,
+                Margin     = new Thickness(0, 0, 0, 10),
+                Foreground = new SolidColorBrush(Color.FromRgb(60, 60, 60)),
+                // Só faz sentido quando o popup coletou o mês; com a lista exata não há "ver tudo".
+                Visibility = composingTasks == null ? Visibility.Visible : Visibility.Collapsed
+            };
+            Grid.SetRow(filterBox, 1);
+            grid.Children.Add(filterBox);
+
             // Lista
             var sv = new ScrollViewer
             {
                 VerticalScrollBarVisibility   = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
             };
-            var panel = new StackPanel();
-
-            // Cabeçalho da tabela
-            panel.Children.Add(MakeStoryRow(
-                AppStrings.Get("PMap_ColStory"), AppStrings.Get("PMap_SrColHHTotal"), AppStrings.Get("PMap_SrColHHMonth"),
-                AppStrings.Get("PMap_SrColPctDone"), AppStrings.Get("PMap_SrColStart"), AppStrings.Get("PMap_SrColFinish"), AppStrings.Get("PMap_SrColDevOps"),
-                isHeader: true, devOpsUrl: null));
-
-            double totalMonthHours = 0;
-            if (stories.Count == 0)
-            {
-                panel.Children.Add(new TextBlock
-                {
-                    Text    = AppStrings.Get("PMap_NoStories"),
-                    Margin  = new Thickness(8, 6, 8, 0),
-                    FontSize = 12,
-                    Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120))
-                });
-            }
-            else
-            {
-                bool onlyCurrentHours = OnlyCurrentHours;
-                foreach (var task in stories.OrderBy(t => t.Start))
-                {
-                    double totalH = (task.CurrentHours ?? 0) + (task.EstimatedHours ?? 0);
-                    string hh    = totalH > 0.01 ? $"{totalH:0.#}h" : "–";
-
-                    double monthH = 0;
-                    foreach (var tr in task.Resources)
-                    {
-                        if (!string.Equals(tr.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase))
-                            continue;
-                        monthH += ChargedHoursForTask(task, tr, monthStart, monthEnd, onlyCurrentHours);
-                    }
-                    totalMonthHours += monthH;
-                    string hhMes = monthH > 0.01 ? $"{monthH:0.#}h" : "–";
-
-                    string pct   = $"{(int)Math.Round(task.PercentComplete)}%";
-                    string start = task.Start.ToString("dd/MM/yy");
-                    string fin   = task.Finish.ToString("dd/MM/yy");
-                    string? url  = task.TfsId.HasValue && !string.IsNullOrWhiteSpace(orgUrl)
-                        ? $"{orgUrl}/{Uri.EscapeDataString(tp)}/_workitems/edit/{task.TfsId.Value}"
-                        : null;
-                    panel.Children.Add(MakeStoryRow(task.Name, hh, hhMes, pct, start, fin, url != null ? "↗" : "", isHeader: false, devOpsUrl: url));
-                }
-            }
-
-            sv.Content = panel;
-            Grid.SetRow(sv, 1);
+            Grid.SetRow(sv, 2);
             grid.Children.Add(sv);
 
-            // Rodapé com total HH Mês
             var footer = new Border
             {
                 Background      = new SolidColorBrush(Color.FromRgb(235, 240, 252)),
@@ -825,23 +947,106 @@ namespace NXProject.Views
                 Padding         = new Thickness(6, 4, 6, 4),
                 Margin          = new Thickness(0, 2, 0, 0)
             };
-            footer.Child = new TextBlock
-            {
-                Text       = AppStrings.Get("PMap_TotalHHMonth", totalMonthHours > 0.01 ? $"{totalMonthHours:0.#}h" : "–"),
-                FontSize   = 12,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(Color.FromRgb(20, 60, 140)),
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-            Grid.SetRow(footer, 2);
+            Grid.SetRow(footer, 3);
             grid.Children.Add(footer);
+
+            bool onlyCurrentHours = OnlyCurrentHours;
+            void Rebuild()
+            {
+                bool onlyComposition = filterBox.IsChecked == true;
+                var panel = new StackPanel();
+
+                // Cabeçalho da tabela
+                panel.Children.Add(MakeStoryRow(
+                    AppStrings.Get("PMap_ColStory"), AppStrings.Get("PMap_SrColType"), AppStrings.Get("PMap_SrColStoryName"),
+                    AppStrings.Get("PMap_SrColQtdTasks"), AppStrings.Get("PMap_SrColHHTotal"), AppStrings.Get("PMap_SrColHHMonth"),
+                    AppStrings.Get("PMap_SrColPctDone"), AppStrings.Get("PMap_SrColStart"), AppStrings.Get("PMap_SrColFinish"), AppStrings.Get("PMap_SrColDevOps"),
+                    isHeader: true, devOpsUrl: null));
+
+                double totalMonthHours = 0;
+                int shown = 0;
+                foreach (var task in stories.OrderBy(t => t.Start))
+                {
+                    double monthH = StoryChargeRows(task, new List<DateTime> { monthStart }, onlyCurrentHours)
+                        .Where(r => string.Equals(r.Resource, resName, StringComparison.OrdinalIgnoreCase))
+                        .Sum(r => r.MonthHours[0]);
+
+                    if (onlyComposition && monthH <= 0.01) continue;   // só o que compõe o total clicado
+                    shown++;
+                    totalMonthHours += monthH;
+
+                    double totalH = (task.CurrentHours ?? 0) + (task.EstimatedHours ?? 0);
+                    string hh    = totalH > 0.01 ? $"{totalH:0.#}h" : "–";
+                    string hhMes = monthH > 0.01 ? $"{monthH:0.#}h" : "–";
+                    string pct   = $"{(int)Math.Round(task.PercentComplete)}%";
+                    string start = task.Start.ToString("dd/MM/yy");
+                    string fin   = task.Finish.ToString("dd/MM/yy");
+                    string? url  = task.TfsId.HasValue && !string.IsNullOrWhiteSpace(orgUrl)
+                        ? $"{orgUrl}/{Uri.EscapeDataString(tp)}/_workitems/edit/{task.TfsId.Value}"
+                        : null;
+                    // As horas do recurso vêm de uma Task dele numa Story de OUTRO responsável, ou da própria Story.
+                    bool viaTask = task.TaskAllocations.Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
+                                && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
+                    string tipo      = AppStrings.Get(viaTask ? "PMap_SrTypeTask" : "PMap_SrTypeStory");
+                    // Nome da Story dona (para linhas de task é a Story-mãe; se a própria linha é Story, o próprio nome).
+                    var storyNode    = IsStoryNode(task) ? task : FindParentStory(task);
+                    string storyName = storyNode?.Name ?? task.Name;
+                    // Qtd de tasks: alocação por task → nº de tasks do recurso; alocação por story → sempre 1.
+                    var alloc        = task.TaskAllocations.FirstOrDefault(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase));
+                    int qtdTasks     = viaTask ? (alloc?.Tasks ?? 0) : 1;
+                    string qtd       = qtdTasks.ToString();
+                    // Botão para abrir a grid de tasks da story (Tech Lead) quando a story tem tasks no DevOps.
+                    Action? openTasks = (storyNode != null && (storyNode.TaskAllocations.Count > 0 || storyNode.DevopsTaskCount != 0))
+                        ? () => OpenStoryTasksGrid(proj.Data, storyNode)
+                        : null;
+                    panel.Children.Add(MakeStoryRow(task.Name, tipo, storyName, qtd, hh, hhMes, pct, start, fin, url != null ? "↗" : "", isHeader: false, devOpsUrl: url, onOpenTasks: openTasks));
+                }
+
+                if (shown == 0)
+                    panel.Children.Add(new TextBlock
+                    {
+                        Text    = AppStrings.Get("PMap_NoStories"),
+                        Margin  = new Thickness(8, 6, 8, 0),
+                        FontSize = 12,
+                        Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120))
+                    });
+
+                sv.Content = panel;
+                footer.Child = new TextBlock
+                {
+                    Text       = AppStrings.Get("PMap_TotalHHMonth", totalMonthHours > 0.01 ? $"{totalMonthHours:0.#}h" : "–"),
+                    FontSize   = 12,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(20, 60, 140)),
+                    HorizontalAlignment = HorizontalAlignment.Right
+                };
+            }
+
+            filterBox.Checked   += (_, _) => Rebuild();
+            filterBox.Unchecked += (_, _) => Rebuild();
+            Rebuild();
 
             win.Content = grid;
             win.ShowDialog();
         }
 
-        private static UIElement MakeStoryRow(string name, string hh, string hhMes, string pct, string start, string fin,
-            string devOps, bool isHeader, string? devOpsUrl)
+        // Abre a grade de tasks (Tech Lead) da story agregada, listando por story.
+        private void OpenStoryTasksGrid(Project project, ProjectTask story)
+        {
+            try
+            {
+                var win = new TechLeadTaskReviewWindow(project, new List<ProjectTask> { story }) { Owner = this };
+                win.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "NXProject",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private static UIElement MakeStoryRow(string name, string tipo, string storyName, string qtd, string hh, string hhMes, string pct, string start, string fin,
+            string devOps, bool isHeader, string? devOpsUrl, Action? onOpenTasks = null)
         {
             var bg = isHeader
                 ? new SolidColorBrush(Color.FromRgb(43, 87, 154))
@@ -867,32 +1072,52 @@ namespace NXProject.Views
                     VerticalAlignment = VerticalAlignment.Center, ToolTip = t }
             };
 
-            sp.Children.Add(Cell(name, 320));
-            sp.Children.Add(Cell(hh,    72, HorizontalAlignment.Right));
-            sp.Children.Add(Cell(hhMes, 72, HorizontalAlignment.Right));
-            sp.Children.Add(Cell(pct,   64, HorizontalAlignment.Right));
-            sp.Children.Add(Cell(start, 76));
-            sp.Children.Add(Cell(fin, 76));
+            sp.Children.Add(Cell(name, 220));
+            sp.Children.Add(Cell(tipo,  52));
+            sp.Children.Add(Cell(storyName, 200));
+            sp.Children.Add(Cell(qtd,   64, HorizontalAlignment.Right));
+            sp.Children.Add(Cell(hh,    64, HorizontalAlignment.Right));
+            sp.Children.Add(Cell(hhMes, 64, HorizontalAlignment.Right));
+            sp.Children.Add(Cell(pct,   56, HorizontalAlignment.Right));
+            sp.Children.Add(Cell(start, 72));
+            sp.Children.Add(Cell(fin, 72));
 
-            if (!isHeader && !string.IsNullOrEmpty(devOpsUrl))
+            if (!isHeader)
             {
-                var btn = new Button
+                if (onOpenTasks != null)
                 {
-                    Content   = "↗ DevOps",
-                    FontSize  = 10,
-                    Padding   = new Thickness(6, 2, 6, 2),
-                    Margin    = new Thickness(4, 2, 4, 2),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Cursor    = System.Windows.Input.Cursors.Hand
-                };
-                btn.Click += (_, _) =>
+                    var tbtn = new Button
+                    {
+                        Content   = AppStrings.Get("PMap_OpenStoryTasks"),
+                        FontSize  = 10,
+                        Padding   = new Thickness(6, 2, 6, 2),
+                        Margin    = new Thickness(4, 2, 2, 2),
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Cursor    = System.Windows.Input.Cursors.Hand
+                    };
+                    tbtn.Click += (_, _) => onOpenTasks();
+                    sp.Children.Add(tbtn);
+                }
+                if (!string.IsNullOrEmpty(devOpsUrl))
                 {
-                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(devOpsUrl) { UseShellExecute = true }); }
-                    catch { }
-                };
-                sp.Children.Add(btn);
+                    var btn = new Button
+                    {
+                        Content   = "↗ DevOps",
+                        FontSize  = 10,
+                        Padding   = new Thickness(6, 2, 6, 2),
+                        Margin    = new Thickness(2, 2, 4, 2),
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Cursor    = System.Windows.Input.Cursors.Hand
+                    };
+                    btn.Click += (_, _) =>
+                    {
+                        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(devOpsUrl) { UseShellExecute = true }); }
+                        catch { }
+                    };
+                    sp.Children.Add(btn);
+                }
             }
-            else if (isHeader)
+            else
             {
                 sp.Children.Add(Cell(devOps, 90));
             }
@@ -950,9 +1175,7 @@ namespace NXProject.Views
 
             // Coleta recursos únicos
             var allResources = _projects
-                .SelectMany(p => p.Data.Resources
-                    .Where(r => r.Type == ResourceType.Work && r.Kind == ResourceKind.Project && !string.IsNullOrWhiteSpace(r.Name))
-                    .Select(r => r.Name!))
+                .SelectMany(p => ProjectChargeResourceNames(p.Data))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(n => n)
                 .ToList();
@@ -1494,6 +1717,19 @@ namespace NXProject.Views
                 }
             };
 
+        // Reconstrói a aba ATIVA (BuildGrid só monta a aba 0; as demais são preguiçosas).
+        private void RebuildCurrentTab()
+        {
+            switch (MainTabControl?.SelectedIndex ?? 0)
+            {
+                case 1: BuildDistributionGrid(); break;
+                case 2: BuildStoriesGrid(); break;
+                case 3: BuildRateioTab(); break;
+                case 4: BuildInternalTab(); break;
+                default: BuildGrid(); break;
+            }
+        }
+
         private void OnTabChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             // Checkbox "Apenas HH atual" só é usado na aba 0 (Horas por Projeto)
@@ -1582,6 +1818,8 @@ namespace NXProject.Views
 
             var (periodStart, periodEnd) = GetPeriod();
             bool hideZero = OnlyWithHoursBox.IsChecked == true;
+            // Revisão: mostra a linha do RESPONSÁVEL mesmo com 0h (Story toda delegada às tasks).
+            bool reviewZeros = ShowZeroStoriesBox?.IsChecked == true;
             var months = BuildMonths(periodStart, periodEnd);
 
             // Monta estrutura: recurso → projeto → lista de stories com horas/mês
@@ -1591,24 +1829,19 @@ namespace NXProject.Views
 
             foreach (var proj in _projects)
             {
+                var internalNames = InternalResourceNames(proj.Data);
                 foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                 {
-                    foreach (var tr in task.Resources)
+                    foreach (var (rname, mh) in StoryChargeRows(task, months, onlyCurrentHours: false))
                     {
-                        var rname = tr.Resource?.Name;
-                        if (string.IsNullOrWhiteSpace(rname)) continue;
-                        if (tr.Resource?.Kind != ResourceKind.Project) continue;
-                        var mh = new double[months.Count];
-                        bool any = false;
-                        for (int mi = 0; mi < months.Count; mi++)
-                        {
-                            var ms = months[mi];
-                            var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                            double h = ChargedHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
-                            mh[mi] = h;
-                            if (h > 0.01) any = true;
-                        }
-                        if (hideZero && !any) continue;
+                        if (internalNames.Contains(rname)) continue;   // internos → aba Interno
+                        bool any = mh.Any(h => h > 0.01);
+                        bool isResponsible = task.Resources.Any(r =>
+                            string.Equals(r.Resource?.Name, rname, StringComparison.OrdinalIgnoreCase));
+                        bool inPeriod = task.Start.Date <= periodEnd && task.Finish.Date >= periodStart;
+                        // Mostra a Story zerada do responsável (para revisão) mesmo com hideZero.
+                        bool keepForReview = reviewZeros && isResponsible && inPeriod;
+                        if (hideZero && !any && !keepForReview) continue;
 
                         if (!byRes.TryGetValue(rname, out var list))
                             byRes[rname] = list = [];
@@ -1719,7 +1952,15 @@ namespace NXProject.Views
                     foreach (var (proj, task, mh) in projEntries.OrderBy(e => e.Task.Start))
                     {
                         bool storyIsOpex = proj.IsOpexForTask(task);
-                        var leftBg = new SolidColorBrush(Color.FromRgb(248, 250, 255));
+                        // Linha é de PESSOA DA TASK (responsável da Story é outro) → cor distinta.
+                        // Linha do responsável com 0h (Story delegada) → tachada (pode ser cancelada).
+                        bool rowIsTaskPerson = task.TaskAllocations.Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
+                                            && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
+                        bool rowIsZeroResp = !rowIsTaskPerson && !mh.Any(h => h > 0.01);
+                        var leftBg = new SolidColorBrush(
+                            rowIsZeroResp   ? Color.FromRgb(253, 242, 233) :   // âmbar claro (revisão)
+                            rowIsTaskPerson ? Color.FromRgb(230, 246, 245) :   // verde-água (task de outro)
+                                              Color.FromRgb(248, 250, 255));
                         var leftRow = new StackPanel { Orientation = Orientation.Horizontal };
 
                         leftRow.Children.Add(new Border
@@ -1778,14 +2019,22 @@ namespace NXProject.Views
                                 TextTrimming = TextTrimming.CharacterEllipsis }
                         });
                         string storyLabel = task.Name ?? $"#{task.TfsId}";
+                        string responsibleName = task.Resources.FirstOrDefault()?.Resource?.Name ?? "—";
                         leftRow.Children.Add(new Border
                         {
                             Width = SrStoryW, Height = SrRowH, Background = leftBg,
                             BorderBrush = new SolidColorBrush(Color.FromRgb(210, 220, 240)),
                             BorderThickness = new Thickness(0, 0, 1, 1), Padding = new Thickness(4, 0, 4, 0),
-                            ToolTip = $"{storyLabel}\nInício: {task.Start:dd/MM/yy}  Fim: {task.Finish:dd/MM/yy}  HH: {task.EstimatedHours?.ToString("0.#") ?? "–"}h",
+                            ToolTip = $"{storyLabel}\nInício: {task.Start:dd/MM/yy}  Fim: {task.Finish:dd/MM/yy}  HH: {task.EstimatedHours?.ToString("0.#") ?? "–"}h"
+                                    + (rowIsZeroResp ? $"\n⚠ Responsável pela Story ({responsibleName}) ficou com 0h — toda a Story foi para tasks de outros. Revisar/cancelar?"
+                                     : rowIsTaskPerson ? $"\nHoras de task de {resName}. Responsável pela Story: {responsibleName}." : ""),
                             Child = new TextBlock { Text = storyLabel, FontSize = 10,
-                                Foreground = new SolidColorBrush(Color.FromRgb(40, 40, 40)),
+                                Foreground = new SolidColorBrush(
+                                    rowIsZeroResp   ? Color.FromRgb(150, 60, 40) :
+                                    rowIsTaskPerson ? Color.FromRgb(0, 110, 105) :
+                                                      Color.FromRgb(40, 40, 40)),
+                                TextDecorations = rowIsZeroResp ? TextDecorations.Strikethrough : null,
+                                FontStyle = rowIsTaskPerson ? FontStyles.Italic : FontStyles.Normal,
                                 VerticalAlignment = VerticalAlignment.Center,
                                 TextTrimming = TextTrimming.CharacterEllipsis }
                         });
@@ -1797,16 +2046,33 @@ namespace NXProject.Views
                         {
                             double h = mh[mi];
                             rowTotal += h;
+                            var monthStart = months[mi];
+                            var monthEnd   = new DateTime(monthStart.Year, monthStart.Month, DateTime.DaysInMonth(monthStart.Year, monthStart.Month));
                             // CAPEX cell
                             double hC = !storyIsOpex ? h : 0;
-                            dataRow.Children.Add(SrMakeCell(hC > 0.01 ? $"{hC:0.#}h" : "–",
+                            var capexCell = SrMakeCell(hC > 0.01 ? $"{hC:0.#}h" : "–",
                                 SrCapexMonW, hC > 0.01 ? Color.FromRgb(120, 60, 10) : Color.FromRgb(200, 200, 200),
-                                Color.FromRgb(255, 248, 240), bold: false));
+                                Color.FromRgb(255, 248, 240), bold: false);
                             // OPEX cell
                             double hO = storyIsOpex ? h : 0;
-                            dataRow.Children.Add(SrMakeCell(hO > 0.01 ? $"{hO:0.#}h" : "–",
+                            var opexCell = SrMakeCell(hO > 0.01 ? $"{hO:0.#}h" : "–",
                                 SrOpexMonW, hO > 0.01 ? Color.FromRgb(20, 90, 20) : Color.FromRgb(200, 200, 200),
-                                Color.FromRgb(240, 250, 240), bold: false));
+                                Color.FromRgb(240, 250, 240), bold: false);
+                            // Clique nas horas → mesma grid de composição da aba Horas por Projeto
+                            // (as stories/tasks que compõem as horas deste recurso no mês).
+                            if (h > 0.01)
+                            {
+                                var p = proj; var rn = resName; var ms = monthStart; var me = monthEnd; var st = task;
+                                void Wire(Border b)
+                                {
+                                    b.Cursor = System.Windows.Input.Cursors.Hand;
+                                    // Cada linha da aba é UMA story → passa exatamente ela como composição da célula.
+                                    b.MouseLeftButtonUp += (_, _) => ShowStoriesPopup(p, rn, ms, me, new[] { st });
+                                }
+                                Wire(capexCell); Wire(opexCell);
+                            }
+                            dataRow.Children.Add(capexCell);
+                            dataRow.Children.Add(opexCell);
                         }
                         dataRow.Children.Add(SrMakeCell(rowTotal > 0.01 ? $"{rowTotal:0.#}h" : "–",
                             SrTotalW, Color.FromRgb(20, 50, 110), Color.FromRgb(230, 238, 252), bold: true));
@@ -1987,23 +2253,13 @@ namespace NXProject.Views
 
             foreach (var proj in _projects)
             {
+                var internalNames = InternalResourceNames(proj.Data);
                 foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                 {
-                    foreach (var tr in task.Resources)
+                    foreach (var (rname, mh) in StoryChargeRows(task, months, onlyCurrentHours: false))
                     {
-                        var rname = tr.Resource?.Name;
-                        if (string.IsNullOrWhiteSpace(rname)) continue;
-                        if (tr.Resource?.Kind != ResourceKind.Internal) continue;
-                        var mh = new double[months.Count];
-                        bool any = false;
-                        for (int mi = 0; mi < months.Count; mi++)
-                        {
-                            var ms = months[mi];
-                            var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                            double h = ChargedHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
-                            mh[mi] = h;
-                            if (h > 0.01) any = true;
-                        }
+                        if (!internalNames.Contains(rname)) continue;   // só recursos Internos aqui
+                        bool any = mh.Any(h => h > 0.01);
                         if (hideZero && !any) continue;
 
                         if (!byRes.TryGetValue(rname, out var list))
@@ -2231,7 +2487,7 @@ namespace NXProject.Views
             };
 
         // ── Handlers ──────────────────────────────────────────────────────────
-        private void OnSelectProjectsClick(object sender, RoutedEventArgs e)
+        private async void OnSelectProjectsClick(object sender, RoutedEventArgs e)
         {
             var opts       = TfsConnectionStore.Load();
             var devOpsList = DevOpsProjectListService.Load(opts.DevOpsProjectListPath);
@@ -2274,9 +2530,12 @@ namespace NXProject.Views
 
             int count = opts.PortfolioProjectConfigs.Count;
             StatusText.Text = AppStrings.Get("PMap_ProjectsSelected", count);
+
+            // Selecionou projetos do DevOps → já importa (roda após o OK).
+            await ImportSelectedFromDevOpsAsync();
         }
 
-        private async void OnImportFromDevOpsClick(object sender, RoutedEventArgs e)
+        private async Task ImportSelectedFromDevOpsAsync()
         {
             var opts = TfsConnectionStore.Load();
 
@@ -2319,7 +2578,7 @@ namespace NXProject.Views
                 return;
             }
 
-            ImportBtn.IsEnabled = false;
+            SourceBtn.IsEnabled = false;
             var errors = new List<string>();
             var imported = new List<LoadedProject>();
 
@@ -2351,6 +2610,9 @@ namespace NXProject.Views
                 {
                     var result = await TfsImportService.ImportAsync(importOpts);
                     ResourceKindConfigService.ApplyTo(result.Project.Resources);
+                    // Desce até o nível de Task no DevOps e grava o resumo (dono + horas) por Story,
+                    // para a alocação decompor o HH da Story entre as pessoas das tasks.
+                    await PopulateTaskAllocationsAsync(result.Project, importOpts, i + 1, toImport.Count, cfg.ProjectName);
                     imported.Add(new LoadedProject
                     {
                         FilePath         = string.Empty,
@@ -2369,9 +2631,9 @@ namespace NXProject.Views
                 }
             }
 
-            ImportBtn.IsEnabled = true;
+            SourceBtn.IsEnabled = true;
             _projects = imported;
-            BuildGrid();
+            RebuildCurrentTab();
 
             var sb = new StringBuilder();
             sb.Append($"{imported.Count} projeto(s) importado(s) do DevOps");
@@ -2386,9 +2648,42 @@ namespace NXProject.Views
                     AppStrings.Get("PMap_PartialImport"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
+        // Busca as Tasks de cada Story no DevOps e grava o resumo de alocação (dono + horas).
+        private async Task PopulateTaskAllocationsAsync(Project project, TfsConnectionOptions opts,
+            int projIndex, int projTotal, string projName)
+        {
+            var progress = new Progress<string>(s =>
+                StatusText.Text = AppStrings.Get("PMap_ImportingTasks2", projIndex, projTotal, projName, s));
+            await TfsImportService.UpdateTaskAllocationSummariesAsync(project, opts, progress);
+        }
+
         private void OnPeriodChanged(object sender, SelectionChangedEventArgs e) { }
 
-        private void OnFilterChanged(object sender, RoutedEventArgs e) => BuildGrid();
+        private void OnFilterChanged(object sender, RoutedEventArgs e) => RebuildCurrentTab();
+
+        // "Stories zeradas (revisão)": ao MARCAR, pergunta se quer atualizar do DevOps agora
+        // (aplicar e recarregar) — assim o resumo fica fresco para identificar as zeradas.
+        private async void OnShowZeroStoriesChanged(object sender, RoutedEventArgs e)
+        {
+            if (ShowZeroStoriesBox?.IsChecked == true && _projects.Count > 0)
+            {
+                bool hasSummary = _projects.Any(p => GetChargeableTasks(p.Data.Tasks).Any(t => t.TaskAllocations.Count > 0));
+                bool canImport  = TfsConnectionStore.Load().PortfolioProjectConfigs.Count > 0;
+                if (canImport)
+                {
+                    var r = MessageBox.Show(this, AppStrings.Get("PMap_NoSummaryImportAsk"),
+                        AppStrings.Get("PMap_Title"), MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (r == MessageBoxResult.Yes) { await ImportSelectedFromDevOpsAsync(); RebuildCurrentTab(); return; }
+                }
+                else if (!hasSummary)
+                {
+                    // Projetos de arquivo/cronograma aberto sem resumo: não dá para importar aqui.
+                    MessageBox.Show(this, AppStrings.Get("PMap_NoSummaryInfo"),
+                        AppStrings.Get("PMap_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            RebuildCurrentTab();
+        }
 
         private void OnExportExcelClick(object sender, RoutedEventArgs e)
         {
@@ -2550,6 +2845,7 @@ namespace NXProject.Views
         {
             var (periodStart, periodEnd) = GetPeriod();
             bool hideZero = OnlyWithHoursBox.IsChecked == true;
+            bool reviewZeros = ShowZeroStoriesBox?.IsChecked == true;
             var months = BuildMonths(periodStart, periodEnd);
 
             var byRes = new SortedDictionary<string, List<(LoadedProject Proj, ProjectTask Task, double[] MonthHours)>>(
@@ -2557,24 +2853,18 @@ namespace NXProject.Views
 
             foreach (var proj in _projects)
             {
+                var internalNames = InternalResourceNames(proj.Data);
                 foreach (var task in GetChargeableTasks(proj.Data.Tasks))
                 {
-                    foreach (var tr in task.Resources)
+                    foreach (var (rname, mh) in StoryChargeRows(task, months, onlyCurrentHours: false))
                     {
-                        var rname = tr.Resource?.Name;
-                        if (string.IsNullOrWhiteSpace(rname)) continue;
-                        if (tr.Resource?.Kind != ResourceKind.Project) continue;
-                        var mh = new double[months.Count];
-                        bool any = false;
-                        for (int mi = 0; mi < months.Count; mi++)
-                        {
-                            var ms = months[mi];
-                            var me = new DateTime(ms.Year, ms.Month, DateTime.DaysInMonth(ms.Year, ms.Month));
-                            double h = ChargedHoursForTask(task, tr, ms, me, onlyCurrentHours: false);
-                            mh[mi] = h;
-                            if (h > 0.01) any = true;
-                        }
-                        if (hideZero && !any) continue;
+                        if (internalNames.Contains(rname)) continue;   // internos → aba Interno
+                        bool any = mh.Any(h => h > 0.01);
+                        bool isResponsible = task.Resources.Any(r =>
+                            string.Equals(r.Resource?.Name, rname, StringComparison.OrdinalIgnoreCase));
+                        bool inPeriod = task.Start.Date <= periodEnd && task.Finish.Date >= periodStart;
+                        bool keepForReview = reviewZeros && isResponsible && inPeriod;
+                        if (hideZero && !any && !keepForReview) continue;
 
                         if (!byRes.TryGetValue(rname, out var list))
                             byRes[rname] = list = [];
@@ -2605,6 +2895,10 @@ namespace NXProject.Views
                 ExSt(ns, "HT", bg: "#193C78", fg: "#FFFFFF", bold: true, hAlign: "Center"),
                 // Story: célula de label
                 ExSt(ns, "SL", bg: "#F8FAFF", fg: "#1E2840"),
+                // Story: label de linha de PESSOA DA TASK (responsável é outro) — verde-água, itálico
+                ExSt(ns, "SLtask", bg: "#E6F6F5", fg: "#006E69", italic: true),
+                // Story: label de linha ZERADA do responsável (delegada) — âmbar, tachado
+                ExSt(ns, "SLzero", bg: "#FDF2E9", fg: "#963C28", strike: true),
                 // Story: valor CAPEX
                 ExSt(ns, "SC", bg: "#FFF8F0", fg: "#783C0A", hAlign: "Right", numFmt: "0.0"),
                 // Story: valor OPEX
@@ -2725,12 +3019,17 @@ namespace NXProject.Views
 
                         var epicEx    = FindAncestorByType(task, "Epic");
                         var featureEx = FindAncestorByType(task, "Feature");
+                        // Mesmos destaques da tela: pessoa de task (verde-água) / zerada do responsável (âmbar tachado).
+                        bool rowIsTaskPerson = task.TaskAllocations.Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
+                                            && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
+                        bool rowIsZeroResp = !rowIsTaskPerson && !visMi.Any(mi => mh[mi] > 0.01);
+                        string storyStyle = rowIsZeroResp ? "SLzero" : rowIsTaskPerson ? "SLtask" : "SL";
                         var row = new XElement(ns + "Row", new XAttribute(ss + "Height", "18"));
                         row.Add(ExStCell(ns, resFirst && projFirst ? resName : "", "SL"));
                         row.Add(ExStCell(ns, projFirst ? projGroup.Key : "", "SL"));
                         row.Add(ExStCell(ns, epicEx?.Name    ?? "", "SL"));
                         row.Add(ExStCell(ns, featureEx?.Name ?? "", "SL"));
-                        row.Add(ExStCell(ns, task.Name ?? $"#{task.TfsId}", "SL"));
+                        row.Add(ExStCell(ns, task.Name ?? $"#{task.TfsId}", storyStyle));
                         foreach (var mi in visMi)
                         {
                             double h = mh[mi];
@@ -2831,7 +3130,7 @@ namespace NXProject.Views
             string? bg = null, string fg = "#000000",
             bool bold = false, bool italic = false,
             string hAlign = "Left", string vAlign = "Center",
-            string? numFmt = null)
+            string? numFmt = null, bool strike = false)
         {
             var style = new XElement(ns + "Style", new XAttribute(ns + "ID", id));
             style.Add(new XElement(ns + "Alignment",
@@ -2843,6 +3142,7 @@ namespace NXProject.Views
                 new XAttribute(ns + "Color", fg));
             if (bold)   font.Add(new XAttribute(ns + "Bold",   "1"));
             if (italic) font.Add(new XAttribute(ns + "Italic", "1"));
+            if (strike) font.Add(new XAttribute(ns + "StrikeThrough", "1"));
             style.Add(font);
             if (bg != null)
                 style.Add(new XElement(ns + "Interior",
@@ -2897,10 +3197,7 @@ namespace NXProject.Views
 
             foreach (var proj in _projects)
             {
-                var resources = proj.Data.Resources
-                    .Where(r => r.Type == ResourceType.Work && r.Kind == ResourceKind.Project && !string.IsNullOrWhiteSpace(r.Name))
-                    .Select(r => r.Name!)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                var resources = ProjectChargeResourceNames(proj.Data)
                     .OrderBy(n => n)
                     .ToList();
 

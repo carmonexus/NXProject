@@ -58,6 +58,8 @@ internal static class Program
         ("Import TFS: atividades internas DevOps sao vinculadas por nome ou preservadas", ImportMatchesOrPreservesInternalDevOpsActivities),
         ("Resumo: datas e percentual consolidam filhos", SummaryRollupUsesChildrenDatesAndHours),
         ("Alocacao: decompoe HH da Story (restante p/ responsavel, corte se estoura)", AllocationStoryDecompositionFactors),
+        ("Alocacao: resumo de tasks por recurso (Closed=Completed, senao Estimate)", TaskAllocationSummaryFromDevOps),
+        ("Arquivo: resumo de tasks por recurso sobrevive salvar/abrir", TaskAllocationSummaryRoundTrips),
         ("Predecessor virtual: aplica fila por mesmo recurso e recalcula fim", VirtualPredecessorQueuesSameResourceSiblings),
         ("Predecessor virtual: mudanca de duracao recalcula inicio e fim das seguintes", VirtualPredecessorDurationChangeCascadesFinish),
         ("Predecessor virtual: recalculo geral reposiciona tarefa com andamento", VirtualPredecessorRecalcMovesStartedSibling),
@@ -1957,6 +1959,65 @@ internal static class Program
         var restoredResource = vm.Project.Resources.Single(r => r.Name == "Dev");
         AssertEqual(50, restoredResource.AvailabilityPercent,
             "Reimportar do TFS nao deve sobrescrever o AvailabilityPercent ja configurado no projeto atual com o padrao 100% do import.");
+    }
+
+    private static void TaskAllocationSummaryFromDevOps()
+    {
+        var tasks = new List<TfsImportService.DevOpsTaskInfo>
+        {
+            // Closed → usa Completed (5), ignora Estimate (8).
+            new() { TfsId = 1, State = "Closed", EstimatedHours = 8, CompletedHours = 5, AssignedToDisplay = "Maria" },
+            // Aberta → usa Estimate (3).
+            new() { TfsId = 2, State = "Active", EstimatedHours = 3, CompletedHours = 1, AssignedToDisplay = "Joao" },
+            // Mesma pessoa acumula (Maria +2 estimate aberta).
+            new() { TfsId = 3, State = "New", EstimatedHours = 2, CompletedHours = 0, AssignedToDisplay = "Maria" },
+            // Sem responsável → ignorada.
+            new() { TfsId = 4, State = "Active", EstimatedHours = 4, CompletedHours = 0, AssignedToDisplay = "" },
+            // Zero horas → ignorada.
+            new() { TfsId = 5, State = "Active", EstimatedHours = 0, CompletedHours = 0, AssignedToDisplay = "Ana" },
+        };
+
+        var summary = TfsImportService.BuildTaskAllocationSummary(tasks);
+        double HoursOf(string r) => summary.Where(a => a.Resource == r).Sum(a => a.Hours);
+
+        if (Math.Abs(HoursOf("Maria") - 7) > 0.0001)   // 5 (closed) + 2 (aberta)
+            throw new InvalidOperationException($"Maria deveria ter 7h, veio {HoursOf("Maria")}.");
+        if (Math.Abs(HoursOf("Joao") - 3) > 0.0001)
+            throw new InvalidOperationException($"Joao deveria ter 3h, veio {HoursOf("Joao")}.");
+        if (summary.Any(a => a.Resource == "Ana"))
+            throw new InvalidOperationException("Ana (0h) não deveria entrar no resumo.");
+        if (summary.Count != 2)
+            throw new InvalidOperationException($"Resumo deveria ter 2 recursos, veio {summary.Count}.");
+        int TasksOf(string r) => summary.Where(a => a.Resource == r).Sum(a => a.Tasks);
+        if (TasksOf("Maria") != 2)   // 2 tasks (1 closed + 1 aberta) contam para Maria
+            throw new InvalidOperationException($"Maria deveria ter 2 tasks, veio {TasksOf("Maria")}.");
+        if (TasksOf("Joao") != 1)
+            throw new InvalidOperationException($"Joao deveria ter 1 task, veio {TasksOf("Joao")}.");
+    }
+
+    private static void TaskAllocationSummaryRoundTrips()
+    {
+        var project = new Project { Name = "Alloc", StartDate = new DateTime(2026, 6, 1) };
+        var story = new ProjectTask { Id = 10, TfsId = 1015217, TfsType = "User Story", Name = "Story A" };
+        story.TaskAllocations.Add(new TaskAllocationSummary { Resource = "Maria", Hours = 7, Tasks = 2 });
+        story.TaskAllocations.Add(new TaskAllocationSummary { Resource = "Joao", Hours = 3, Tasks = 1 });
+        project.Tasks.Add(story);
+
+        var path = Path.Combine(Path.GetTempPath(), $"nx-alloc-{Guid.NewGuid():N}.nxp");
+        try
+        {
+            XmlProjectService.Save(project, path);
+            var loaded = XmlProjectService.Load(path);
+            var s = loaded.Tasks.First(t => t.TfsId == 1015217);
+            if (s.TaskAllocations.Count != 2)
+                throw new InvalidOperationException($"Esperados 2 resumos, veio {s.TaskAllocations.Count}.");
+            var maria = s.TaskAllocations.FirstOrDefault(a => a.Resource == "Maria");
+            if (maria == null || Math.Abs(maria.Hours - 7) > 0.0001)
+                throw new InvalidOperationException("Resumo de Maria (7h) não sobreviveu ao salvar/abrir.");
+            if (maria.Tasks != 2)
+                throw new InvalidOperationException($"Qtd de tasks de Maria (2) não sobreviveu ao salvar/abrir, veio {maria.Tasks}.");
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
     }
 
     private static void AllocationStoryDecompositionFactors()

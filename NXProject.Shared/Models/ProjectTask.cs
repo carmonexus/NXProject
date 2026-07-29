@@ -123,6 +123,12 @@ namespace NXProject.Models
         // Quantidade de Tasks filhas no DevOps (null = não calculado, 0 = sem tasks → vermelho).
         public int? DevopsTaskCount { get; set; }
 
+        // Resumo das Tasks filhas no DevOps por recurso (dono + horas), gravado no Sync e no
+        // import do Mapa de Alocação. Permite a alocação decompor o HH da Story entre as pessoas
+        // das tasks sem carregar as tasks inteiras no cronograma. Horas: Closed → Completed;
+        // senão → Estimate. Lista vazia = sem tasks (ou arquivo/versão antiga).
+        public List<TaskAllocationSummary> TaskAllocations { get; set; } = new();
+
         // Justificativa de atraso ou observação relevante. Persiste na description
         // do DevOps como "Justificativa: <texto>." e é lida de volta no import.
         public string? Justificativa { get; set; }
@@ -266,5 +272,15 @@ namespace NXProject.Models
         public int SuccessorId { get; set; }
         public DependencyType Type { get; set; } = DependencyType.FinishToStart;
         public int LagDays { get; set; } = 0;
+    }
+
+    /// <summary>Resumo de uma Task filha (no DevOps) por recurso: quem a executa e quantas horas.
+    /// Usado pela decomposição de alocação sem precisar carregar as Tasks no cronograma.</summary>
+    public class TaskAllocationSummary
+    {
+        public string Resource { get; set; } = string.Empty;
+        public double Hours { get; set; }
+        /// <summary>Quantidade de tasks deste recurso que compõem as horas.</summary>
+        public int Tasks { get; set; }
     }
 }

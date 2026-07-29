@@ -183,6 +183,8 @@
     <sys:String x:Key="Grid_BlockedByChild">Blocked by child Task</sys:String>
     <sys:String x:Key="Grid_BlockedByChildLabel">🔴 BLOCK</sys:String>
     <sys:String x:Key="Grid_OpenTasksGridTip">Opens this Story's Tasks grid to edit and add to the schedule</sys:String>
+    <sys:String x:Key="Grid_TaskAllocSummary">👥 Task summary (allocation)</sys:String>
+    <sys:String x:Key="Grid_TaskAllocSummaryTip">Shows the per-resource summary (owner + hours) of this Story's DevOps Tasks, used in the allocation decomposition. It is written on Sync and on the Allocation Map import.</sys:String>
     <sys:String x:Key="Grid_IncludeTasksTip">Adds this Story's Tasks directly to the schedule</sys:String>
     <sys:String x:Key="Grid_KeepStoryNoTasksTip">Keeps the Story without Tasks in the schedule — duration and HH become directly editable</sys:String>
     <sys:String x:Key="Grid_RemoveChildTasksTip">Removes all this Story's child Tasks from the schedule (does not delete in DevOps)</sys:String>
@@ -1142,6 +1144,18 @@
     <sys:String x:Key="PMap_Title">Project Allocation Map</sys:String>
     <sys:String x:Key="PMap_SelectProjects">☑ Select Projects</sys:String>
     <sys:String x:Key="PMap_ImportDevOps">☁ Import from DevOps</sys:String>
+    <sys:String x:Key="PMap_Source">▼ Data source</sys:String>
+    <sys:String x:Key="PMap_SelectProjectsTip">Pick the DevOps portfolio projects and import (runs the import on confirm).</sys:String>
+    <sys:String x:Key="PMap_OpenFiles">📂 Open file(s)</sys:String>
+    <sys:String x:Key="PMap_OpenFilesTip">Adds one or more saved schedules (.nxp) to analyze in the map, without importing from DevOps.</sys:String>
+    <sys:String x:Key="PMap_OpenSchedule">🗓 Open schedule</sys:String>
+    <sys:String x:Key="PMap_OpenScheduleTip">Adds the schedule currently open in NXProject to analyze in the map.</sys:String>
+    <sys:String x:Key="PMap_NoOpenSchedule">There is no open schedule to analyze.</sys:String>
+    <sys:String x:Key="PMap_AddedProjects">{0} project(s) added for analysis.</sys:String>
+    <sys:String x:Key="PMap_ShowZeroStories">Zeroed stories (review)</sys:String>
+    <sys:String x:Key="PMap_ShowZeroStoriesTip">Stories by Resource tab only: also shows Stories whose responsible ended with 0h (all HH went to other people's tasks), for review.</sys:String>
+    <sys:String x:Key="PMap_NoSummaryImportAsk">Update from DevOps now to review zeroed Stories (task owner/hours)?&#x0a;&#x0a;Yes = import and reload   ·   No = just apply the filter with current data.</sys:String>
+    <sys:String x:Key="PMap_NoSummaryInfo">The loaded projects came from a file/open schedule and don't have the task summary yet. Run a Sync (or import via the map's "Select from DevOps") to generate the summary and identify zeroed Stories.</sys:String>
     <sys:String x:Key="PMap_StartMonth">Start month:</sys:String>
     <sys:String x:Key="PMap_EndMonth">End month:</sys:String>
     <sys:String x:Key="PMap_HideZeroed">Hide zeroed rows/columns</sys:String>
@@ -1162,6 +1176,13 @@
     <sys:String x:Key="PMap_InternalHeader">Internal Resources — hours per story/task</sys:String>
     <sys:String x:Key="PMap_NoProjectSelected">No project selected. Use '☑ Select Projects' to add.</sys:String>
     <sys:String x:Key="PMap_StoriesTitle">Stories for {0}  —  {1:MMMM/yyyy}  —  {2}</sys:String>
+    <sys:String x:Key="PMap_SrColType">Type</sys:String>
+    <sys:String x:Key="PMap_SrColStoryName">Story</sys:String>
+    <sys:String x:Key="PMap_SrColQtdTasks">Task Qty</sys:String>
+    <sys:String x:Key="PMap_OpenStoryTasks">Open tasks</sys:String>
+    <sys:String x:Key="PMap_OnlyComposition">Show only the activities that make up these hours — uncheck to see all stories in the month</sys:String>
+    <sys:String x:Key="PMap_SrTypeStory">Story</sys:String>
+    <sys:String x:Key="PMap_SrTypeTask">Task</sys:String>
     <sys:String x:Key="PMap_SrColHHTotal">HH Total</sys:String>
     <sys:String x:Key="PMap_SrColHHMonth">HH Month</sys:String>
     <sys:String x:Key="PMap_SrColPctDone">% Done</sys:String>
@@ -1183,6 +1204,7 @@
     <sys:String x:Key="PMap_NoRootMsg">No selected project has a root ID configured.&#10;&#10;Edit the Project Portfolio (View → Project Portfolio) and enter each project's root ID.</sys:String>
     <sys:String x:Key="PMap_NoRootTitle">Root ID not configured</sys:String>
     <sys:String x:Key="PMap_Importing">Importing {0}/{1}: {2}...</sys:String>
+    <sys:String x:Key="PMap_ImportingTasks2">Importing {0}/{1}: {2} — {3}</sys:String>
     <sys:String x:Key="PMap_ImportErrors">Errors during import:&#10;&#10;{0}</sys:String>
     <sys:String x:Key="PMap_PartialImport">Partial import</sys:String>
     <sys:String x:Key="PMap_NoDataToExport">No data to export. Import the projects first.</sys:String>

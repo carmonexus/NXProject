@@ -172,7 +172,7 @@
                                         IsReadOnly="True"
                                         Width="70"/>
                     <DataGridTextColumn Header="{DynamicResource RAlloc_ColType}"
-                                        Binding="{Binding Task.DevOpsTag}"
+                                        Binding="{Binding TypeLabel}"
                                         IsReadOnly="True"
                                         Width="70"/>
                     <DataGridTextColumn Header="{DynamicResource RAlloc_ColActivity}"

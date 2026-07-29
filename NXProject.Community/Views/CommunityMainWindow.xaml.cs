@@ -40,6 +40,15 @@ namespace NXProject.Views
         private bool _aiOpenedOnFirstAccess;
         private bool _expandedLayout;
         private CancellationTokenSource? _projectPercentRefreshCts;
+        private string _baseTitle = "NXProject Community";
+
+        // Título da janela = base + nome do arquivo aberto/salvo (só o nome; o path fica no ToolTip? não — só nome).
+        private void UpdateWindowTitle()
+        {
+            var file = (DataContext as MainViewModel)?.Project?.FilePath;
+            var name = string.IsNullOrWhiteSpace(file) ? null : System.IO.Path.GetFileName(file);
+            Title = string.IsNullOrEmpty(name) ? _baseTitle : $"{_baseTitle} — {name}";
+        }
 
         public CommunityMainWindow()
         {
@@ -47,17 +56,22 @@ namespace NXProject.Views
             var v = Assembly.GetExecutingAssembly().GetName().Version;
             if (v != null)
                 Title = $"NXProject Community {v.Major}.{v.Minor}.{v.Build} build({v.Revision})";
+            _baseTitle = Title;
             ProjectCalendarService.Load("NXProject.Community");
             StatusLogoImage.Source = ProtectedLogoProvider.GetLogoImage();
             var vm = new MainViewModel("NXProject.Community");
             vm.ConfirmCompleteOutsideSprint = ConfirmCompleteOutsideSprint;
+            // Título mostra o NOME do arquivo aberto/salvo (só o nome — o path pode ser longo).
+            vm.ProjectFileChanged += UpdateWindowTitle;
             DataContext = vm;
+            UpdateWindowTitle();
 
             // Atualiza o banner quando um projeto é aberto/carregado ou FlatTasks muda
             vm.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName == nameof(vm.Project))
                 {
+                    UpdateWindowTitle();
                     UpdateDevOpsProjectBanner(vm.Project.DevOpsProjectName, vm.Project.DevOpsRootWorkItemId, vm.Project.DevOpsProjectOwner);
                     ScheduleProjectPercentRefresh(vm);
                     vm.Project.ShowCriticalPath = true;
@@ -2997,7 +3011,8 @@ namespace NXProject.Views
 
         private void OnAllocationMapClick(object sender, RoutedEventArgs e)
         {
-            new ProjectAllocationMapWindow() { Owner = this }.ShowDialog();
+            var openProject = (DataContext as MainViewModel)?.Project;
+            new ProjectAllocationMapWindow(openProject) { Owner = this }.ShowDialog();
         }
 
         private void OnActivityDiagramClick(object sender, RoutedEventArgs e)

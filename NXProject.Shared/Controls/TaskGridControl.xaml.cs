@@ -1551,6 +1551,13 @@ namespace NXProject.Controls
             if (fetchItem != null)
                 fetchItem.Visibility = (hasDevOps && isStoryLike) ? Visibility.Visible : Visibility.Collapsed;
 
+            // "Resumo de tasks (alocação)" aparece para Story com resumo gravado (Sync/import do mapa).
+            var allocSummaryItem = cm.Items.OfType<MenuItem>()
+                .FirstOrDefault(m => m.Name == "TaskAllocSummaryMenuItem");
+            if (allocSummaryItem != null)
+                allocSummaryItem.Visibility = (isStoryLike && vm.Model.TaskAllocations.Count > 0)
+                    ? Visibility.Visible : Visibility.Collapsed;
+
             // "Expandir Tasks no cronograma" aparece quando suprimido (tasks já em memória)
             var expandItem = cm.Items.OfType<MenuItem>()
                 .FirstOrDefault(m => m.Name == "ExpandChildTasksMenuItem");
@@ -1640,6 +1647,32 @@ namespace NXProject.Controls
             // Marca projeto como dirty
             if (DataContext is ViewModels.MainViewModel mainVm)
                 mainVm.Project.IsDirty = true;
+        }
+
+        // Botão direito na Story → mostra o resumo de tasks (dono + horas) usado na alocação.
+        private void OnShowTaskAllocSummaryClick(object sender, RoutedEventArgs e)
+        {
+            var vm = GetTaskViewModelFromContextSender(sender);
+            var story = vm?.Model;
+            if (story == null || story.TaskAllocations.Count == 0) return;
+
+            double taskSum   = story.TaskAllocations.Sum(a => a.Hours);
+            double storyHH   = (story.CurrentHours ?? 0) + (story.EstimatedHours ?? 0);
+            double remainder = System.Math.Max(storyHH - taskSum, 0);
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine(story.Name ?? $"#{story.TfsId}");
+            sb.AppendLine();
+            foreach (var a in story.TaskAllocations.OrderByDescending(x => x.Hours))
+                sb.AppendLine($"• {a.Resource}: {a.Hours:0.##}h");
+            sb.AppendLine();
+            sb.AppendLine($"Soma das tasks: {taskSum:0.##}h");
+            sb.AppendLine($"HH da Story: {storyHH:0.##}h");
+            var respName = story.Resources.FirstOrDefault()?.Resource?.Name;
+            sb.AppendLine($"Restante do responsável{(string.IsNullOrWhiteSpace(respName) ? "" : $" ({respName})")}: {remainder:0.##}h");
+
+            var title = TryFindResource("Grid_TaskAllocSummary") as string ?? "Resumo de tasks";
+            MessageBox.Show(sb.ToString(), title, MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private TaskViewModel? GetTaskViewModelFromContextSender(object sender)

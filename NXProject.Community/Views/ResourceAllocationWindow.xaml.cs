@@ -148,7 +148,18 @@ namespace NXProject.Views
             for (int i = 0; i < sprints.Count; i++)
                 AddSprintHeaderCell(sprints[i], 0, i + 2);
 
-            var resources = _vm.Project.Resources.OrderBy(r => r.Name).ToList();
+            // Recursos = os do projeto + pessoas que só aparecem no resumo de tasks (linhas
+            // sintéticas, para que as horas das tasks apareçam para o dono da task).
+            var summaryOnly = SummaryOnlyResourceNames()
+                .Select((n, idx) => new Resource
+                {
+                    Id = -1000 - idx,
+                    Name = n,
+                    Kind = ResourceKind.Project,
+                    Type = ResourceType.Work,
+                    MaxUnitsPerDay = ProjectCalendarService.WorkingHoursPerDay
+                });
+            var resources = _vm.Project.Resources.Concat(summaryOnly).OrderBy(r => r.Name).ToList();
             for (int row = 0; row < resources.Count; row++)
             {
                 var resource = resources[row];
@@ -399,6 +410,25 @@ namespace NXProject.Views
                 SelectedDetails.Add(new AllocationDetailRow(this, task, assignment, resource, sprint));
             }
 
+            // Composição vinda do RESUMO de tasks: stories onde este recurso é dono de tasks
+            // (não é o responsável da story). São linhas Tipo=Task, só leitura, com as horas
+            // rateadas para a sprint — para o total da célula fechar com a grade.
+            if (!string.IsNullOrWhiteSpace(resource.Name))
+            {
+                foreach (var t in _vm.FlatTasks)
+                {
+                    if (!IsStoryNode(t) || t.Model.TaskAllocations.Count == 0) continue;
+                    if (hasDates ? !OverlapsWithSprint(t, sprint) : !BelongsToSprint(t, sprint)) continue;
+                    var alloc = t.Model.TaskAllocations.FirstOrDefault(a =>
+                        string.Equals(a.Resource, resource.Name, StringComparison.OrdinalIgnoreCase));
+                    if (alloc == null) continue;
+                    double cut = TaskScheduleService.StoryTaskCutFactor(StoryTotalHours(t.Model), StoryTaskSum(t.Model));
+                    double sprintH = hasDates ? ProportionalHours(t.Model, alloc.Hours * cut, sprint) : alloc.Hours * cut;
+                    if (sprintH <= 0.0001) continue;
+                    SelectedDetails.Add(new AllocationDetailRow(this, t, resource, sprint, alloc.Hours, alloc.Tasks, sprintH));
+                }
+            }
+
             // Total da coluna H. Sprint
             var total = SelectedDetails.Sum(r =>
                 double.TryParse(r.SprintHours, System.Globalization.NumberStyles.Any,
@@ -452,7 +482,7 @@ namespace NXProject.Views
         private double GetAllocatedHours(Resource resource, SprintColumn sprint)
         {
             var hasDates = sprint.Start != default && sprint.End != default;
-            return _vm.FlatTasks
+            double assigned = _vm.FlatTasks
                 .Where(t => IsChargeableNode(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
                 .SelectMany(t => t.Model.Resources
                     .Where(r => r.ResourceId == resource.Id)
@@ -460,6 +490,8 @@ namespace NXProject.Views
                         ? ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint)
                         : TaskScheduleService.GetAssignmentHours(t.Model, r)) * DecompositionFactor(t)))
                 .Sum();
+            // + horas das tasks (resumo) onde esta pessoa é dona da task.
+            return assigned + SummaryHoursForResource(resource.Name ?? "", sprint);
         }
 
         private double? GetAverageAllocationPercent(Resource resource, SprintColumn sprint)
@@ -554,15 +586,21 @@ namespace NXProject.Views
             return null;
         }
 
-        private static double StoryEstimatedHours(ProjectTask story)
-            => story.Resources.Sum(r => TaskScheduleService.GetAssignmentHours(story, r));
+        // Base da decomposição = HH TOTAL da Story (atual + restante). Usa o resumo de tasks
+        // (TaskAllocations) quando presente; senão cai nas Tasks filhas carregadas (legado).
+        private static double StoryTotalHours(ProjectTask story)
+            => story.Resources.Sum(r => TaskScheduleService.GetAssignmentCurrentHours(story, r)
+                                      + TaskScheduleService.GetAssignmentRemainingHours(story, r));
 
         private static double StoryTaskSum(ProjectTask story)
         {
+            if (story.TaskAllocations.Count > 0)
+                return story.TaskAllocations.Sum(a => a.Hours);
             double sum = 0;
             foreach (var leaf in GetLeafTasksModel(story.Children))
                 foreach (var r in leaf.Resources)
-                    sum += TaskScheduleService.GetAssignmentHours(leaf, r);
+                    sum += TaskScheduleService.GetAssignmentCurrentHours(leaf, r)
+                         + TaskScheduleService.GetAssignmentRemainingHours(leaf, r);
             return sum;
         }
 
@@ -575,16 +613,46 @@ namespace NXProject.Views
             }
         }
 
-        // Fator (0..1) que a atribuição contribui após decompor o HH da Story.
+        // Fator (0..1) que a atribuição do RESPONSÁVEL contribui após decompor o HH da Story.
         private static double DecompositionFactor(TaskViewModel t)
         {
             if (IsStoryNode(t))
                 return TaskScheduleService.StoryResponsibleFactor(
-                    StoryEstimatedHours(t.Model), StoryTaskSum(t.Model));
+                    StoryTotalHours(t.Model), StoryTaskSum(t.Model));
             var story = FindParentStory(t.Model);
             if (story == null) return 1.0;
             return TaskScheduleService.StoryTaskCutFactor(
-                StoryEstimatedHours(story), StoryTaskSum(story));
+                StoryTotalHours(story), StoryTaskSum(story));
+        }
+
+        // Horas das PESSOAS DAS TASKS (resumo) para um recurso, numa sprint — distribuídas na
+        // janela da Story pela mesma proporção usada nas atribuições.
+        private double SummaryHoursForResource(string resourceName, SprintColumn sprint)
+        {
+            if (string.IsNullOrWhiteSpace(resourceName)) return 0;
+            bool hasDates = sprint.Start != default && sprint.End != default;
+            double total = 0;
+            foreach (var t in _vm.FlatTasks)
+            {
+                if (!IsStoryNode(t) || t.Model.TaskAllocations.Count == 0) continue;
+                if (hasDates ? !OverlapsWithSprint(t, sprint) : !BelongsToSprint(t, sprint)) continue;
+                double cut = TaskScheduleService.StoryTaskCutFactor(StoryTotalHours(t.Model), StoryTaskSum(t.Model));
+                foreach (var a in t.Model.TaskAllocations)
+                    if (string.Equals(a.Resource, resourceName, StringComparison.OrdinalIgnoreCase))
+                        total += hasDates ? ProportionalHours(t.Model, a.Hours * cut, sprint) : a.Hours * cut;
+            }
+            return total;
+        }
+
+        // Nomes das pessoas que só aparecem no resumo de tasks (não são recursos do projeto).
+        private IEnumerable<string> SummaryOnlyResourceNames()
+        {
+            var known = new HashSet<string>(_vm.Project.Resources.Select(r => r.Name ?? ""), StringComparer.OrdinalIgnoreCase);
+            return _vm.FlatTasks
+                .Where(t => IsStoryNode(t))
+                .SelectMany(t => t.Model.TaskAllocations.Select(a => a.Resource))
+                .Where(n => !string.IsNullOrWhiteSpace(n) && !known.Contains(n))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
         }
 
         private System.Collections.Generic.IEnumerable<SprintColumn> BuildSprintColumns()
@@ -685,6 +753,8 @@ namespace NXProject.Views
             private readonly ResourceAllocationWindow _owner;
             private Resource _resource;
             private readonly SprintColumn _sprint;
+            private readonly double _summaryHours;
+            private readonly double _summarySprintHours;
 
             internal AllocationDetailRow(
                 ResourceAllocationWindow owner,
@@ -700,15 +770,42 @@ namespace NXProject.Views
                 _sprint = sprint;
             }
 
+            // Linha vinda do RESUMO de tasks (Tipo=Task, só leitura).
+            internal AllocationDetailRow(
+                ResourceAllocationWindow owner,
+                TaskViewModel story,
+                Resource resource,
+                SprintColumn sprint,
+                double summaryHours,
+                int summaryTasks,
+                double summarySprintHours)
+            {
+                _owner = owner;
+                Task = story;
+                _resource = resource;
+                _sprint = sprint;
+                IsSummary = true;
+                _summaryHours = summaryHours;
+                SummaryTasks = summaryTasks;
+                _summarySprintHours = summarySprintHours;
+                Assignment = new TaskResource { ResourceId = resource.Id, EstimatedHours = summaryHours };
+            }
+
             public event PropertyChangedEventHandler? PropertyChanged;
 
             public TaskViewModel Task { get; }
             public TaskResource Assignment { get; }
+            public bool IsSummary { get; }
+            public int SummaryTasks { get; }
+            // Tipo mostrado na coluna: linhas de resumo são "Task"; senão a tag do work item.
+            public string TypeLabel => IsSummary ? AppStrings.Get("PMap_SrTypeTask") : Task.DevOpsTag;
+            public bool IsEditable => !IsSummary;
             public double Hours
             {
-                get => TaskScheduleService.GetAssignmentHours(Task.Model, Assignment);
+                get => IsSummary ? _summaryHours : TaskScheduleService.GetAssignmentHours(Task.Model, Assignment);
                 set
                 {
+                    if (IsSummary) return;   // resumo é só leitura
                     var normalized = double.IsNaN(value) || value < 0 ? 0 : value;
                     Assignment.EstimatedHours = normalized;
                     TaskScheduleService.RecalculateFinishFromAssignments(Task.Model);
@@ -722,15 +819,18 @@ namespace NXProject.Views
             }
 
             public string SprintHours =>
-                ProportionalHours(Task.Model, TaskScheduleService.GetAssignmentHours(Task.Model, Assignment), _sprint)
-                    * DecompositionFactor(Task)
-                    is var h && h > 0 ? $"{h:0.##}" : "-";
+                IsSummary
+                    ? (_summarySprintHours > 0 ? $"{_summarySprintHours:0.##}" : "-")
+                    : ProportionalHours(Task.Model, TaskScheduleService.GetAssignmentHours(Task.Model, Assignment), _sprint)
+                        * DecompositionFactor(Task)
+                        is var h && h > 0 ? $"{h:0.##}" : "-";
 
             public double AllocationPercent
             {
-                get => TaskScheduleService.NormalizeAllocationPercent(Assignment.AllocationPercent);
+                get => IsSummary ? 100 : TaskScheduleService.NormalizeAllocationPercent(Assignment.AllocationPercent);
                 set
                 {
+                    if (IsSummary) return;   // resumo é só leitura
                     Assignment.AllocationPercent = TaskScheduleService.NormalizeAllocationPercent(value);
                     TaskScheduleService.RecalculateFinishFromAssignments(Task.Model);
                     RecalcSummaryChain(Task.Model.Parent);
@@ -747,6 +847,7 @@ namespace NXProject.Views
                 get => _resource;
                 set
                 {
+                    if (IsSummary) return;   // resumo é só leitura (não move recurso)
                     if (value == null || value.Id == _resource.Id)
                         return;
 

@@ -319,6 +319,10 @@
                                                       Header="📋 Grid de Tasks (DevOps)"
                                                       Click="OnFetchChildTasksClick"
                                                       ToolTip="{DynamicResource Grid_OpenTasksGridTip}"/>
+                                            <MenuItem x:Name="TaskAllocSummaryMenuItem"
+                                                      Header="{DynamicResource Grid_TaskAllocSummary}"
+                                                      Click="OnShowTaskAllocSummaryClick"
+                                                      ToolTip="{DynamicResource Grid_TaskAllocSummaryTip}"/>
                                             <MenuItem x:Name="ExpandChildTasksMenuItem"
                                                       Header="📂 Expandir Tasks no cronograma"
                                                       Click="OnExpandChildTasksClick"

@@ -1354,6 +1354,11 @@ namespace NXProject.Services
                 if (IsFeatureOrStory(task) && string.IsNullOrWhiteSpace(task.TfsIterationPath))
                     report.WithoutSprint.Add(task.Name);
 
+            // Atualiza o resumo de alocação (dono + horas das Tasks) por Story para a decomposição
+            // do HH na alocação. Best-effort: não falha o Sync se o DevOps não responder.
+            try { await UpdateTaskAllocationSummariesAsync(project, options, null, cancellationToken); }
+            catch { /* resumo é auxiliar; não invalida o Sync já concluído */ }
+
             return report;
         }
 
@@ -3134,6 +3139,66 @@ namespace NXProject.Services
 
         public static bool IsStoryTypePublic(string? type) => IsStoryType(type);
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
+
+        /// <summary>Busca no DevOps as Tasks de cada Story do projeto e grava/atualiza o resumo de
+        /// alocação (dono + horas). Best-effort: falha de uma Story não interrompe. Pula Stories
+        /// com DevopsTaskCount == 0 (sabidamente sem tasks) para evitar rede desnecessária.</summary>
+        public static async Task UpdateTaskAllocationSummariesAsync(
+            Project project, TfsConnectionOptions options,
+            IProgress<string>? progress = null, CancellationToken ct = default)
+        {
+            var stories = FlattenTasks(project.Tasks)
+                .Where(t => IsStoryType(t.TfsType) && t.TfsId is > 0 && t.DevopsTaskCount != 0)
+                .ToList();
+            for (int i = 0; i < stories.Count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var story = stories[i];
+                progress?.Report($"Resumo de tasks {i + 1}/{stories.Count}...");
+                try
+                {
+                    var tasks = await FetchChildTasksFromDevOpsAsync(options, story.TfsId!.Value, ct);
+                    story.TaskAllocations = tasks != null && tasks.Count > 0
+                        ? BuildTaskAllocationSummary(tasks)
+                        : new List<TaskAllocationSummary>();
+                }
+                catch { /* uma Story falhar não interrompe */ }
+            }
+        }
+
+        private static IEnumerable<ProjectTask> FlattenTasks(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var t in tasks)
+            {
+                yield return t;
+                foreach (var c in FlattenTasks(t.Children)) yield return c;
+            }
+        }
+
+        /// <summary>Monta o resumo de alocação (recurso → horas) a partir das Tasks do DevOps de
+        /// uma Story. Horas por task: Closed → Completed (HH Atual); senão → Estimate. Agrupa por
+        /// responsável (usa o displayName quando houver). Task sem responsável é ignorada.</summary>
+        public static List<TaskAllocationSummary> BuildTaskAllocationSummary(IEnumerable<DevOpsTaskInfo> tasks)
+        {
+            var byResource = new Dictionary<string, (double Hours, int Tasks)>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in tasks ?? Enumerable.Empty<DevOpsTaskInfo>())
+            {
+                var resource = !string.IsNullOrWhiteSpace(t.AssignedToDisplay) ? t.AssignedToDisplay!.Trim()
+                             : !string.IsNullOrWhiteSpace(t.AssignedTo) ? t.AssignedTo!.Trim()
+                             : null;
+                if (resource == null) continue;
+
+                double hours = IsClosedState(t.State) ? t.CompletedHours : t.EstimatedHours;
+                if (hours <= 0) continue;
+
+                byResource.TryGetValue(resource, out var acc);
+                byResource[resource] = (acc.Hours + hours, acc.Tasks + 1);
+            }
+            return byResource
+                .Select(kv => new TaskAllocationSummary { Resource = kv.Key, Hours = kv.Value.Hours, Tasks = kv.Value.Tasks })
+                .OrderByDescending(a => a.Hours)
+                .ToList();
+        }
 
         /// <summary>Converte a descrição HTML do work item em texto puro (para exibir em grade/planilha).
         /// O HTML original permanece no DevOps — este texto é só para leitura.</summary>

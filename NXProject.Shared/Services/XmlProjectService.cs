@@ -249,6 +249,18 @@ namespace NXProject.Services
                 new XElement(EXT + "PlanObservation", task.PlanObservation ?? "")
             );
 
+            // Resumo de alocação das Tasks do DevOps por recurso (dono + horas).
+            if (task.TaskAllocations.Count > 0)
+            {
+                var allocs = new XElement(EXT + "TaskAllocations");
+                foreach (var a in task.TaskAllocations)
+                    allocs.Add(new XElement(EXT + "TaskAllocation",
+                        new XAttribute("resource", a.Resource ?? ""),
+                        new XAttribute("hours", a.Hours),
+                        new XAttribute("tasks", a.Tasks)));
+                el.Add(allocs);
+            }
+
             // Predecessoras
             var preds = new XElement(NS + "PredecessorLinks");
             foreach (var predId in task.PredecessorIds)
@@ -528,6 +540,21 @@ namespace NXProject.Services
             };
 
             ScheduleHoursService.ApplyMissingProgressHours(task);
+
+            // Resumo de alocação das Tasks do DevOps por recurso (retrocompatível: ausente = vazio).
+            var allocsEl = el.Element(EXT + "TaskAllocations");
+            if (allocsEl != null)
+                foreach (var a in allocsEl.Elements(EXT + "TaskAllocation"))
+                {
+                    var resource = a.Attribute("resource")?.Value ?? "";
+                    if (string.IsNullOrWhiteSpace(resource)) continue;
+                    task.TaskAllocations.Add(new TaskAllocationSummary
+                    {
+                        Resource = resource,
+                        Hours = ParseDouble(a.Attribute("hours")?.Value) ?? 0,
+                        Tasks = int.TryParse(a.Attribute("tasks")?.Value, out var tc) ? tc : 0
+                    });
+                }
 
             // Predecessoras
             var predsEl = el.Element(NS + "PredecessorLinks");
