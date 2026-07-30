@@ -26,6 +26,27 @@
 
 .EXAMPLE
     ./commit-push.ps1 -MessageFile msg.txt -Files NXProject.Community/Views/DelayedTasksWindow.xaml.cs
+
+.NOTES
+    CREDENCIAIS (Windows) - este script NAO guarda senha/token nenhum.
+    O 'git push' usa a credencial ja configurada na maquina. Forma segura:
+
+    1) Git Credential Manager (recomendado) - guarda no Cofre de Credenciais
+       do Windows (cifrado pelo SO), nunca em texto plano:
+           git config --global credential.helper manager
+       No 1o push o GCM abre o login do GitHub (navegador/OAuth) e memoriza.
+
+    2) GitHub CLI (alternativa) - faz login e configura o git de uma vez:
+           gh auth login
+       (escolha GitHub.com > HTTPS > login pelo navegador)
+
+    Conferir o que esta configurado:
+           git config --global credential.helper
+    Ver/remover a credencial salva:  Painel de Controle > Gerenciador de
+    Credenciais > Credenciais do Windows > procurar "git:https://github.com".
+
+    NAO use 'store' (credential.helper store) - grava o token em texto plano
+    em ~/.git-credentials. Prefira o 'manager' (GCM) ou o 'gh'.
 #>
 param(
     [Parameter(Position = 0)]
