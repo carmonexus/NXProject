@@ -255,7 +255,7 @@
 
     <!-- Management Menu -->
     <sys:String x:Key="Menu_Manage">_Management</sys:String>
-    <sys:String x:Key="Menu_Manage_Resources">_Resource Allocation...</sys:String>
+    <sys:String x:Key="Menu_Manage_Resources">Allocation by _Sprint...</sys:String>
     <sys:String x:Key="Menu_Manage_HealthCheck">_Project Progress and S-Curve...</sys:String>
     <sys:String x:Key="Menu_Manage_FixSprints">Fix sprints out of period...</sys:String>
     <sys:String x:Key="Toolbar_FixSprints">Fix sprints out of period (reassign to the correct-period sprint)</sys:String>
@@ -908,8 +908,8 @@
     <sys:String x:Key="Cfg_UrlPatRequired">Enter the organization URL and the Personal Access Token before saving.</sys:String>
 
     <!-- Allocation grid by resource and sprint -->
-    <sys:String x:Key="RAlloc_Title">Allocation grid</sys:String>
-    <sys:String x:Key="RAlloc_Header">Allocation by resource and sprint</sys:String>
+    <sys:String x:Key="RAlloc_Title">Allocation by Sprint</sys:String>
+    <sys:String x:Key="RAlloc_Header">Allocation by Sprint</sys:String>
     <sys:String x:Key="RAlloc_Subtitle">Click the hours to see the activities and change the resource.</sys:String>
     <sys:String x:Key="RAlloc_Add">Add</sys:String>
     <sys:String x:Key="RAlloc_Delete">Delete</sys:String>
@@ -1154,6 +1154,8 @@
     <sys:String x:Key="PMap_AddedProjects">{0} project(s) added for analysis.</sys:String>
     <sys:String x:Key="PMap_ShowZeroStories">Zeroed stories (review)</sys:String>
     <sys:String x:Key="PMap_ShowZeroStoriesTip">Stories by Resource tab only: also shows Stories whose responsible ended with 0h (all HH went to other people's tasks), for review.</sys:String>
+    <sys:String x:Key="PMap_ShowNoPctStories">Stories with no % (off the map)</sys:String>
+    <sys:String x:Key="PMap_ShowNoPctStoriesTip">Stories by Resource tab only: shows in red the Stories left OUT of the map because their completion % is 0 (they should appear once they progress).</sys:String>
     <sys:String x:Key="PMap_NoSummaryImportAsk">Update from DevOps now to review zeroed Stories (task owner/hours)?&#x0a;&#x0a;Yes = import and reload   ·   No = just apply the filter with current data.</sys:String>
     <sys:String x:Key="PMap_NoSummaryInfo">The loaded projects came from a file/open schedule and don't have the task summary yet. Run a Sync (or import via the map's "Select from DevOps") to generate the summary and identify zeroed Stories.</sys:String>
     <sys:String x:Key="PMap_StartMonth">Start month:</sys:String>

@@ -282,5 +282,8 @@ namespace NXProject.Models
         public double Hours { get; set; }
         /// <summary>Quantidade de tasks deste recurso que compõem as horas.</summary>
         public int Tasks { get; set; }
+        /// <summary>Estado agregado das tasks: "Active", "Closed", "New" ou "Other".
+        /// Vazio = arquivo legado (sem estado gravado).</summary>
+        public string State { get; set; } = string.Empty;
     }
 }

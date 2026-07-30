@@ -2322,6 +2322,19 @@ namespace NXProject.Services
                 _ => false
             };
 
+        /// <summary>Normaliza o estado da task numa categoria estável para o resumo:
+        /// "Closed", "Active", "New" ou "Other".</summary>
+        public static string NormalizeTaskState(string? state) =>
+            IsClosedState(state) ? "Closed"
+            : IsActiveState(state) ? "Active"
+            : IsNewState(state) ? "New"
+            : "Other";
+
+        /// <summary>Regra do mapa/alocação: um resumo de task conta quando o estado é Active ou
+        /// Closed. Estado vazio = arquivo legado (sem estado gravado) → conta, para não sumir dados.</summary>
+        public static bool AllocationCountsState(string? state) =>
+            string.IsNullOrWhiteSpace(state) || IsClosedState(state) || IsActiveState(state);
+
         private static bool IsNewState(string? state) =>
             state?.Trim().ToLowerInvariant() switch
             {
@@ -3180,7 +3193,8 @@ namespace NXProject.Services
         /// responsável (usa o displayName quando houver). Task sem responsável é ignorada.</summary>
         public static List<TaskAllocationSummary> BuildTaskAllocationSummary(IEnumerable<DevOpsTaskInfo> tasks)
         {
-            var byResource = new Dictionary<string, (double Hours, int Tasks)>(StringComparer.OrdinalIgnoreCase);
+            // Agrupa por recurso + estado (para permitir filtrar por estado ao ler o resumo).
+            var byKey = new Dictionary<(string Resource, string State), (double Hours, int Tasks)>();
             foreach (var t in tasks ?? Enumerable.Empty<DevOpsTaskInfo>())
             {
                 var resource = !string.IsNullOrWhiteSpace(t.AssignedToDisplay) ? t.AssignedToDisplay!.Trim()
@@ -3191,11 +3205,18 @@ namespace NXProject.Services
                 double hours = IsClosedState(t.State) ? t.CompletedHours : t.EstimatedHours;
                 if (hours <= 0) continue;
 
-                byResource.TryGetValue(resource, out var acc);
-                byResource[resource] = (acc.Hours + hours, acc.Tasks + 1);
+                var key = (resource, State: NormalizeTaskState(t.State));
+                byKey.TryGetValue(key, out var acc);
+                byKey[key] = (acc.Hours + hours, acc.Tasks + 1);
             }
-            return byResource
-                .Select(kv => new TaskAllocationSummary { Resource = kv.Key, Hours = kv.Value.Hours, Tasks = kv.Value.Tasks })
+            return byKey
+                .Select(kv => new TaskAllocationSummary
+                {
+                    Resource = kv.Key.Resource,
+                    State    = kv.Key.State,
+                    Hours    = kv.Value.Hours,
+                    Tasks    = kv.Value.Tasks
+                })
                 .OrderByDescending(a => a.Hours)
                 .ToList();
         }

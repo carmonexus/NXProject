@@ -257,7 +257,8 @@ namespace NXProject.Services
                     allocs.Add(new XElement(EXT + "TaskAllocation",
                         new XAttribute("resource", a.Resource ?? ""),
                         new XAttribute("hours", a.Hours),
-                        new XAttribute("tasks", a.Tasks)));
+                        new XAttribute("tasks", a.Tasks),
+                        new XAttribute("state", a.State ?? "")));
                 el.Add(allocs);
             }
 
@@ -552,7 +553,8 @@ namespace NXProject.Services
                     {
                         Resource = resource,
                         Hours = ParseDouble(a.Attribute("hours")?.Value) ?? 0,
-                        Tasks = int.TryParse(a.Attribute("tasks")?.Value, out var tc) ? tc : 0
+                        Tasks = int.TryParse(a.Attribute("tasks")?.Value, out var tc) ? tc : 0,
+                        State = a.Attribute("state")?.Value ?? ""
                     });
                 }
 

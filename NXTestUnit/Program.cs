@@ -1986,21 +1986,27 @@ internal static class Program
             throw new InvalidOperationException($"Joao deveria ter 3h, veio {HoursOf("Joao")}.");
         if (summary.Any(a => a.Resource == "Ana"))
             throw new InvalidOperationException("Ana (0h) não deveria entrar no resumo.");
-        if (summary.Count != 2)
-            throw new InvalidOperationException($"Resumo deveria ter 2 recursos, veio {summary.Count}.");
+        // Agrupa por recurso + estado: Maria vira 2 entradas (Closed 5h + New 2h), Joao 1 (Active).
+        if (summary.Count != 3)
+            throw new InvalidOperationException($"Resumo deveria ter 3 entradas (recurso+estado), veio {summary.Count}.");
         int TasksOf(string r) => summary.Where(a => a.Resource == r).Sum(a => a.Tasks);
         if (TasksOf("Maria") != 2)   // 2 tasks (1 closed + 1 aberta) contam para Maria
             throw new InvalidOperationException($"Maria deveria ter 2 tasks, veio {TasksOf("Maria")}.");
         if (TasksOf("Joao") != 1)
             throw new InvalidOperationException($"Joao deveria ter 1 task, veio {TasksOf("Joao")}.");
+        double MariaState(string s) => summary.Where(a => a.Resource == "Maria" && a.State == s).Sum(a => a.Hours);
+        if (Math.Abs(MariaState("Closed") - 5) > 0.0001 || Math.Abs(MariaState("New") - 2) > 0.0001)
+            throw new InvalidOperationException("Estado das tasks de Maria (Closed=5, New=2) não bateu.");
+        if (summary.First(a => a.Resource == "Joao").State != "Active")
+            throw new InvalidOperationException("Joao deveria estar como Active.");
     }
 
     private static void TaskAllocationSummaryRoundTrips()
     {
         var project = new Project { Name = "Alloc", StartDate = new DateTime(2026, 6, 1) };
         var story = new ProjectTask { Id = 10, TfsId = 1015217, TfsType = "User Story", Name = "Story A" };
-        story.TaskAllocations.Add(new TaskAllocationSummary { Resource = "Maria", Hours = 7, Tasks = 2 });
-        story.TaskAllocations.Add(new TaskAllocationSummary { Resource = "Joao", Hours = 3, Tasks = 1 });
+        story.TaskAllocations.Add(new TaskAllocationSummary { Resource = "Maria", Hours = 7, Tasks = 2, State = "Closed" });
+        story.TaskAllocations.Add(new TaskAllocationSummary { Resource = "Joao", Hours = 3, Tasks = 1, State = "Active" });
         project.Tasks.Add(story);
 
         var path = Path.Combine(Path.GetTempPath(), $"nx-alloc-{Guid.NewGuid():N}.nxp");
@@ -2016,6 +2022,8 @@ internal static class Program
                 throw new InvalidOperationException("Resumo de Maria (7h) não sobreviveu ao salvar/abrir.");
             if (maria.Tasks != 2)
                 throw new InvalidOperationException($"Qtd de tasks de Maria (2) não sobreviveu ao salvar/abrir, veio {maria.Tasks}.");
+            if (maria.State != "Closed")
+                throw new InvalidOperationException($"Estado de Maria (Closed) não sobreviveu ao salvar/abrir, veio '{maria.State}'.");
         }
         finally { if (File.Exists(path)) File.Delete(path); }
     }

@@ -244,12 +244,37 @@ namespace NXProject.Views
             {
                 if (IsStoryNode(t))
                 {
-                    yield return t;
+                    // Story só entra no mapa quando tem % de conclusão > 0.
+                    if (t.PercentComplete > 0) yield return t;
                     if (t.TaskAllocations.Count == 0)
                         foreach (var c in GetChargeableTasks(t.Children)) yield return c;
                 }
-                else if (t.Children.Count == 0) yield return t;
+                // Task (folha) só entra quando o estado é Active ou Closed (ou legado sem estado).
+                else if (t.Children.Count == 0)
+                {
+                    if (TfsImportService.AllocationCountsState(t.TfsState)) yield return t;
+                }
                 else foreach (var c in GetChargeableTasks(t.Children)) yield return c;
+            }
+        }
+
+        // Resumos de task que contam para o mapa: estado Active/Closed (ou legado sem estado).
+        private static IEnumerable<TaskAllocationSummary> ChargeableAllocations(ProjectTask story)
+            => story.TaskAllocations.Where(a => TfsImportService.AllocationCountsState(a.State));
+
+        // Stories que ficam DE FORA do mapa por terem % de conclusão = 0 (para o flag de revisão).
+        private static IEnumerable<ProjectTask> GetNoPctStories(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var t in tasks)
+            {
+                if (IsStoryNode(t))
+                {
+                    if (t.PercentComplete <= 0) yield return t;
+                    if (t.TaskAllocations.Count == 0)
+                        foreach (var c in GetNoPctStories(t.Children)) yield return c;
+                }
+                else if (t.Children.Count > 0)
+                    foreach (var c in GetNoPctStories(t.Children)) yield return c;
             }
         }
 
@@ -281,7 +306,7 @@ namespace NXProject.Views
             => story.Resources.Sum(r => AssignmentTotalHours(story, r));
 
         private static double StorySummarySum(ProjectTask story)
-            => story.TaskAllocations.Sum(a => a.Hours);
+            => ChargeableAllocations(story).Sum(a => a.Hours);
 
         // ── Contribuições decompostas de um nó (por recurso, horas/mês) ────────
         // Story COM resumo: responsável fica com o restante (fator), cada pessoa do resumo ganha
@@ -304,7 +329,8 @@ namespace NXProject.Views
                 rows.Add((res!, arr));
             }
 
-            if (IsStoryNode(task) && task.TaskAllocations.Count > 0)
+            var chargeable = IsStoryNode(task) ? ChargeableAllocations(task).ToList() : new List<TaskAllocationSummary>();
+            if (IsStoryNode(task) && chargeable.Count > 0)
             {
                 double storyTotal = StoryTotalHours(task);
                 double taskSum    = StorySummarySum(task);
@@ -317,7 +343,7 @@ namespace NXProject.Views
                     Add(a.Resource?.Name, (ms, me) => ComputeHoursForTask(t, a, ms, me, onlyCurrentHours) * respFactor);
                 }
                 var finishInc = InclusiveFinish(task);
-                foreach (var alloc in task.TaskAllocations)
+                foreach (var alloc in chargeable)
                 {
                     var t = task; var al = alloc;
                     Add(al.Resource, (ms, me) => AllocateHoursInPeriod(al.Hours * cutFactor, t.Start, finishInc, ms, me));
@@ -357,7 +383,7 @@ namespace NXProject.Views
                 foreach (var tr in task.Resources)
                     if (!string.IsNullOrWhiteSpace(tr.Resource?.Name)) yield return tr.Resource!.Name!;
                 if (IsStoryNode(task))
-                    foreach (var a in task.TaskAllocations)
+                    foreach (var a in ChargeableAllocations(task))
                         if (!string.IsNullOrWhiteSpace(a.Resource)) yield return a.Resource;
             }
         }
@@ -859,7 +885,7 @@ namespace NXProject.Views
             {
                 bool hasRes = task.Resources.Any(r =>
                         string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase))
-                    || task.TaskAllocations.Any(a =>
+                    || ChargeableAllocations(task).Any(a =>
                         string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase));
                 if (!hasRes) continue;
 
@@ -985,14 +1011,14 @@ namespace NXProject.Views
                         ? $"{orgUrl}/{Uri.EscapeDataString(tp)}/_workitems/edit/{task.TfsId.Value}"
                         : null;
                     // As horas do recurso vêm de uma Task dele numa Story de OUTRO responsável, ou da própria Story.
-                    bool viaTask = task.TaskAllocations.Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
+                    var alloc        = ChargeableAllocations(task).FirstOrDefault(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase));
+                    bool viaTask = alloc != null
                                 && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
                     string tipo      = AppStrings.Get(viaTask ? "PMap_SrTypeTask" : "PMap_SrTypeStory");
                     // Nome da Story dona (para linhas de task é a Story-mãe; se a própria linha é Story, o próprio nome).
                     var storyNode    = IsStoryNode(task) ? task : FindParentStory(task);
                     string storyName = storyNode?.Name ?? task.Name;
                     // Qtd de tasks: alocação por task → nº de tasks do recurso; alocação por story → sempre 1.
-                    var alloc        = task.TaskAllocations.FirstOrDefault(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase));
                     int qtdTasks     = viaTask ? (alloc?.Tasks ?? 0) : 1;
                     string qtd       = qtdTasks.ToString();
                     // Botão para abrir a grid de tasks da story (Tech Lead) quando a story tem tasks no DevOps.
@@ -1850,6 +1876,27 @@ namespace NXProject.Views
                 }
             }
 
+            // Revisão: stories que ficaram FORA do mapa por % conclusão = 0 (linhas vermelhas).
+            if (ShowNoPctStoriesBox?.IsChecked == true)
+            {
+                foreach (var proj in _projects)
+                {
+                    var internalNames = InternalResourceNames(proj.Data);
+                    foreach (var story in GetNoPctStories(proj.Data.Tasks))
+                    {
+                        bool inPeriod = story.Start.Date <= periodEnd && story.Finish.Date >= periodStart;
+                        if (!inPeriod) continue;
+                        foreach (var (rname, mh) in StoryChargeRows(story, months, onlyCurrentHours: false))
+                        {
+                            if (internalNames.Contains(rname)) continue;
+                            if (!byRes.TryGetValue(rname, out var list))
+                                byRes[rname] = list = [];
+                            list.Add((proj, story, mh));
+                        }
+                    }
+                }
+            }
+
             // Quais meses têm dados
             var visMi = Enumerable.Range(0, months.Count)
                 .Where(mi => !hideZero || byRes.Values.Any(l => l.Any(x => x.MonthHours[mi] > 0.01)))
@@ -1954,10 +2001,14 @@ namespace NXProject.Views
                         bool storyIsOpex = proj.IsOpexForTask(task);
                         // Linha é de PESSOA DA TASK (responsável da Story é outro) → cor distinta.
                         // Linha do responsável com 0h (Story delegada) → tachada (pode ser cancelada).
-                        bool rowIsTaskPerson = task.TaskAllocations.Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
+                        // Story fora do mapa por % conclusão = 0 (flag de revisão) → vermelho.
+                        bool rowIsNoPct = IsStoryNode(task) && task.PercentComplete <= 0;
+                        bool rowIsTaskPerson = !rowIsNoPct
+                                            && ChargeableAllocations(task).Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
                                             && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
-                        bool rowIsZeroResp = !rowIsTaskPerson && !mh.Any(h => h > 0.01);
+                        bool rowIsZeroResp = !rowIsNoPct && !rowIsTaskPerson && !mh.Any(h => h > 0.01);
                         var leftBg = new SolidColorBrush(
+                            rowIsNoPct      ? Color.FromRgb(253, 232, 232) :   // vermelho claro (fora do mapa: %=0)
                             rowIsZeroResp   ? Color.FromRgb(253, 242, 233) :   // âmbar claro (revisão)
                             rowIsTaskPerson ? Color.FromRgb(230, 246, 245) :   // verde-água (task de outro)
                                               Color.FromRgb(248, 250, 255));
@@ -2026,13 +2077,16 @@ namespace NXProject.Views
                             BorderBrush = new SolidColorBrush(Color.FromRgb(210, 220, 240)),
                             BorderThickness = new Thickness(0, 0, 1, 1), Padding = new Thickness(4, 0, 4, 0),
                             ToolTip = $"{storyLabel}\nInício: {task.Start:dd/MM/yy}  Fim: {task.Finish:dd/MM/yy}  HH: {task.EstimatedHours?.ToString("0.#") ?? "–"}h"
-                                    + (rowIsZeroResp ? $"\n⚠ Responsável pela Story ({responsibleName}) ficou com 0h — toda a Story foi para tasks de outros. Revisar/cancelar?"
+                                    + (rowIsNoPct ? $"\n⚠ Fora do mapa: % de conclusão = 0. Deveria entrar quando avançar. Responsável: {responsibleName}."
+                                     : rowIsZeroResp ? $"\n⚠ Responsável pela Story ({responsibleName}) ficou com 0h — toda a Story foi para tasks de outros. Revisar/cancelar?"
                                      : rowIsTaskPerson ? $"\nHoras de task de {resName}. Responsável pela Story: {responsibleName}." : ""),
                             Child = new TextBlock { Text = storyLabel, FontSize = 10,
                                 Foreground = new SolidColorBrush(
+                                    rowIsNoPct      ? Color.FromRgb(192, 57, 43) :
                                     rowIsZeroResp   ? Color.FromRgb(150, 60, 40) :
                                     rowIsTaskPerson ? Color.FromRgb(0, 110, 105) :
                                                       Color.FromRgb(40, 40, 40)),
+                                FontWeight = rowIsNoPct ? FontWeights.SemiBold : FontWeights.Normal,
                                 TextDecorations = rowIsZeroResp ? TextDecorations.Strikethrough : null,
                                 FontStyle = rowIsTaskPerson ? FontStyles.Italic : FontStyles.Normal,
                                 VerticalAlignment = VerticalAlignment.Center,
@@ -3020,7 +3074,7 @@ namespace NXProject.Views
                         var epicEx    = FindAncestorByType(task, "Epic");
                         var featureEx = FindAncestorByType(task, "Feature");
                         // Mesmos destaques da tela: pessoa de task (verde-água) / zerada do responsável (âmbar tachado).
-                        bool rowIsTaskPerson = task.TaskAllocations.Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
+                        bool rowIsTaskPerson = ChargeableAllocations(task).Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
                                             && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
                         bool rowIsZeroResp = !rowIsTaskPerson && !visMi.Any(mi => mh[mi] > 0.01);
                         string storyStyle = rowIsZeroResp ? "SLzero" : rowIsTaskPerson ? "SLtask" : "SL";

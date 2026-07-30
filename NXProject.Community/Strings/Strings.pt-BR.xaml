@@ -35,7 +35,7 @@
 
     <!-- Menu Gestão -->
     <sys:String x:Key="Menu_Manage">_Gestão</sys:String>
-    <sys:String x:Key="Menu_Manage_Resources">_Alocação de Recursos...</sys:String>
+    <sys:String x:Key="Menu_Manage_Resources">_Alocação por Sprint...</sys:String>
     <sys:String x:Key="Menu_Manage_HealthCheck">_Progresso do Projeto e Curva S...</sys:String>
     <sys:String x:Key="Menu_Manage_FixSprints">Ajustar sprints fora do período...</sys:String>
     <sys:String x:Key="Toolbar_FixSprints">Ajustar sprints fora do período (reatribui à sprint do período correto)</sys:String>
@@ -695,8 +695,8 @@
     <sys:String x:Key="Cfg_UrlPatRequired">Informe a URL da organização e o Personal Access Token antes de salvar.</sys:String>
 
     <!-- Grade de Alocação por recurso e sprint -->
-    <sys:String x:Key="RAlloc_Title">Grade de alocacao</sys:String>
-    <sys:String x:Key="RAlloc_Header">Alocacao por recurso e sprint</sys:String>
+    <sys:String x:Key="RAlloc_Title">Alocação por Sprint</sys:String>
+    <sys:String x:Key="RAlloc_Header">Alocação por Sprint</sys:String>
     <sys:String x:Key="RAlloc_Subtitle">Clique nas horas para ver as atividades e trocar o recurso.</sys:String>
     <sys:String x:Key="RAlloc_Add">Incluir</sys:String>
     <sys:String x:Key="RAlloc_Delete">Excluir</sys:String>
@@ -941,6 +941,8 @@
     <sys:String x:Key="PMap_AddedProjects">{0} projeto(s) adicionado(s) para análise.</sys:String>
     <sys:String x:Key="PMap_ShowZeroStories">Stories zeradas (revisão)</sys:String>
     <sys:String x:Key="PMap_ShowZeroStoriesTip">Só na aba Stories por Recurso: mostra também as Stories cujo responsável ficou com 0h (todo o HH foi para as tasks de outras pessoas), para revisão.</sys:String>
+    <sys:String x:Key="PMap_ShowNoPctStories">Stories sem % (fora do mapa)</sys:String>
+    <sys:String x:Key="PMap_ShowNoPctStoriesTip">Só na aba Stories por Recurso: mostra em vermelho as Stories que ficaram DE FORA do mapa por terem % de conclusão = 0 (deveriam entrar quando avançarem).</sys:String>
     <sys:String x:Key="PMap_NoSummaryImportAsk">Atualizar do DevOps agora para revisar as Stories zeradas (dono/horas das tasks)?&#x0a;&#x0a;Sim = importa e recarrega   ·   Não = só aplica o filtro com os dados atuais.</sys:String>
     <sys:String x:Key="PMap_NoSummaryInfo">Os projetos carregados vieram de arquivo/cronograma aberto e ainda não têm o resumo de tasks. Rode um Sync (ou importe pelo mapa via "Selecionar do DevOps") para gerar o resumo e identificar as Stories zeradas.</sys:String>
     <sys:String x:Key="PMap_StartMonth">Mês inicial:</sys:String>

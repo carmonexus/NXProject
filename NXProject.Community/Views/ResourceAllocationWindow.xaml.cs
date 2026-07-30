@@ -417,9 +417,9 @@ namespace NXProject.Views
             {
                 foreach (var t in _vm.FlatTasks)
                 {
-                    if (!IsStoryNode(t) || t.Model.TaskAllocations.Count == 0) continue;
+                    if (!IsStoryNode(t) || t.Model.PercentComplete <= 0 || t.Model.TaskAllocations.Count == 0) continue;
                     if (hasDates ? !OverlapsWithSprint(t, sprint) : !BelongsToSprint(t, sprint)) continue;
-                    var alloc = t.Model.TaskAllocations.FirstOrDefault(a =>
+                    var alloc = ChargeableAllocations(t.Model).FirstOrDefault(a =>
                         string.Equals(a.Resource, resource.Name, StringComparison.OrdinalIgnoreCase));
                     if (alloc == null) continue;
                     double cut = TaskScheduleService.StoryTaskCutFactor(StoryTotalHours(t.Model), StoryTaskSum(t.Model));
@@ -572,8 +572,15 @@ namespace NXProject.Views
         // nas horas, basta multiplicar as horas da atribuição por este fator.
         private static bool IsStoryNode(TaskViewModel t) => TfsImportService.IsStoryTypePublic(t.Model.TfsType);
 
-        // Conta a Story (mesmo com filhas) e as folhas; ignora resumos Epic/Feature.
-        private static bool IsChargeableNode(TaskViewModel t) => IsStoryNode(t) || t.Model.Children.Count == 0;
+        // Conta a Story (só com % conclusão > 0) e as folhas Active/Closed; ignora resumos Epic/Feature.
+        private static bool IsChargeableNode(TaskViewModel t) =>
+            IsStoryNode(t)
+                ? t.Model.PercentComplete > 0
+                : t.Model.Children.Count == 0 && TfsImportService.AllocationCountsState(t.Model.TfsState);
+
+        // Resumos de task que contam: estado Active/Closed (ou legado sem estado).
+        private static IEnumerable<TaskAllocationSummary> ChargeableAllocations(ProjectTask story)
+            => story.TaskAllocations.Where(a => TfsImportService.AllocationCountsState(a.State));
 
         private static ProjectTask? FindParentStory(ProjectTask task)
         {
@@ -595,7 +602,7 @@ namespace NXProject.Views
         private static double StoryTaskSum(ProjectTask story)
         {
             if (story.TaskAllocations.Count > 0)
-                return story.TaskAllocations.Sum(a => a.Hours);
+                return ChargeableAllocations(story).Sum(a => a.Hours);
             double sum = 0;
             foreach (var leaf in GetLeafTasksModel(story.Children))
                 foreach (var r in leaf.Resources)
@@ -634,10 +641,10 @@ namespace NXProject.Views
             double total = 0;
             foreach (var t in _vm.FlatTasks)
             {
-                if (!IsStoryNode(t) || t.Model.TaskAllocations.Count == 0) continue;
+                if (!IsStoryNode(t) || t.Model.PercentComplete <= 0 || t.Model.TaskAllocations.Count == 0) continue;
                 if (hasDates ? !OverlapsWithSprint(t, sprint) : !BelongsToSprint(t, sprint)) continue;
                 double cut = TaskScheduleService.StoryTaskCutFactor(StoryTotalHours(t.Model), StoryTaskSum(t.Model));
-                foreach (var a in t.Model.TaskAllocations)
+                foreach (var a in ChargeableAllocations(t.Model))
                     if (string.Equals(a.Resource, resourceName, StringComparison.OrdinalIgnoreCase))
                         total += hasDates ? ProportionalHours(t.Model, a.Hours * cut, sprint) : a.Hours * cut;
             }
@@ -649,8 +656,8 @@ namespace NXProject.Views
         {
             var known = new HashSet<string>(_vm.Project.Resources.Select(r => r.Name ?? ""), StringComparer.OrdinalIgnoreCase);
             return _vm.FlatTasks
-                .Where(t => IsStoryNode(t))
-                .SelectMany(t => t.Model.TaskAllocations.Select(a => a.Resource))
+                .Where(t => IsStoryNode(t) && t.Model.PercentComplete > 0)
+                .SelectMany(t => ChargeableAllocations(t.Model).Select(a => a.Resource))
                 .Where(n => !string.IsNullOrWhiteSpace(n) && !known.Contains(n))
                 .Distinct(StringComparer.OrdinalIgnoreCase);
         }
