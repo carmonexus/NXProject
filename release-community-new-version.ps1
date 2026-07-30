@@ -398,3 +398,44 @@ if (-not $ghAvailable) {
         Write-Host "  Falha ao criar a release. Verifique se esta autenticado: gh auth login" -ForegroundColor Red
     }
 }
+
+# ── Commit + push do bump de versao (e demais alteracoes rastreadas) ────────────
+Write-Step "Commit e push da versao $NewVersion..."
+
+git rev-parse --is-inside-work-tree *> $null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  Nao e um repositorio git; commit/push ignorado." -ForegroundColor Yellow
+} else {
+    $branch = (git rev-parse --abbrev-ref HEAD).Trim()
+
+    # Apenas arquivos JA rastreados (nao adiciona untracked nem a pasta dist/).
+    git add -u
+
+    git diff --cached --quiet
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  Nada rastreado para commitar." -ForegroundColor Yellow
+    } else {
+        Write-Host "  Arquivos no commit:" -ForegroundColor Cyan
+        git diff --cached --name-only | ForEach-Object { Write-Host "     $_" }
+
+        $msg = "Release $tag"
+        $tmp = [System.IO.Path]::GetTempFileName()
+        Set-Content -Path $tmp -Value $msg -Encoding UTF8
+        try {
+            git commit -F $tmp
+        } finally {
+            Remove-Item -Path $tmp -ErrorAction SilentlyContinue
+        }
+
+        if ($LASTEXITCODE -eq 0) {
+            git push origin $branch
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  Commit e push concluidos (branch $branch)." -ForegroundColor Green
+            } else {
+                Write-Host "  Aviso: commit feito, mas o push falhou. Rode 'git push' manualmente." -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "  Aviso: falha no commit da versao." -ForegroundColor Yellow
+        }
+    }
+}
