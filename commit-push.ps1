@@ -47,6 +47,28 @@
 
     NAO use 'store' (credential.helper store) - grava o token em texto plano
     em ~/.git-credentials. Prefira o 'manager' (GCM) ou o 'gh'.
+
+    ---
+
+    CREDENTIALS (Windows) - this script stores NO password/token.
+    'git push' uses the credential already configured on the machine. Secure way:
+
+    1) Git Credential Manager (recommended) - stored in the Windows Credential
+       Manager (encrypted by the OS), never in plain text:
+           git config --global credential.helper manager
+       On the first push GCM opens the GitHub login (browser/OAuth) and remembers it.
+
+    2) GitHub CLI (alternative) - logs in and configures git at once:
+           gh auth login
+       (choose GitHub.com > HTTPS > login with a web browser)
+
+    Check what is configured:
+           git config --global credential.helper
+    View/remove the saved credential:  Control Panel > Credential Manager >
+    Windows Credentials > look for "git:https://github.com".
+
+    Do NOT use 'store' (credential.helper store) - it writes the token in plain
+    text to ~/.git-credentials. Prefer 'manager' (GCM) or 'gh'.
 #>
 param(
     [Parameter(Position = 0)]
