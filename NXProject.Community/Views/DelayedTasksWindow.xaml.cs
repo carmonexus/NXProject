@@ -19,6 +19,17 @@ namespace NXProject.Views
         private readonly MainViewModel _vm;
         private string? _selectedResource;
         private DelayBucket? _selectedBucket;
+        // Curva S: quando marcado, inclui Stories com % de conclusão = 0 e tasks "New"
+        // (visão planejada). Desmarcado (padrão), a linha do real considera só o que
+        // está em execução: Story > 0% e tasks Active/Closed.
+        private bool _includeZeroPct;
+        // Curva S: quando marcado, a linha do realizado soma HH Atual + HH Restante (duração
+        // cheia). Padrão desmarcado = só o concluído (HH × % conclusão).
+        private bool _includeRemaining;
+        // Terceira linha: base line carregado de um arquivo .nxp (snapshot) — distribui o HH
+        // Atual + Restante das Stories do baseline pelas datas, como referência de plano.
+        private bool _showBaseline;
+        private Models.Project? _baselineProject;
 
         // Dados pré-calculados para tooltip da curva
         private List<SprintPoint>? _curvePoints;
@@ -92,6 +103,28 @@ namespace NXProject.Views
                 .Select(n => new SprintInfo(n, null, $"Sprint {n}", DateTime.MinValue, DateTime.MaxValue))
                 .ToList();
         }
+
+        // Períodos semanais (segunda→domingo) cobrindo [start, end], um ponto por semana.
+        private static List<SprintInfo> BuildWeeklyPeriods(DateTime start, DateTime end)
+        {
+            var list = new List<SprintInfo>();
+            var d = start.Date;
+            while (d.DayOfWeek != DayOfWeek.Monday) d = d.AddDays(-1);   // ancora na segunda
+            int n = 1;
+            int guard = 0;
+            while (d <= end.Date && guard++ < 600)
+            {
+                var wend = d.AddDays(6);   // domingo
+                list.Add(new SprintInfo(n, null, d.ToString("dd/MM"), d, wend));
+                d = d.AddDays(7);
+                n++;
+            }
+            return list;
+        }
+
+        private static double PctOf(ProjectTask t) => Math.Clamp(t.PercentComplete, 0, 100) / 100.0;
+        private static DateTime AddWorkingDaysApprox(DateTime from, double workingDays)
+            => from.AddDays((int)Math.Ceiling(Math.Max(0, workingDays) * 7.0 / 5.0));
 
         private int GetTaskSprint(TaskViewModel task)
         {
@@ -320,9 +353,10 @@ namespace NXProject.Views
             int SprintNumber,
             string Label,
             double PlannedPct,   // % acumulado de HH Original
-            double ActualPct,    // % acumulado de HH Duração (HH Atual + HH Restante)
+            double ActualPct,    // % acumulado do realizado (concluído + previsão)
             bool IsFuture,
-            bool IsCurrent);
+            bool IsCurrent,
+            double BaselinePct = -1);   // % acumulado do base line carregado (-1 = sem base line)
 
         private void RenderCurve()
         {
@@ -340,14 +374,24 @@ namespace NXProject.Views
                 return;
             }
 
-            var curveTasks = GetCurveTasks();
+            // Planejado (azul) SEMPRE inclui Story % = 0; realizado (laranja) filtra pelo flag.
+            // Com sprints datadas usamos as datas (Início→Fim) para posicionar; sem datas, o número.
+            var hasSprintDates = sprints.Any(s => s.Start != DateTime.MinValue);
+            List<TaskViewModel> plannedWithSprint, actualWithSprint;
+            if (hasSprintDates)
+            {
+                bool Dated(TaskViewModel t) => t.Model.Start != DateTime.MinValue && t.Model.Finish != DateTime.MinValue;
+                plannedWithSprint = GetPlannedTasks().Where(Dated).ToList();
+                actualWithSprint  = GetActualTasks().Where(Dated).ToList();
+            }
+            else
+            {
+                var sprintNumbers = new HashSet<int>(sprints.Select(s => s.Number));
+                plannedWithSprint = GetPlannedTasks().Where(t => sprintNumbers.Contains(GetTaskSprint(t))).ToList();
+                actualWithSprint  = GetActualTasks().Where(t => sprintNumbers.Contains(GetTaskSprint(t))).ToList();
+            }
 
-            // Usa apenas tasks que têm sprint atribuída para o denominador e cálculo da curva,
-            // evitando que tasks sem sprint inflacionem os percentuais.
-            var sprintNumbers = new HashSet<int>(sprints.Select(s => s.Number));
-            var tasksWithSprint = curveTasks.Where(t => sprintNumbers.Contains(GetTaskSprint(t))).ToList();
-
-            var totalOriginalHours = tasksWithSprint.Sum(t => GetOriginalHours(t.Model));
+            var totalOriginalHours = plannedWithSprint.Sum(t => GetOriginalHours(t.Model));
             if (totalOriginalHours < 0.01)
             {
                 DrawNoDataMessage(AppStrings.Get("Delay_NoHoursCurve"));
@@ -355,9 +399,77 @@ namespace NXProject.Views
             }
 
             var today = DateTime.Today;
-            int currentSprintNumber = DetermineCurrentSprint(sprints, today);
 
-            var points = BuildCurvePoints(sprints, tasksWithSprint, totalOriginalHours, currentSprintNumber);
+            // Previsão por VELOCIDADE: o restante é entregue a partir de HOJE no ritmo histórico
+            // (horas concluídas ÷ dias úteis decorridos) — olha o passado para projetar o futuro,
+            // e não usa o ritmo do cronograma. Só quando "Incluir HH Restante" está marcado.
+            double hpd = Math.Max(1, ProjectCalendarService.WorkingHoursPerDay);
+            double completedHours = actualWithSprint.Sum(t => GetTotalHours(t.Model) * PctOf(t.Model));
+            double remainingHours = _includeRemaining
+                ? actualWithSprint.Sum(t => GetTotalHours(t.Model) * (1 - PctOf(t.Model)))
+                : 0;
+            double velPerDay = 0;
+            if (hasSprintDates && plannedWithSprint.Count > 0)
+            {
+                var minStart = plannedWithSprint.Min(t => t.Model.Start.Date);
+                var elapsedDays = ProjectCalendarService.CountWorkingHours(minStart, today) / hpd;
+                velPerDay = elapsedDays > 0 ? completedHours / elapsedDays : 0;
+            }
+
+            // Períodos do eixo X: com datas, um ponto por SEMANA (segunda a domingo), do início do
+            // trabalho até o mais distante entre o Fim das atividades e a conclusão projetada pela
+            // velocidade. Mais pontos = barriga mais suave. Sem datas, cai nas sprints.
+            List<SprintInfo> periods;
+            int currentSprintNumber;
+            // Régua de sprints (marcador de tempo): sprints configuradas + projetadas.
+            var sprintMarks = new List<(string Name, DateTime Start, DateTime End, bool Proj)>();
+            if (hasSprintDates)
+            {
+                var minStart = plannedWithSprint.Count > 0 ? plannedWithSprint.Min(t => t.Model.Start.Date) : sprints[0].Start;
+                if (minStart > sprints[0].Start) minStart = sprints[0].Start;
+                var maxFin = GetCurveTasksBase().Select(t => t.Model.Finish.Date)
+                    .DefaultIfEmpty(sprints[^1].End).Max();
+                var projEnd = today;
+                if (remainingHours > 0.01 && velPerDay > 0.01)
+                    projEnd = AddWorkingDaysApprox(today, remainingHours / velPerDay);
+                var axisEnd = maxFin > projEnd ? maxFin : projEnd;
+                periods = BuildWeeklyPeriods(minStart, axisEnd);
+                currentSprintNumber = periods.FirstOrDefault(p => today >= p.Start && today <= p.End)?.Number
+                                      ?? periods[^1].Number;
+
+                foreach (var s in sprints)
+                    sprintMarks.Add((s.Label, s.Start.Date, s.End.Date, false));
+                var durS = Math.Max(1, _vm.Project.SprintDurationDays);
+                var st = sprints[^1].End.Date.AddDays(1);
+                var nS = sprints[^1].Number; int gS = 0;
+                while (st <= axisEnd.Date && gS++ < 500)
+                {
+                    var e = st.AddDays(durS - 1); nS++;
+                    sprintMarks.Add(($"S{nS} (proj.)", st, e, true));
+                    st = e.AddDays(1);
+                }
+            }
+            else
+            {
+                periods = sprints;
+                currentSprintNumber = DetermineCurrentSprint(sprints, today);
+            }
+
+            // Base line carregado (opcional): Stories do snapshot, HH Atual+Restante pelas datas.
+            List<ProjectTask>? baselineStories = null;
+            double baselineTotal = 0;
+            if (_showBaseline && _baselineProject != null)
+            {
+                baselineStories = FlattenModel(_baselineProject.Tasks)
+                    .Where(t => TfsImportService.IsStoryTypePublic(t.TfsType)
+                                && t.Start != DateTime.MinValue && t.Finish != DateTime.MinValue)
+                    .ToList();
+                baselineTotal = baselineStories.Sum(GetTotalHours);
+            }
+
+            var points = BuildCurvePoints(periods, plannedWithSprint, actualWithSprint, totalOriginalHours,
+                                          currentSprintNumber, velPerDay, remainingHours, today,
+                                          baselineStories, baselineTotal);
             _curvePoints = points;
 
             var pl = _chartLeft; var pt = _chartTop;
@@ -365,6 +477,7 @@ namespace NXProject.Views
             var pw = pr - pl; var ph = pb - pt;
 
             DrawGridAndAxes(pl, pt, pr, pb, pw, ph, points);
+            DrawSprintBands(pl, pt, pb, pw, points, periods, sprintMarks);
             DrawCurrentSprintMarker(pl, pt, pb, pw, points, currentSprintNumber);
 
             var plannedLine = points.Select(p => ToCanvasPoint(p.SprintNumber - points[0].SprintNumber,
@@ -377,9 +490,17 @@ namespace NXProject.Views
             DrawPolyline(plannedLine,
                          "#1F4EA1", 2.5, false);
 
-            // Linha laranja sólida: HH Duração acumulado (HH Atual + HH Restante)
+            // Linha laranja sólida: realizado (concluído + previsão pela velocidade)
             DrawPolyline(durationLine,
                          "#E65100", 2.5, false);
+
+            // Linha verde tracejada: base line carregado (HH Atual+Restante do snapshot)
+            if (points.Any(p => p.BaselinePct >= 0))
+            {
+                var baselineLine = points.Select(p => ToCanvasPoint(p.SprintNumber - points[0].SprintNumber,
+                                                                     Math.Max(0, p.BaselinePct), points.Count, pl, pt, pw, ph)).ToList();
+                DrawPolyline(baselineLine, "#2E9E8F", 2.0, true);
+            }
 
             DrawSprintLabels(pl, pb, pw, points);
 
@@ -387,9 +508,13 @@ namespace NXProject.Views
                 ?? points.LastOrDefault(p => !p.IsFuture)
                 ?? points.LastOrDefault();
             var gap = currentPoint != null ? currentPoint.PlannedPct - currentPoint.ActualPct : 0;
-            CurveSummary.Text = currentPoint != null
+            var summary = currentPoint != null
                 ? AppStrings.Get("Delay_CurveSummary", currentPoint.ActualPct, currentPoint.PlannedPct, gap)
                 : string.Empty;
+            int cfg = sprintMarks.Count(m => !m.Proj), proj = sprintMarks.Count(m => m.Proj);
+            if (cfg + proj > 0)
+                summary += AppStrings.Get("Delay_SprintCount", cfg, proj);
+            CurveSummary.Text = summary;
         }
 
         // HH Original da tarefa; usa EstimatedHours como fallback.
@@ -403,6 +528,17 @@ namespace NXProject.Views
                 ? task.EstimatedHours.Value
                 : TaskScheduleService.GetEffectiveDurationHours(task);
 
+        // Horas do REALIZADO (numerador da linha laranja):
+        //  - padrão: só o concluído = HH Duração × % conclusão (Curva S clássica / valor agregado);
+        //  - com "Incluir HH Restante": HH Atual + HH Restante (duração cheia).
+        private double GetRealizedHours(ProjectTask task)
+        {
+            var duration = GetTotalHours(task);
+            if (_includeRemaining) return duration;
+            var pct = Math.Clamp(task.PercentComplete, 0, 100) / 100.0;
+            return duration * pct;
+        }
+
         // Duração total = HH Atual + HH Restante quando HH Atual disponível; senão EstimatedHours ou duração calculada.
         private static double GetTotalHours(ProjectTask task) =>
             task.CurrentHours is > 0
@@ -411,7 +547,8 @@ namespace NXProject.Views
                     ? task.EstimatedHours.Value
                     : TaskScheduleService.GetEffectiveDurationHours(task);
 
-        private List<TaskViewModel> GetCurveTasks()
+        // Conjunto base da curva: stories (ou folhas no nível da story quando não há stories).
+        private List<TaskViewModel> GetCurveTasksBase()
         {
             var storyTasks = _vm.FlatTasks
                 .Where(t => TfsImportService.IsStoryTypePublic(t.Model.TfsType))
@@ -424,37 +561,107 @@ namespace NXProject.Views
             return leaves.Where(t => t.Depth == storyDepth).ToList();
         }
 
-        private List<SprintPoint> BuildCurvePoints(
-            List<SprintInfo> sprints, List<TaskViewModel> leafTasks,
-            double totalOriginalHours, int currentSprintNumber)
+        private static IEnumerable<ProjectTask> FlattenModel(IEnumerable<ProjectTask> tasks)
         {
-            // Denominador da linha pontilhada = soma de (HH Atual + HH Restante) de todas as tasks.
-            // Deve bater com a duração total; se for zero, cai no totalOriginalHours.
-            var totalDurationHours = leafTasks.Sum(t => GetTotalHours(t.Model));
+            foreach (var t in tasks)
+            {
+                yield return t;
+                foreach (var c in FlattenModel(t.Children)) yield return c;
+            }
+        }
+
+        // Planejado (HH Original): SEMPRE inclui Story com % = 0 (baseline completo).
+        private List<TaskViewModel> GetPlannedTasks() => GetCurveTasksBase();
+
+        // Realizado (HH Duração): só o que está em execução — Story > 0% (folha Active/Closed);
+        // com o flag "Incluir planejado", passa a incluir também Story % = 0 e tasks New.
+        private List<TaskViewModel> GetActualTasks()
+            => GetCurveTasksBase().Where(ActualIncludes).ToList();
+
+        private bool ActualIncludes(TaskViewModel t)
+        {
+            if (_includeZeroPct) return true;
+            if (TfsImportService.IsStoryTypePublic(t.Model.TfsType))
+                return t.Model.PercentComplete > 0;
+            return t.Model.PercentComplete > 0 || TfsImportService.AllocationCountsState(t.Model.TfsState);
+        }
+
+        private List<SprintPoint> BuildCurvePoints(
+            List<SprintInfo> sprints, List<TaskViewModel> plannedTasks, List<TaskViewModel> actualTasks,
+            double totalOriginalHours, int currentSprintNumber,
+            double velPerDay, double remainingHours, DateTime today,
+            List<ProjectTask>? baselineStories, double baselineTotal)
+        {
+            // Denominador da linha do realizado = duração TOTAL do plano (todas as Stories).
+            var totalDurationHours = plannedTasks.Sum(t => GetTotalHours(t.Model));
             if (totalDurationHours < 0.01) totalDurationHours = totalOriginalHours;
+            bool hasBaseline = baselineStories is { Count: > 0 } && baselineTotal > 0.01;
+            double cumBaseline = 0;
 
             var hasDates = sprints.Any(s => s.Start != DateTime.MinValue);
+            double hpd = Math.Max(1, ProjectCalendarService.WorkingHoursPerDay);
+
+            // Baldes ancorados no FIM REAL da sprint: bucket i = [sprint[i-1].End+1, sprint[i].End+1).
+            // O gap entre uma sprint e a seguinte vai para a PRÓXIMA (não infla a atual). O 1º recua
+            // até a atividade mais antiga; o último avança até a mais recente.
+            DateTime[] bucketStart = Array.Empty<DateTime>();
+            DateTime[] bucketEnd   = Array.Empty<DateTime>();
+            if (hasDates)
+            {
+                var allTasks = plannedTasks.Concat(actualTasks).ToList();
+                var minStart = allTasks.Count > 0 ? allTasks.Min(t => t.Model.Start.Date) : sprints[0].Start;
+                var maxFin   = allTasks.Count > 0 ? allTasks.Max(t => t.Model.Finish.Date) : sprints[^1].End;
+                bucketStart = new DateTime[sprints.Count];
+                bucketEnd   = new DateTime[sprints.Count];
+                for (int i = 0; i < sprints.Count; i++)
+                {
+                    bucketStart[i] = i == 0
+                        ? (minStart < sprints[0].Start ? minStart : sprints[0].Start)
+                        : sprints[i - 1].End.Date.AddDays(1);
+                    bucketEnd[i] = i + 1 < sprints.Count
+                        ? sprints[i].End.Date.AddDays(1)
+                        : (maxFin > sprints[i].End.Date ? maxFin.AddDays(1) : sprints[i].End.Date.AddDays(1));
+                }
+            }
 
             var points = new List<SprintPoint>();
             double cumPlanned  = 0;
             double cumProgress = 0;
+            double deliveredForecast = 0;   // restante já entregue pela velocidade (acumulado)
 
-            foreach (var sprint in sprints)
+            for (int i = 0; i < sprints.Count; i++)
             {
+                var sprint = sprints[i];
                 double planned;
                 double progress;
 
                 if (hasDates)
                 {
-                    // Distribui horas proporcionalmente conforme sobreposição de datas.
-                    planned  = leafTasks.Sum(t => HoursInSprint(t.Model, GetOriginalHours(t.Model), sprint));
-                    progress = leafTasks.Sum(t => HoursInSprint(t.Model, GetTotalHours(t.Model),    sprint));
+                    var bs = bucketStart[i]; var be = bucketEnd[i];
+                    // Planejado: HH Original distribuído pela faixa Início→Fim.
+                    planned = plannedTasks.Sum(t => DistributeHours(GetOriginalHours(t.Model), t.Model.Start, t.Model.Finish, bs, be));
+
+                    // Realizado = CONCLUÍDO (HH×%) no passado até HOJE
+                    //           + RESTANTE entregue de HOJE p/ frente na VELOCIDADE histórica.
+                    double completedInBucket = actualTasks.Sum(t => DistributeHours(
+                        GetTotalHours(t.Model) * PctOf(t.Model),
+                        t.Model.Start, t.Model.Finish.Date < today ? t.Model.Finish.Date : today, bs, be));
+
+                    double forecastInBucket = 0;
+                    if (remainingHours > 0.01 && velPerDay > 0.01)
+                    {
+                        var fs = today > bs.Date ? today : bs.Date;
+                        var fdays = ProjectCalendarService.CountWorkingHours(fs, be.Date) / hpd;
+                        forecastInBucket = Math.Min(velPerDay * Math.Max(0, fdays), remainingHours - deliveredForecast);
+                        if (forecastInBucket < 0) forecastInBucket = 0;
+                        deliveredForecast += forecastInBucket;
+                    }
+                    progress = completedInBucket + forecastInBucket;
                 }
                 else
                 {
-                    var inSprint = leafTasks.Where(t => GetTaskSprint(t) == sprint.Number).ToList();
-                    planned  = inSprint.Sum(t => GetOriginalHours(t.Model));
-                    progress = inSprint.Sum(t => GetTotalHours(t.Model));
+                    planned  = plannedTasks.Where(t => GetTaskSprint(t) == sprint.Number).Sum(t => GetOriginalHours(t.Model));
+                    progress = actualTasks.Where(t => GetTaskSprint(t) == sprint.Number).Sum(t => GetRealizedHours(t.Model));
                 }
 
                 // Linha azul: HH Original acumulado (baseline planejado).
@@ -463,39 +670,51 @@ namespace NXProject.Views
                 var isFuture  = sprint.Number > currentSprintNumber;
                 var isCurrent = sprint.Number == currentSprintNumber;
 
-                // Linha laranja: HH Duração acumulado por sprint.
+                // Linha laranja: realizado acumulado.
                 cumProgress += progress / totalDurationHours * 100.0;
+
+                // Linha verde (base line carregado): HH Atual+Restante distribuído pelas datas.
+                double baselinePct = -1;
+                if (hasBaseline && hasDates)
+                {
+                    var bs = bucketStart[i]; var be = bucketEnd[i];
+                    double bh = baselineStories!.Sum(s => DistributeHours(GetTotalHours(s), s.Start, s.Finish, bs, be));
+                    cumBaseline += bh / baselineTotal * 100.0;
+                    baselinePct = Math.Min(100, cumBaseline);
+                }
 
                 points.Add(new SprintPoint(
                     sprint.Number, sprint.Label,
                     Math.Min(100, cumPlanned),
                     Math.Min(100, cumProgress),
-                    isFuture, isCurrent));
+                    isFuture, isCurrent, baselinePct));
             }
 
             if (points.Count > 0 && points[0].PlannedPct > 0)
-                points.Insert(0, new SprintPoint(points[0].SprintNumber - 1, "", 0, 0, false, false));
+                points.Insert(0, new SprintPoint(points[0].SprintNumber - 1, "", 0, 0, false, false,
+                    hasBaseline ? 0 : -1));
 
             return points;
         }
 
-        private static double HoursInSprint(ProjectTask task, double totalHours, SprintInfo sprint)
+        // Distribui 'hours' pela sobreposição da janela de trabalho [ws, we) com o balde
+        // [bStart, bEnd). Janela de duração zero (marco) entra inteira no balde que contém ws —
+        // nunca é repetida em todos os baldes.
+        private static double DistributeHours(double hours, DateTime ws, DateTime we, DateTime bStart, DateTime bEnd)
         {
-            if (totalHours <= 0 || sprint.Start == DateTime.MinValue) return totalHours;
-            var taskStart    = task.Start.Date;
-            var taskFinishEx = task.Finish.Date;            // ProjectTask.Finish ja é fim exclusivo
-            var sprintEndEx  = sprint.End.Date.AddDays(1);  // fim exclusivo
+            if (hours <= 0) return 0;
+            ws = ws.Date; we = we.Date;
+            var wh = ProjectCalendarService.CountWorkingHours(ws, we);
+            if (wh <= 0)
+                return ws >= bStart.Date && ws < bEnd.Date ? hours : 0;
 
-            var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinishEx);
-            if (taskWorkingHours <= 0) return totalHours;
+            var os = ws > bStart.Date ? ws : bStart.Date;
+            var oe = we < bEnd.Date   ? we : bEnd.Date;
+            if (oe <= os) return 0;
 
-            var overlapStart = taskStart    > sprint.Start ? taskStart    : sprint.Start;
-            var overlapEnd   = taskFinishEx < sprintEndEx  ? taskFinishEx : sprintEndEx;
-            if (overlapEnd <= overlapStart) return 0;
-
-            var overlapHours = ProjectCalendarService.CountWorkingHours(overlapStart, overlapEnd);
-            return totalHours * (overlapHours / taskWorkingHours);
+            return hours * (ProjectCalendarService.CountWorkingHours(os, oe) / wh);
         }
+
 
         private static int DetermineCurrentSprint(List<SprintInfo> sprints, DateTime today)
         {
@@ -578,6 +797,50 @@ namespace NXProject.Views
             CurveCanvas.Children.Add(lbl);
         }
 
+        // Régua de sprints por cima dos pontos semanais: divisórias verticais no início de cada
+        // sprint e o nome centralizado no topo. Sprints configuradas em azul, projetadas em cinza.
+        private void DrawSprintBands(double pl, double pt, double pb, double pw,
+            List<SprintPoint> points, List<SprintInfo> periods,
+            List<(string Name, DateTime Start, DateTime End, bool Proj)> marks)
+        {
+            if (points.Count < 2 || periods.Count == 0 || marks.Count == 0) return;
+            bool leadingZero = points.Count == periods.Count + 1;
+
+            double XForDate(DateTime d)
+            {
+                int j = periods.FindIndex(p => d.Date >= p.Start.Date && d.Date <= p.End.Date);
+                if (j < 0) j = d.Date < periods[0].Start.Date ? 0 : periods.Count - 1;
+                int idx = j + (leadingZero ? 1 : 0);
+                return pl + pw * idx / Math.Max(1, points.Count - 1);
+            }
+
+            foreach (var m in marks)
+            {
+                double xs = XForDate(m.Start);
+                var col = m.Proj ? Color.FromRgb(150, 150, 160) : Color.FromRgb(90, 110, 175);
+                CurveCanvas.Children.Add(new Line
+                {
+                    X1 = xs, Y1 = pt, X2 = xs, Y2 = pb,
+                    Stroke = new SolidColorBrush(col) { Opacity = m.Proj ? 0.25 : 0.4 },
+                    StrokeThickness = 1,
+                    StrokeDashArray = new DoubleCollection([2, 3])
+                });
+
+                double xe = XForDate(m.End);
+                var name = new TextBlock
+                {
+                    Text = m.Name, FontSize = 8,
+                    Foreground = new SolidColorBrush(m.Proj ? Color.FromRgb(150, 150, 160) : Color.FromRgb(70, 90, 150)),
+                    FontStyle = m.Proj ? FontStyles.Italic : FontStyles.Normal,
+                    TextAlignment = TextAlignment.Center, Width = Math.Max(20, xe - xs),
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                };
+                System.Windows.Controls.Canvas.SetLeft(name, xs);
+                System.Windows.Controls.Canvas.SetTop(name, pt - 12);
+                CurveCanvas.Children.Add(name);
+            }
+        }
+
         private void DrawPolyline(List<Point> pts, string color, double thickness, bool dashed)
         {
             if (pts.Count < 2) return;
@@ -630,10 +893,13 @@ namespace NXProject.Views
         private void DrawSprintLabels(double pl, double pb, double pw, List<SprintPoint> points)
         {
             if (points.Count == 0) return;
+            // Muitos pontos (semanal): mostra ~12 rótulos, mas sempre o de HOJE.
+            int step = Math.Max(1, (int)Math.Ceiling(points.Count / 12.0));
             for (int i = 0; i < points.Count; i++)
             {
                 var p = points[i];
                 if (string.IsNullOrWhiteSpace(p.Label)) continue;
+                if (step > 1 && i % step != 0 && !p.IsCurrent) continue;
                 var x = pl + pw * i / Math.Max(1, points.Count - 1);
                 var lbl = MakeText(p.Label, 9, p.IsCurrent ? "#6060AA" : "#555");
                 lbl.Width = 80;
@@ -686,6 +952,43 @@ namespace NXProject.Views
         {
             if (sender is TabControl tc && tc.SelectedIndex == 2 && CurveCanvas.ActualWidth > 0)
                 RenderCurve();
+        }
+
+        private void OnIncludePlannedChanged(object sender, RoutedEventArgs e)
+        {
+            _includeZeroPct   = IncludePlannedBox.IsChecked == true;
+            _includeRemaining = IncludeRemainingBox.IsChecked == true;
+            _showBaseline     = ShowBaselineBox.IsChecked == true;
+            UpdateBaselineChrome();
+            if (CurveCanvas.ActualWidth > 0) RenderCurve();
+        }
+
+        // Mostra/oculta o botão "Abrir baseline" e a legenda da 3ª linha conforme o estado.
+        private void UpdateBaselineChrome()
+        {
+            bool loaded = _baselineProject != null;
+            OpenBaselineButton.Visibility = _showBaseline && !loaded ? Visibility.Visible : Visibility.Collapsed;
+            BaselineLegend.Visibility     = _showBaseline && loaded ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void OnOpenBaselineClick(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = AppStrings.Get("Delay_OpenBaseline"),
+                Filter = "NXProject (*.nxp)|*.nxp|Todos (*.*)|*.*"
+            };
+            if (dlg.ShowDialog(this) != true) return;
+            try
+            {
+                _baselineProject = XmlProjectService.Load(dlg.FileName);
+                UpdateBaselineChrome();
+                if (CurveCanvas.ActualWidth > 0) RenderCurve();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "NXProject", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         // ── ABA 4: Em Bloqueio ───────────────────────────────────────────────
@@ -769,6 +1072,12 @@ namespace NXProject.Views
             TooltipSprint.Text = nearest.Label;
             TooltipPlanned.Text = AppStrings.Get("Delay_TooltipPlanned", nearest.PlannedPct);
             TooltipActual.Text = AppStrings.Get("Delay_TooltipActual", nearest.ActualPct);
+            if (nearest.BaselinePct >= 0)
+            {
+                TooltipBaseline.Text = AppStrings.Get("Delay_TooltipBaseline", nearest.BaselinePct);
+                TooltipBaseline.Visibility = Visibility.Visible;
+            }
+            else TooltipBaseline.Visibility = Visibility.Collapsed;
             var gap = nearest.PlannedPct - nearest.ActualPct;
             TooltipGap.Text = gap > 0.1  ? AppStrings.Get("Delay_GapNeg", gap)
                             : gap < -0.1 ? AppStrings.Get("Delay_GapPos", -gap)

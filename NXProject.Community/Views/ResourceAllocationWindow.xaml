@@ -28,6 +28,14 @@
             <StackPanel DockPanel.Dock="Right"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right">
+                <CheckBox x:Name="IncludeZeroPctBox"
+                          Content="{DynamicResource RAlloc_IncludeZeroPct}"
+                          ToolTip="{DynamicResource RAlloc_IncludeZeroPctTip}"
+                          VerticalAlignment="Center"
+                          Margin="0,0,16,0"
+                          FontSize="12"
+                          IsChecked="False"
+                          Click="OnIncludeZeroPctChanged"/>
                 <Button Content="{DynamicResource RAlloc_Add}"
                         Width="82"
                         Margin="0,0,8,0"

@@ -34,8 +34,35 @@
                         <TextBlock Text="{DynamicResource Delay_LegendPlanned}" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="12"/>
                         <Rectangle Width="28" Height="4" Fill="#E65100" Margin="0,0,4,0" VerticalAlignment="Center"/>
                         <TextBlock Text="{DynamicResource Delay_LegendActual}" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="12"/>
+                        <StackPanel x:Name="BaselineLegend" Orientation="Horizontal" Visibility="Collapsed">
+                            <Rectangle Width="28" Height="4" Fill="#2E9E8F" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource Delay_LegendBaseline}" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="12"/>
+                        </StackPanel>
                         <TextBlock x:Name="CurveSummary" VerticalAlignment="Center"
                                    FontSize="12" Foreground="#555" FontStyle="Italic"/>
+                        <CheckBox x:Name="ShowBaselineBox"
+                                  Content="{DynamicResource Delay_ShowBaseline}"
+                                  ToolTip="{DynamicResource Delay_ShowBaselineTip}"
+                                  VerticalAlignment="Center" Margin="20,0,0,0"
+                                  FontSize="12" IsChecked="False"
+                                  Click="OnIncludePlannedChanged"/>
+                        <Button x:Name="OpenBaselineButton"
+                                Content="{DynamicResource Delay_OpenBaseline}"
+                                Margin="6,0,0,0" Padding="8,1" FontSize="11"
+                                VerticalAlignment="Center" Visibility="Collapsed"
+                                Click="OnOpenBaselineClick"/>
+                        <CheckBox x:Name="IncludeRemainingBox"
+                                  Content="{DynamicResource Delay_IncludeRemaining}"
+                                  ToolTip="{DynamicResource Delay_IncludeRemainingTip}"
+                                  VerticalAlignment="Center" Margin="16,0,0,0"
+                                  FontSize="12" IsChecked="False"
+                                  Click="OnIncludePlannedChanged"/>
+                        <CheckBox x:Name="IncludePlannedBox"
+                                  Content="{DynamicResource Delay_IncludePlanned}"
+                                  ToolTip="{DynamicResource Delay_IncludePlannedTip}"
+                                  VerticalAlignment="Center" Margin="16,0,0,0"
+                                  FontSize="12" IsChecked="False"
+                                  Click="OnIncludePlannedChanged"/>
                     </StackPanel>
 
                     <Border Grid.Row="1" BorderBrush="#DDD" BorderThickness="1" Background="White">
@@ -53,6 +80,7 @@
                                     <TextBlock x:Name="TooltipSprint" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,2"/>
                                     <TextBlock x:Name="TooltipPlanned" FontSize="11" Foreground="#1F4EA1"/>
                                     <TextBlock x:Name="TooltipActual"  FontSize="11" Foreground="#E65100"/>
+                                    <TextBlock x:Name="TooltipBaseline" FontSize="11" Foreground="#2E9E8F" Visibility="Collapsed"/>
                                     <TextBlock x:Name="TooltipGap"     FontSize="11" Foreground="#B23600"/>
                                 </StackPanel>
                             </Border>

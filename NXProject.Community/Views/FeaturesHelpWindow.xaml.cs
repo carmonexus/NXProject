@@ -400,8 +400,8 @@ namespace NXProject.Views
                     ("Cadastrar recursos",
                      "Acesse Exibir → Pessoas para gerenciar a lista de recursos do projeto. Cada pessoa pode ter nome e e-mail.\n" +
                      "Ao importar do Azure DevOps, o campo System.AssignedTo é importado automaticamente como recurso."),
-                    ("Alocação de recursos",
-                     "Exibir → Alocação de Recursos mostra a carga de trabalho por pessoa em cada período (sprint ou semana), permitindo identificar sobrecargas antes que virem problemas.\n" +
+                    ("Alocação por Sprint",
+                     "Gestão → Alocação por Sprint mostra a carga de trabalho por pessoa em cada período (sprint ou semana), permitindo identificar sobrecargas antes que virem problemas.\n" +
                      "• Células vermelhas indicam sobrecarga (mais de 100% da capacidade diária).\n" +
                      "• Células verdes indicam capacidade disponível.\n" +
                      "• A capacidade considera as horas/dia do calendário, as horas/dia configuradas para o recurso e a % de alocação da atividade.\n" +
@@ -449,7 +449,19 @@ namespace NXProject.Views
                      "• Trava: nenhuma Task pode passar do HH da Story. Se a soma das Tasks estoura o HH da Story, as Tasks são cortadas proporcionalmente (HH da Story ÷ soma das Tasks) e o responsável fica com 0.\n" +
                      "• Se o responsável não tem Task própria, ele fica com a sobra (sem Tasks de outros, fica com a Story inteira).\n" +
                      "• Se a Story não tem HH estimado, nada é cortado — as Tasks aparecem com o HH delas.\n\n" +
-                     "A conta usa o modelo (não a árvore visível), então as Tasks de outro recurso entram mesmo com a Story recolhida no cronograma. Vale para o Mapa de Alocação e para a Alocação de Recurso por Sprint."),
+                     "A conta usa o modelo (não a árvore visível), então as Tasks de outro recurso entram mesmo com a Story recolhida no cronograma. Vale para o Mapa de Alocação e para a Alocação por Sprint."),
+                    ("Resumo de tasks por recurso (gravado no arquivo)",
+                     "As Tasks vivem no DevOps e não são carregadas no cronograma. Para decompor o HH da Story mesmo sem as Tasks abertas, o NXProject grava no arquivo (.nxp) um resumo por recurso:\n\n" +
+                     "• Cada entrada tem recurso, horas, quantidade de tasks e estado (Active/Closed/New/Other), agrupada por recurso + estado.\n" +
+                     "• Horas por task: se a Task está Closed usa o Completed (HH Atual); senão o Estimate.\n" +
+                     "• O resumo é preenchido/atualizado no Sync e também no import do próprio Mapa de Alocação (que lê o DevOps até o nível da task).\n" +
+                     "• Ao clicar nas horas na aba Stories por Recurso, a grade de composição mostra Tipo (Story/Task), a Story, a quantidade de tasks (Task = nº de tasks do recurso; Story = 1) e um botão para abrir a grade de tasks (Tech Lead) da story."),
+                    ("Filtro: Story com % > 0 e Task Active/Closed",
+                     "O Mapa de Alocação e a Alocação por Sprint só consideram o que está em execução:\n\n" +
+                     "• Story entra quando tem % de conclusão > 0.\n" +
+                     "• Task/resumo entra quando o estado é Active ou Closed (arquivos legados sem estado continuam contando).\n\n" +
+                     "Na aba Stories por Recurso, o flag 'Stories sem % (fora do mapa)' mostra em vermelho as Stories excluídas por % = 0 — úteis para revisar o que ainda não começou.\n\n" +
+                     "Na Alocação por Sprint, o flag 'Incluir planejado (Story % 0 / Task New)' passa a considerar também as Stories com % = 0 e tasks New, para ver a distribuição da sprint planejada."),
                     ("% de capacidade",
                      "O percentual exibido ao lado das horas nas abas de capacidade é calculado sobre a capacidade mensal do calendário e do recurso: horas/dia úteis × dias úteis do mês, considerando a configuração da pessoa.\n\n" +
                      "Na aba Rateio, o % representa a fatia daquele projeto no total de horas do recurso no mês — não em relação à capacidade total."),
@@ -494,6 +506,38 @@ namespace NXProject.Views
                      "Antes de aplicar, uma janela mostra Epic, Feature, Story, Período da Atividade, Ref. (ritmo), Status, % Concl., Sprint Atual e Sprint Ajustada para revisão; nada muda sem clicar em Aplicar. As datas não são movidas — apenas o rótulo da sprint. Depois, sincronize com o DevOps para gravar.")
                 },
                 "A coluna Sprint é especialmente útil para replanejar — mova Stories entre sprints e veja o impacto no cronograma imediatamente."
+            ),
+            (
+                "Progresso do Projeto e Curva S",
+                "Gestão → Progresso do Projeto e Curva S mostra a evolução do projeto no tempo comparando o PLANEJADO com o REALIZADO — é a Curva S clássica de Gestão de Valor Agregado (EVM), com um ponto por semana.",
+                new()
+                {
+                    ("As duas linhas (fundamento EVM)",
+                     "É a Curva S de Earned Value Management (padrão PMI/PMBOK). O eixo Y é o % acumulado de HH; o eixo X é o tempo (um ponto por semana, na segunda-feira).\n\n" +
+                     "• HH Original (Planejado) = PV (Planned Value): baseline de quanto deveria estar pronto, distribuído pelas datas Início→Fim de cada Story. Sempre inclui todas as Stories.\n" +
+                     "• HH Realizado (concluído) = EV (Earned Value): HH × %conclusão do que foi entregue.\n" +
+                     "• A distância entre as linhas é o SV (Schedule Variance): planejado à frente = atrasado; realizado à frente = adiantado."),
+                    ("Distribuição por data, não por sprint",
+                     "As horas são distribuídas pela faixa Início→Fim de cada Story, não jogadas inteiras numa sprint — a sprint é só a janela de controle. Marcos (duração zero) entram na semana da sua data, sem serem repetidos."),
+                    ("Realizado: passado real, futuro projetado pela velocidade",
+                     "A linha do realizado é calculada em duas partes, cortadas por HOJE:\n" +
+                     "• Passado (até hoje): só o CONCLUÍDO (HH × %). Trabalho não feito nunca aparece no passado.\n" +
+                     "• De hoje em diante (só com 'Incluir HH Restante'): o restante é entregue na VELOCIDADE histórica = HH concluído ÷ dias úteis decorridos. Não usa o ritmo do cronograma (otimista) — olha o passado para projetar o futuro.\n\n" +
+                     "A conclusão projetada = hoje + (HH restante ÷ velocidade). Se passar do fim planejado, o eixo acrescenta semanas até essa data. É a mesma lógica de forecasting por throughput (Little's Law / burn-up ágil): a diferença entre a projeção real e o planejado forma a 'barriga'."),
+                    ("Os checkboxes",
+                     "• Incluir HH Restante: liga a projeção do restante pela velocidade (senão a linha mostra só o concluído e estaciona).\n" +
+                     "• Incluir planejado (Story % 0 / Task New): traz também as Stories não iniciadas para o realizado — só têm efeito junto com 'Incluir HH Restante' (uma Story a 0% concluído entrega 0). Com as duas, a projeção cobre todo o trabalho restante e o eixo se estende até a conclusão projetada."),
+                    ("Pontos semanais e régua de sprints",
+                     "A curva tem um ponto por SEMANA (segunda-feira) para deixar a barriga suave. Por cima, uma régua mostra as sprints como marcador de tempo: divisórias no início de cada sprint com o nome no topo — sprints configuradas em azul e sprints PROJETADAS (S8, S9… proj.) em cinza itálico, criadas quando o trabalho passa da última sprint. O resumo mostra 'Sprints: N config. + M proj.', para ver quantas já temos e quantas ainda vamos precisar."),
+                    ("Base line (3ª linha, opcional)",
+                     "Marque 'Mostrar base line' para comparar com um snapshot salvo do projeto. Se nenhum estiver carregado, aparece o botão 'Abrir baseline…' para escolher um arquivo .nxp.\n\n" +
+                     "A 3ª linha (verde tracejada) usa o HH Atual + Restante das Stories do baseline distribuído pelas datas. O HH Original (azul) do projeto atual NÃO muda — é o baseline congelado; a linha verde é a referência do snapshot para comparar planejado × re-planejado."),
+                    ("Outras abas",
+                     "• Atrasos por Recurso — matriz de atividades atrasadas por pessoa e faixa de atraso.\n" +
+                     "• Atividades Atrasadas — lista completa das atrasadas, com justificativa (clique no ID).\n" +
+                     "• Em Bloqueio — atividades marcadas como bloqueadas.")
+                },
+                "Marque 'Incluir HH Restante' para ver a projeção pela sua velocidade real — a barriga mostra o quanto o ritmo atual afasta a entrega do plano."
             ),
             (
                 "Planilha de Plan Task",
@@ -1177,8 +1221,8 @@ namespace NXProject.Views
                     ("Register resources",
                      "Go to View → People to manage the project's resource list. Each person can have a name and email.\n" +
                      "When importing from Azure DevOps, the System.AssignedTo field is automatically imported as a resource."),
-                    ("Resource allocation",
-                     "View → Resource Allocation shows the workload per person in each period (sprint or week), allowing you to identify overloads before they become problems.\n" +
+                    ("Allocation by Sprint",
+                     "Manage → Allocation by Sprint shows the workload per person in each period (sprint or week), allowing you to identify overloads before they become problems.\n" +
                      "• Red cells indicate overload (more than 100% of daily capacity).\n" +
                      "• Green cells indicate available capacity.\n" +
                      "• Capacity considers calendar hours/day, the resource's configured hours/day and the activity allocation %.\n" +
@@ -1226,7 +1270,19 @@ namespace NXProject.Views
                      "• Cap: no Task can exceed the Story HH. If the Tasks sum exceeds the Story HH, Tasks are cut proportionally (Story HH ÷ sum of Tasks) and the responsible gets 0.\n" +
                      "• If the responsible has no Task of their own, they keep the remainder (with no other Tasks, they keep the whole Story).\n" +
                      "• If the Story has no estimated HH, nothing is cut — Tasks show their own HH.\n\n" +
-                     "The math uses the model (not the visible tree), so Tasks from another resource count even when the Story is collapsed in the schedule. Applies to the Allocation Map and to Resource Allocation by Sprint."),
+                     "The math uses the model (not the visible tree), so Tasks from another resource count even when the Story is collapsed in the schedule. Applies to the Allocation Map and to Allocation by Sprint."),
+                    ("Task summary per resource (stored in the file)",
+                     "Tasks live in DevOps and are not loaded into the schedule. To decompose the Story HH even without the Tasks loaded, NXProject stores a per-resource summary in the file (.nxp):\n\n" +
+                     "• Each entry has resource, hours, task count and state (Active/Closed/New/Other), grouped by resource + state.\n" +
+                     "• Hours per task: if the Task is Closed it uses Completed (current HH); otherwise Estimate.\n" +
+                     "• The summary is filled/updated on Sync and also on the Allocation Map import (which reads DevOps down to the task level).\n" +
+                     "• Clicking the hours on the Stories by Resource tab shows a composition grid with Type (Story/Task), the Story, the task count (Task = resource's task count; Story = 1) and a button to open the story's task grid (Tech Lead)."),
+                    ("Filter: Story % > 0 and Task Active/Closed",
+                     "The Allocation Map and Allocation by Sprint only consider work in progress:\n\n" +
+                     "• A Story is included when its completion % > 0.\n" +
+                     "• A Task/summary is included when its state is Active or Closed (legacy files with no state still count).\n\n" +
+                     "On the Stories by Resource tab, the 'Stories with no % (off the map)' flag shows in red the Stories excluded by % = 0 — useful to review what hasn't started.\n\n" +
+                     "On Allocation by Sprint, the 'Include planned (Story % 0 / Task New)' flag also considers Stories at % = 0 and New tasks, to see the planned sprint distribution."),
                     ("Capacity percentage",
                      "The percentage shown beside hours in capacity tabs is calculated against the monthly calendar and resource capacity: working hours/day × working days in the month, considering the person's configuration.\n\n" +
                      "In the Rateio tab, the % represents that project's share of the resource's total hours in the month — not relative to full capacity."),
@@ -1271,6 +1327,38 @@ namespace NXProject.Views
                      "Before applying, a window shows Epic, Feature, Story, Activity Period, Ref. (pace), Status, % Compl., Current Sprint and Adjusted Sprint for review; nothing changes until you click Apply. Dates are not moved — only the sprint label. Then sync with DevOps to persist.")
                 },
                 "The Sprint column is especially useful for replanning — move Stories between sprints and see the schedule impact immediately."
+            ),
+            (
+                "Project Progress and S-Curve",
+                "Manage → Project Progress and S-Curve shows the project's evolution over time comparing PLANNED vs ACTUAL — the classic Earned Value Management (EVM) S-Curve, with one point per week.",
+                new()
+                {
+                    ("The two lines (EVM foundation)",
+                     "This is the Earned Value Management S-Curve (PMI/PMBOK standard). Y axis = cumulative % of HH; X axis = time (one point per week, on Monday).\n\n" +
+                     "• Original HH (Planned) = PV (Planned Value): baseline of how much should be done, distributed over each Story's Start→Finish dates. Always includes all Stories.\n" +
+                     "• Actual HH (completed) = EV (Earned Value): HH × completion % of what was delivered.\n" +
+                     "• The distance between the lines is the SV (Schedule Variance): planned ahead = behind; actual ahead = ahead of schedule."),
+                    ("Distribution by date, not by sprint",
+                     "Hours are distributed over each Story's Start→Finish range, not dropped whole into a sprint — the sprint is just the control window. Milestones (zero duration) land in the week of their date, never repeated."),
+                    ("Actual: real past, future projected by velocity",
+                     "The actual line is computed in two parts, split at TODAY:\n" +
+                     "• Past (up to today): only COMPLETED work (HH × %). Undone work never appears in the past.\n" +
+                     "• From today on (only with 'Include Remaining HH'): the remainder is delivered at the historical VELOCITY = completed HH ÷ elapsed working days. It does not use the (optimistic) schedule pace — it looks at the past to project the future.\n\n" +
+                     "Projected completion = today + (remaining HH ÷ velocity). If it goes past the planned end, the axis adds weeks up to that date. Same logic as throughput forecasting (Little's Law / agile burn-up): the gap between the real projection and the plan forms the 'belly'."),
+                    ("The checkboxes",
+                     "• Include Remaining HH: turns on the velocity projection of the remainder (otherwise the line shows only completed work and plateaus).\n" +
+                     "• Include planned (Story % 0 / Task New): also brings not-started Stories into the actual — only meaningful together with 'Include Remaining HH' (a 0%-complete Story delivers 0). With both, the projection covers all remaining work and the axis extends to the projected completion."),
+                    ("Weekly points and sprint ruler",
+                     "The curve has one point per WEEK (Monday) to keep the belly smooth. On top, a ruler shows sprints as a time marker: dividers at each sprint start with the name on top — configured sprints in blue and PROJECTED sprints (S8, S9… proj.) in gray italic, created when the work runs past the last sprint. The summary shows 'Sprints: N config. + M proj.', so you can see how many you already have and how many more you'll need."),
+                    ("Base line (3rd line, optional)",
+                     "Check 'Show base line' to compare against a saved project snapshot. If none is loaded, the 'Open baseline…' button appears to pick a .nxp file.\n\n" +
+                     "The 3rd line (dashed green) uses the baseline Stories' Current + Remaining HH distributed over their dates. The current project's Original HH (blue) does NOT change — it is the frozen baseline; the green line is the snapshot reference to compare planned vs re-planned."),
+                    ("Other tabs",
+                     "• Delays by Resource — matrix of delayed activities by person and delay range.\n" +
+                     "• Delayed Activities — full list of the delayed ones, with justification (click the ID).\n" +
+                     "• Blocked — activities flagged as blocked.")
+                },
+                "Check 'Include Remaining HH' to see the projection at your real velocity — the belly shows how much the current pace pushes delivery away from the plan."
             ),
             (
                 "Plan Task Sheet",

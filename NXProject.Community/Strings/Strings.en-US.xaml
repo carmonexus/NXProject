@@ -911,6 +911,8 @@
     <sys:String x:Key="RAlloc_Title">Allocation by Sprint</sys:String>
     <sys:String x:Key="RAlloc_Header">Allocation by Sprint</sys:String>
     <sys:String x:Key="RAlloc_Subtitle">Click the hours to see the activities and change the resource.</sys:String>
+    <sys:String x:Key="RAlloc_IncludeZeroPct">Include planned (Story % 0 / Task New)</sys:String>
+    <sys:String x:Key="RAlloc_IncludeZeroPctTip">Also considers Stories with completion % = 0 and tasks/summaries in the New state — useful to see the planned sprint distribution.</sys:String>
     <sys:String x:Key="RAlloc_Add">Add</sys:String>
     <sys:String x:Key="RAlloc_Delete">Delete</sys:String>
     <sys:String x:Key="RAlloc_Refresh">Refresh</sys:String>
@@ -1485,7 +1487,17 @@
     <sys:String x:Key="Delay_Title">Project Progress and S-Curve</sys:String>
     <sys:String x:Key="Delay_TabCurveS">Progress S-Curve</sys:String>
     <sys:String x:Key="Delay_LegendPlanned">Original HH (Planned)</sys:String>
-    <sys:String x:Key="Delay_LegendActual">Duration HH (Current + Remaining)</sys:String>
+    <sys:String x:Key="Delay_LegendActual">Actual HH (completed)</sys:String>
+    <sys:String x:Key="Delay_SprintCount">   |   Sprints: {0} config. + {1} proj.</sys:String>
+    <sys:String x:Key="Delay_ShowBaseline">Show base line</sys:String>
+    <sys:String x:Key="Delay_ShowBaselineTip">Shows a third line with the base line loaded from a .nxp file (snapshot): the Stories' Current + Remaining HH distributed over their dates. If no base line is loaded, the 'Open baseline' button appears.</sys:String>
+    <sys:String x:Key="Delay_LegendBaseline">Base line (Current + Remaining)</sys:String>
+    <sys:String x:Key="Delay_OpenBaseline">Open baseline…</sys:String>
+    <sys:String x:Key="Delay_TooltipBaseline">Base line: {0:0.#}%</sys:String>
+    <sys:String x:Key="Delay_IncludeRemaining">Include Remaining HH</sys:String>
+    <sys:String x:Key="Delay_IncludeRemainingTip">Default: the actual line shows only completed work (HH × completion %). When checked, it also adds Remaining HH (Current + Remaining = full duration).</sys:String>
+    <sys:String x:Key="Delay_IncludePlanned">Include planned (Story % 0 / Task New)</sys:String>
+    <sys:String x:Key="Delay_IncludePlannedTip">The HH Original (planned) line always includes all Stories, even at % = 0. This flag only affects the actual line (Duration HH): unchecked considers only work in progress (Story &gt; 0% / Active/Closed); checked also includes Story % = 0 and New tasks.</sys:String>
     <sys:String x:Key="Delay_TabByResource">Delays by Resource</sys:String>
     <sys:String x:Key="Delay_Refresh">Refresh</sys:String>
     <sys:String x:Key="Delay_SelectCell">Select a cell in the grid</sys:String>

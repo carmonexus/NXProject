@@ -19,6 +19,9 @@ namespace NXProject.Views
         private readonly MainViewModel _vm;
         private Resource? _selectedResource;
         private SprintColumn? _selectedSprint;
+        // Quando marcado, considera Stories com % de conclusão = 0 (e tasks/resumos "New"),
+        // para ver a distribuição da sprint planejada.
+        private bool _includeZeroPct;
 
         public ResourceAllocationWindow(MainViewModel vm)
         {
@@ -35,6 +38,14 @@ namespace NXProject.Views
         public ObservableCollection<Resource> AvailableResources { get; }
         public ObservableCollection<AllocationDetailRow> SelectedDetails { get; } = new();
         public ObservableCollection<GapJustificationRow> GapJustRows { get; } = new();
+
+        private void OnIncludeZeroPctChanged(object sender, RoutedEventArgs e)
+        {
+            _includeZeroPct = IncludeZeroPctBox.IsChecked == true;
+            BuildMatrix();
+            if (_selectedResource != null && _selectedSprint != null)
+                ShowDetails(_selectedResource, _selectedSprint);
+        }
 
         private void OnRefreshClick(object sender, RoutedEventArgs e)
         {
@@ -417,7 +428,7 @@ namespace NXProject.Views
             {
                 foreach (var t in _vm.FlatTasks)
                 {
-                    if (!IsStoryNode(t) || t.Model.PercentComplete <= 0 || t.Model.TaskAllocations.Count == 0) continue;
+                    if (!StoryCountsForSummary(t) || t.Model.TaskAllocations.Count == 0) continue;
                     if (hasDates ? !OverlapsWithSprint(t, sprint) : !BelongsToSprint(t, sprint)) continue;
                     var alloc = ChargeableAllocations(t.Model).FirstOrDefault(a =>
                         string.Equals(a.Resource, resource.Name, StringComparison.OrdinalIgnoreCase));
@@ -572,15 +583,25 @@ namespace NXProject.Views
         // nas horas, basta multiplicar as horas da atribuição por este fator.
         private static bool IsStoryNode(TaskViewModel t) => TfsImportService.IsStoryTypePublic(t.Model.TfsType);
 
-        // Conta a Story (só com % conclusão > 0) e as folhas Active/Closed; ignora resumos Epic/Feature.
-        private static bool IsChargeableNode(TaskViewModel t) =>
+        // Conta a Story (com % conclusão > 0, ou qualquer % quando o flag "planejado" está ligado)
+        // e as folhas Active/Closed (ou New quando ligado); ignora resumos Epic/Feature.
+        private bool IsChargeableNode(TaskViewModel t) =>
             IsStoryNode(t)
-                ? t.Model.PercentComplete > 0
-                : t.Model.Children.Count == 0 && TfsImportService.AllocationCountsState(t.Model.TfsState);
+                ? (_includeZeroPct || t.Model.PercentComplete > 0)
+                : t.Model.Children.Count == 0 && CountsState(t.Model.TfsState);
 
-        // Resumos de task que contam: estado Active/Closed (ou legado sem estado).
-        private static IEnumerable<TaskAllocationSummary> ChargeableAllocations(ProjectTask story)
-            => story.TaskAllocations.Where(a => TfsImportService.AllocationCountsState(a.State));
+        // Resumos de task que contam: Active/Closed (ou legado sem estado); com o flag, também New.
+        private IEnumerable<TaskAllocationSummary> ChargeableAllocations(ProjectTask story)
+            => story.TaskAllocations.Where(a => CountsState(a.State));
+
+        // Story entra no cálculo do resumo quando tem % > 0 (ou qualquer % com o flag ligado).
+        private bool StoryCountsForSummary(TaskViewModel t)
+            => IsStoryNode(t) && (_includeZeroPct || t.Model.PercentComplete > 0);
+
+        // Estados que contam: Active/Closed/legado; com o flag "planejado", também "New".
+        private bool CountsState(string? state)
+            => TfsImportService.AllocationCountsState(state)
+               || (_includeZeroPct && TfsImportService.NormalizeTaskState(state) == "New");
 
         private static ProjectTask? FindParentStory(ProjectTask task)
         {
@@ -599,7 +620,7 @@ namespace NXProject.Views
             => story.Resources.Sum(r => TaskScheduleService.GetAssignmentCurrentHours(story, r)
                                       + TaskScheduleService.GetAssignmentRemainingHours(story, r));
 
-        private static double StoryTaskSum(ProjectTask story)
+        private double StoryTaskSum(ProjectTask story)
         {
             if (story.TaskAllocations.Count > 0)
                 return ChargeableAllocations(story).Sum(a => a.Hours);
@@ -621,7 +642,7 @@ namespace NXProject.Views
         }
 
         // Fator (0..1) que a atribuição do RESPONSÁVEL contribui após decompor o HH da Story.
-        private static double DecompositionFactor(TaskViewModel t)
+        private double DecompositionFactor(TaskViewModel t)
         {
             if (IsStoryNode(t))
                 return TaskScheduleService.StoryResponsibleFactor(
@@ -641,7 +662,7 @@ namespace NXProject.Views
             double total = 0;
             foreach (var t in _vm.FlatTasks)
             {
-                if (!IsStoryNode(t) || t.Model.PercentComplete <= 0 || t.Model.TaskAllocations.Count == 0) continue;
+                if (!StoryCountsForSummary(t) || t.Model.TaskAllocations.Count == 0) continue;
                 if (hasDates ? !OverlapsWithSprint(t, sprint) : !BelongsToSprint(t, sprint)) continue;
                 double cut = TaskScheduleService.StoryTaskCutFactor(StoryTotalHours(t.Model), StoryTaskSum(t.Model));
                 foreach (var a in ChargeableAllocations(t.Model))
@@ -656,7 +677,7 @@ namespace NXProject.Views
         {
             var known = new HashSet<string>(_vm.Project.Resources.Select(r => r.Name ?? ""), StringComparer.OrdinalIgnoreCase);
             return _vm.FlatTasks
-                .Where(t => IsStoryNode(t) && t.Model.PercentComplete > 0)
+                .Where(StoryCountsForSummary)
                 .SelectMany(t => ChargeableAllocations(t.Model).Select(a => a.Resource))
                 .Where(n => !string.IsNullOrWhiteSpace(n) && !known.Contains(n))
                 .Distinct(StringComparer.OrdinalIgnoreCase);
@@ -829,7 +850,7 @@ namespace NXProject.Views
                 IsSummary
                     ? (_summarySprintHours > 0 ? $"{_summarySprintHours:0.##}" : "-")
                     : ProportionalHours(Task.Model, TaskScheduleService.GetAssignmentHours(Task.Model, Assignment), _sprint)
-                        * DecompositionFactor(Task)
+                        * _owner.DecompositionFactor(Task)
                         is var h && h > 0 ? $"{h:0.##}" : "-";
 
             public double AllocationPercent
