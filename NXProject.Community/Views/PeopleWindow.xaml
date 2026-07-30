@@ -50,6 +50,10 @@
                     Click="OnLoadCostConfigClick" Visibility="Collapsed"
                     Background="#0D47A1" Foreground="White"
                     ToolTip="{DynamicResource People_LoadCostTip}"/>
+            <CheckBox x:Name="IncludePlannedBox" Content="{DynamicResource Delay_IncludePlanned}"
+                      VerticalAlignment="Center" Margin="16,0,0,0" FontSize="12"
+                      ToolTip="{DynamicResource People_IncludePlannedTip}"
+                      Checked="OnIncludePlannedChanged" Unchecked="OnIncludePlannedChanged"/>
             <TextBlock Text="{DynamicResource People_FilterTeam}" VerticalAlignment="Center"
                        Margin="16,0,6,0" FontSize="12" Foreground="#555"/>
             <ComboBox x:Name="TeamFilterCombo" Width="180" Height="28" VerticalContentAlignment="Center"
@@ -223,6 +227,37 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
+
+                <!-- % Capacidade usada (HH restante / capacidade até o fim das atividades) -->
+                <DataGridTemplateColumn Header="{DynamicResource People_ColLoad}" Width="150" IsReadOnly="True"
+                                        SortMemberPath="LoadPercent">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Grid ToolTip="{Binding LoadTooltip}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="52"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding LoadText}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"
+                                           Margin="0,0,6,0"
+                                           Foreground="{Binding LoadColor}"/>
+                                <Border Grid.Column="1" Height="8" CornerRadius="3"
+                                        Background="#E0E0E0" VerticalAlignment="Center"
+                                        Margin="0,0,8,0">
+                                    <Border CornerRadius="3"
+                                            HorizontalAlignment="Left"
+                                            Height="8"
+                                            Width="{Binding LoadBarWidth}"
+                                            Background="{Binding LoadColor}"/>
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
 
                 <!-- Importado TFS -->
                 <DataGridCheckBoxColumn Header="TFS" Width="46"

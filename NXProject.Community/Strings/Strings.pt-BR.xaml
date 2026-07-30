@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
@@ -139,6 +139,9 @@
     <sys:String x:Key="TaskPlan_CapMerge">Merge</sys:String>
     <sys:String x:Key="TaskPlan_CapApply">Aplicar</sys:String>
     <sys:String x:Key="TaskPlan_CapClear">Limpar filtro</sys:String>
+    <sys:String x:Key="TaskPlan_CapReapply">Reaplicar filtro</sys:String>
+    <sys:String x:Key="TaskPlan_ReapplyFilterTip">Reaplica o filtro atual às linhas novas: as que não casarem com ele deixam de aparecer.</sys:String>
+    <sys:String x:Key="TaskPlan_NewRowsExempt">linhas novas visíveis (use Reaplicar filtro)</sys:String>
     <sys:String x:Key="TaskPlan_CapSaveFilter">Salvar filtro</sys:String>
     <sys:String x:Key="TaskPlan_CapSaveSelTfs">Gravar sel. TFS</sys:String>
     <sys:String x:Key="TaskPlan_SaveSelTfsTip">Grava no DevOps somente os dados da Task da linha selecionada (Task, Estimado HH, Prioridade, Responsável e Status). Exige ID Task no padrão DevOps (nnn:T) — Tasks internas (:I) não são gravadas. Datas e o restante do planejamento continuam indo pelo Sincronizar do cronograma.</sys:String>
@@ -705,6 +708,11 @@
     <sys:String x:Key="RAlloc_Refresh">Atualizar</sys:String>
     <sys:String x:Key="RAlloc_TabAllocation">Alocação</sys:String>
     <sys:String x:Key="RAlloc_TabGaps">Gaps / Linha do tempo</sys:String>
+    <sys:String x:Key="RAlloc_TabCapacity">% Ocupação</sys:String>
+    <sys:String x:Key="RAlloc_CapacityHint">Ocupação = HH alocado na sprint ÷ capacidade da pessoa na sprint inteira (dias úteis × HH/dia). O HH só é distribuído de hoje em diante e o que não cabe no que resta da sprint passa para a seguinte. Acima de 100% = sprint sobrecarregada. É o mesmo % mostrado sob as horas na aba Alocação.</sys:String>
+    <sys:String x:Key="RAlloc_CapacityTip">Ocupação: {0:0.##} h alocadas para {1:0.##} h de capacidade.</sys:String>
+    <sys:String x:Key="RAlloc_CellOccupancy">{0:0.##}% ocup.</sys:String>
+    <sys:String x:Key="RAlloc_AfterDeadlineTip">⚠ Estas horas caem DEPOIS da última atividade planejada da pessoa — foram empurradas pelo transbordo e contam como carga fora do prazo.</sys:String>
     <sys:String x:Key="RAlloc_LegendActivity">Atividade</sys:String>
     <sys:String x:Key="RAlloc_LegendGap">Gap (clique para justificar)</sys:String>
     <sys:String x:Key="RAlloc_LegendGapJustified">Gap justificado</sys:String>
@@ -825,6 +833,10 @@
     <sys:String x:Key="People_ColHourly">R$/hora</sys:String>
     <sys:String x:Key="People_ColMonthly">R$/mês</sys:String>
     <sys:String x:Key="People_ColActivities">Atividades</sys:String>
+    <sys:String x:Key="People_ColLoad">% Carga até o fim</sys:String>
+    <sys:String x:Key="People_IncludePlannedTip">Conta também Stories com % = 0 e tasks New na carga (mesmo flag da tela Alocação por Sprint).</sys:String>
+    <sys:String x:Key="People_LoadNone">Sem HH restante atribuído.</sys:String>
+    <sys:String x:Key="People_LoadTip">Carga total até a última atividade (não é mensal): {0:0.##} h alocadas para {1:0.##} h de capacidade nas sprints até {2}. Saldo: {3:0.##} h. Mesma base da tela Alocação por Sprint; o HH empurrado para depois desse prazo continua contando aqui.</sys:String>
     <sys:String x:Key="People_CostConfig">⚙ Configuração de Custo</sys:String>
     <sys:String x:Key="People_InternalNotice">🔒 Recurso Interno — não possui custo de projeto.</sys:String>
     <sys:String x:Key="People_CostType">Tipo de custo</sys:String>
@@ -969,6 +981,7 @@
     <sys:String x:Key="PMap_StoriesTitle">Stories de {0}  —  {1:MMMM/yyyy}  —  {2}</sys:String>
     <sys:String x:Key="PMap_SrColType">Tipo</sys:String>
     <sys:String x:Key="PMap_SrColStoryName">Story</sys:String>
+    <sys:String x:Key="PMap_SrColResponsible">Responsável</sys:String>
     <sys:String x:Key="PMap_SrColQtdTasks">Qtd Tasks</sys:String>
     <sys:String x:Key="PMap_OpenStoryTasks">Abrir tasks</sys:String>
     <sys:String x:Key="PMap_OnlyComposition">Mostrar só as atividades que compõem estas horas — desmarque para ver todas as stories do mês</sys:String>
@@ -1326,6 +1339,18 @@
     <sys:String x:Key="Delay_BlockedSummary">{0} item(ns) em bloqueio</sys:String>
     <sys:String x:Key="Delay_NoBlocked">Nenhum item em bloqueio.</sys:String>
     <sys:String x:Key="Delay_TooltipPlanned">HH Original: {0:0.#}%</sys:String>
+    <sys:String x:Key="Delay_CurveClickTip">Clique num ponto da curva para ver as atividades planejadas daquela semana.</sys:String>
+    <sys:String x:Key="Delay_WeekPopupTitle">Planejado da semana · {0}</sys:String>
+    <sys:String x:Key="Delay_WeekPopupHeader">Atividades que compõem o planejado de {0} ({1}) — acumulado {2:0.#}%</sys:String>
+    <sys:String x:Key="Delay_WeekPopupTotal">HH planejado na semana: {0:0.#}h</sys:String>
+    <sys:String x:Key="Delay_ColHHWeek">HH semana</sys:String>
+    <sys:String x:Key="Delay_HintEpic">EPIC: {0}</sys:String>
+    <sys:String x:Key="Delay_HintFeature">Feature: {0}</sys:String>
+    <sys:String x:Key="Delay_ForecastZone">projeção (velocidade)</sys:String>
+    <sys:String x:Key="Delay_ForecastPopupHeader">Semana de projeção {0} ({1}) — atividades empurradas para cá pela velocidade histórica, por não caberem no cronograma.</sys:String>
+    <sys:String x:Key="Delay_ForecastPopupTotal">HH projetado na semana: {0:0.#}h</sys:String>
+    <sys:String x:Key="Delay_ColHHWeekForecast">HH proj.</sys:String>
+    <sys:String x:Key="Delay_WeekPopupNoPlanned">Nenhum HH planejado cai nesta semana (a curva já está no platô). A lista abaixo mostra as atividades que atravessam o período, se houver.</sys:String>
     <sys:String x:Key="Delay_TooltipActual">HH Duração: {0:0.#}%</sys:String>
     <sys:String x:Key="Delay_JustifyTitle">#{0} — {1}</sys:String>
     <sys:String x:Key="Delay_JustifyLabel">Justificativa do atraso:</sys:String>

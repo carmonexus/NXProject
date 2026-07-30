@@ -70,6 +70,10 @@
                                 SizeChanged="OnCurveCanvasSizeChanged"
                                 MouseMove="OnCurveCanvasMouseMove"
                                 MouseLeave="OnCurveCanvasMouseLeave"
+                                MouseLeftButtonUp="OnCurveCanvasMouseLeftButtonUp"
+                                Background="Transparent"
+                                Cursor="Hand"
+                                ToolTip="{DynamicResource Delay_CurveClickTip}"
                                 ClipToBounds="True">
                             <Border x:Name="CurveTooltip"
                                     Background="#F5F7FA" BorderBrush="#90A4AE" BorderThickness="1"

@@ -66,7 +66,24 @@
                 </Border>
             </TabItem>
 
-            <!-- Aba 2: linha do tempo com gaps -->
+            <!-- Aba 2: % da capacidade da pessoa usada em cada sprint -->
+            <TabItem Header="{DynamicResource RAlloc_TabCapacity}">
+                <Border BorderBrush="#D0D7E2"
+                        BorderThickness="1"
+                        Background="#FAFBFD">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource RAlloc_CapacityHint}"
+                                       FontSize="11" Foreground="#666"
+                                       Margin="8,6,8,6" TextWrapping="Wrap"/>
+                            <Grid x:Name="CapacityGrid"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </TabItem>
+
+            <!-- Aba 3: linha do tempo com gaps -->
             <TabItem Header="{DynamicResource RAlloc_TabGaps}">
                 <Grid>
                     <Grid.RowDefinitions>

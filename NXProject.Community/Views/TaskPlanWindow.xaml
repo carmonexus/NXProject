@@ -152,6 +152,16 @@
                                    HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button x:Name="ReapplyFilterBtn" Height="46" Width="52" Margin="0,0,4,2"
+                        Click="OnReapplyFilterClick"
+                        ToolTip="{DynamicResource TaskPlan_ReapplyFilterTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F501;" FontSize="14" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapReapply}" FontSize="9"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Button Height="46" Width="52" Margin="0,0,4,2" Click="OnSaveFilterClick"
                         ToolTip="{DynamicResource TaskPlan_SaveFilterTip}">
                     <StackPanel VerticalAlignment="Center">

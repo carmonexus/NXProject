@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -987,7 +987,7 @@ namespace NXProject.Views
                     AppStrings.Get("PMap_ColStory"), AppStrings.Get("PMap_SrColType"), AppStrings.Get("PMap_SrColStoryName"),
                     AppStrings.Get("PMap_SrColQtdTasks"), AppStrings.Get("PMap_SrColHHTotal"), AppStrings.Get("PMap_SrColHHMonth"),
                     AppStrings.Get("PMap_SrColPctDone"), AppStrings.Get("PMap_SrColStart"), AppStrings.Get("PMap_SrColFinish"), AppStrings.Get("PMap_SrColDevOps"),
-                    isHeader: true, devOpsUrl: null));
+                    isHeader: true, devOpsUrl: null, responsible: AppStrings.Get("PMap_SrColResponsible")));
 
                 double totalMonthHours = 0;
                 int shown = 0;
@@ -1025,7 +1025,7 @@ namespace NXProject.Views
                     Action? openTasks = (storyNode != null && (storyNode.TaskAllocations.Count > 0 || storyNode.DevopsTaskCount != 0))
                         ? () => OpenStoryTasksGrid(proj.Data, storyNode)
                         : null;
-                    panel.Children.Add(MakeStoryRow(task.Name, tipo, storyName, qtd, hh, hhMes, pct, start, fin, url != null ? "↗" : "", isHeader: false, devOpsUrl: url, onOpenTasks: openTasks));
+                    panel.Children.Add(MakeStoryRow(task.Name, tipo, storyName, qtd, hh, hhMes, pct, start, fin, url != null ? "↗" : "", isHeader: false, devOpsUrl: url, onOpenTasks: openTasks, responsible: resName));
                 }
 
                 if (shown == 0)
@@ -1071,86 +1071,13 @@ namespace NXProject.Views
             }
         }
 
+        // Renderização da linha vive em StoryListPopup (compartilhada com a Curva S).
         private static UIElement MakeStoryRow(string name, string tipo, string storyName, string qtd, string hh, string hhMes, string pct, string start, string fin,
-            string devOps, bool isHeader, string? devOpsUrl, Action? onOpenTasks = null)
-        {
-            var bg = isHeader
-                ? new SolidColorBrush(Color.FromRgb(43, 87, 154))
-                : (Brush)System.Windows.Media.Brushes.Transparent;
-            var fgColor = isHeader ? Colors.White : Color.FromRgb(30, 30, 30);
-            var fw = isHeader ? FontWeights.SemiBold : FontWeights.Normal;
-
-            var row = new Border
-            {
-                Background      = bg,
-                BorderBrush     = new SolidColorBrush(Color.FromRgb(210, 220, 240)),
-                BorderThickness = new Thickness(0, 0, 0, 1)
-            };
-            var sp = new StackPanel { Orientation = Orientation.Horizontal };
-
-            UIElement Cell(string t, double w, HorizontalAlignment ha = HorizontalAlignment.Left) => new Border
-            {
-                Width = w, Padding = new Thickness(6, 4, 6, 4),
-                Child = new TextBlock { Text = t, FontSize = 11, FontWeight = fw,
-                    Foreground = new SolidColorBrush(fgColor),
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    HorizontalAlignment = ha,
-                    VerticalAlignment = VerticalAlignment.Center, ToolTip = t }
-            };
-
-            sp.Children.Add(Cell(name, 220));
-            sp.Children.Add(Cell(tipo,  52));
-            sp.Children.Add(Cell(storyName, 200));
-            sp.Children.Add(Cell(qtd,   64, HorizontalAlignment.Right));
-            sp.Children.Add(Cell(hh,    64, HorizontalAlignment.Right));
-            sp.Children.Add(Cell(hhMes, 64, HorizontalAlignment.Right));
-            sp.Children.Add(Cell(pct,   56, HorizontalAlignment.Right));
-            sp.Children.Add(Cell(start, 72));
-            sp.Children.Add(Cell(fin, 72));
-
-            if (!isHeader)
-            {
-                if (onOpenTasks != null)
-                {
-                    var tbtn = new Button
-                    {
-                        Content   = AppStrings.Get("PMap_OpenStoryTasks"),
-                        FontSize  = 10,
-                        Padding   = new Thickness(6, 2, 6, 2),
-                        Margin    = new Thickness(4, 2, 2, 2),
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Cursor    = System.Windows.Input.Cursors.Hand
-                    };
-                    tbtn.Click += (_, _) => onOpenTasks();
-                    sp.Children.Add(tbtn);
-                }
-                if (!string.IsNullOrEmpty(devOpsUrl))
-                {
-                    var btn = new Button
-                    {
-                        Content   = "↗ DevOps",
-                        FontSize  = 10,
-                        Padding   = new Thickness(6, 2, 6, 2),
-                        Margin    = new Thickness(2, 2, 4, 2),
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Cursor    = System.Windows.Input.Cursors.Hand
-                    };
-                    btn.Click += (_, _) =>
-                    {
-                        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(devOpsUrl) { UseShellExecute = true }); }
-                        catch { }
-                    };
-                    sp.Children.Add(btn);
-                }
-            }
-            else
-            {
-                sp.Children.Add(Cell(devOps, 90));
-            }
-
-            row.Child = sp;
-            return row;
-        }
+            string devOps, bool isHeader, string? devOpsUrl, Action? onOpenTasks = null,
+            string responsible = "")
+            => StoryListPopup.MakeRow(
+                new StoryListRow(name, tipo, storyName, qtd, hh, hhMes, pct, start, fin, devOpsUrl, onOpenTasks, responsible),
+                isHeader, devOps);
 
         private static Border MakeTotalCell(double hours, double width, double height,
             bool bold = true, Color? fg = null, Color? bg = null)

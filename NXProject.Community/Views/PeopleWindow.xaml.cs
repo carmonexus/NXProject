@@ -65,15 +65,25 @@ namespace NXProject.Views
                 .SelectMany(t => t.Resources ?? new List<TaskResource>())
                 .ToList();
 
+            // Mesmo motor da Alocação por Sprint; o flag "Incluir planejado" espelha o de lá.
+            var engine  = new SprintAllocationEngine(_vm, IncludePlannedBox?.IsChecked == true);
+            var sprints = engine.BuildSprintColumns();
+
             _rows = (_vm.Project?.Resources ?? Enumerable.Empty<Resource>())
                 .Where(r => r != null)
                 .OrderBy(r => r.Name ?? string.Empty)
-                .Select(r => new PersonRow(r, CountTasks(r, assignments)))
+                .Select(r => new PersonRow(r, CountTasks(r, assignments), ComputeLoad(r, engine, sprints)))
                 .ToList();
 
             RebuildTeamFilter();
             ApplyTeamFilter();
             StatusText.Text = string.Empty;
+        }
+
+        private void OnIncludePlannedChanged(object sender, RoutedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            Refresh();
         }
 
         private bool _suppressTeamFilter;
@@ -121,6 +131,19 @@ namespace NXProject.Views
 
         private static int CountTasks(Resource r, List<TaskResource> assignments) =>
             assignments.Count(a => a.ResourceId == r.Id);
+
+        // Carga da pessoa: usa o MESMO motor da tela "Alocação por Sprint" (mesmo filtro de
+        // atividades, mesma decomposição de HH da Story e mesma capacidade por sprint). Soma as
+        // horas das sprints até a última atividade da pessoa; o que o balde empurrou para depois
+        // desse prazo volta para dentro dele, porque não há mais sprint planejada para ela.
+        private PersonLoad ComputeLoad(Resource resource, SprintAllocationEngine engine,
+                                       List<SprintColumn> sprints)
+        {
+            var load = engine.ComputeLoad(resource, sprints);
+            return new PersonLoad(load.UsedHours, load.CapacityHours, load.LastFinish);
+        }
+
+        public readonly record struct PersonLoad(double UsedHours, double CapacityHours, DateTime? LastFinish);
 
         // ── toolbar ─────────────────────────────────────────────────────────────
 
@@ -681,10 +704,11 @@ namespace NXProject.Views
                 return b2;
             }
 
-            public PersonRow(Resource r, int taskCount)
+            public PersonRow(Resource r, int taskCount, PersonLoad load)
             {
                 Resource = r;
                 TaskCount = taskCount;
+                _load = load;
                 _name = r.Name ?? string.Empty;
                 _email = r.Email ?? string.Empty;
                 _availPct = r.AvailabilityPercent;
@@ -746,6 +770,29 @@ namespace NXProject.Views
             public int TaskCount { get; }
 
             public bool IsImportedFromTfs => Resource.IsImportedFromTfs;
+
+            // ── % de capacidade usada ────────────────────────────────────────
+            private readonly PersonLoad _load;
+
+            public double LoadPercent => _load.CapacityHours > 0
+                ? _load.UsedHours / _load.CapacityHours * 100.0
+                : 0;
+
+            public string LoadText => _load.UsedHours <= 0 ? "-" : $"{LoadPercent:0}%";
+
+            public double LoadBarWidth => Math.Min(1.0, LoadPercent / 100.0) * 80;
+
+            public Brush LoadColor => LoadPercent > 100 ? BrushRed
+                                    : LoadPercent > 85  ? BrushOrange
+                                    : BrushGreen;
+
+            public string LoadTooltip => _load.UsedHours <= 0
+                ? AppStrings.Get("People_LoadNone")
+                : AppStrings.Get("People_LoadTip",
+                    _load.UsedHours,
+                    _load.CapacityHours,
+                    _load.LastFinish?.ToString("dd/MM/yy") ?? "-",
+                    _load.CapacityHours - _load.UsedHours);
 
             // Equipe: nome do Team DevOps; se vazio, a pessoa veio do cronograma.
             public string TeamDisplay => string.IsNullOrWhiteSpace(Resource.Team)

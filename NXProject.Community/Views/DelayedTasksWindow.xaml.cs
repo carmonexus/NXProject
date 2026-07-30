@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -33,6 +33,14 @@ namespace NXProject.Views
 
         // Dados pré-calculados para tooltip da curva
         private List<SprintPoint>? _curvePoints;
+        // Composição do PLANEJADO por ponto do eixo (para o drill-down ao clicar na curva):
+        // janela do balde + as atividades usadas no cálculo.
+        private List<(DateTime Start, DateTime End)>? _curveBuckets;
+        private List<TaskViewModel>? _curvePlannedTasks;
+        // Fim do cronograma (última atividade). Depois dele o eixo existe só pela projeção.
+        private DateTime _scheduleEnd = DateTime.MinValue;
+        // Atividades empurradas para cada semana de projeção pela velocidade (índice do ponto).
+        private Dictionary<int, List<(ProjectTask Task, double Hours)>>? _forecastByPoint;
         private readonly double _chartLeft   = 64;
         private readonly double _chartTop    = 20;
         private readonly double _chartRight  = 24;
@@ -433,6 +441,7 @@ namespace NXProject.Views
                 if (remainingHours > 0.01 && velPerDay > 0.01)
                     projEnd = AddWorkingDaysApprox(today, remainingHours / velPerDay);
                 var axisEnd = maxFin > projEnd ? maxFin : projEnd;
+                _scheduleEnd = maxFin;   // fim do cronograma: depois disso o eixo é só projeção
                 periods = BuildWeeklyPeriods(minStart, axisEnd);
                 currentSprintNumber = periods.FirstOrDefault(p => today >= p.Start && today <= p.End)?.Number
                                       ?? periods[^1].Number;
@@ -476,7 +485,10 @@ namespace NXProject.Views
             var pr = w - _chartRight; var pb = h - _chartBottom;
             var pw = pr - pl; var ph = pb - pt;
 
+            BuildForecastQueue(points, actualWithSprint, velPerDay, today);
+
             DrawGridAndAxes(pl, pt, pr, pb, pw, ph, points);
+            DrawForecastZone(pl, pt, pb, pw, points);
             DrawSprintBands(pl, pt, pb, pw, points, periods, sprintMarks);
             DrawCurrentSprintMarker(pl, pt, pb, pw, points, currentSprintNumber);
 
@@ -517,11 +529,95 @@ namespace NXProject.Views
             CurveSummary.Text = summary;
         }
 
+        // ── Previsão: quem é empurrado para depois do cronograma ─────────────────
+        // Distribui o HH RESTANTE nas semanas a partir de hoje, no ritmo da velocidade
+        // histórica (velPerDay). A fila segue a ordem do cronograma (fim, depois início), de
+        // modo que a lista responde "quais stories caem nesta semana projetada".
+        private void BuildForecastQueue(List<SprintPoint> points, List<TaskViewModel> actualTasks,
+                                        double velPerDay, DateTime today)
+        {
+            _forecastByPoint = new Dictionary<int, List<(ProjectTask, double)>>();
+            if (_curveBuckets == null || velPerDay <= 0.01 || !_includeRemaining) return;
+
+            // Fila do restante, na ordem em que o cronograma pretendia entregar.
+            var queue = actualTasks
+                .Select(t => (Task: t.Model, Remaining: GetTotalHours(t.Model) * (1 - PctOf(t.Model))))
+                .Where(x => x.Remaining > 0.01)
+                .OrderBy(x => x.Task.Finish).ThenBy(x => x.Task.Start)
+                .ToList();
+
+            int qi = 0;
+            double left = queue.Count > 0 ? queue[0].Remaining : 0;
+            double hpd = Math.Max(1, ProjectCalendarService.WorkingHoursPerDay);
+
+            for (int i = 0; i < points.Count && qi < queue.Count; i++)
+            {
+                if (i >= _curveBuckets.Count) break;
+                var (bs, be) = _curveBuckets[i];
+                if (bs == DateTime.MinValue || be <= today) continue;
+
+                var from = today > bs.Date ? today : bs.Date;
+                var capacity = velPerDay * (ProjectCalendarService.CountWorkingHours(from, be.Date) / hpd);
+                if (capacity <= 0.01) continue;
+
+                var rows = new List<(ProjectTask, double)>();
+                while (capacity > 0.01 && qi < queue.Count)
+                {
+                    var take = Math.Min(capacity, left);
+                    rows.Add((queue[qi].Task, take));
+                    capacity -= take;
+                    left     -= take;
+                    if (left <= 0.01 && ++qi < queue.Count) left = queue[qi].Remaining;
+                }
+
+                if (rows.Count > 0) _forecastByPoint[i] = rows;
+            }
+        }
+
+        // Sombreado das semanas posteriores ao fim do cronograma: ali o eixo existe só por
+        // causa da projeção pela velocidade.
+        private void DrawForecastZone(double pl, double pt, double pb, double pw, List<SprintPoint> points)
+        {
+            if (_scheduleEnd == DateTime.MinValue || _curveBuckets == null || points.Count < 2) return;
+
+            int firstProjected = -1;
+            for (int i = 0; i < points.Count && i < _curveBuckets.Count; i++)
+            {
+                var (bs, _) = _curveBuckets[i];
+                if (bs != DateTime.MinValue && bs.Date > _scheduleEnd.Date) { firstProjected = i; break; }
+            }
+            if (firstProjected < 0) return;
+
+            var x = pl + pw * firstProjected / Math.Max(1, points.Count - 1);
+            var band = new Rectangle
+            {
+                Width  = Math.Max(0, pl + pw - x),
+                Height = Math.Max(0, pb - pt),
+                Fill   = new SolidColorBrush(Color.FromArgb(28, 0x8E, 0x24, 0xAA)),
+                IsHitTestVisible = false
+            };
+            System.Windows.Controls.Canvas.SetLeft(band, x);
+            System.Windows.Controls.Canvas.SetTop(band, pt);
+            CurveCanvas.Children.Add(band);
+
+            var lbl = new TextBlock
+            {
+                Text       = AppStrings.Get("Delay_ForecastZone"),
+                FontSize   = 10,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x6A, 0x1B, 0x9A)),
+                IsHitTestVisible = false
+            };
+            System.Windows.Controls.Canvas.SetLeft(lbl, x + 4);
+            System.Windows.Controls.Canvas.SetTop(lbl, pt + 2);
+            CurveCanvas.Children.Add(lbl);
+        }
+
         // HH Original da tarefa; usa EstimatedHours como fallback.
         private static double GetOriginalHours(ProjectTask task) =>
-            task.OriginalEstimatedHours is > 0
-                ? task.OriginalEstimatedHours.Value
-                : TaskScheduleService.GetEffectiveDurationHours(task);
+            WithTaskSummary(task,
+                task.OriginalEstimatedHours is > 0
+                    ? task.OriginalEstimatedHours.Value
+                    : TaskScheduleService.GetEffectiveDurationHours(task));
 
         private static double GetEstimatedHours(ProjectTask task) =>
             task.EstimatedHours is > 0
@@ -541,11 +637,36 @@ namespace NXProject.Views
 
         // Duração total = HH Atual + HH Restante quando HH Atual disponível; senão EstimatedHours ou duração calculada.
         private static double GetTotalHours(ProjectTask task) =>
-            task.CurrentHours is > 0
-                ? task.CurrentHours.Value + (task.EstimatedHours ?? 0)
-                : task.EstimatedHours is > 0
-                    ? task.EstimatedHours.Value
-                    : TaskScheduleService.GetEffectiveDurationHours(task);
+            WithTaskSummary(task,
+                task.CurrentHours is > 0
+                    ? task.CurrentHours.Value + (task.EstimatedHours ?? 0)
+                    : task.EstimatedHours is > 0
+                        ? task.EstimatedHours.Value
+                        : TaskScheduleService.GetEffectiveDurationHours(task));
+
+        // O HH da Story manda; mas quando o RESUMO DE TASKS soma mais que ela (tasks abertas no
+        // DevOps que já estouram a Story), a curva usa o do resumo — é o trabalho real que existe.
+        private static double WithTaskSummary(ProjectTask task, double storyHours)
+        {
+            if (task.TaskAllocations.Count == 0) return storyHours;
+            var summary = task.TaskAllocations.Sum(a => a.Hours);
+            return summary > storyHours ? summary : storyHours;
+        }
+
+        // Responsável exibido nas listas: o recurso da Story; se ela não tem recurso próprio,
+        // o dono do resumo de tasks com mais horas.
+        private static string ResponsibleOf(ProjectTask task)
+        {
+            var own = task.Resources
+                .Select(r => r.Resource?.Name)
+                .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
+            if (!string.IsNullOrWhiteSpace(own)) return own!;
+
+            return task.TaskAllocations
+                .OrderByDescending(a => a.Hours)
+                .Select(a => a.Resource)
+                .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? "";
+        }
 
         // Conjunto base da curva: stories (ou folhas no nível da story quando não há stories).
         private List<TaskViewModel> GetCurveTasksBase()
@@ -624,6 +745,14 @@ namespace NXProject.Views
                 }
             }
 
+            // Guarda a composição para o drill-down (clique no ponto da semana).
+            _curvePlannedTasks = plannedTasks;
+            _curveBuckets = new List<(DateTime, DateTime)>();
+            for (int i = 0; i < sprints.Count; i++)
+                _curveBuckets.Add(hasDates
+                    ? (bucketStart[i], bucketEnd[i])
+                    : (sprints[i].Start, sprints[i].End));
+
             var points = new List<SprintPoint>();
             double cumPlanned  = 0;
             double cumProgress = 0;
@@ -691,8 +820,12 @@ namespace NXProject.Views
             }
 
             if (points.Count > 0 && points[0].PlannedPct > 0)
+            {
                 points.Insert(0, new SprintPoint(points[0].SprintNumber - 1, "", 0, 0, false, false,
                     hasBaseline ? 0 : -1));
+                // Ponto âncora em zero: sem balde (mantém índices alinhados com os pontos).
+                _curveBuckets.Insert(0, (DateTime.MinValue, DateTime.MinValue));
+            }
 
             return points;
         }
@@ -1093,6 +1226,161 @@ namespace NXProject.Views
 
         private void OnCurveCanvasMouseLeave(object sender, MouseEventArgs e) =>
             CurveTooltip.Visibility = Visibility.Collapsed;
+
+        // Clique na curva: lista as atividades que compõem o PLANEJADO daquela semana,
+        // na mesma grade usada pelo Mapa de Alocação ao clicar nas horas da Story.
+        private void OnCurveCanvasMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_curvePoints == null || _curvePoints.Count == 0
+                || _curveBuckets == null || _curvePlannedTasks == null) return;
+
+            var pos = e.GetPosition(CurveCanvas);
+            var pl  = _chartLeft;
+            var pw  = CurveCanvas.ActualWidth - _chartRight - pl;
+
+            int index = -1;
+            double minDist = double.MaxValue;
+            for (int i = 0; i < _curvePoints.Count; i++)
+            {
+                var cx = pl + pw * i / Math.Max(1, _curvePoints.Count - 1);
+                var dist = Math.Abs(pos.X - cx);
+                if (dist < minDist) { minDist = dist; index = i; }
+            }
+            if (index < 0 || minDist > 40 || index >= _curveBuckets.Count) return;
+
+            var (bs, be) = _curveBuckets[index];
+            if (bs == DateTime.MinValue) return;   // ponto âncora em zero
+
+            ShowPlannedWeekPopup(_curvePoints[index], bs, be, index);
+        }
+
+        private void ShowPlannedWeekPopup(SprintPoint point, DateTime bucketStart, DateTime bucketEnd, int index)
+        {
+            var opts   = TfsConnectionStore.Load();
+            var orgUrl = opts.OrganizationUrl?.TrimEnd('/') ?? "";
+            var tp     = opts.TeamProject ?? "";
+
+            var rows  = new List<StoryListRow>();
+            double totalWeek = 0;
+
+            // Semana de PROJEÇÃO (depois do fim do cronograma): mostra as atividades empurradas
+            // para cá pela velocidade, com o HH que a velocidade entrega na semana.
+            var forecast = _forecastByPoint != null && _forecastByPoint.TryGetValue(index, out var f)
+                           && bucketStart.Date > _scheduleEnd.Date
+                ? f : null;
+
+            if (forecast != null)
+            {
+                foreach (var (task, hours) in forecast)
+                {
+                    totalWeek += hours;
+                    rows.Add(BuildStoryRow(task, hours, orgUrl, tp));
+                }
+
+                var projPeriod = $"{bucketStart:dd/MM/yy} – {bucketEnd.AddDays(-1):dd/MM/yy}";
+                StoryListPopup.Show(
+                    this,
+                    AppStrings.Get("Delay_WeekPopupTitle", point.Label),
+                    AppStrings.Get("Delay_ForecastPopupHeader", point.Label, projPeriod),
+                    AppStrings.Get("Delay_ColHHWeekForecast"),
+                    rows,
+                    AppStrings.Get("Delay_ForecastPopupTotal", totalWeek));
+                return;
+            }
+
+            // Semana sem HH planejado (curva no platô): em vez de lista vazia, mostra as
+            // atividades que ATRAVESSAM a semana, com "–" na coluna de HH da semana.
+            bool anyHours = _curvePlannedTasks!.Any(t => DistributeHours(
+                GetOriginalHours(t.Model), t.Model.Start, t.Model.Finish, bucketStart, bucketEnd) > 0.01);
+
+            foreach (var t in _curvePlannedTasks!.OrderBy(t => t.Model.Start))
+            {
+                var task  = t.Model;
+                var weekH = DistributeHours(GetOriginalHours(task), task.Start, task.Finish, bucketStart, bucketEnd);
+                if (anyHours)
+                {
+                    if (weekH <= 0.01) continue;
+                }
+                else if (task.Finish.Date < bucketStart.Date || task.Start.Date >= bucketEnd.Date)
+                {
+                    continue;   // nem HH na semana, nem atividade atravessando ela
+                }
+
+                totalWeek += weekH;
+                rows.Add(BuildStoryRow(task, weekH, orgUrl, tp));
+            }
+
+            var period = $"{bucketStart:dd/MM/yy} – {bucketEnd.AddDays(-1):dd/MM/yy}";
+            var headerText = AppStrings.Get("Delay_WeekPopupHeader", point.Label, period, point.PlannedPct);
+            if (!anyHours)
+                headerText += "\n" + AppStrings.Get("Delay_WeekPopupNoPlanned");
+
+            StoryListPopup.Show(
+                this,
+                AppStrings.Get("Delay_WeekPopupTitle", point.Label),
+                headerText,
+                AppStrings.Get("Delay_ColHHWeek"),
+                rows,
+                AppStrings.Get("Delay_WeekPopupTotal", totalWeek));
+        }
+
+        // Linha da grade do popup (mesma usada pelo Mapa de Alocação).
+        private static StoryListRow BuildStoryRow(ProjectTask task, double periodHours,
+                                                  string orgUrl, string teamProject)
+        {
+            var totalH = GetOriginalHours(task);
+            string? url = task.TfsId.HasValue && !string.IsNullOrWhiteSpace(orgUrl)
+                ? $"{orgUrl}/{Uri.EscapeDataString(teamProject)}/_workitems/edit/{task.TfsId.Value}"
+                : null;
+
+            var storyNode = TfsImportService.IsStoryTypePublic(task.TfsType) ? task : FindParentStoryModel(task);
+            var tipo      = AppStrings.Get(storyNode == task ? "PMap_SrTypeStory" : "PMap_SrTypeTask");
+
+            return new StoryListRow(
+                task.Name,
+                tipo,
+                storyNode?.Name ?? task.Name,
+                task.TaskAllocations.Count > 0 ? task.TaskAllocations.Count.ToString() : "1",
+                totalH > 0.01 ? $"{totalH:0.#}h" : "–",
+                periodHours > 0.01 ? $"{periodHours:0.#}h" : "–",
+                $"{(int)Math.Round(task.PercentComplete)}%",
+                task.Start.ToString("dd/MM/yy"),
+                task.Finish.ToString("dd/MM/yy"),
+                url,
+                null,
+                ResponsibleOf(task),
+                HierarchyHint(task));
+        }
+
+        // Hint da hierarquia: EPIC e Feature acima da Story/Task, subindo pelos pais.
+        private static string HierarchyHint(ProjectTask task)
+        {
+            string? epic = null, feature = null;
+            for (var p = task.Parent; p != null; p = p.Parent)
+            {
+                var type = p.TfsType?.Trim();
+                if (feature == null && string.Equals(type, "Feature", StringComparison.OrdinalIgnoreCase))
+                    feature = p.Name;
+                else if (epic == null && string.Equals(type, "Epic", StringComparison.OrdinalIgnoreCase))
+                    epic = p.Name;
+            }
+
+            var lines = new List<string>();
+            lines.Add(AppStrings.Get("Delay_HintEpic", epic ?? "–"));
+            lines.Add(AppStrings.Get("Delay_HintFeature", feature ?? "–"));
+            return string.Join("\n", lines);
+        }
+
+        private static ProjectTask? FindParentStoryModel(ProjectTask task)
+        {
+            var p = task.Parent;
+            while (p != null)
+            {
+                if (TfsImportService.IsStoryTypePublic(p.TfsType)) return p;
+                p = p.Parent;
+            }
+            return null;
+        }
 
         // ── Clique no ID (abre editor de justificativa) ──────────────────────
 

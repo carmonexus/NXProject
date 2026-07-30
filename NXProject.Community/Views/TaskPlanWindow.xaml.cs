@@ -1604,8 +1604,50 @@ namespace NXProject.Views
 
         private void OnInitializingNewItem(object? sender, InitializingNewItemEventArgs e)
         {
-            if (_data == null || e.NewItem is not DataRowView || NumberCol == null) return;
+            if (_data == null || e.NewItem is not DataRowView view) return;
+
+            // Linha nova nasce vazia e não casaria com o filtro ativo — sumiria antes de ser
+            // preenchida. Marca a linha para ficar isenta do filtro até "Reaplicar filtro".
+            if (!string.IsNullOrEmpty(_data.Table.DefaultView.RowFilter))
+            {
+                EnsureNewRowColumn();
+                view.Row[NewRowFlagCol] = "1";
+                UpdateActiveFilterIndicator();
+            }
+
+            if (NumberCol == null) return;
             RenumberTaskPlanRows();
+        }
+
+        // ── Linhas novas isentas do filtro ────────────────────────────────────────
+        // Coluna auxiliar (prefixo __, portanto invisível na grade e ignorada ao salvar).
+        private const string NewRowFlagCol = "__newrow";
+
+        private void EnsureNewRowColumn()
+        {
+            if (_data != null && !_data.Table.Columns.Contains(NewRowFlagCol))
+                _data.Table.Columns.Add(NewRowFlagCol, typeof(string));
+        }
+
+        private bool HasExemptNewRows()
+            => _data != null
+               && _data.Table.Columns.Contains(NewRowFlagCol)
+               && _data.Table.Rows.Cast<DataRow>()
+                   .Any(r => r.RowState != DataRowState.Deleted && r[NewRowFlagCol]?.ToString() == "1");
+
+        // "Reaplicar filtro": tira a isenção das linhas novas e aplica o filtro de novo —
+        // as que não casarem com ele somem.
+        private void OnReapplyFilterClick(object sender, RoutedEventArgs e)
+        {
+            if (_data == null) return;
+            PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+            if (_data.Table.Columns.Contains(NewRowFlagCol))
+                foreach (DataRow r in _data.Table.Rows)
+                    if (r.RowState != DataRowState.Deleted)
+                        r[NewRowFlagCol] = null;
+
+            ApplyEpicFilter();
         }
 
         private void OnColumnsGenerated(object? sender, EventArgs e)
@@ -1836,7 +1878,13 @@ namespace NXProject.Views
                     parts.Add($"[{colorCol}] = '{kv.Value.Replace("'", "''")}'");
             }
 
-            _data.Table.DefaultView.RowFilter = string.Join(" AND ", parts);
+            var filter = string.Join(" AND ", parts);
+            // Linhas recém-inseridas ficam visíveis mesmo sem casar com o filtro, até o
+            // usuário clicar em "Reaplicar filtro".
+            if (filter.Length > 0 && HasExemptNewRows())
+                filter = $"({filter}) OR [{NewRowFlagCol}] = '1'";
+
+            _data.Table.DefaultView.RowFilter = filter;
             ApplyEpicColumnVisibility();
             UpdateActiveFilterIndicator();
             UpdateFilteredColumnHeaderMarkers();
@@ -1905,6 +1953,8 @@ namespace NXProject.Views
                 return;
             }
             var full = AppStrings.Get("TaskPlan_ActiveFilters", string.Join("   •   ", parts));
+            if (HasExemptNewRows())
+                full += "   •   " + AppStrings.Get("TaskPlan_NewRowsExempt");
             ActiveFilterText.Text = full;
             ActiveFilterText.ToolTip = full;
         }

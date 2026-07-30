@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
@@ -359,6 +359,9 @@
     <sys:String x:Key="TaskPlan_CapMerge">Merge</sys:String>
     <sys:String x:Key="TaskPlan_CapApply">Apply</sys:String>
     <sys:String x:Key="TaskPlan_CapClear">Clear filter</sys:String>
+    <sys:String x:Key="TaskPlan_CapReapply">Reapply filter</sys:String>
+    <sys:String x:Key="TaskPlan_ReapplyFilterTip">Reapplies the current filter to the new rows: those that do not match it stop showing.</sys:String>
+    <sys:String x:Key="TaskPlan_NewRowsExempt">new rows visible (use Reapply filter)</sys:String>
     <sys:String x:Key="TaskPlan_CapSaveFilter">Save filter</sys:String>
     <sys:String x:Key="TaskPlan_CapSaveSelTfs">Save sel. TFS</sys:String>
     <sys:String x:Key="TaskPlan_SaveSelTfsTip">Writes to DevOps only the Task data of the selected row (Task, Estimated HH, Priority, Assignee and Status). Requires a DevOps Task ID (nnn:T) — internal Tasks (:I) are not written. Dates and the rest of the planning keep syncing from the schedule.</sys:String>
@@ -918,6 +921,11 @@
     <sys:String x:Key="RAlloc_Refresh">Refresh</sys:String>
     <sys:String x:Key="RAlloc_TabAllocation">Allocation</sys:String>
     <sys:String x:Key="RAlloc_TabGaps">Gaps / Timeline</sys:String>
+    <sys:String x:Key="RAlloc_TabCapacity">% Occupancy</sys:String>
+    <sys:String x:Key="RAlloc_CapacityHint">Occupancy = hours allocated in the sprint ÷ the person's capacity for the whole sprint (working days × h/day). Hours are only spread from today on, and whatever does not fit in what is left of the sprint rolls over to the next one. Above 100% = overloaded sprint. Same % shown under the hours on the Allocation tab.</sys:String>
+    <sys:String x:Key="RAlloc_CapacityTip">Occupancy: {0:0.##} h allocated for {1:0.##} h of capacity.</sys:String>
+    <sys:String x:Key="RAlloc_CellOccupancy">{0:0.##}% occ.</sys:String>
+    <sys:String x:Key="RAlloc_AfterDeadlineTip">⚠ These hours fall AFTER the person's last planned activity — they were pushed by the rollover and count as load past the deadline.</sys:String>
     <sys:String x:Key="RAlloc_LegendActivity">Activity</sys:String>
     <sys:String x:Key="RAlloc_LegendGap">Gap (click to justify)</sys:String>
     <sys:String x:Key="RAlloc_LegendGapJustified">Justified gap</sys:String>
@@ -1038,6 +1046,10 @@
     <sys:String x:Key="People_ColHourly">R$/hour</sys:String>
     <sys:String x:Key="People_ColMonthly">R$/month</sys:String>
     <sys:String x:Key="People_ColActivities">Activities</sys:String>
+    <sys:String x:Key="People_ColLoad">% Load to finish</sys:String>
+    <sys:String x:Key="People_IncludePlannedTip">Also counts Stories at 0% and New tasks in the load (same flag as the Allocation by Sprint screen).</sys:String>
+    <sys:String x:Key="People_LoadNone">No remaining hours assigned.</sys:String>
+    <sys:String x:Key="People_LoadTip">Total load until the last activity (not monthly): {0:0.##} h allocated for {1:0.##} h of capacity across the sprints up to {2}. Balance: {3:0.##} h. Same basis as the Allocation by Sprint screen; hours pushed beyond that deadline still count here.</sys:String>
     <sys:String x:Key="People_CostConfig">⚙ Cost Configuration</sys:String>
     <sys:String x:Key="People_InternalNotice">🔒 Internal resource — has no project cost.</sys:String>
     <sys:String x:Key="People_CostType">Cost type</sys:String>
@@ -1182,6 +1194,7 @@
     <sys:String x:Key="PMap_StoriesTitle">Stories for {0}  —  {1:MMMM/yyyy}  —  {2}</sys:String>
     <sys:String x:Key="PMap_SrColType">Type</sys:String>
     <sys:String x:Key="PMap_SrColStoryName">Story</sys:String>
+    <sys:String x:Key="PMap_SrColResponsible">Owner</sys:String>
     <sys:String x:Key="PMap_SrColQtdTasks">Task Qty</sys:String>
     <sys:String x:Key="PMap_OpenStoryTasks">Open tasks</sys:String>
     <sys:String x:Key="PMap_OnlyComposition">Show only the activities that make up these hours — uncheck to see all stories in the month</sys:String>
@@ -1539,6 +1552,18 @@
     <sys:String x:Key="Delay_BlockedSummary">{0} blocked item(s)</sys:String>
     <sys:String x:Key="Delay_NoBlocked">No blocked item.</sys:String>
     <sys:String x:Key="Delay_TooltipPlanned">Original HH: {0:0.#}%</sys:String>
+    <sys:String x:Key="Delay_CurveClickTip">Click a point on the curve to see the activities planned for that week.</sys:String>
+    <sys:String x:Key="Delay_WeekPopupTitle">Planned for the week · {0}</sys:String>
+    <sys:String x:Key="Delay_WeekPopupHeader">Activities making up the plan for {0} ({1}) — cumulative {2:0.#}%</sys:String>
+    <sys:String x:Key="Delay_WeekPopupTotal">Planned HH in the week: {0:0.#}h</sys:String>
+    <sys:String x:Key="Delay_ColHHWeek">Week HH</sys:String>
+    <sys:String x:Key="Delay_HintEpic">EPIC: {0}</sys:String>
+    <sys:String x:Key="Delay_HintFeature">Feature: {0}</sys:String>
+    <sys:String x:Key="Delay_ForecastZone">forecast (velocity)</sys:String>
+    <sys:String x:Key="Delay_ForecastPopupHeader">Forecast week {0} ({1}) — activities pushed here by the historical velocity because they do not fit in the schedule.</sys:String>
+    <sys:String x:Key="Delay_ForecastPopupTotal">Forecast HH in the week: {0:0.#}h</sys:String>
+    <sys:String x:Key="Delay_ColHHWeekForecast">Fcst HH</sys:String>
+    <sys:String x:Key="Delay_WeekPopupNoPlanned">No planned hours fall in this week (the curve is already flat). The list below shows the activities crossing the period, if any.</sys:String>
     <sys:String x:Key="Delay_TooltipActual">Duration HH: {0:0.#}%</sys:String>
     <sys:String x:Key="Delay_JustifyTitle">#{0} — {1}</sys:String>
     <sys:String x:Key="Delay_JustifyLabel">Delay justification:</sys:String>

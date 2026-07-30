@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -33,6 +33,32 @@ namespace NXProject.Views
             BuildMatrix();
         }
 
+        // Motor de cálculo compartilhado com a tela Pessoas (mesma base de horas e capacidade).
+        private SprintAllocationEngine Engine => new(_vm, _includeZeroPct);
+
+        private List<SprintColumn> BuildSprintColumns() => Engine.BuildSprintColumns();
+        private List<Resource> MatrixResources() => Engine.MatrixResources();
+        private List<SprintCell> ComputeSprintCells(Resource r, List<SprintColumn> sprints)
+            => Engine.ComputeSprintCells(r, sprints);
+        private DateTime? GetLastActivityDate(Resource r) => Engine.GetLastActivityDate(r);
+        private double SummaryHoursForResource(string name, SprintColumn s)
+            => Engine.SummaryHoursForResource(name, s);
+        private bool IsChargeableNode(TaskViewModel t) => Engine.IsChargeableNode(t);
+        private bool StoryCountsForSummary(TaskViewModel t) => Engine.StoryCountsForSummary(t);
+        private IEnumerable<TaskAllocationSummary> ChargeableAllocations(ProjectTask story)
+            => Engine.ChargeableAllocations(story);
+        private double DecompositionFactor(TaskViewModel t) => Engine.DecompositionFactor(t);
+        private double StoryTaskSum(ProjectTask story) => Engine.StoryTaskSum(story);
+        private static double StoryTotalHours(ProjectTask story) => SprintAllocationEngine.StoryTotalHours(story);
+        private static bool IsStoryNode(TaskViewModel t) => SprintAllocationEngine.IsStoryNode(t);
+        private static bool IsLeafTask(TaskViewModel t) => t.Model.Children.Count == 0;
+        private static bool OverlapsWithSprint(TaskViewModel t, SprintColumn s)
+            => SprintAllocationEngine.OverlapsWithSprint(t, s);
+        private static bool BelongsToSprint(TaskViewModel t, SprintColumn s)
+            => SprintAllocationEngine.BelongsToSprint(t, s);
+        private static double ProportionalHours(ProjectTask task, double hours, SprintColumn s)
+            => SprintAllocationEngine.ProportionalHours(task, hours, s);
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public ObservableCollection<Resource> AvailableResources { get; }
@@ -45,6 +71,8 @@ namespace NXProject.Views
             BuildMatrix();
             if (_selectedResource != null && _selectedSprint != null)
                 ShowDetails(_selectedResource, _selectedSprint);
+            if (MainTabControl.SelectedIndex == 1)
+                BuildCapacityMatrix();
         }
 
         private void OnRefreshClick(object sender, RoutedEventArgs e)
@@ -53,22 +81,27 @@ namespace NXProject.Views
             if (_selectedResource != null && _selectedSprint != null)
                 ShowDetails(_selectedResource, _selectedSprint);
             if (MainTabControl.SelectedIndex == 1)
+                BuildCapacityMatrix();
+            else if (MainTabControl.SelectedIndex == 2)
                 BuildGapTimeline();
         }
 
         private void OnTabChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!IsLoaded) return;
-            var isGapTab = MainTabControl.SelectedIndex == 1;
+            var index = MainTabControl.SelectedIndex;      // 0 = Alocação, 1 = % Capacidade, 2 = Gaps
+            var showDetails = index == 0;
 
             // Colapsar/expandir também a RowDefinition — height fixa não some só com Visibility.Collapsed
             var outerGrid = (Grid)DetailsPanel.Parent;
-            outerGrid.RowDefinitions[2].Height = isGapTab
-                ? new GridLength(0)
-                : new GridLength(220);
-            DetailsPanel.Visibility = isGapTab ? Visibility.Collapsed : Visibility.Visible;
+            outerGrid.RowDefinitions[2].Height = showDetails
+                ? new GridLength(220)
+                : new GridLength(0);
+            DetailsPanel.Visibility = showDetails ? Visibility.Visible : Visibility.Collapsed;
 
-            if (isGapTab)
+            if (index == 1)
+                BuildCapacityMatrix();
+            else if (index == 2)
                 BuildGapTimeline();
         }
 
@@ -159,18 +192,7 @@ namespace NXProject.Views
             for (int i = 0; i < sprints.Count; i++)
                 AddSprintHeaderCell(sprints[i], 0, i + 2);
 
-            // Recursos = os do projeto + pessoas que só aparecem no resumo de tasks (linhas
-            // sintéticas, para que as horas das tasks apareçam para o dono da task).
-            var summaryOnly = SummaryOnlyResourceNames()
-                .Select((n, idx) => new Resource
-                {
-                    Id = -1000 - idx,
-                    Name = n,
-                    Kind = ResourceKind.Project,
-                    Type = ResourceType.Work,
-                    MaxUnitsPerDay = ProjectCalendarService.WorkingHoursPerDay
-                });
-            var resources = _vm.Project.Resources.Concat(summaryOnly).OrderBy(r => r.Name).ToList();
+            var resources = MatrixResources();
             for (int row = 0; row < resources.Count; row++)
             {
                 var resource = resources[row];
@@ -180,27 +202,113 @@ namespace NXProject.Views
                 var lastFinish = GetLastActivityDate(resource);
                 AddCell(lastFinish.HasValue ? lastFinish.Value.ToString("dd/MM/yy") : "-", row + 1, 1, false);
 
+                var cells = ComputeSprintCells(resource, sprints);
                 for (int col = 0; col < sprints.Count; col++)
                 {
-                    var sprint = sprints[col];
-                    var hours = GetAllocatedHours(resource, sprint);
-                    var allocationPercent = GetAverageAllocationPercent(resource, sprint);
-                    var capacityHours = GetSprintCapacityHours(resource, sprint, allocationPercent);
-                    var isOverAllocated = hours > capacityHours + 0.0001;
-                    AddHoursButton(resource, sprint, hours, allocationPercent, capacityHours, isOverAllocated, row + 1, col + 2);
+                    var cell = cells[col];
+                    var isOverAllocated = cell.Hours > cell.CapacityHours + 0.0001;
+                    AddHoursButton(resource, sprints[col], cell.Hours, cell.OccupancyPercent,
+                                   cell.CapacityHours, isOverAllocated, cell.AfterDeadline,
+                                   row + 1, col + 2);
                 }
             }
         }
 
-        private DateTime? GetLastActivityDate(Resource resource)
+        // Recursos das matrizes = os do projeto + pessoas que só aparecem no resumo de tasks
+        // (linhas sintéticas, para que as horas das tasks apareçam para o dono da task).
+
+        // ── Aba "% Capacidade": horas alocadas x capacidade TOTAL da pessoa na sprint ──────
+        private void BuildCapacityMatrix()
         {
-            var tasks = _vm.FlatTasks
-                .Where(t => IsChargeableNode(t)
-                         && t.Model.Resources.Any(r => r.ResourceId == resource.Id))
-                .ToList();
-            if (tasks.Count == 0) return null;
-            return tasks.Max(t => t.Model.Finish);
+            CapacityGrid.Children.Clear();
+            CapacityGrid.RowDefinitions.Clear();
+            CapacityGrid.ColumnDefinitions.Clear();
+
+            var sprints = BuildSprintColumns().ToList();
+            CapacityGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(190) });
+            foreach (var _ in sprints)
+                CapacityGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(125) });
+
+            CapacityGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(46) });
+            AddCapacityCell(AppStrings.Get("RAlloc_CellResource"), null, 0, 0, header: true);
+            for (int i = 0; i < sprints.Count; i++)
+                AddSprintHeaderCell(sprints[i], 0, i + 1, CapacityGrid);
+
+            var resources = MatrixResources();
+            for (int row = 0; row < resources.Count; row++)
+            {
+                var resource = resources[row];
+                CapacityGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(32) });
+                AddCapacityCell(resource.Name ?? "", null, row + 1, 0, header: false,
+                                align: HorizontalAlignment.Left);
+
+                var cells = ComputeSprintCells(resource, sprints);
+                for (int col = 0; col < sprints.Count; col++)
+                {
+                    var cell = cells[col];
+                    if (cell.FullCapacityHours <= 0 && cell.Hours <= 0)
+                    {
+                        AddCapacityCell("-", null, row + 1, col + 1, header: false);
+                        continue;
+                    }
+
+                    double pct = cell.OccupancyPercent ?? 0;
+                    var tip = AppStrings.Get("RAlloc_CapacityTip", cell.Hours, cell.FullCapacityHours);
+                    if (cell.AfterDeadline)
+                        tip += " " + AppStrings.Get("RAlloc_AfterDeadlineTip");
+
+                    AddCapacityCell(
+                        cell.Hours > 0 ? (cell.AfterDeadline ? $"{pct:0}% ⚠" : $"{pct:0}%") : "-",
+                        tip,
+                        row + 1, col + 1, header: false, pct: cell.Hours > 0 ? pct : (double?)null);
+                }
+            }
         }
+
+        private void AddCapacityCell(
+            string text, string? tooltip, int row, int col, bool header,
+            double? pct = null, HorizontalAlignment align = HorizontalAlignment.Center)
+        {
+            var background = header
+                ? new SolidColorBrush(Color.FromRgb(235, 239, 246))
+                : pct switch
+                {
+                    > 100.0001 => new SolidColorBrush(Color.FromRgb(253, 231, 233)), // vermelho claro
+                    > 85       => new SolidColorBrush(Color.FromRgb(255, 244, 226)), // laranja claro
+                    > 0        => new SolidColorBrush(Color.FromRgb(233, 243, 253)), // azul claro
+                    _          => Brushes.White
+                };
+
+            var foreground = pct switch
+            {
+                > 100.0001 => new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28)),
+                > 85       => new SolidColorBrush(Color.FromRgb(0xE6, 0x7E, 0x00)),
+                _          => new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33))
+            };
+
+            var border = new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(219, 225, 234)),
+                BorderThickness = new Thickness(0, 0, 1, 1),
+                Background = background,
+                ToolTip = tooltip,
+                Child = new TextBlock
+                {
+                    Text = text,
+                    FontWeight = header || pct > 100.0001 ? FontWeights.SemiBold : FontWeights.Normal,
+                    Foreground = foreground,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = align,
+                    Margin = new Thickness(8, 0, 8, 0)
+                }
+            };
+
+            Grid.SetRow(border, row);
+            Grid.SetColumn(border, col);
+            CapacityGrid.Children.Add(border);
+        }
+
 
         private void AddCell(
             string text,
@@ -232,7 +340,7 @@ namespace NXProject.Views
             AllocationGrid.Children.Add(border);
         }
 
-        private void AddSprintHeaderCell(SprintColumn sprint, int row, int col)
+        private void AddSprintHeaderCell(SprintColumn sprint, int row, int col, Grid? target = null)
         {
             var hasDates = sprint.Start != default && sprint.End != default;
             var content = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -263,7 +371,7 @@ namespace NXProject.Views
             };
             Grid.SetRow(border, row);
             Grid.SetColumn(border, col);
-            AllocationGrid.Children.Add(border);
+            (target ?? AllocationGrid).Children.Add(border);
         }
 
         private void AddResourceNameCell(Resource resource, int row)
@@ -329,9 +437,10 @@ namespace NXProject.Views
             Resource resource,
             SprintColumn sprint,
             double hours,
-            double? allocationPercent,
+            double? occupancyPercent,
             double capacityHours,
             bool isOverAllocated,
+            bool afterDeadline,
             int row,
             int col)
         {
@@ -346,13 +455,13 @@ namespace NXProject.Views
                         {
                             new TextBlock
                             {
-                                Text = $"{hours:0.##} h",
+                                Text = afterDeadline ? $"{hours:0.##} h ⚠" : $"{hours:0.##} h",
                                 HorizontalAlignment = HorizontalAlignment.Center,
                                 Foreground = isOverAllocated ? overAllocatedForeground : normalForeground
                             },
                             new TextBlock
                             {
-                                Text = $"{allocationPercent ?? 0:0.##}%",
+                                Text = AppStrings.Get("RAlloc_CellOccupancy", occupancyPercent ?? 0),
                                 FontSize = 10,
                                 HorizontalAlignment = HorizontalAlignment.Center,
                                 Foreground = normalForeground
@@ -374,9 +483,10 @@ namespace NXProject.Views
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 ToolTip = hours > 0
-                    ? isOverAllocated
+                    ? (isOverAllocated
                         ? AppStrings.Get("RAlloc_Overallocated", hours, capacityHours)
-                        : AppStrings.Get("RAlloc_ViewActivities", hours, capacityHours)
+                        : AppStrings.Get("RAlloc_ViewActivities", hours, capacityHours))
+                      + (afterDeadline ? " " + AppStrings.Get("RAlloc_AfterDeadlineTip") : "")
                     : AppStrings.Get("RAlloc_NoActivities")
             };
             button.Click += OnHoursCellClick;
@@ -490,244 +600,10 @@ namespace NXProject.Views
                 ShowDetails(_selectedResource, _selectedSprint);
         }
 
-        private double GetAllocatedHours(Resource resource, SprintColumn sprint)
-        {
-            var hasDates = sprint.Start != default && sprint.End != default;
-            double assigned = _vm.FlatTasks
-                .Where(t => IsChargeableNode(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
-                .SelectMany(t => t.Model.Resources
-                    .Where(r => r.ResourceId == resource.Id)
-                    .Select(r => (hasDates
-                        ? ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint)
-                        : TaskScheduleService.GetAssignmentHours(t.Model, r)) * DecompositionFactor(t)))
-                .Sum();
-            // + horas das tasks (resumo) onde esta pessoa é dona da task.
-            return assigned + SummaryHoursForResource(resource.Name ?? "", sprint);
-        }
-
-        private double? GetAverageAllocationPercent(Resource resource, SprintColumn sprint)
-        {
-            var hasDates = sprint.Start != default && sprint.End != default;
-            var assignments = _vm.FlatTasks
-                .Where(t => IsChargeableNode(t) && (hasDates ? OverlapsWithSprint(t, sprint) : BelongsToSprint(t, sprint)))
-                .SelectMany(t => t.Model.Resources
-                    .Where(r => r.ResourceId == resource.Id)
-                    .Select(r => new
-                    {
-                        Hours = (hasDates
-                            ? ProportionalHours(t.Model, TaskScheduleService.GetAssignmentHours(t.Model, r), sprint)
-                            : TaskScheduleService.GetAssignmentHours(t.Model, r)) * DecompositionFactor(t),
-                        Percent = TaskScheduleService.NormalizeAllocationPercent(r.AllocationPercent)
-                    }))
-                .Where(a => a.Hours > 0)
-                .ToList();
-
-            if (assignments.Count == 0)
-                return null;
-
-            var totalHours = assignments.Sum(a => a.Hours);
-            return totalHours > 0
-                ? assignments.Sum(a => a.Percent * a.Hours) / totalHours
-                : assignments.Average(a => a.Percent);
-        }
-
-        // Fracção das horas da atividade que cai dentro da janela da sprint.
-        private static double ProportionalHours(Models.ProjectTask task, double totalHours, SprintColumn sprint)
-        {
-            if (totalHours <= 0) return 0;
-            var taskStart      = task.Start.Date;
-            var taskFinishEx   = task.Finish.Date.AddDays(1); // fim exclusivo
-            var sprintEndEx    = sprint.End.Date.AddDays(1);  // fim exclusivo
-
-            var taskWorkingHours = ProjectCalendarService.CountWorkingHours(taskStart, taskFinishEx);
-            if (taskWorkingHours <= 0) return totalHours;
-
-            var overlapStart = taskStart     > sprint.Start ? taskStart    : sprint.Start;
-            var overlapEnd   = taskFinishEx  < sprintEndEx  ? taskFinishEx : sprintEndEx;
-            if (overlapEnd <= overlapStart) return 0;
-
-            var overlapHours = ProjectCalendarService.CountWorkingHours(overlapStart, overlapEnd);
-            return totalHours * (overlapHours / taskWorkingHours);
-        }
-
-        private double GetSprintCapacityHours(Resource resource, SprintColumn sprint, double? allocationPercent)
-        {
-            var fullCapacityHours = sprint.CapacityHours > 0
-                ? sprint.CapacityHours * Math.Max(0.0, resource.MaxUnitsPerDay) / ProjectCalendarService.WorkingHoursPerDay
-                : Math.Max(1, _vm.Project.SprintDurationDays) * Math.Max(0.0, resource.MaxUnitsPerDay);
-
-            return fullCapacityHours * (allocationPercent ?? 100.0) / 100.0;
-        }
-
-        private static bool OverlapsWithSprint(TaskViewModel task, SprintColumn sprint)
-        {
-            var s = task.Model.Start.Date;
-            var f = task.Model.Finish.Date;
-            return s <= sprint.End && f >= sprint.Start;
-        }
-
-        private static bool BelongsToSprint(TaskViewModel task, SprintColumn sprint)
-        {
-            if (sprint.Path != null)
-                return string.Equals(task.Model.TfsIterationPath, sprint.Path, StringComparison.OrdinalIgnoreCase);
-            return task.SprintNumber == sprint.Number;
-        }
-
-        private static bool IsLeafTask(TaskViewModel task) =>
-            task.Model.Children.Count == 0;
-
-        // ── Decomposição do HH da Story entre os recursos ─────────────────────
-        // O total por Story = HH da Story. O responsável fica com o RESTANTE (HH da Story −
-        // soma das Tasks); cada Task credita seu HH ao seu recurso. Se as Tasks estouram o HH
-        // da Story, aplica fator proporcional (trava). Como a distribuição por sprint é linear
-        // nas horas, basta multiplicar as horas da atribuição por este fator.
-        private static bool IsStoryNode(TaskViewModel t) => TfsImportService.IsStoryTypePublic(t.Model.TfsType);
-
-        // Conta a Story (com % conclusão > 0, ou qualquer % quando o flag "planejado" está ligado)
-        // e as folhas Active/Closed (ou New quando ligado); ignora resumos Epic/Feature.
-        private bool IsChargeableNode(TaskViewModel t) =>
-            IsStoryNode(t)
-                ? (_includeZeroPct || t.Model.PercentComplete > 0)
-                : t.Model.Children.Count == 0 && CountsState(t.Model.TfsState);
-
-        // Resumos de task que contam: Active/Closed (ou legado sem estado); com o flag, também New.
-        private IEnumerable<TaskAllocationSummary> ChargeableAllocations(ProjectTask story)
-            => story.TaskAllocations.Where(a => CountsState(a.State));
-
-        // Story entra no cálculo do resumo quando tem % > 0 (ou qualquer % com o flag ligado).
-        private bool StoryCountsForSummary(TaskViewModel t)
-            => IsStoryNode(t) && (_includeZeroPct || t.Model.PercentComplete > 0);
-
-        // Estados que contam: Active/Closed/legado; com o flag "planejado", também "New".
-        private bool CountsState(string? state)
-            => TfsImportService.AllocationCountsState(state)
-               || (_includeZeroPct && TfsImportService.NormalizeTaskState(state) == "New");
-
-        private static ProjectTask? FindParentStory(ProjectTask task)
-        {
-            var p = task.Parent;
-            while (p != null)
-            {
-                if (TfsImportService.IsStoryTypePublic(p.TfsType)) return p;
-                p = p.Parent;
-            }
-            return null;
-        }
-
-        // Base da decomposição = HH TOTAL da Story (atual + restante). Usa o resumo de tasks
-        // (TaskAllocations) quando presente; senão cai nas Tasks filhas carregadas (legado).
-        private static double StoryTotalHours(ProjectTask story)
-            => story.Resources.Sum(r => TaskScheduleService.GetAssignmentCurrentHours(story, r)
-                                      + TaskScheduleService.GetAssignmentRemainingHours(story, r));
-
-        private double StoryTaskSum(ProjectTask story)
-        {
-            if (story.TaskAllocations.Count > 0)
-                return ChargeableAllocations(story).Sum(a => a.Hours);
-            double sum = 0;
-            foreach (var leaf in GetLeafTasksModel(story.Children))
-                foreach (var r in leaf.Resources)
-                    sum += TaskScheduleService.GetAssignmentCurrentHours(leaf, r)
-                         + TaskScheduleService.GetAssignmentRemainingHours(leaf, r);
-            return sum;
-        }
-
-        private static IEnumerable<ProjectTask> GetLeafTasksModel(IEnumerable<ProjectTask> tasks)
-        {
-            foreach (var t in tasks)
-            {
-                if (t.Children.Count == 0) yield return t;
-                else foreach (var c in GetLeafTasksModel(t.Children)) yield return c;
-            }
-        }
-
-        // Fator (0..1) que a atribuição do RESPONSÁVEL contribui após decompor o HH da Story.
-        private double DecompositionFactor(TaskViewModel t)
-        {
-            if (IsStoryNode(t))
-                return TaskScheduleService.StoryResponsibleFactor(
-                    StoryTotalHours(t.Model), StoryTaskSum(t.Model));
-            var story = FindParentStory(t.Model);
-            if (story == null) return 1.0;
-            return TaskScheduleService.StoryTaskCutFactor(
-                StoryTotalHours(story), StoryTaskSum(story));
-        }
-
-        // Horas das PESSOAS DAS TASKS (resumo) para um recurso, numa sprint — distribuídas na
-        // janela da Story pela mesma proporção usada nas atribuições.
-        private double SummaryHoursForResource(string resourceName, SprintColumn sprint)
-        {
-            if (string.IsNullOrWhiteSpace(resourceName)) return 0;
-            bool hasDates = sprint.Start != default && sprint.End != default;
-            double total = 0;
-            foreach (var t in _vm.FlatTasks)
-            {
-                if (!StoryCountsForSummary(t) || t.Model.TaskAllocations.Count == 0) continue;
-                if (hasDates ? !OverlapsWithSprint(t, sprint) : !BelongsToSprint(t, sprint)) continue;
-                double cut = TaskScheduleService.StoryTaskCutFactor(StoryTotalHours(t.Model), StoryTaskSum(t.Model));
-                foreach (var a in ChargeableAllocations(t.Model))
-                    if (string.Equals(a.Resource, resourceName, StringComparison.OrdinalIgnoreCase))
-                        total += hasDates ? ProportionalHours(t.Model, a.Hours * cut, sprint) : a.Hours * cut;
-            }
-            return total;
-        }
-
-        // Nomes das pessoas que só aparecem no resumo de tasks (não são recursos do projeto).
-        private IEnumerable<string> SummaryOnlyResourceNames()
-        {
-            var known = new HashSet<string>(_vm.Project.Resources.Select(r => r.Name ?? ""), StringComparer.OrdinalIgnoreCase);
-            return _vm.FlatTasks
-                .Where(StoryCountsForSummary)
-                .SelectMany(t => ChargeableAllocations(t.Model).Select(a => a.Resource))
-                .Where(n => !string.IsNullOrWhiteSpace(n) && !known.Contains(n))
-                .Distinct(StringComparer.OrdinalIgnoreCase);
-        }
-
-        private System.Collections.Generic.IEnumerable<SprintColumn> BuildSprintColumns()
-        {
-            if (_vm.Project.Sprints.Count > 0)
-            {
-                foreach (var sprint in _vm.Project.Sprints.OrderBy(s => s.Number).ThenBy(s => s.Start))
-                {
-                    var sprintStart = sprint.Start;
-                    var sprintEnd   = sprint.End > sprint.Start ? sprint.End : sprint.Start.AddDays(_vm.Project.SprintDurationDays);
-                    var capacityHours = ProjectCalendarService.CountWorkingHours(sprintStart, sprintEnd);
-                    yield return new SprintColumn(
-                        sprint.Number,
-                        sprint.Path,
-                        string.IsNullOrWhiteSpace(sprint.Name) ? $"Sprint {sprint.Number}" : sprint.Name,
-                        capacityHours,
-                        sprintStart,
-                        sprintEnd);
-                }
-                yield break;
-            }
-
-            // Sprints sem datas: estima pela data de início do projeto + duração por sprint.
-            var projectStart = _vm.Project.StartDate == default ? DateTime.Today : _vm.Project.StartDate;
-            var durationDays = Math.Max(1, _vm.Project.SprintDurationDays);
-            foreach (var number in _vm.FlatTasks
-                         .Where(t => t.SprintNumber > 0)
-                         .Select(t => t.SprintNumber)
-                         .Distinct()
-                         .OrderBy(n => n))
-            {
-                var sprintStart = projectStart.AddDays((number - 1) * durationDays);
-                var sprintEnd   = sprintStart.AddDays(durationDays);
-                yield return new SprintColumn(
-                    number,
-                    null,
-                    $"Sprint {number}",
-                    durationDays * ProjectCalendarService.WorkingHoursPerDay,
-                    sprintStart,
-                    sprintEnd);
-            }
-        }
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-        internal sealed record SprintColumn(int Number, string? Path, string Header, double CapacityHours, DateTime Start, DateTime End);
 
         private void OnDetailsResourceComboDropDownClosed(object? sender, EventArgs e)
         {

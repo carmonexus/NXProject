@@ -547,15 +547,13 @@
                     ToolTip="{DynamicResource Main_LoadTaskToDoTip}">
                 <Viewbox Width="16" Height="16">
                     <Canvas Width="18" Height="18">
-                        <!-- ícone: seta para baixo (carregar) + checklist ToDo -->
-                        <Rectangle Canvas.Left="6" Canvas.Top="1" Width="11" Height="16" RadiusX="1" RadiusY="1"
-                                   Stroke="#00695C" StrokeThickness="1.5" Fill="White"/>
-                        <Line X1="8.5" Y1="5"  X2="15" Y2="5"  Stroke="#00695C" StrokeThickness="1.2"/>
-                        <Line X1="8.5" Y1="8"  X2="15" Y2="8"  Stroke="#00695C" StrokeThickness="1.2"/>
-                        <Line X1="8.5" Y1="11" X2="12" Y2="11" Stroke="#00695C" StrokeThickness="1.2"/>
-                        <!-- seta de download -->
-                        <Line X1="3" Y1="3" X2="3" Y2="11" Stroke="#0277BD" StrokeThickness="1.8"/>
-                        <Polyline Points="0.5,8 3,11 5.5,8" Stroke="#0277BD" StrokeThickness="1.8" Fill="Transparent"/>
+                        <!-- ícone: bandeja de entrada com seta grande descendo (silhueta bem
+                             diferente do checklist+lupa da Revisão de Tasks, ao lado) -->
+                        <Line X1="9" Y1="1" X2="9" Y2="8.5" Stroke="#0277BD" StrokeThickness="2"/>
+                        <Polyline Points="5,5 9,9.5 13,5" Stroke="#0277BD" StrokeThickness="2" Fill="Transparent"/>
+                        <Polyline Points="1.5,11 1.5,16 16.5,16 16.5,11"
+                                  Stroke="#00695C" StrokeThickness="1.8" Fill="Transparent"/>
+                        <Line X1="1.5" Y1="12.5" X2="16.5" Y2="12.5" Stroke="#00695C" StrokeThickness="1.5"/>
                     </Canvas>
                 </Viewbox>
             </Button>
