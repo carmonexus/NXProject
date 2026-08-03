@@ -258,6 +258,12 @@
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
 
+                <!-- Aprovada (campo configurável do DevOps; sincronizar oficializa) -->
+                <DataGridCheckBoxColumn x:Name="ApprovedColumn" Width="70"
+                    Header="{DynamicResource TLR_ColApproved}"
+                    Binding="{Binding Approved, UpdateSourceTrigger=PropertyChanged}"
+                    Visibility="Collapsed"/>
+
                 <!-- Prioridade (editável) -->
                 <DataGridTextColumn Header="{DynamicResource TLR_ColPri}" Width="45"
                     Binding="{Binding Priority, UpdateSourceTrigger=LostFocus}">

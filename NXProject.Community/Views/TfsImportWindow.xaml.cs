@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -197,6 +197,7 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
+                if (TfsErrorDialog.IsAuthError(ex)) { TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionImport"), ex); return; }
                 MessageBox.Show(this, ex.Message, AppStrings.Get("Imp_ErrorTitle"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }

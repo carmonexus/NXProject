@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -58,6 +58,9 @@ namespace NXProject.Views
             FinishFieldBox.Text = saved.FinishFieldName;
             PercAlocFieldBox.Text = saved.PercAlocFieldName;
             PercConclusaoFieldBox.Text = saved.PercConclusaoFieldName;
+            ApprovedFieldEnabledBox.IsChecked = saved.ApprovedFieldEnabled;
+            ApprovedFieldBox.Text = string.IsNullOrWhiteSpace(saved.ApprovedFieldName) ? "Aprovado" : saved.ApprovedFieldName;
+            ApprovedFieldBox.IsEnabled = saved.ApprovedFieldEnabled;
             SyncVersionFieldBox.Text = saved.SyncVersionFieldName;
             SyncNameFieldBox.Text = saved.SyncNameFieldName;
             FixedStartTagBox.Text = saved.FixedStartTagName;
@@ -102,6 +105,13 @@ namespace NXProject.Views
                 _devOpsProjectListPath = saved.DevOpsProjectListPath;
                 ListPathLabel.Text = _devOpsProjectListPath;
             }
+        }
+
+        // O nome do campo de aprovação só é editável com a leitura habilitada.
+        private void OnApprovedFieldEnabledChanged(object sender, RoutedEventArgs e)
+        {
+            if (ApprovedFieldBox == null) return;
+            ApprovedFieldBox.IsEnabled = ApprovedFieldEnabledBox.IsChecked == true;
         }
 
         private void OnManageListClick(object sender, RoutedEventArgs e)
@@ -208,6 +218,8 @@ namespace NXProject.Views
             FinishFieldName     = string.IsNullOrWhiteSpace(FinishFieldBox.Text)    ? "Data_Fim"      : FinishFieldBox.Text.Trim(),
             PercAlocFieldName   = string.IsNullOrWhiteSpace(PercAlocFieldBox.Text)  ? "Perc_Alocacao" : PercAlocFieldBox.Text.Trim(),
             PercConclusaoFieldName = string.IsNullOrWhiteSpace(PercConclusaoFieldBox.Text) ? "Perc_Conclusao" : PercConclusaoFieldBox.Text.Trim(),
+            ApprovedFieldEnabled = ApprovedFieldEnabledBox.IsChecked == true,
+            ApprovedFieldName = string.IsNullOrWhiteSpace(ApprovedFieldBox.Text) ? "Aprovado" : ApprovedFieldBox.Text.Trim(),
             SyncVersionFieldName = string.IsNullOrWhiteSpace(SyncVersionFieldBox.Text) ? "Sync_version" : SyncVersionFieldBox.Text.Trim(),
             SyncNameFieldName   = string.IsNullOrWhiteSpace(SyncNameFieldBox.Text)   ? "Sync_Name"    : SyncNameFieldBox.Text.Trim(),
             FixedStartTagName   = string.IsNullOrWhiteSpace(FixedStartTagBox.Text)  ? "DT-INI-NEG"   : FixedStartTagBox.Text.Trim(),

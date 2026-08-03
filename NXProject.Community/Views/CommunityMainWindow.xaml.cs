@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -754,7 +754,7 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao buscar Tasks no DevOps:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionLoadTasks"), ex);
             }
         }
 
@@ -1415,7 +1415,7 @@ namespace NXProject.Views
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Erro ao excluir no DevOps:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                    TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionDelete"), ex);
                     return;
                 }
             }
@@ -1554,9 +1554,7 @@ namespace NXProject.Views
             catch (Exception ex)
             {
                 System.Windows.Input.Mouse.OverrideCursor = null;
-                MessageBox.Show(
-                    $"Erro ao sincronizar:\n{ex.Message}\n\nTipo: {ex.GetType().Name}\n\n{ex.StackTrace}",
-                    "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionSync"), ex);
                 return;
             }
             finally

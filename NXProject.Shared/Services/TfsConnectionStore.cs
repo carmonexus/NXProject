@@ -88,6 +88,18 @@ namespace NXProject.Services
         /// <summary>Campo texto que armazena o nome de quem realizou a última sincronização.</summary>
         public string SyncNameFieldName { get; set; } = "Sync_Name";
 
+        /// <summary>
+        /// Habilita a leitura do campo de aprovação da Task no DevOps para preencher a coluna
+        /// "Aprovada" do Task Plan. Desligado, a coluna segue com o padrão do NXProject.
+        /// </summary>
+        public bool ApprovedFieldEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Nome (ou reference name) do campo de aprovação da Task no DevOps — ex.: "Aprovado"
+        /// ou "Custom.Aprovado". Só é usado quando <see cref="ApprovedFieldEnabled"/> está ligado.
+        /// </summary>
+        public string ApprovedFieldName { get; set; } = "Aprovado";
+
         /// <summary>Tag DevOps que marca data de início fixada/negociada (ex.: "DT-INI-NEG").</summary>
         public string FixedStartTagName { get; set; } = "DT-INI-NEG";
 

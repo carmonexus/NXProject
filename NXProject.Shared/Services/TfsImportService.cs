@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -514,6 +514,11 @@ namespace NXProject.Services
             var percConclusaoRef = ResolveField(fieldMap, options.PercConclusaoFieldName, PercConclusaoFieldNames);
             var syncVersionRef = ResolveField(fieldMap, options.SyncVersionFieldName, new[] { "Sync_version", "SyncVersion", "Sync Version" });
             var syncNameRef    = ResolveField(fieldMap, options.SyncNameFieldName,    new[] { "Sync_Name", "SyncName", "Sync Name" });
+            // Campo de aprovação da Task (opcional): a sincronização OFICIALIZA a aprovação —
+            // uma Task que chega como não aprovada sai daqui aprovada.
+            var approvedRef = options.ApprovedFieldEnabled && !string.IsNullOrWhiteSpace(options.ApprovedFieldName)
+                ? ResolveField(fieldMap, options.ApprovedFieldName, new[] { options.ApprovedFieldName })
+                : null;
 
             // Resolve refs por tipo (TypeFieldMappings sobrescreve os globais por tipo)
             string? ResolveForType(string? tfsType, Func<TypeFieldConfig, string?> getter, string? globalRef)
@@ -662,7 +667,8 @@ namespace NXProject.Services
                     realizedHoursRef: realizedHoursRef,
                     extraFields: options.ExtraCreateFields,
                     classificationFields: classFields,
-                    percConcRef: createPercConc);
+                    percConcRef: createPercConc,
+                    approvedRef: approvedRef);
                 var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
                 task.TfsId = newId;
                 task.TfsParentId = desiredParent;
@@ -786,7 +792,7 @@ namespace NXProject.Services
                         }
                         else
                         {
-                            var createOps = BuildCreateOps(task, desiredParent, orgBase, createHoursRef, createStartRef, createFinishRef, tasksById, options.SyncPredecessorLinks, createPercAloc, originalHoursRef, remainingHoursRef, realizedHoursRef, options.ExtraCreateFields, classFields, createPercConc);
+                            var createOps = BuildCreateOps(task, desiredParent, orgBase, createHoursRef, createStartRef, createFinishRef, tasksById, options.SyncPredecessorLinks, createPercAloc, originalHoursRef, remainingHoursRef, realizedHoursRef, options.ExtraCreateFields, classFields, createPercConc, approvedRef);
                             var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
                             task.TfsId = newId;
                             task.TfsParentId = desiredParent;
@@ -880,6 +886,18 @@ namespace NXProject.Services
                             ops.Add(PatchAdd($"/fields/{typePercConc}", percConc));
                             var oldC = currentConc.HasValue ? $"{currentConc.Value:0}%→" : "";
                             changes.Add($"% conclusão: {oldC}{percConc}%");
+                        }
+                    }
+
+                    // Aprovação da Task: sincronizar oficializa. Se o campo está vazio ou
+                    // "não aprovado", grava aprovado; já aprovado não gera operação.
+                    if (isTask && approvedRef != null)
+                    {
+                        var currentApproved = ReadFieldText(wi, approvedRef);
+                        if (!IsApprovedValue(currentApproved))
+                        {
+                            ops.Add(PatchAdd($"/fields/{approvedRef}", ApprovedWriteValue(wi, approvedRef)));
+                            changes.Add("aprovação");
                         }
                     }
 
@@ -1986,7 +2004,8 @@ namespace NXProject.Services
             string? realizedHoursRef = null,
             IEnumerable<ExtraWorkItemField>? extraFields = null,
             IReadOnlyList<ClassificationFieldDef>? classificationFields = null,
-            string? percConcRef = null)
+            string? percConcRef = null,
+            string? approvedRef = null)
         {
             bool isTaskCreate        = IsTaskType(task.TfsType);
             bool isEpicOrFeatureCreate = IsEpicOrFeatureType(task.TfsType);
@@ -1999,6 +2018,10 @@ namespace NXProject.Services
             // % conclusão (Perc_Conclusao) — Task também tem o campo no DevOps.
             if (percConcRef != null)
                 ops.Add(PatchAdd($"/fields/{percConcRef}", (int)Math.Round(Math.Clamp(task.PercentComplete, 0, 100))));
+
+            // Aprovação: Task criada pela sincronização já nasce aprovada.
+            if (isTaskCreate && approvedRef != null)
+                ops.Add(PatchAdd($"/fields/{approvedRef}", ApprovedTrueValue));
 
             // Campos de classificação (picklist obrigatórios na criação, ex.: Custom.Type).
             if (classificationFields != null)
@@ -3197,6 +3220,11 @@ namespace NXProject.Services
             var byKey = new Dictionary<(string Resource, string State), (double Hours, int Tasks)>();
             foreach (var t in tasks ?? Enumerable.Empty<DevOpsTaskInfo>())
             {
+                // Com o campo de aprovação habilitado na configuração TFS, Task não aprovada
+                // NÃO entra no resumo: ela só existe no planejamento (Task Plan) até ser
+                // aprovada/sincronizada. Campo desligado ou ausente → Approved == null → conta.
+                if (t.Approved != null && !IsApprovedValue(t.Approved)) continue;
+
                 var resource = !string.IsNullOrWhiteSpace(t.AssignedToDisplay) ? t.AssignedToDisplay!.Trim()
                              : !string.IsNullOrWhiteSpace(t.AssignedTo) ? t.AssignedTo!.Trim()
                              : null;
@@ -3324,6 +3352,9 @@ namespace NXProject.Services
             public DateTime? CreatedDate { get; init; }
             /// <summary>Quantidade de comentários (tramites) do work item — evita buscar o último quando é zero.</summary>
             public int CommentCount { get; init; }
+            /// <summary>Valor do campo de aprovação configurado (opcional). Null = campo desligado
+            /// na configuração TFS ou inexistente no processo do DevOps.</summary>
+            public string? Approved { get; init; }
         }
 
         /// <summary>Último comentário (discussão/tramite) do work item, em texto plano; null se não houver.</summary>
@@ -3462,8 +3493,21 @@ namespace NXProject.Services
             }
             catch { /* sem o campo, cai no cálculo por estado/horas */ }
 
+            // Campo de aprovação da Task (opcional, configurável na tela TFS/DevOps).
+            string? approvedRef = null;
+            if (options.ApprovedFieldEnabled && !string.IsNullOrWhiteSpace(options.ApprovedFieldName))
+            {
+                try
+                {
+                    var fieldMap = await LoadFieldMapCachedAsync(orgBase, auth, ct);
+                    approvedRef = ResolveField(fieldMap, options.ApprovedFieldName, new[] { options.ApprovedFieldName });
+                }
+                catch { /* campo inexistente no processo: segue sem ele */ }
+            }
+
             var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description,System.CreatedDate,System.CommentCount,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,Microsoft.VSTS.Common.StackRank,Microsoft.VSTS.Common.BacklogPriority,{ActivityRef}";
             if (percConcRef != null) fields += $",{percConcRef}";
+            if (approvedRef != null) fields += $",{approvedRef}";
             var batchUrl = $"{orgBase}/_apis/wit/workitems?ids={ids}&fields={fields}&{ApiVersion}";
             using var batchReq = new HttpRequestMessage(HttpMethod.Get, batchUrl);
             batchReq.Headers.Authorization = auth;
@@ -3533,7 +3577,17 @@ namespace NXProject.Services
                         BacklogRank = GetBacklogRank(f),
                         CreatedDate = createdDate,
                         CommentCount = f.TryGetProperty("System.CommentCount", out var ccp) && ccp.ValueKind == JsonValueKind.Number
-                            ? ccp.GetInt32() : 0
+                            ? ccp.GetInt32() : 0,
+                        Approved = approvedRef != null && f.TryGetProperty(approvedRef, out var apv)
+                            ? apv.ValueKind switch
+                            {
+                                JsonValueKind.String => apv.GetString(),
+                                JsonValueKind.True   => "Sim",
+                                JsonValueKind.False  => "Não",
+                                JsonValueKind.Number => apv.GetDouble().ToString(CultureInfo.InvariantCulture),
+                                _ => null
+                            }
+                            : null
                     });
                 }
             }
@@ -5150,6 +5204,47 @@ namespace NXProject.Services
                     return refName;
 
             return null;
+        }
+
+        // ── Campo de aprovação da Task ───────────────────────────────────────────
+        /// <summary>Valor gravado quando a sincronização oficializa a aprovação de uma Task.</summary>
+        private const string ApprovedTrueValue = "Sim";
+
+        /// <summary>Lê o campo de aprovação como texto (bool, número ou string no DevOps).</summary>
+        private static string? ReadFieldText(WorkItem item, string? refName)
+        {
+            if (refName == null || item.Fields.ValueKind != JsonValueKind.Object) return null;
+            if (!item.Fields.TryGetProperty(refName, out var el)) return null;
+
+            return el.ValueKind switch
+            {
+                JsonValueKind.String => el.GetString(),
+                JsonValueKind.True   => "true",
+                JsonValueKind.False  => "false",
+                JsonValueKind.Number => el.GetDouble().ToString(CultureInfo.InvariantCulture),
+                _ => null
+            };
+        }
+
+        /// <summary>Interpreta o valor do campo de aprovação: aprovado ou não.</summary>
+        public static bool IsApprovedValue(string? value)
+        {
+            var v = value?.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(v)) return false;
+            return v is "sim" or "yes" or "true" or "1" or "aprovado" or "aprovada" or "approved";
+        }
+
+        /// <summary>
+        /// Valor a gravar respeitando o tipo do campo no processo: boolean recebe true,
+        /// os demais recebem o texto padrão.
+        /// </summary>
+        private static object ApprovedWriteValue(WorkItem item, string refName)
+        {
+            if (item.Fields.ValueKind == JsonValueKind.Object &&
+                item.Fields.TryGetProperty(refName, out var el) &&
+                el.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                return true;
+            return ApprovedTrueValue;
         }
 
         private static double? ReadDouble(WorkItem item, string? refName)

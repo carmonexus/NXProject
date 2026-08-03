@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -462,6 +462,22 @@ namespace NXProject.Views
 
         private bool EnsureNumberColumn()   => EnsureLeadingControlColumn(NumberColumn, NumberCol, 0);
         private void EnsureApprovalColumn()   => EnsureLeadingControlColumn(ApprovalColumn, ApprovalCol, 1);
+
+        // Valor da coluna "Aprovada" para uma Task vinda do DevOps. Quando o campo de aprovação
+        // está habilitado na configuração TFS e o work item traz valor, ele manda; caso
+        // contrário mantém o padrão do NXProject (task existente no DevOps = aprovada).
+        private static string ApprovalValueFromDevOps(TfsImportService.DevOpsTaskInfo info)
+        {
+            var raw = info.Approved?.Trim();
+            if (string.IsNullOrEmpty(raw)) return "Sim";
+
+            return raw.ToLowerInvariant() switch
+            {
+                "sim" or "yes" or "true" or "1" or "approved" or "aprovado" or "aprovada" => "Sim",
+                "não" or "nao" or "no" or "false" or "0" or "rejeitado" or "reprovado"    => "Não",
+                _ => raw   // valores próprios do processo do cliente aparecem como estão
+            };
+        }
         private void EnsureRegisterDateColumn() => EnsureLeadingControlColumn(RegisterDateColumn, RegisterDateCol, 2);
 
         /// <summary>Garante uma coluna de controle fixa no início (posição de visão
@@ -1879,10 +1895,14 @@ namespace NXProject.Views
             }
 
             var filter = string.Join(" AND ", parts);
-            // Linhas recém-inseridas ficam visíveis mesmo sem casar com o filtro, até o
-            // usuário clicar em "Reaplicar filtro".
-            if (filter.Length > 0 && HasExemptNewRows())
+            // A isenção das linhas novas precisa estar no filtro ANTES da inserção: quando o
+            // usuário insere, a linha é marcada e o RowFilter em vigor já tem que aceitá-la
+            // (senão ela some ao ser comitada). Vale até clicar em "Reaplicar filtro".
+            if (filter.Length > 0)
+            {
+                EnsureNewRowColumn();
                 filter = $"({filter}) OR [{NewRowFlagCol}] = '1'";
+            }
 
             _data.Table.DefaultView.RowFilter = filter;
             ApplyEpicColumnVisibility();
@@ -2181,6 +2201,16 @@ namespace NXProject.Views
                 ApplyEpicFilter();
             };
             menu.Items.Add(clear);
+
+            // Reaplica o filtro às linhas inseridas depois dele: as que não casarem somem.
+            var reapply = new MenuItem
+            {
+                Header    = AppStrings.Get("TaskPlan_CapReapply"),
+                ToolTip   = AppStrings.Get("TaskPlan_ReapplyFilterTip"),
+                IsEnabled = HasExemptNewRows()
+            };
+            reapply.Click += (_, _) => OnReapplyFilterClick(this, new RoutedEventArgs());
+            menu.Items.Add(reapply);
 
             // Operações de coluna (tipo Excel).
             menu.Items.Add(new Separator());
@@ -3121,6 +3151,7 @@ namespace NXProject.Views
             {
                 StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
                 StatusText.Text = AppStrings.Get("TaskPlan_SelTfsError", ex.Message);
+                if (TfsErrorDialog.IsAuthError(ex)) { TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionTaskPlan"), ex); return; }
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_SelTfsError", ex.Message),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
@@ -3193,6 +3224,7 @@ namespace NXProject.Views
             {
                 StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
                 StatusText.Text = AppStrings.Get("TaskPlan_SelTfsError", ex.Message);
+                if (TfsErrorDialog.IsAuthError(ex)) { TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionTaskPlan"), ex); return; }
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_SelTfsError", ex.Message),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
@@ -3329,7 +3361,7 @@ namespace NXProject.Views
                 {
                     log.AppendLine($"    Linha {ch.RowNumber}: \"{ch.From}\" → {ch.Dev.Info.TfsId}:T \"{ch.Dev.Info.Title}\"");
                     ch.Row[idCol] = $"{ch.Dev.Info.TfsId}:T";
-                    if (ApprovalCol is { } ac) ch.Row[ac] = "Sim";
+                    if (ApprovalCol is { } ac) ch.Row[ac] = ApprovalValueFromDevOps(ch.Dev.Info);
                     if (regCol != null && ch.Dev.Info.CreatedDate is { } cd) ch.Row[regCol] = FormatRegisterDate(cd);
                     if (pctCol != null) ch.Row[pctCol] = Math.Round(ch.Dev.Info.PercentComplete).ToString("0");
                     if (prioCol != null) ch.Row[prioCol] = ch.Dev.Info.Priority.ToString();
@@ -3363,7 +3395,7 @@ namespace NXProject.Views
                     if (row == null) continue;
 
                     row[idCol] = displayId;
-                    if (ApprovalCol is { } ac) row[ac] = "Sim";
+                    if (ApprovalCol is { } ac) row[ac] = ApprovalValueFromDevOps(src.Info);
                     if (regCol != null && src.Info.CreatedDate is { } cd) row[regCol] = FormatRegisterDate(cd);
                     if (pctCol != null) row[pctCol] = Math.Round(src.Info.PercentComplete).ToString("0");
                     if (storyCol != null && string.IsNullOrWhiteSpace(row[storyCol]?.ToString())) row[storyCol] = src.Story.Name;
@@ -3404,7 +3436,7 @@ namespace NXProject.Views
                 dr[taskCol] = src.Info.Title;
                 dr[idCol] = $"{src.Info.TfsId}:T";
                 FillHierarchyIdsFromNode(dr, src.Story);
-                if (ApprovalCol is { } ac) dr[ac] = "Sim";
+                if (ApprovalCol is { } ac) dr[ac] = ApprovalValueFromDevOps(src.Info);
                 if (regCol != null) dr[regCol] = FormatRegisterDate(src.Info.CreatedDate ?? DateTime.Today);
                 if (pctCol != null) dr[pctCol] = Math.Round(src.Info.PercentComplete).ToString("0");
                 if (prioCol != null) dr[prioCol] = src.Info.Priority.ToString();
@@ -4350,16 +4382,35 @@ namespace NXProject.Views
             if (_data == null) return;
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
             PushUndo();
-            var targetRow = anchorRow ?? _ctxRow;
+            // Âncora: a linha do menu de contexto; se o clique não caiu numa célula, usa a
+            // linha selecionada — senão a inserção iria para o fim sem o usuário perceber.
+            var targetRow = anchorRow ?? _ctxRow ?? CurrentGridRow();
             var idx = targetRow != null ? _data.Table.Rows.IndexOf(targetRow) : -1;
             var newRow = _data.Table.NewRow();
+            // Com filtro ativo (inclusive filtro de cor), a linha nasce vazia e não casaria com
+            // ele: marca a isenção para continuar visível até "Reaplicar filtro".
+            if (!string.IsNullOrEmpty(_data.Table.DefaultView.RowFilter))
+            {
+                EnsureNewRowColumn();
+                newRow[NewRowFlagCol] = "1";
+            }
             if (idx < 0)
                 _data.Table.Rows.Add(newRow);
             else
                 _data.Table.Rows.InsertAt(newRow, above ? idx : idx + 1);
+            UpdateActiveFilterIndicator();
             RenumberTaskPlanRows();
             _dirty = true;
             PlanGrid.Items.Refresh();
+
+            // Leva o foco até a linha nova: com filtro ou ordenação ativa, ela pode não estar
+            // onde o usuário espera, e sem isso parece que a inserção não aconteceu.
+            var view = PlanGrid.Items.OfType<DataRowView>().FirstOrDefault(v => v.Row == newRow);
+            if (view != null)
+            {
+                PlanGrid.SelectedItem = view;
+                PlanGrid.ScrollIntoView(view);
+            }
         }
 
         private void OnInsertRowAboveClick(object sender, RoutedEventArgs e) => InsertRow(above: true);
@@ -4638,7 +4689,7 @@ namespace NXProject.Views
                     if (devTask != null)
                     {
                         dr[idCol] = $"{devTask.TfsId}:T";
-                        if (ApprovalCol is { } ac) dr[ac] = "Sim";
+                        if (ApprovalCol is { } ac) dr[ac] = ApprovalValueFromDevOps(devTask);
                         if (PercConclusaoCol is { } pcc) dr[pcc] = Math.Round(devTask.PercentComplete).ToString("0");
                         if (prioCol != null)
                             dr[prioCol] = devTask.Priority.ToString();

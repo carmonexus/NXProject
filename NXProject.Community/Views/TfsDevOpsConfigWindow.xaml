@@ -162,6 +162,27 @@
                             <TextBox x:Name="PercConclusaoFieldBox" Height="26" Padding="6,3"/>
                         </StackPanel>
                     </Grid>
+                    <!-- Campo de aprovação da Task (opcional): alimenta a coluna "Aprovada" do Task Plan -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Bottom">
+                            <CheckBox x:Name="ApprovedFieldEnabledBox"
+                                      Content="{DynamicResource Cfg_ApprovedFieldEnable}"
+                                      ToolTip="{DynamicResource Cfg_ApprovedFieldTip}"
+                                      FontSize="11" Margin="0,0,0,6"
+                                      Checked="OnApprovedFieldEnabledChanged"
+                                      Unchecked="OnApprovedFieldEnabledChanged"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="{DynamicResource Cfg_ApprovedField}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                            <TextBox x:Name="ApprovedFieldBox" Height="26" Padding="6,3" IsEnabled="False"
+                                     ToolTip="{DynamicResource Cfg_ApprovedFieldTip}"/>
+                        </StackPanel>
+                    </Grid>
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -56,6 +56,9 @@ namespace NXProject.Views
             Loaded += async (_, _) => await LoadAsync();
             Loaded += (_, _) =>
             {
+                // Coluna de aprovação só aparece com o campo habilitado na configuração TFS.
+                ApprovedColumn.Visibility = TfsConnectionStore.Load("NXProject.Community").ApprovedFieldEnabled
+                    ? Visibility.Visible : Visibility.Collapsed;
                 ReleaseButton.Visibility     = ReleaseCallback       != null ? Visibility.Visible : Visibility.Collapsed;
                 ExpandAllButton.Visibility   = AddToScheduleCallback != null ? Visibility.Visible : Visibility.Collapsed;
                 AddSelectedButton.Visibility = AddToScheduleCallback != null ? Visibility.Visible : Visibility.Collapsed;
@@ -72,7 +75,12 @@ namespace NXProject.Views
             _cascadeMode = true;
             InitializeComponent();
             Closing += OnWindowClosing;
-            Loaded += (_, _) => InitCascadeMode();
+            Loaded += (_, _) =>
+            {
+                ApprovedColumn.Visibility = TfsConnectionStore.Load("NXProject.Community").ApprovedFieldEnabled
+                    ? Visibility.Visible : Visibility.Collapsed;
+                InitCascadeMode();
+            };
         }
 
         // Fechar de qualquer forma (X, Esc, Alt+F4 ou clique em botão) libera por
@@ -183,6 +191,7 @@ namespace NXProject.Views
                         Activity          = t.Activity ?? "",
                         Tags              = t.Tags ?? "",
                         InSchedule        = inScheduleIds.Contains(t.TfsId),
+                        Approved          = TfsImportService.IsApprovedValue(t.Approved),
                     };
                     row.PropertyChanged += OnRowPropertyChanged;
                     rows.Add(row);
@@ -640,6 +649,7 @@ namespace NXProject.Views
             }
             catch (Exception ex)
             {
+                if (TfsErrorDialog.IsAuthError(ex)) { TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionTechLead"), ex); return; }
                 MessageBox.Show(AppStrings.Get("TLR_CannotOpen", ex.Message), AppStrings.Get("TLR_OpenTfsTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -1040,6 +1050,11 @@ namespace NXProject.Views
         public int Priority { get => _priority; set { if (_priority == value) return; _priority = value; OnPropertyChanged(); } }
 
         public double? BacklogRank { get; set; }
+
+        // Aprovação da Task (campo configurável do DevOps). Task criada aqui já sai aprovada;
+        // a sincronização com o TFS oficializa a aprovação de quem ainda estiver como não.
+        private bool _approved = true;
+        public bool Approved { get => _approved; set { if (_approved == value) return; _approved = value; OnPropertyChanged(); } }
 
         private string _activity = "";
         public string Activity { get => _activity; set { if (_activity == value) return; _activity = value; OnPropertyChanged(); } }

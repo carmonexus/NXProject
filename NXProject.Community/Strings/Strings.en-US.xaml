@@ -1963,4 +1963,21 @@
     <sys:String x:Key="ADO_Tip">Summary: the backlog stays in Azure DevOps; NXProject complements it with visual planning, capacity, dates and dependencies to support agile projects.</sys:String>
     <sys:String x:Key="ADO_Close">Close</sys:String>
 
+    <sys:String x:Key="Tfs_TokenExpiredTitle">DevOps/TFS token expired</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredHeader">Azure DevOps/TFS token expired or lacking permission</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredBody">The operation "{0}" was refused by Azure DevOps/TFS. The configured Personal Access Token (PAT) is expired, was revoked, or lacks the scope to read/write Work Items — DevOps answers "the work item does not exist or you do not have permission" in both cases.&#10;&#10;Create a new PAT in the portal (scope Work Items: Read &amp; Write; Identity: Read for people Discovery) and save it in the NXProject TFS/DevOps settings with the remember-token option.</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredConfigure">Configure TFS/DevOps token</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredClose">Close</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredDetails">Technical detail</sys:String>
+    <sys:String x:Key="Tfs_GenericError">Error in "{0}":&#10;{1}</sys:String>
+    <sys:String x:Key="Tfs_ActionSync">Export / Sync with TFS</sys:String>
+    <sys:String x:Key="Tfs_ActionImport">Import from TFS</sys:String>
+    <sys:String x:Key="Tfs_ActionLoadTasks">Load Tasks from DevOps</sys:String>
+    <sys:String x:Key="Tfs_ActionDelete">Delete work item in DevOps</sys:String>
+    <sys:String x:Key="Tfs_ActionTaskPlan">Read/write selection in TFS (Task Plan)</sys:String>
+    <sys:String x:Key="Tfs_ActionTechLead">Open Story tasks in DevOps</sys:String>
+    <sys:String x:Key="Cfg_ApprovedFieldEnable">Read the Task approval field from DevOps</sys:String>
+    <sys:String x:Key="Cfg_ApprovedField">Approval field (Task)</sys:String>
+    <sys:String x:Key="Cfg_ApprovedFieldTip">When enabled, Task Plan Load Task / Merge fills the "Approved" column with this work item field (e.g. Aprovado or Custom.Aprovado). When off, every Task existing in DevOps comes in as "Yes".</sys:String>
+    <sys:String x:Key="TLR_ColApproved">Approved</sys:String>
 </ResourceDictionary>

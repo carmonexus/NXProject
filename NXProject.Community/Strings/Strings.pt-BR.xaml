@@ -1961,4 +1961,21 @@
     <sys:String x:Key="PeoplePick_Add">Adicionar selecionadas</sys:String>
     <sys:String x:Key="PeoplePick_Cancel">Cancelar</sys:String>
 
+    <sys:String x:Key="Tfs_TokenExpiredTitle">Token do DevOps/TFS vencido</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredHeader">Token do Azure DevOps/TFS vencido ou sem permissão</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredBody">A operação "{0}" foi recusada pelo Azure DevOps/TFS. O Personal Access Token (PAT) configurado está vencido, foi revogado ou não tem escopo para ler/gravar Work Items — o DevOps responde "o work item não existe ou você não tem permissão" nos dois casos.&#10;&#10;Gere um novo PAT no portal (escopo Work Items: Read &amp; Write; Identity: Read para o Discovery de pessoas) e salve-o na configuração TFS/DevOps do NXProject com a opção de lembrar token.</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredConfigure">Configurar token TFS/DevOps</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredClose">Fechar</sys:String>
+    <sys:String x:Key="Tfs_TokenExpiredDetails">Detalhe técnico</sys:String>
+    <sys:String x:Key="Tfs_GenericError">Erro em "{0}":&#10;{1}</sys:String>
+    <sys:String x:Key="Tfs_ActionSync">Exportar / Sincronizar com o TFS</sys:String>
+    <sys:String x:Key="Tfs_ActionImport">Importar do TFS</sys:String>
+    <sys:String x:Key="Tfs_ActionLoadTasks">Buscar Tasks no DevOps</sys:String>
+    <sys:String x:Key="Tfs_ActionDelete">Excluir work item no DevOps</sys:String>
+    <sys:String x:Key="Tfs_ActionTaskPlan">Ler/gravar seleção no TFS (Task Plan)</sys:String>
+    <sys:String x:Key="Tfs_ActionTechLead">Abrir tasks da Story no DevOps</sys:String>
+    <sys:String x:Key="Cfg_ApprovedFieldEnable">Ler campo de aprovação da Task no DevOps</sys:String>
+    <sys:String x:Key="Cfg_ApprovedField">Campo de aprovação (Task)</sys:String>
+    <sys:String x:Key="Cfg_ApprovedFieldTip">Quando habilitado, o Load Task / Merge do Task Plan preenche a coluna "Aprovada" com o valor deste campo do work item (ex.: Aprovado ou Custom.Aprovado). Desligado, toda Task existente no DevOps entra como "Sim".</sys:String>
+    <sys:String x:Key="TLR_ColApproved">Aprovada</sys:String>
 </ResourceDictionary>
