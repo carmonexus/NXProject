@@ -73,6 +73,8 @@ namespace NXProject.Services
                     new XElement(EXT + "DevOpsProjectName", project.DevOpsProjectName ?? ""),
                     new XElement(EXT + "DevOpsRootWorkItemId", project.DevOpsRootWorkItemId),
                     new XElement(EXT + "DevOpsProjectOwner", project.DevOpsProjectOwner ?? ""),
+                    new XElement(EXT + "PepElement", project.PepElement ?? ""),
+                    new XElement(EXT + "PepProjectName", project.PepProjectName ?? ""),
                     new XElement(EXT + "DevOpsOrganizationUrl", project.DevOpsOrganizationUrl ?? ""),
                     new XElement(EXT + "DevOpsTeamProject", project.DevOpsTeamProject ?? ""),
                     new XElement(EXT + "PlanSheetPath", project.PlanSheetPath ?? ""),
@@ -356,6 +358,10 @@ namespace NXProject.Services
                 DevOpsRootWorkItemId = int.TryParse(root.Element(EXT + "DevOpsRootWorkItemId")?.Value, out var devOpsId) ? devOpsId : 0,
                 DevOpsProjectOwner = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsProjectOwner")?.Value)
                     ? null : root.Element(EXT + "DevOpsProjectOwner")!.Value,
+                PepElement = string.IsNullOrWhiteSpace(root.Element(EXT + "PepElement")?.Value)
+                    ? null : root.Element(EXT + "PepElement")!.Value,
+                PepProjectName = string.IsNullOrWhiteSpace(root.Element(EXT + "PepProjectName")?.Value)
+                    ? null : root.Element(EXT + "PepProjectName")!.Value,
                 DevOpsOrganizationUrl = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsOrganizationUrl")?.Value)
                     ? null : root.Element(EXT + "DevOpsOrganizationUrl")!.Value,
                 DevOpsTeamProject = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsTeamProject")?.Value)

@@ -17,7 +17,7 @@ namespace NXProject.Views
     public partial class ProjectAllocationMapWindow : Window
     {
         // ── Modelo interno ────────────────────────────────────────────────────
-        private sealed class LoadedProject
+        internal sealed class LoadedProject
         {
             public string  FilePath         { get; set; } = string.Empty;
             public string  Name             { get; set; } = string.Empty;
@@ -1699,6 +1699,8 @@ namespace NXProject.Views
                 BuildRateioTab();
             else if (MainTabControl.SelectedIndex == 4)
                 BuildInternalTab();
+            else if (MainTabControl.SelectedIndex == 5)
+                InitTimeSheetTab();
         }
 
         private void OnSrScrollChanged(object sender, ScrollChangedEventArgs e)

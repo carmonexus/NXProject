@@ -162,6 +162,11 @@ namespace NXProject.Services
             };
             var syncVersionRef = ResolveField(fieldMap, options.SyncVersionFieldName, new[] { "Sync_version", "SyncVersion", "Sync Version" });
             var syncNameRef    = ResolveField(fieldMap, options.SyncNameFieldName,    new[] { "Sync_Name", "SyncName", "Sync Name" });
+            // Campos do work item raiz (Project) usados no apontamento de horas.
+            var pepElementRef  = ResolveField(fieldMap, null, new[] { "Elemento_PEP", "Elemento PEP", "ElementoPEP" });
+            var pepProjectRef  = ResolveField(fieldMap, null, new[] { "Nome_Projeto_PEP", "Nome Projeto PEP", "NomeProjetoPEP" });
+            if (pepElementRef != null && !requestedFields.Contains(pepElementRef)) requestedFields.Add(pepElementRef);
+            if (pepProjectRef != null && !requestedFields.Contains(pepProjectRef)) requestedFields.Add(pepProjectRef);
 
             if (hoursRef != null) requestedFields.Add(hoursRef);
             if (remainingHoursRefImport != null && !requestedFields.Contains(remainingHoursRefImport)) requestedFields.Add(remainingHoursRefImport);
@@ -218,7 +223,9 @@ namespace NXProject.Services
                 FirstSprintNumber = 1,
                 SprintNumberingMode = "Sequencial",
                 FilePath = null,
-                DevOpsProjectOwner = string.IsNullOrWhiteSpace(rootItem.AssigneeName) ? null : rootItem.AssigneeName
+                DevOpsProjectOwner = string.IsNullOrWhiteSpace(rootItem.AssigneeName) ? null : rootItem.AssigneeName,
+                PepElement     = ReadFieldText(rootItem, pepElementRef),
+                PepProjectName = ReadFieldText(rootItem, pepProjectRef)
             };
             if (sprintDuration.HasValue)
                 project.SprintDurationDays = sprintDuration.Value;

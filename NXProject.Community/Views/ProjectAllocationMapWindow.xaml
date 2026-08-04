@@ -1,4 +1,4 @@
-<Window x:Class="NXProject.Views.ProjectAllocationMapWindow"
+﻿<Window x:Class="NXProject.Views.ProjectAllocationMapWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource PMap_Title}"
@@ -426,6 +426,140 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                     </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- Time sheet: horas/dia do recurso no mês, pelo calendário útil -->
+            <TabItem Header="{DynamicResource PMap_TabTimeSheet}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <WrapPanel Grid.Row="0" Orientation="Horizontal" Margin="6,6,6,4">
+                        <TextBlock Text="{DynamicResource PMap_TsResource}" VerticalAlignment="Center"
+                                   FontSize="11" Foreground="#555" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="TsResourceCombo" Width="220" Height="26" FontSize="11"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="OnTimeSheetFilterChanged"/>
+                        <TextBlock Text="{DynamicResource PMap_TsMonth}" VerticalAlignment="Center"
+                                   FontSize="11" Foreground="#555" Margin="14,0,6,0"/>
+                        <ComboBox x:Name="TsMonthCombo" Width="120" Height="26" FontSize="11"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="OnTimeSheetFilterChanged"/>
+                        <ComboBox x:Name="TsYearCombo" Width="80" Height="26" FontSize="11" Margin="6,0,0,0"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="OnTimeSheetFilterChanged"/>
+                        <Button x:Name="TsGenerateButton" Content="{DynamicResource PMap_TsGenerate}"
+                                Width="130" Height="26" Margin="14,0,0,0" Click="OnTimeSheetGenerateClick"
+                                Background="#2B579A" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                        <Button x:Name="TsClearButton" Content="{DynamicResource PMap_TsClear}"
+                                Width="90" Height="26" Margin="6,0,0,0" Click="OnTimeSheetClearClick" FontSize="11"/>
+                        <Button x:Name="TsExportButton" Content="{DynamicResource PMap_TsExport}"
+                                Width="150" Height="26" Margin="6,0,0,0" Click="OnTimeSheetExportClick"
+                                Background="#1B5E20" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                    </WrapPanel>
+
+                    <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="6,0,6,6">
+                        <TextBlock Text="{DynamicResource PMap_TsAttendance}" VerticalAlignment="Center"
+                                   FontSize="11" Foreground="#555" Margin="0,0,6,0"/>
+                        <TextBox x:Name="TsAttendanceBox" Width="110" Height="24" Text="Teams" FontSize="11" VerticalContentAlignment="Center"/>
+                        <CheckBox x:Name="TsFillGapsBox" IsChecked="True" FontSize="11" Margin="16,0,0,0"
+                                  VerticalAlignment="Center"
+                                  Checked="OnTimeSheetFilterChanged" Unchecked="OnTimeSheetFilterChanged"
+                                  Content="{DynamicResource PMap_TsFillGaps}"
+                                  ToolTip="{DynamicResource PMap_TsFillGapsTip}"/>
+                    </WrapPanel>
+
+                    <DataGrid x:Name="TsGrid" Grid.Row="2" Margin="6,0,6,0"
+                              AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                              GridLinesVisibility="All" HeadersVisibility="Column" RowHeight="24" FontSize="11">
+                        <!-- Negrito: atividade herdada do dia anterior (dia sem atividade no cronograma) -->
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCarriedOver}" Value="True">
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="ToolTip" Value="{DynamicResource PMap_TsCarriedTip}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColDay}" Width="80" IsReadOnly="True"
+                                                Binding="{Binding DayText}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColWeekDay}" Width="44" IsReadOnly="True"
+                                                Binding="{Binding WeekDayNumber}"/>
+                            <!-- Atividade: combo quando o dia tem opção em mais de um cronograma -->
+                            <DataGridTemplateColumn Header="{DynamicResource PMap_TsColActivity}" Width="320">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <ComboBox ItemsSource="{Binding Options}"
+                                                      SelectedItem="{Binding SelectedOption, Mode=TwoWay}"
+                                                      DisplayMemberPath="Display"
+                                                      FontSize="11" BorderThickness="0"
+                                                      Background="Transparent"
+                                                      VerticalContentAlignment="Center">
+                                                <ComboBox.Style>
+                                                    <Style TargetType="ComboBox">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasOptions}" Value="False">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ComboBox.Style>
+                                            </ComboBox>
+                                            <TextBlock Text="{Binding Activity}" VerticalAlignment="Center"
+                                                       Margin="4,0,0,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasOptions}" Value="False">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColSource}" Width="150" IsReadOnly="True"
+                                                Binding="{Binding SourceProject}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#666"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColMorningIn}"  Width="70" Binding="{Binding MorningIn}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColMorningOut}" Width="70" Binding="{Binding MorningOut}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColAfternoonIn}"  Width="70" Binding="{Binding AfternoonIn}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColAfternoonOut}" Width="70" Binding="{Binding AfternoonOut}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColTotal}" Width="60" IsReadOnly="True"
+                                                Binding="{Binding TotalText}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColDescription}" Width="240"
+                                                Binding="{Binding Description}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColCapex}" Width="180" Binding="{Binding CapexProject}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColPep}"   Width="110" Binding="{Binding PepElement}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColManager}" Width="180" Binding="{Binding Manager}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColAttendance}" Width="110" Binding="{Binding Attendance}"/>
+                            <DataGridTextColumn Header="{DynamicResource PMap_TsColNote}" Width="160" Binding="{Binding Note}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Border Grid.Row="3" Background="#EBF0FC" BorderBrush="#B4C8E6" BorderThickness="0,1,0,0"
+                            Padding="8,4" Margin="6,4,6,6">
+                        <TextBlock x:Name="TsTotalText" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="#143C8C" HorizontalAlignment="Right"/>
+                    </Border>
                 </Grid>
             </TabItem>
 

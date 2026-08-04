@@ -49,6 +49,11 @@ namespace NXProject.Models
         public int DevOpsRootWorkItemId { get; set; }
         public string? DevOpsProjectOwner { get; set; }
 
+        // Campos do work item raiz (Project) usados no apontamento de horas (time sheet):
+        // elemento PEP e o nome do projeto no PEP (Projeto Capex).
+        public string? PepElement { get; set; }
+        public string? PepProjectName { get; set; }
+
         // Organização + Team Project (API) de onde este cronograma foi importado.
         // A sincronização usa ESTES valores (o projeto aberto), não a config global,
         // para não sincronizar no projeto errado ao alternar entre cronogramas.
