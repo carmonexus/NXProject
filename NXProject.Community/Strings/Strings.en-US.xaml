@@ -2030,4 +2030,13 @@
     <sys:String x:Key="TaskPlan_ApplySelectionNotApproved">None of the selected rows is approved, so the selection cannot be applied.</sys:String>
     <sys:String x:Key="TaskPlan_MissingEpicSkipOption">Skip these EPICs and apply the rest</sys:String>
     <sys:String x:Key="TaskPlan_MissingEpicSkipHint">Rows of the listed EPICs are left out; the other Tasks are applied normally.</sys:String>
+    <sys:String x:Key="TaskPlan_CreateNeedsTask">Enter the Task name in the row before saving to TFS.</sys:String>
+    <sys:String x:Key="TaskPlan_CreateNeedsStory">The row needs a Story that already exists in DevOps (ID Story column with :T). EPIC, Feature and Story are created in DevOps; the sheet only creates Tasks.</sys:String>
+    <sys:String x:Key="TaskPlan_CreatingTask">Creating Task "{0}" in DevOps...</sys:String>
+    <sys:String x:Key="TaskPlan_CreatedTask">Task {0} created in DevOps: "{1}".</sys:String>
+    <sys:String x:Key="TaskPlan_CreateAlreadyExists">The Story already had Task {0} with that name: row linked, nothing was created.</sys:String>
+    <sys:String x:Key="TaskPlan_CreateAlreadyExistsMsg">The Story already has Task {0} named "{1}".&#10;&#10;To avoid duplicates, the row was linked to that Task instead of creating another one.</sys:String>
+    <sys:String x:Key="Cfg_OpenTokensPage">Create/renew the PAT in Azure DevOps (opens in browser)</sys:String>
+    <sys:String x:Key="Cfg_OpenTokensPageTip">Opens the Personal Access Tokens page of the organization entered above.</sys:String>
+    <sys:String x:Key="Cfg_OpenTokensNeedUrl">Enter the organization URL to open the tokens page.</sys:String>
 </ResourceDictionary>

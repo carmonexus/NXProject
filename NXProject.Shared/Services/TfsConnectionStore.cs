@@ -257,6 +257,10 @@ namespace NXProject.Services
             public string SyncVersionFieldName { get; set; } = "Sync_version";
             public string SyncNameFieldName { get; set; } = "Sync_Name";
             public string FixedStartTagName { get; set; } = "DT-INI-NEG";
+            public bool   ApprovedFieldEnabled { get; set; }
+            public string ApprovedFieldName { get; set; } = "Aprovado";
+            public bool   EpicTypeFieldEnabled { get; set; }
+            public string EpicTypeFieldName { get; set; } = "EPIC_TYPE";
             public bool SyncPredecessorLinks { get; set; } = true;
             public bool EnforceStoryCompletionWithTasks { get; set; } = true;
             public bool EnableOrgPeopleDiscovery { get; set; }
@@ -320,6 +324,12 @@ namespace NXProject.Services
                     ? options.SyncNameFieldName : stored.SyncNameFieldName.Trim();
                 options.FixedStartTagName = string.IsNullOrWhiteSpace(stored.FixedStartTagName)
                     ? options.FixedStartTagName : stored.FixedStartTagName.Trim();
+                options.ApprovedFieldEnabled = stored.ApprovedFieldEnabled;
+                options.ApprovedFieldName = string.IsNullOrWhiteSpace(stored.ApprovedFieldName)
+                    ? options.ApprovedFieldName : stored.ApprovedFieldName.Trim();
+                options.EpicTypeFieldEnabled = stored.EpicTypeFieldEnabled;
+                options.EpicTypeFieldName = string.IsNullOrWhiteSpace(stored.EpicTypeFieldName)
+                    ? options.EpicTypeFieldName : stored.EpicTypeFieldName.Trim();
                 options.SyncPredecessorLinks = stored.SyncPredecessorLinks;
                 options.EnforceStoryCompletionWithTasks = stored.EnforceStoryCompletionWithTasks;
                 options.EnableOrgPeopleDiscovery = stored.EnableOrgPeopleDiscovery;
@@ -366,6 +376,10 @@ namespace NXProject.Services
                 SyncVersionFieldName = string.IsNullOrWhiteSpace(options.SyncVersionFieldName) ? "Sync_version" : options.SyncVersionFieldName.Trim(),
                 SyncNameFieldName = string.IsNullOrWhiteSpace(options.SyncNameFieldName) ? "Sync_Name" : options.SyncNameFieldName.Trim(),
                 FixedStartTagName = string.IsNullOrWhiteSpace(options.FixedStartTagName) ? "DT-INI-NEG" : options.FixedStartTagName.Trim(),
+                ApprovedFieldEnabled = options.ApprovedFieldEnabled,
+                ApprovedFieldName = string.IsNullOrWhiteSpace(options.ApprovedFieldName) ? "Aprovado" : options.ApprovedFieldName.Trim(),
+                EpicTypeFieldEnabled = options.EpicTypeFieldEnabled,
+                EpicTypeFieldName = string.IsNullOrWhiteSpace(options.EpicTypeFieldName) ? "EPIC_TYPE" : options.EpicTypeFieldName.Trim(),
                 SyncPredecessorLinks = options.SyncPredecessorLinks,
                 EnforceStoryCompletionWithTasks = options.EnforceStoryCompletionWithTasks,
                 EnableOrgPeopleDiscovery = options.EnableOrgPeopleDiscovery,

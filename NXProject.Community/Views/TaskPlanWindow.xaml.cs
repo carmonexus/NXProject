@@ -3079,6 +3079,109 @@ namespace NXProject.Views
         }
 
         // Linha selecionada + ID Task :T (null se a ação não puder rodar; já avisa o usuário).
+        /// <summary>Linha selecionada cuja Task ainda NAO existe no DevOps (ID interno ou vazio).</summary>
+        private DataRow? SelectedRowWithoutTfsTask()
+        {
+            if (_data == null) return null;
+            PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            var row = _ctxRow ?? CurrentGridRow();
+            if (row == null) return null;
+
+            var taskId = TaskIdCol is { } idCol ? ParsePlanIdNumber(row[idCol]?.ToString(), ":T") : null;
+            return taskId is > 0 ? null : row;
+        }
+
+        /// <summary>
+        /// Cria no DevOps a Task da linha selecionada, como no Export -> Sincronizar: so Task e
+        /// criada -- EPIC, Feature e Story precisam existir. Antes de criar, confere pelo NOME se
+        /// a Story ja tem essa Task, para nao duplicar; nesse caso apenas vincula. No fim grava
+        /// o ID retornado na planilha.
+        /// </summary>
+        private async System.Threading.Tasks.Task CreateSelectedTaskInTfsAsync(DataRow row)
+        {
+            var taskCol = FindColumn("Task", "Tarefa", "Nome da Task");
+            var title   = taskCol != null ? row[taskCol]?.ToString()?.Trim() ?? "" : "";
+            if (TaskIdCol is not { } idCol || title.Length == 0)
+            {
+                TaskPlanInfo("TaskPlan_CreateNeedsTask");
+                return;
+            }
+
+            // A Story tem de existir no DevOps: a hierarquia nao e criada pela planilha.
+            var storyId = StoryIdCol is { } sic ? ParsePlanIdNumber(row[sic]?.ToString(), ":T") : null;
+            if (storyId is not > 0)
+            {
+                TaskPlanInfo("TaskPlan_CreateNeedsStory");
+                return;
+            }
+
+            var estCol    = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var prioCol   = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
+            var statusCol = FindColumn("Status", "Estado", "State");
+            var descCol   = FindColumn("Descricao da Task", "Descricao", "Description");
+
+            var assignee = ResourceCol is { } rc ? row[rc]?.ToString()?.Trim() : null;
+            var state    = statusCol != null ? row[statusCol]?.ToString()?.Trim() : null;
+            double est = -1;
+            if (estCol != null && TryParsePlanNumber(row[estCol]?.ToString(), out var h) && h >= 0) est = h;
+            int prio = 0;
+            if (prioCol != null && int.TryParse(row[prioCol]?.ToString()?.Trim(), out var p) && p > 0)
+                prio = Math.Clamp(p, 1, 4);
+
+            StatusText.Foreground = System.Windows.Media.Brushes.Green;
+            StatusText.Text = AppStrings.Get("TaskPlan_CreatingTask", title);
+            try
+            {
+                var options = TfsConnectionStore.Load("NXProject.Community");
+
+                // Duplicidade: a chave e o nome da Task dentro da Story.
+                var existing = await TfsImportService.FetchChildTasksFromDevOpsAsync(options, storyId.Value);
+                var same = existing?.FirstOrDefault(t =>
+                    string.Equals((t.Title ?? "").Trim(), title, StringComparison.OrdinalIgnoreCase));
+                if (same != null)
+                {
+                    row[idCol] = $"{same.TfsId}:T";
+                    if (ApprovalCol is { } ac) row[ac] = ApprovalTrue;
+                    _dirty = true;
+                    StatusText.Foreground = System.Windows.Media.Brushes.DarkOrange;
+                    StatusText.Text = AppStrings.Get("TaskPlan_CreateAlreadyExists", same.TfsId);
+                    MessageBox.Show(this, AppStrings.Get("TaskPlan_CreateAlreadyExistsMsg", same.TfsId, title),
+                        AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var newId = await TfsImportService.CreateChildTaskAsync(options, storyId.Value, title,
+                    assignedTo: string.IsNullOrWhiteSpace(assignee) ? null : assignee);
+
+                // Demais campos vao na sequencia (a criacao leva so titulo/pai/responsavel).
+                var descHtml = descCol != null && !string.IsNullOrWhiteSpace(row[descCol]?.ToString())
+                    ? TfsImportService.PlainTextToSimpleHtml(row[descCol]!.ToString()!.Trim())
+                    : null;
+                await TfsImportService.UpdateTaskFieldsAsync(options, newId,
+                    estimatedHours: est,
+                    completedHours: -1,
+                    priority: prio,
+                    assignedTo: null,
+                    state: string.IsNullOrWhiteSpace(state) ? null : state,
+                    title: null,
+                    descriptionHtml: descHtml);
+
+                row[idCol] = $"{newId}:T";
+                if (ApprovalCol is { } ac2) row[ac2] = ApprovalTrue;
+                _dirty = true;
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                StatusText.Text = AppStrings.Get("TaskPlan_CreatedTask", newId, title);
+            }
+            catch (Exception ex)
+            {
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = AppStrings.Get("TaskPlan_SelTfsError", ex.Message);
+                if (TfsErrorDialog.IsAuthError(ex)) { TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionTaskPlan"), ex); return; }
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_SelTfsError", ex.Message),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private (DataRow Row, int TaskId)? SelectedRowWithTfsTask()
         {
             if (_data == null) return null;
@@ -3093,6 +3196,13 @@ namespace NXProject.Views
 
         private async void OnSaveSelectedTfsClick(object sender, RoutedEventArgs e)
         {
+            // Linha ainda sem Task no DevOps (ID interno :I ou vazio): cria a Task sob a Story.
+            if (SelectedRowWithoutTfsTask() is { } pending)
+            {
+                await CreateSelectedTaskInTfsAsync(pending);
+                return;
+            }
+
             if (SelectedRowWithTfsTask() is not { } sel) return;
             var (row, taskId) = sel;
 

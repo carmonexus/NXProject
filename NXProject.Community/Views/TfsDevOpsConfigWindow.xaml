@@ -47,6 +47,14 @@
                                   Content="{DynamicResource Cfg_RememberToken}"
                                   FontSize="11" Foreground="#444" Margin="0,6,0,0"/>
 
+                        <!-- Atalho para a pagina de PAT da organizacao informada acima -->
+                        <TextBlock Margin="0,6,0,0" FontSize="11">
+                            <Hyperlink x:Name="TokensPageLink" Click="OnOpenTokensPageClick"
+                                       ToolTip="{DynamicResource Cfg_OpenTokensPageTip}">
+                                <Run Text="{DynamicResource Cfg_OpenTokensPage}"/>
+                            </Hyperlink>
+                        </TextBlock>
+
                         <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1"
                                 CornerRadius="6" Padding="10,8" Margin="0,10,0,0">
                             <StackPanel>

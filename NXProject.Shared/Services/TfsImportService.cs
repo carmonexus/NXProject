@@ -3056,6 +3056,17 @@ namespace NXProject.Services
         private static readonly Dictionary<string, Dictionary<string, string>> FieldMapCache =
             new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// Limpa os caches de metadados do DevOps (mapa e tipo de campos). Chamado quando a
+        /// configuração muda — organização, projeto ou PAT novo não devem reaproveitar nada
+        /// lido com a conexão anterior.
+        /// </summary>
+        public static void ResetMetadataCaches()
+        {
+            lock (FieldMapCache)  FieldMapCache.Clear();
+            lock (FieldTypeCache) FieldTypeCache.Clear();
+        }
+
         private static async Task<Dictionary<string, string>> LoadFieldMapCachedAsync(
             string orgBase, AuthenticationHeaderValue auth, CancellationToken ct)
         {

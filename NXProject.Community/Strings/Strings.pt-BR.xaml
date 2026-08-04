@@ -2028,4 +2028,13 @@
     <sys:String x:Key="TaskPlan_ApplySelectionNotApproved">Nenhuma das linhas selecionadas está aprovada, então a seleção não pode ser aplicada.</sys:String>
     <sys:String x:Key="TaskPlan_MissingEpicSkipOption">Desconsiderar esses EPICs e aplicar o restante</sys:String>
     <sys:String x:Key="TaskPlan_MissingEpicSkipHint">As linhas dos EPICs listados ficam de fora; as demais Tasks são aplicadas normalmente.</sys:String>
+    <sys:String x:Key="TaskPlan_CreateNeedsTask">Informe o nome da Task na linha antes de gravar no TFS.</sys:String>
+    <sys:String x:Key="TaskPlan_CreateNeedsStory">A linha precisa de uma Story ja existente no DevOps (coluna ID Story com :T). EPIC, Feature e Story sao criados no DevOps; a planilha so cria Task.</sys:String>
+    <sys:String x:Key="TaskPlan_CreatingTask">Criando a Task "{0}" no DevOps...</sys:String>
+    <sys:String x:Key="TaskPlan_CreatedTask">Task {0} criada no DevOps: "{1}".</sys:String>
+    <sys:String x:Key="TaskPlan_CreateAlreadyExists">A Story ja tinha a Task {0} com esse nome: linha vinculada, nada foi criado.</sys:String>
+    <sys:String x:Key="TaskPlan_CreateAlreadyExistsMsg">A Story ja tem a Task {0} com o nome "{1}".&#10;&#10;Para nao duplicar, a linha foi vinculada a essa Task em vez de criar outra.</sys:String>
+    <sys:String x:Key="Cfg_OpenTokensPage">Criar/renovar o PAT no Azure DevOps (abre no navegador)</sys:String>
+    <sys:String x:Key="Cfg_OpenTokensPageTip">Abre a pagina de Personal Access Tokens da organizacao informada acima.</sys:String>
+    <sys:String x:Key="Cfg_OpenTokensNeedUrl">Informe a URL da organizacao para abrir a pagina de tokens.</sys:String>
 </ResourceDictionary>

@@ -110,6 +110,29 @@ namespace NXProject.Views
             }
         }
 
+        // Abre a página de Personal Access Tokens da organização digitada acima.
+        private void OnOpenTokensPageClick(object sender, RoutedEventArgs e)
+        {
+            var org = OrgUrlBox.Text?.Trim().TrimEnd('/');
+            if (string.IsNullOrWhiteSpace(org))
+            {
+                MessageBox.Show(this, AppStrings.Get("Cfg_OpenTokensNeedUrl"),
+                    AppStrings.Get("Cfg_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(org + "/_usersSettings/tokens") { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, AppStrings.Get("Cfg_Title"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         // Os nomes dos campos opcionais só são editáveis com a leitura habilitada.
         private void OnEpicTypeFieldEnabledChanged(object sender, RoutedEventArgs e)
         {
@@ -185,6 +208,8 @@ namespace NXProject.Views
 
             var options = BuildOptions();
             TfsConnectionStore.Save(options, RememberTokenCheck.IsChecked == true, _storageKey);
+            // Conexão nova (URL, projeto ou PAT): descarta metadados lidos com a anterior.
+            TfsImportService.ResetMetadataCaches();
             SaveTaskPlanFileAssociation();
             DialogResult = true;
             Close();
