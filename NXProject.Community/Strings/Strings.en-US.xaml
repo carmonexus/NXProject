@@ -2011,4 +2011,11 @@
     <sys:String x:Key="PMap_TsCarriedTip">Activity inherited from an earlier day: no scheduled activity for this day.</sys:String>
     <sys:String x:Key="PMap_TsClear">Clear</sys:String>
     <sys:String x:Key="PMap_TsColSource">Schedule</sys:String>
+    <sys:String x:Key="PMap_TsNoActivity">No activity found for "{0}" in the period — check whether the resource name matches the one used in the loaded schedules.</sys:String>
+    <sys:String x:Key="PMap_TsSaveBase">Save calculation base</sys:String>
+    <sys:String x:Key="PMap_TsSaveBaseTip">Saves to XML the schedules, resources, candidate activities, month calendar and the generated view — for diagnosing the result.</sys:String>
+    <sys:String x:Key="PMap_TsOpenBase">Open calculation base</sys:String>
+    <sys:String x:Key="PMap_TsOpenBaseTip">Loads a calculation base XML and shows the saved view (read-only).</sys:String>
+    <sys:String x:Key="PMap_TsBaseSaved">Calculation base saved to:&#10;{0}</sys:String>
+    <sys:String x:Key="PMap_TsBaseLoaded">Calculation base loaded — {0}, {1}. Total: {2:0.##} h</sys:String>
 </ResourceDictionary>

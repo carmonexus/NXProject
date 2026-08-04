@@ -461,6 +461,12 @@
                         <Button x:Name="TsExportButton" Content="{DynamicResource PMap_TsExport}"
                                 Width="150" Height="26" Margin="6,0,0,0" Click="OnTimeSheetExportClick"
                                 Background="#1B5E20" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                        <Button x:Name="TsSaveBaseButton" Content="{DynamicResource PMap_TsSaveBase}"
+                                Width="160" Height="26" Margin="14,0,0,0" Click="OnTimeSheetSaveBaseClick"
+                                ToolTip="{DynamicResource PMap_TsSaveBaseTip}" FontSize="11"/>
+                        <Button x:Name="TsOpenBaseButton" Content="{DynamicResource PMap_TsOpenBase}"
+                                Width="160" Height="26" Margin="6,0,0,0" Click="OnTimeSheetOpenBaseClick"
+                                ToolTip="{DynamicResource PMap_TsOpenBaseTip}" FontSize="11"/>
                     </WrapPanel>
 
                     <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="6,0,6,6">

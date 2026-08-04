@@ -65,7 +65,9 @@ namespace NXProject.Views
                          .Concat(t.TaskAllocations.Select(a => a.Resource)))))
                 .Where(n => !string.IsNullOrWhiteSpace(n))
                 .Select(n => n!.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                // Mesma pessoa com vínculos diferentes ("(Contractor)") vira uma entrada só.
+                .GroupBy(PersonKey, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
                 .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
 
@@ -156,17 +158,26 @@ namespace NXProject.Views
                 var options = DayOptions(resource, day, projectsByLoad, TsFillGapsBox.IsChecked == true);
                 row.Options      = options;
                 row.Attendance   = attendance;
-                row.MorningIn    = FormatTime(MorningInDefault);
-                row.MorningOut   = FormatTime(MorningOutDefault);
-                row.AfternoonIn  = FormatTime(AfternoonInDefault);
-                row.AfternoonOut = FormatTime(AfternoonOutDefault);
+
+                // Sem atividade no dia não há o que apontar: a jornada só é preenchida quando
+                // existe atividade (senão o mês fecharia com 8h/dia para quem não tem trabalho).
+                if (options.Count > 0)
+                {
+                    row.MorningIn    = FormatTime(MorningInDefault);
+                    row.MorningOut   = FormatTime(MorningOutDefault);
+                    row.AfternoonIn  = FormatTime(AfternoonInDefault);
+                    row.AfternoonOut = FormatTime(AfternoonOutDefault);
+                }
+
                 row.SelectedOption = options.FirstOrDefault();
 
                 total += row.TotalHours;
                 TimeSheetRows.Add(row);
             }
 
-            TsTotalText.Text = AppStrings.Get("PMap_TsTotal", total);
+            TsTotalText.Text = TimeSheetRows.Any(r => r.HasOptions)
+                ? AppStrings.Get("PMap_TsTotal", total)
+                : AppStrings.Get("PMap_TsNoActivity", resource);
         }
 
         /// <summary>
@@ -179,62 +190,127 @@ namespace NXProject.Views
         {
             var options = new List<TimeSheetOption>();
 
+            // TODAS as atividades do dia, de todos os cronogramas: a pessoa pode ter story
+            // própria num projeto e tasks na story de outro dono em outro.
             foreach (var proj in projectsByLoad)
             {
-                ProjectTask? best = null;
-                double bestHoursPerDay = -1;
-
-                foreach (var task in GetChargeableTasks(proj.Data.Tasks))
+                foreach (var task in TimeSheetTasks(proj))
                 {
                     if (day.Date < task.Start.Date || day.Date > task.Finish.Date) continue;
-                    if (!ResourceWorksOn(task, resource)) continue;
 
-                    var hours = TotalHoursOf(task);
-                    var days  = Math.Max(1, ProjectCalendarService.CountWorkingHours(
-                        task.Start.Date, task.Finish.Date.AddDays(1)) / Math.Max(1, ProjectCalendarService.WorkingHoursPerDay));
-                    var perDay = hours / days;
+                    bool isOwner = IsOwnerOf(task, resource);
+                    if (!isOwner && !HasSummaryTasks(task, resource)) continue;
 
-                    if (perDay > bestHoursPerDay)
-                    {
-                        bestHoursPerDay = perDay;
-                        best = task;
-                    }
+                    options.Add(MakeOption(task, proj, resource, HoursPerDayOf(task), carried: false));
                 }
-
-                if (best != null)
-                    options.Add(MakeOption(best, proj, bestHoursPerDay, carried: false));
             }
 
             if (options.Count > 0)
-                return options.OrderByDescending(o => o.HoursPerDay).ToList();
+                return SortOptions(options);
 
             // Nenhum cronograma tem atividade no dia: cai na anterior mais recente de cada um,
-            // na ordem de HH do recurso no mês.
+            // preferindo as stories em que a pessoa é dona.
             if (!fillGaps) return options;
 
             foreach (var proj in projectsByLoad)
             {
                 ProjectTask? candidate = null;
-                DateTime bestFinish = DateTime.MinValue;
+                bool candidateIsOwner  = false;
+                DateTime bestFinish    = DateTime.MinValue;
 
-                foreach (var task in GetChargeableTasks(proj.Data.Tasks))
+                foreach (var task in TimeSheetTasks(proj))
                 {
                     if (task.Finish.Date >= day.Date) continue;
-                    if (!ResourceWorksOn(task, resource)) continue;
-                    if (task.Finish.Date <= bestFinish) continue;
 
-                    bestFinish = task.Finish.Date;
-                    candidate  = task;
+                    bool isOwner = IsOwnerOf(task, resource);
+                    if (!isOwner && !HasSummaryTasks(task, resource)) continue;
+
+                    bool better = isOwner != candidateIsOwner ? isOwner : task.Finish.Date > bestFinish;
+                    if (candidate == null || better)
+                    {
+                        candidate        = task;
+                        candidateIsOwner = isOwner;
+                        bestFinish       = task.Finish.Date;
+                    }
                 }
 
                 if (candidate != null)
-                    options.Add(MakeOption(candidate, proj, 0, carried: true));
+                    options.Add(MakeOption(candidate, proj, resource, 0, carried: true));
             }
 
-            return options;
+            return SortOptions(options);
         }
 
-        private static TimeSheetOption MakeOption(ProjectTask task, LoadedProject proj, double hoursPerDay, bool carried)
+        // Story da pessoa primeiro; depois o que tem mais HH/dia.
+        private static List<TimeSheetOption> SortOptions(List<TimeSheetOption> options)
+            => options
+                .OrderByDescending(o => o.IsOwner)
+                .ThenByDescending(o => o.HoursPerDay)
+                .ToList();
+
+        private static double HoursPerDayOf(ProjectTask task)
+        {
+            var days = Math.Max(1, ProjectCalendarService.CountWorkingHours(
+                task.Start.Date, task.Finish.Date.AddDays(1)) / Math.Max(1, ProjectCalendarService.WorkingHoursPerDay));
+            return TotalHoursOf(task) / days;
+        }
+
+        /// <summary>
+        /// Atividades candidatas do apontamento: Stories (qualquer % de conclusão — no mapa a
+        /// regra é % > 0, mas aqui uma story recém-importada em 0% também é trabalho do dia) e
+        /// as folhas com estado que conta. Story com tasks não desce para os filhos.
+        /// </summary>
+        private static IEnumerable<ProjectTask> TimeSheetTasks(LoadedProject proj)
+            => TimeSheetTasks(proj.Data.Tasks);
+
+        private static IEnumerable<ProjectTask> TimeSheetTasks(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var t in tasks)
+            {
+                if (IsStoryNode(t))
+                {
+                    yield return t;
+                    if (t.TaskAllocations.Count == 0)
+                        foreach (var c in TimeSheetTasks(t.Children)) yield return c;
+                }
+                else if (t.Children.Count == 0)
+                {
+                    if (TfsImportService.AllocationCountsState(t.TfsState)) yield return t;
+                }
+                // Feature/Epic são agrupadores, não atividade de apontamento: desce para os filhos.
+                else foreach (var c in TimeSheetTasks(t.Children)) yield return c;
+            }
+        }
+
+        /// <summary>
+        /// A pessoa é responsável pela atividade. Compara por nome, nome de exibição (que pode
+        /// vir com "*" para recurso local) e e-mail — o cronograma e o resumo do DevOps nem
+        /// sempre gravam a mesma forma do nome.
+        /// </summary>
+        private static bool IsOwnerOf(ProjectTask task, string resource)
+            => task.Resources.Any(r => SameResource(r.Resource, resource));
+
+        private static bool SameResource(Resource? r, string name)
+        {
+            if (r == null || string.IsNullOrWhiteSpace(name)) return false;
+
+            // O sufixo entre parênteses é vínculo/login, não identidade — ignorado na comparação.
+            return SamePerson(r.Name, name)
+                || SamePerson(r.DisplayName, name)
+                || string.Equals(r.Email?.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Tasks da pessoa no resumo de tasks da Story (ela não é a dona da Story).</summary>
+        private static int SummaryTaskCount(ProjectTask task, string resource)
+            => task.TaskAllocations
+                   .Where(a => SamePerson(a.Resource, resource))
+                   .Sum(a => Math.Max(1, a.Tasks));
+
+        private static bool HasSummaryTasks(ProjectTask task, string resource)
+            => task.TaskAllocations.Any(a => SamePerson(a.Resource, resource));
+
+        private static TimeSheetOption MakeOption(
+            ProjectTask task, LoadedProject proj, string resource, double hoursPerDay, bool carried)
         {
             var story   = IsStoryNode(task) ? task : FindParentStory(task);
             var feature = FindAncestorOfType(task, "Feature");
@@ -242,12 +318,22 @@ namespace NXProject.Views
                 ? $"{feature.Name} - {story.Name}"
                 : story?.Name ?? task.Name ?? "";
 
+            // Story de outro responsável: a pessoa aparece pelo resumo de tasks — mostra
+            // quantas tasks dela existem na story.
+            bool isOwner = IsOwnerOf(task, resource);
+            if (!isOwner)
+            {
+                var count = SummaryTaskCount(task, resource);
+                if (count > 0) label += $" - Task ({count})";
+            }
+
             return new TimeSheetOption
             {
                 Label         = label,
                 Project       = proj,
                 HoursPerDay   = hoursPerDay,
-                IsCarriedOver = carried
+                IsCarriedOver = carried,
+                IsOwner       = isOwner
             };
         }
 
@@ -262,7 +348,7 @@ namespace NXProject.Views
             double HoursInMonth(LoadedProject proj)
             {
                 double sum = 0;
-                foreach (var task in GetChargeableTasks(proj.Data.Tasks))
+                foreach (var task in TimeSheetTasks(proj))
                 {
                     if (!ResourceWorksOn(task, resource)) continue;
                     if (task.Finish.Date < monthStart.Date || task.Start.Date >= monthEndEx) continue;
@@ -286,8 +372,7 @@ namespace NXProject.Views
         }
 
         private static bool ResourceWorksOn(ProjectTask task, string resource)
-            => task.Resources.Any(r => string.Equals(r.Resource?.Name, resource, StringComparison.OrdinalIgnoreCase))
-               || task.TaskAllocations.Any(a => string.Equals(a.Resource, resource, StringComparison.OrdinalIgnoreCase));
+            => IsOwnerOf(task, resource) || HasSummaryTasks(task, resource);
 
         private static double TotalHoursOf(ProjectTask task)
             => (task.CurrentHours ?? 0) + (task.EstimatedHours ?? 0);
@@ -432,6 +517,8 @@ namespace NXProject.Views
             public LoadedProject? Project { get; set; }
             public double HoursPerDay { get; set; }
             public bool IsCarriedOver { get; set; }
+            /// <summary>A pessoa é dona da atividade (não veio só do resumo de tasks).</summary>
+            public bool IsOwner { get; set; }
 
             /// <summary>Texto da combo: atividade + cronograma (e aviso quando é herdada).</summary>
             public string Display => Project == null

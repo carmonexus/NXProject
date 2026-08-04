@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
@@ -45,6 +45,7 @@ internal static class Program
         ("Sync TFS: data fim usa fim inclusivo", TfsSyncFinishUsesInclusiveDate),
         ("Sync TFS: Task cria descricao no mesmo padrao da Story", TfsSyncTaskCreateOpsIncludesDescription),
         ("Import TFS: estado da Task define percentual padrao", TfsImportTaskStateDefinesDefaultPercent),
+        ("Import TFS: Story iniciada/encerrada NAO e replanejada (usa Data_Inicio real)", ImportClosedStoryKeepsExplicitStart),
         ("Cronograma: editar estado da Task ajusta percentual", ScheduleStateEditUpdatesTaskPercent),
         ("Sync TFS: cadeia nova cria Feature, Story e Task no pai correto", TfsSyncNewHierarchyUsesImmediateDevOpsParent),
         ("Sync TFS: Task orfa nao cai no Work Item Project raiz", TfsSyncOrphanTaskDoesNotUseRootProject),
@@ -1266,6 +1267,32 @@ internal static class Program
         AssertEqual(10, TfsImportService.PercentCompleteFromState("Actived"), "Task Actived importada sem horas deve iniciar com 10%.");
         AssertEqual(50, TfsImportService.PercentCompleteFromState("Active", completedHours: 4, estimatedHours: 8),
             "Quando houver CompletedWork calculável, o percentual importado deve respeitar HH realizado/estimado.");
+    }
+
+    // Trabalho iniciado ou encerrado tem data REAL: replanejar pela fila jogaria para o futuro
+    // algo que já aconteceu, abrindo buraco (gap) no período em que foi de fato executado.
+    private static void ImportClosedStoryKeepsExplicitStart()
+    {
+        var real = new DateTime(2026, 7, 14);
+        var fila = new DateTime(2026, 7, 20);
+
+        AssertEqual(real, TfsImportService.ResolveImportStart(real, fila, false, "Closed"),
+            "Story Closed com Data_Inicio deve manter a data real, nao a posicao da fila.");
+        AssertEqual(real, TfsImportService.ResolveImportStart(real, fila, false, "Closed", percentComplete: 100),
+            "Story Closed a 100% NAO pode ter o inicio empurrado pela fila.");
+        AssertEqual(real, TfsImportService.ResolveImportStart(real, fila, false, "Done"),
+            "Estado concluido equivalente (Done) tambem mantem a data real.");
+        AssertEqual(real, TfsImportService.ResolveImportStart(real, fila, false, "Active"),
+            "Story em andamento mantem a data real de inicio.");
+        AssertEqual(real, TfsImportService.ResolveImportStart(real, fila, false, "New", percentComplete: 20),
+            "Story com % de conclusao > 0 ja comecou: mantem a data real.");
+        AssertEqual(real, TfsImportService.ResolveImportStart(real, fila, true, "New"),
+            "Data fixada pelo usuario (tag) manda em qualquer estado.");
+
+        AssertEqual(fila, TfsImportService.ResolveImportStart(real, fila, false, "New"),
+            "Story nao iniciada (New, 0%) continua sendo planejada pela fila (pessoa/sprint).");
+        AssertEqual(fila, TfsImportService.ResolveImportStart(null, fila, false, "Closed"),
+            "Sem Data_Inicio no DevOps, mesmo encerrada, a Story cai na fila.");
     }
 
     private static void ScheduleStateEditUpdatesTaskPercent()

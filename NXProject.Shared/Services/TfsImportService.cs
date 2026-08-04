@@ -2608,6 +2608,14 @@ namespace NXProject.Services
                 }
             }
 
+            var effectiveState = stateFixedToActive ? "Active" : item.State;
+            // Item encerrado é 100% mesmo com o campo de % vazio ou zerado no DevOps.
+            var percentComplete =
+                IsClosedState(effectiveState) ? 100
+                : ctx.PercConclusaoRef != null && ReadDouble(item, ctx.PercConclusaoRef) is { } pc && pc >= 0 && pc <= 100
+                    ? pc
+                    : StateToPercent(effectiveState);
+
             // Sem Data_Inicio, a Story ancora no inicio da SPRINT dela. A fila e
             // por (pessoa, sprint): a 1a Story da fila comeca na data de inicio da
             // sprint e as seguintes encadeiam; ao mover a Story para outra sprint,
@@ -2621,7 +2629,7 @@ namespace NXProject.Services
 
             bool hasFixedTag = GetFixedStartTagAliases(ctx.FixedStartTagName)
                 .Any(tag => HasTag(item.Tags, tag));
-            DateTime start = (hasFixedTag && explicitStart != null) ? explicitStart.Value : baseStart;
+            DateTime start = ResolveImportStart(explicitStart, baseStart, hasFixedTag, effectiveState, percentComplete);
             var durationHours = hours.HasValue
                 ? Math.Max(0.0, hours.Value)
                 : ctx.HoursPerDay > 0
@@ -2642,12 +2650,6 @@ namespace NXProject.Services
             // explicita anterior nao pode puxar o cursor para tras (senao as
             // proximas se sobreporiam).
             ctx.CursorByLane[laneKey] = finish > baseStart ? finish : baseStart;
-
-            var effectiveState = stateFixedToActive ? "Active" : item.State;
-            var percentComplete =
-                ctx.PercConclusaoRef != null && ReadDouble(item, ctx.PercConclusaoRef) is { } pc && pc >= 0 && pc <= 100
-                    ? pc
-                    : StateToPercent(effectiveState);
 
             var task = new ProjectTask
             {
@@ -3277,6 +3279,24 @@ namespace NXProject.Services
             if (string.IsNullOrWhiteSpace(text)) return string.Empty;
             var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
             return string.Concat(lines.Select(l => $"<div>{System.Net.WebUtility.HtmlEncode(l)}</div>"));
+        }
+
+        /// <summary>
+        /// Data de início na importação. O planejamento por fila (pessoa/sprint) só vale para o
+        /// que ainda NÃO começou: item encerrado, em andamento ou com % de conclusão > 0 mantém
+        /// o Data_Inicio real do DevOps — senão o cronograma empurraria para o futuro um
+        /// trabalho já executado. A tag de data negociada fixa a data em qualquer estado.
+        /// </summary>
+        public static DateTime ResolveImportStart(
+            DateTime? explicitStart, DateTime queueStart, bool hasFixedStartTag,
+            string? state, double percentComplete = 0)
+        {
+            if (explicitStart is not { } start) return queueStart;
+
+            // Trabalho já iniciado ou encerrado tem data REAL: só muda se o usuário fixar outra
+            // data (tag de data negociada). O planejamento por fila vale para o que não começou.
+            bool alreadyStarted = IsClosedState(state) || IsActiveState(state) || percentComplete > 0;
+            return hasFixedStartTag || alreadyStarted ? start : queueStart;
         }
 
         public static double PercentCompleteFromState(

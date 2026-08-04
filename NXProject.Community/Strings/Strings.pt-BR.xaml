@@ -2009,4 +2009,11 @@
     <sys:String x:Key="PMap_TsCarriedTip">Atividade herdada de um dia anterior: não havia atividade no cronograma para este dia.</sys:String>
     <sys:String x:Key="PMap_TsClear">Limpar</sys:String>
     <sys:String x:Key="PMap_TsColSource">Cronograma</sys:String>
+    <sys:String x:Key="PMap_TsNoActivity">Nenhuma atividade encontrada para "{0}" no período — confira se o nome do recurso é o mesmo usado nos cronogramas carregados.</sys:String>
+    <sys:String x:Key="PMap_TsSaveBase">Gravar base de cálculo</sys:String>
+    <sys:String x:Key="PMap_TsSaveBaseTip">Grava em XML os cronogramas, recursos, atividades candidatas, calendário do mês e a visão gerada — para diagnosticar o resultado.</sys:String>
+    <sys:String x:Key="PMap_TsOpenBase">Abrir base de cálculo</sys:String>
+    <sys:String x:Key="PMap_TsOpenBaseTip">Carrega um XML de base de cálculo e mostra a visão gravada (somente leitura).</sys:String>
+    <sys:String x:Key="PMap_TsBaseSaved">Base de cálculo gravada em:&#10;{0}</sys:String>
+    <sys:String x:Key="PMap_TsBaseLoaded">Base de cálculo carregada — {0}, {1}. Total: {2:0.##} h</sys:String>
 </ResourceDictionary>

@@ -17,6 +17,23 @@ namespace NXProject.Views
     public partial class ProjectAllocationMapWindow : Window
     {
         // ── Modelo interno ────────────────────────────────────────────────────
+        /// <summary>
+        /// Mesma pessoa? O sufixo entre parênteses é o vínculo/login (ex.: "(Contractor)"), não
+        /// identidade: "Melo, Carmo C (Contractor)" e "Melo, Carmo C" são a mesma pessoa.
+        /// </summary>
+        internal static bool SamePerson(string? a, string? b)
+            => !string.IsNullOrWhiteSpace(a) && !string.IsNullOrWhiteSpace(b)
+               && string.Equals(PersonKey(a), PersonKey(b), StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Nome sem o sufixo entre parênteses, para comparar e agrupar pessoas.</summary>
+        internal static string PersonKey(string? name)
+        {
+            var n = (name ?? string.Empty).Trim().TrimStart('*');
+            var idx = n.IndexOf('(');
+            if (idx > 0) n = n[..idx];
+            return n.Trim();
+        }
+
         internal sealed class LoadedProject
         {
             public string  FilePath         { get; set; } = string.Empty;
@@ -452,7 +469,7 @@ namespace NXProject.Views
             double total = 0;
             foreach (var task in GetChargeableTasks(project.Tasks))
                 foreach (var (res, mh) in StoryChargeRows(task, months, onlyCurrentHours))
-                    if (string.Equals(res, resourceName, StringComparison.OrdinalIgnoreCase))
+                    if (SamePerson(res, resourceName))
                         total += mh[0];
             return total;
         }
@@ -884,9 +901,9 @@ namespace NXProject.Views
             foreach (var task in GetChargeableTasks(project.Tasks))
             {
                 bool hasRes = task.Resources.Any(r =>
-                        string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase))
+                        SamePerson(r.Resource?.Name, resName))
                     || ChargeableAllocations(task).Any(a =>
-                        string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase));
+                        SamePerson(a.Resource, resName));
                 if (!hasRes) continue;
 
                 var tStart = task.Start.Date;
@@ -994,7 +1011,7 @@ namespace NXProject.Views
                 foreach (var task in stories.OrderBy(t => t.Start))
                 {
                     double monthH = StoryChargeRows(task, new List<DateTime> { monthStart }, onlyCurrentHours)
-                        .Where(r => string.Equals(r.Resource, resName, StringComparison.OrdinalIgnoreCase))
+                        .Where(r => SamePerson(r.Resource, resName))
                         .Sum(r => r.MonthHours[0]);
 
                     if (onlyComposition && monthH <= 0.01) continue;   // só o que compõe o total clicado
@@ -1011,9 +1028,9 @@ namespace NXProject.Views
                         ? $"{orgUrl}/{Uri.EscapeDataString(tp)}/_workitems/edit/{task.TfsId.Value}"
                         : null;
                     // As horas do recurso vêm de uma Task dele numa Story de OUTRO responsável, ou da própria Story.
-                    var alloc        = ChargeableAllocations(task).FirstOrDefault(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase));
+                    var alloc        = ChargeableAllocations(task).FirstOrDefault(a => SamePerson(a.Resource, resName));
                     bool viaTask = alloc != null
-                                && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
+                                && !task.Resources.Any(r => SamePerson(r.Resource?.Name, resName));
                     string tipo      = AppStrings.Get(viaTask ? "PMap_SrTypeTask" : "PMap_SrTypeStory");
                     // Nome da Story dona (para linhas de task é a Story-mãe; se a própria linha é Story, o próprio nome).
                     var storyNode    = IsStoryNode(task) ? task : FindParentStory(task);
@@ -1792,7 +1809,7 @@ namespace NXProject.Views
                         if (internalNames.Contains(rname)) continue;   // internos → aba Interno
                         bool any = mh.Any(h => h > 0.01);
                         bool isResponsible = task.Resources.Any(r =>
-                            string.Equals(r.Resource?.Name, rname, StringComparison.OrdinalIgnoreCase));
+                            SamePerson(r.Resource?.Name, rname));
                         bool inPeriod = task.Start.Date <= periodEnd && task.Finish.Date >= periodStart;
                         // Mostra a Story zerada do responsável (para revisão) mesmo com hideZero.
                         bool keepForReview = reviewZeros && isResponsible && inPeriod;
@@ -1933,8 +1950,8 @@ namespace NXProject.Views
                         // Story fora do mapa por % conclusão = 0 (flag de revisão) → vermelho.
                         bool rowIsNoPct = IsStoryNode(task) && task.PercentComplete <= 0;
                         bool rowIsTaskPerson = !rowIsNoPct
-                                            && ChargeableAllocations(task).Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
-                                            && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
+                                            && ChargeableAllocations(task).Any(a => SamePerson(a.Resource, resName))
+                                            && !task.Resources.Any(r => SamePerson(r.Resource?.Name, resName));
                         bool rowIsZeroResp = !rowIsNoPct && !rowIsTaskPerson && !mh.Any(h => h > 0.01);
                         var leftBg = new SolidColorBrush(
                             rowIsNoPct      ? Color.FromRgb(253, 232, 232) :   // vermelho claro (fora do mapa: %=0)
@@ -2844,7 +2861,7 @@ namespace NXProject.Views
                         if (internalNames.Contains(rname)) continue;   // internos → aba Interno
                         bool any = mh.Any(h => h > 0.01);
                         bool isResponsible = task.Resources.Any(r =>
-                            string.Equals(r.Resource?.Name, rname, StringComparison.OrdinalIgnoreCase));
+                            SamePerson(r.Resource?.Name, rname));
                         bool inPeriod = task.Start.Date <= periodEnd && task.Finish.Date >= periodStart;
                         bool keepForReview = reviewZeros && isResponsible && inPeriod;
                         if (hideZero && !any && !keepForReview) continue;
@@ -3003,8 +3020,8 @@ namespace NXProject.Views
                         var epicEx    = FindAncestorByType(task, "Epic");
                         var featureEx = FindAncestorByType(task, "Feature");
                         // Mesmos destaques da tela: pessoa de task (verde-água) / zerada do responsável (âmbar tachado).
-                        bool rowIsTaskPerson = ChargeableAllocations(task).Any(a => string.Equals(a.Resource, resName, StringComparison.OrdinalIgnoreCase))
-                                            && !task.Resources.Any(r => string.Equals(r.Resource?.Name, resName, StringComparison.OrdinalIgnoreCase));
+                        bool rowIsTaskPerson = ChargeableAllocations(task).Any(a => SamePerson(a.Resource, resName))
+                                            && !task.Resources.Any(r => SamePerson(r.Resource?.Name, resName));
                         bool rowIsZeroResp = !rowIsTaskPerson && !visMi.Any(mi => mh[mi] > 0.01);
                         string storyStyle = rowIsZeroResp ? "SLzero" : rowIsTaskPerson ? "SLtask" : "SL";
                         var row = new XElement(ns + "Row", new XAttribute(ss + "Height", "18"));
