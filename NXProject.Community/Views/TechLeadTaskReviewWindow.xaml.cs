@@ -768,6 +768,9 @@ namespace NXProject.Views
         {
             AddToScheduleCallback?.Invoke(toAdd);
             HasChanges = true;
+            // Adicionar/expandir é uma ação explícita: as Tasks ficam no cronograma. Sem isso,
+            // o fechamento dispararia o release padrão e removeria o que acabou de ser aplicado.
+            _memorize = true;
             Close();
         }
 

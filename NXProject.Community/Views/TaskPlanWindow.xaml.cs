@@ -157,7 +157,7 @@ namespace NXProject.Views
                 var cur = dr[idCol]?.ToString()?.Trim() ?? "";
                 if (!byKey.TryGetValue(cur, out var e)) continue;
                 dr[idCol] = e.NewTaskId;
-                if (ApprovalCol is { } ac) dr[ac] = "Sim";
+                if (ApprovalCol is { } ac) dr[ac] = ApprovalTrue;
                 if (StoryIdCol is { } sc && !string.IsNullOrEmpty(e.NewStoryId)) dr[sc] = e.NewStoryId;
                 if (FeatureIdCol is { } fc && !string.IsNullOrEmpty(e.NewFeatureId)) dr[fc] = e.NewFeatureId;
                 updated++;
@@ -230,7 +230,9 @@ namespace NXProject.Views
         private const string BackupFunctionLoad = "load";
         private const string BackupFunctionMerge = "merge";
         private const string BackupFunctionClear = "clear";
-        private static readonly string[] ApprovalValues = ["Nao", "Sim"];
+        // A coluna "Aprovada" é booleana na planilha (True/False). Na LEITURA, valores
+        // legados/planilhas do cliente com Sim/Nao, Yes/No, S/N, 1/0 são convertidos.
+        private static readonly string[] ApprovalValues = ["False", "True"];
         private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", "Task", "ID Task", "Prioridade", "Estimado HH", PercConclusaoColumn, ResponsibleColumn, "Status" };
 
         // Colunas de ID dos pais (preenchidas pelo Buscar/Merge/Aplicar/Ctrl+clique).
@@ -469,14 +471,18 @@ namespace NXProject.Views
         private static string ApprovalValueFromDevOps(TfsImportService.DevOpsTaskInfo info)
         {
             var raw = info.Approved?.Trim();
-            if (string.IsNullOrEmpty(raw)) return "Sim";
+            if (string.IsNullOrEmpty(raw)) return ApprovalTrue;
 
-            return raw.ToLowerInvariant() switch
-            {
-                "sim" or "yes" or "true" or "1" or "approved" or "aprovado" or "aprovada" => "Sim",
-                "não" or "nao" or "no" or "false" or "0" or "rejeitado" or "reprovado"    => "Não",
-                _ => raw   // valores próprios do processo do cliente aparecem como estão
-            };
+            if (IsApprovalYes(raw) || raw.Equals("approved", StringComparison.OrdinalIgnoreCase)
+                || raw.Equals("aprovado", StringComparison.OrdinalIgnoreCase)
+                || raw.Equals("aprovada", StringComparison.OrdinalIgnoreCase))
+                return ApprovalTrue;
+
+            if (IsApprovalNo(raw) || raw.Equals("rejeitado", StringComparison.OrdinalIgnoreCase)
+                || raw.Equals("reprovado", StringComparison.OrdinalIgnoreCase))
+                return ApprovalFalse;
+
+            return raw;   // valores próprios do processo do cliente aparecem como estão
         }
         private void EnsureRegisterDateColumn() => EnsureLeadingControlColumn(RegisterDateColumn, RegisterDateCol, 2);
 
@@ -532,6 +538,10 @@ namespace NXProject.Views
                 fallback++;
             }
         }
+
+        // Valores gravados na planilha.
+        private const string ApprovalTrue  = "True";
+        private const string ApprovalFalse = "False";
 
         private static bool IsApprovalYes(string? value)
         {
@@ -630,7 +640,7 @@ namespace NXProject.Views
             {
                 if (ApprovalCol is { } ac && !IsApprovalYes(row[ac]?.ToString()))
                 {
-                    row[ac] = "Sim";
+                    row[ac] = ApprovalTrue;
                     _dirty = true;
                 }
                 return true;
@@ -648,8 +658,8 @@ namespace NXProject.Views
             {
                 var id = idCol != null ? row[idCol]?.ToString()?.Trim() ?? "" : "";
                 var target = id.EndsWith(":T", StringComparison.OrdinalIgnoreCase)
-                    ? "Sim"
-                    : IsApprovalYes(row[approvalCol]?.ToString()) ? "Sim" : "Nao";
+                    ? ApprovalTrue
+                    : IsApprovalYes(row[approvalCol]?.ToString()) ? ApprovalTrue : ApprovalFalse;
                 if (!string.Equals(row[approvalCol]?.ToString(), target, StringComparison.Ordinal))
                 {
                     row[approvalCol] = target;
@@ -694,7 +704,7 @@ namespace NXProject.Views
                 dr["Task"]    = t.Name ?? "";
                 dr["ID Task"]  = t.TfsId is > 0 ? $"{t.TfsId.Value}:T" : $"{t.Id}:I";
                 FillHierarchyIdsFromNode(dr, t);
-                dr[ApprovalColumn] = t.TfsId is > 0 ? "Sim" : "Nao";
+                dr[ApprovalColumn] = t.TfsId is > 0 ? ApprovalTrue : ApprovalFalse;
                 dr[RegisterDateColumn] = FormatRegisterDate(DateTime.Today);
                 dr["Prioridade"] = t.Priority?.ToString() ?? "";
                 dr["Estimado HH"] = t.EstimatedHours is > 0 ? t.EstimatedHours.Value.ToString("0.##") : "1";
@@ -911,7 +921,7 @@ namespace NXProject.Views
                         dr["Task"]    = t.Title;
                         dr["ID Task"]  = $"{t.TfsId}:T";
                         FillHierarchyIdsFromNode(dr, story);
-                        dr[ApprovalColumn] = "Sim";
+                        dr[ApprovalColumn] = ApprovalTrue;
                         dr[RegisterDateColumn] = FormatRegisterDate(t.CreatedDate ?? DateTime.Today);
                         dr["Prioridade"] = t.Priority.ToString();
                         dr["Estimado HH"] = t.EstimatedHours > 0 ? t.EstimatedHours.ToString("0.##") : "1";
@@ -4578,7 +4588,7 @@ namespace NXProject.Views
                 {
                     dr[idCol] = picked.TfsId is > 0 ? $"{picked.TfsId.Value}:T" : $"{picked.Id}:I";
                     if (picked.TfsId is > 0 && ApprovalCol is { } ac)
-                        dr[ac] = "Sim";
+                        dr[ac] = ApprovalTrue;
                 }
                 var prioCol = FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task");
                 if (prioCol != null && picked.Priority is int prio)
@@ -4656,7 +4666,7 @@ namespace NXProject.Views
                     {
                         // Padrão do cronograma: DevOps = "{TfsId}:T".
                         dr[idCol] = $"{match.TfsId!.Value}:T";
-                        if (ApprovalCol is { } ac) dr[ac] = "Sim";
+                        if (ApprovalCol is { } ac) dr[ac] = ApprovalTrue;
                         if (prioCol != null && match.Priority is int mp)
                             dr[prioCol] = mp.ToString();
                         if (estCol != null && match.EstimatedHours is > 0)
@@ -4726,6 +4736,68 @@ namespace NXProject.Views
         }
 
         // ── aplicar ao cronograma (cria as tasks do plano no cronograma) ─────
+        /// <summary>EPICs citados nas linhas que não existem no cronograma (comparação por nome).</summary>
+        private List<string> MissingEpicNames(List<DataRow> rows, List<ProjectTask> flat, string taskCol)
+            => _epicColumn == null
+                ? []
+                : rows
+                    .Where(r => !string.IsNullOrWhiteSpace(r[taskCol]?.ToString()))
+                    .Select(r => r[_epicColumn]?.ToString()?.Trim() ?? "")
+                    .Where(v => v.Length > 0)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Where(v => !flat.Any(t => IsType(t, "Epic")
+                        && string.Equals((t.Name ?? "").Trim(), v, StringComparison.OrdinalIgnoreCase)))
+                    .OrderBy(v => v, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+
+        /// <summary>
+        /// Tenta corrigir EPIC/Feature na planilha pelo ID do TFS: o nome pode ter mudado no
+        /// DevOps, mas o ID continua valendo. Usa o ID EPIC da linha e, na falta dele, o ID da
+        /// Story (que dá os ancestrais pelo cronograma). Devolve quantas células foram acertadas.
+        /// </summary>
+        private int ResolveHierarchyNamesFromIds(
+            List<DataRow> rows, List<ProjectTask> flat, List<string> missingEpics)
+        {
+            if (_epicColumn == null) return 0;
+            var missing = new HashSet<string>(missingEpics, StringComparer.OrdinalIgnoreCase);
+            var featureCol = FindColumn("Feature", "Nome da Feature");
+            int changed = 0;
+
+            ProjectTask? ByDisplayId(string? id)
+                => ParsePlanIdNumber(id, ":T") is { } tfsId
+                    ? flat.FirstOrDefault(t => t.TfsId == tfsId)
+                    : null;
+
+            foreach (var row in rows)
+            {
+                var epicName = row[_epicColumn]?.ToString()?.Trim() ?? "";
+                if (epicName.Length == 0 || !missing.Contains(epicName)) continue;
+
+                var storyNode = StoryIdCol is { } sic ? ByDisplayId(row[sic]?.ToString()) : null;
+                var epicNode  = EpicIdCol  is { } eic ? ByDisplayId(row[eic]?.ToString()) : null;
+                epicNode ??= storyNode != null ? AncestorNode(storyNode, "Epic") : null;
+                if (epicNode == null || !IsType(epicNode, "Epic")) continue;
+
+                row[_epicColumn] = epicNode.Name ?? "";
+                changed++;
+
+                // A Feature também acompanha, quando dá para deduzir pela Story.
+                if (featureCol != null && storyNode != null
+                    && AncestorNode(storyNode, "Feature") is { } featureNode
+                    && !string.Equals(row[featureCol]?.ToString()?.Trim(), featureNode.Name,
+                                      StringComparison.OrdinalIgnoreCase))
+                {
+                    row[featureCol] = featureNode.Name ?? "";
+                    changed++;
+                }
+
+                FillHierarchyIdsFromNode(row, storyNode ?? epicNode);
+                _dirty = true;
+            }
+
+            return changed;
+        }
+
         private async void OnApplyScheduleClick(object sender, RoutedEventArgs e)
         {
             if (_data == null) return;
@@ -4764,25 +4836,81 @@ namespace NXProject.Views
                 .Where(r => IsApprovedOrAlreadyTfs(r, idCol))
                 .ToList();
 
+            // Com linhas selecionadas na grade, pergunta se aplica só a seleção ou tudo.
+            // A grade seleciona por célula ou por linha: considera as duas formas.
+            var selectedRows = PlanGrid.SelectedItems.OfType<DataRowView>().Select(v => v.Row)
+                .Concat(PlanGrid.SelectedCells.Select(c => c.Item).OfType<DataRowView>().Select(v => v.Row))
+                .Distinct()
+                .Where(approvedPlanRows.Contains)
+                .ToList();
+            // Selecionou linhas, mas nenhuma delas é aplicável (não aprovada / sem Task):
+            // avisa em vez de aplicar tudo sem o usuário perceber.
+            var anySelection = PlanGrid.SelectedItems.OfType<DataRowView>().Any()
+                            || PlanGrid.SelectedCells.Select(c => c.Item).OfType<DataRowView>().Any();
+            if (anySelection && selectedRows.Count == 0)
+            {
+                var proceed = ChoiceDialog.Ask(this,
+                    AppStrings.Get("TaskPlan_Title"),
+                    AppStrings.Get("TaskPlan_ApplySelectionNotApproved"),
+                    [
+                        new ChoiceDialog.Option(
+                            AppStrings.Get("TaskPlan_ApplyAllOption", approvedPlanRows.Count),
+                            AppStrings.Get("TaskPlan_ApplyAllOptionHint"), 1, IsPrimary: true),
+                        new ChoiceDialog.Option(AppStrings.Get("TaskPlan_ApplyCancelOption"), null, 0)
+                    ]);
+                if (proceed != 1) return;
+            }
+
+            if (selectedRows.Count > 0 && selectedRows.Count < approvedPlanRows.Count)
+            {
+                var answer = ChoiceDialog.Ask(this,
+                    AppStrings.Get("TaskPlan_Title"),
+                    AppStrings.Get("TaskPlan_ApplyScopeAsk"),
+                    [
+                        new ChoiceDialog.Option(
+                            AppStrings.Get("TaskPlan_ApplySelectionOption", selectedRows.Count),
+                            AppStrings.Get("TaskPlan_ApplySelectionOptionHint"), 1, IsPrimary: true),
+                        new ChoiceDialog.Option(
+                            AppStrings.Get("TaskPlan_ApplyAllOption", approvedPlanRows.Count),
+                            AppStrings.Get("TaskPlan_ApplyAllOptionHint"), 2),
+                        new ChoiceDialog.Option(AppStrings.Get("TaskPlan_ApplyCancelOption"), null, 0)
+                    ]);
+                if (answer is 0 or -1) return;
+                if (answer == 1) approvedPlanRows = selectedRows;
+            }
+
             // Trava: todo EPIC informado nas linhas precisa existir no cronograma (o EPIC
             // é criado no DevOps, não pela planilha). Se faltar, avisa e NÃO aplica.
             if (_epicColumn != null)
             {
-                var missingEpics = approvedPlanRows
-                    .Where(r => !string.IsNullOrWhiteSpace(r[taskCol]?.ToString()))
-                    .Select(r => r[_epicColumn]?.ToString()?.Trim() ?? "")
-                    .Where(v => v.Length > 0)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Where(v => !flat.Any(t => IsType(t, "Epic")
-                        && string.Equals((t.Name ?? "").Trim(), v, StringComparison.OrdinalIgnoreCase)))
-                    .OrderBy(v => v, StringComparer.CurrentCultureIgnoreCase)
-                    .ToList();
+                var missingEpics = MissingEpicNames(approvedPlanRows, flat, taskCol);
                 if (missingEpics.Count > 0)
                 {
-                    MessageBox.Show(this,
+                    // Antes de bloquear: tenta acertar o nome do EPIC pelos IDs do TFS que já
+                    // estão na planilha (ID EPIC ou, na falta dele, o ID da Story → ancestrais).
+                    if (ResolveHierarchyNamesFromIds(approvedPlanRows, flat, missingEpics) > 0)
+                        missingEpics = MissingEpicNames(approvedPlanRows, flat, taskCol);
+                }
+
+                if (missingEpics.Count > 0)
+                {
+                    var choice = ChoiceDialog.Ask(this,
+                        AppStrings.Get("TaskPlan_Title"),
                         AppStrings.Get("TaskPlan_ApplyMissingEpics", "• " + string.Join("\n• ", missingEpics)),
-                        AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                        [
+                            new ChoiceDialog.Option(
+                                AppStrings.Get("TaskPlan_MissingEpicSkipOption"),
+                                AppStrings.Get("TaskPlan_MissingEpicSkipHint"), 1, IsPrimary: true),
+                            new ChoiceDialog.Option(AppStrings.Get("TaskPlan_ApplyCancelOption"), null, 0)
+                        ]);
+                    if (choice != 1) return;
+
+                    // Segue aplicando o resto: as linhas dos EPICs ausentes ficam de fora.
+                    var skip = new HashSet<string>(missingEpics, StringComparer.OrdinalIgnoreCase);
+                    approvedPlanRows = approvedPlanRows
+                        .Where(r => !skip.Contains(r[_epicColumn]?.ToString()?.Trim() ?? ""))
+                        .ToList();
+                    if (approvedPlanRows.Count == 0) return;
                 }
             }
 

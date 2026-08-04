@@ -164,7 +164,7 @@ namespace NXProject.Services
             var syncNameRef    = ResolveField(fieldMap, options.SyncNameFieldName,    new[] { "Sync_Name", "SyncName", "Sync Name" });
             // Tipo do EPIC (opcional): EPIC de BACKLOG não soma horas no total do projeto.
             var epicTypeRef = options.EpicTypeFieldEnabled && !string.IsNullOrWhiteSpace(options.EpicTypeFieldName)
-                ? ResolveField(fieldMap, options.EpicTypeFieldName, new[] { options.EpicTypeFieldName })
+                ? ResolveField(fieldMap, options.EpicTypeFieldName, new[] { options.EpicTypeFieldName, "EPIC_TYPE", "Tipo_Epic" })
                 : null;
             if (epicTypeRef != null && !requestedFields.Contains(epicTypeRef)) requestedFields.Add(epicTypeRef);
 
@@ -531,7 +531,7 @@ namespace NXProject.Services
             // Campo de aprovação da Task (opcional): a sincronização OFICIALIZA a aprovação —
             // uma Task que chega como não aprovada sai daqui aprovada.
             var approvedRef = options.ApprovedFieldEnabled && !string.IsNullOrWhiteSpace(options.ApprovedFieldName)
-                ? ResolveField(fieldMap, options.ApprovedFieldName, new[] { options.ApprovedFieldName })
+                ? ResolveField(fieldMap, options.ApprovedFieldName, new[] { options.ApprovedFieldName, "Approved", "Aprovado" })
                 : null;
 
             // Resolve refs por tipo (TypeFieldMappings sobrescreve os globais por tipo)
@@ -910,7 +910,7 @@ namespace NXProject.Services
                         var currentApproved = ReadFieldText(wi, approvedRef);
                         if (!IsApprovedValue(currentApproved))
                         {
-                            ops.Add(PatchAdd($"/fields/{approvedRef}", ApprovedWriteValue(wi, approvedRef)));
+                            ops.Add(PatchAdd($"/fields/{approvedRef}", ApprovedWriteValue(orgBase, wi, approvedRef)));
                             changes.Add("aprovação");
                         }
                     }
@@ -2035,7 +2035,8 @@ namespace NXProject.Services
 
             // Aprovação: Task criada pela sincronização já nasce aprovada.
             if (isTaskCreate && approvedRef != null)
-                ops.Add(PatchAdd($"/fields/{approvedRef}", ApprovedTrueValue));
+                ops.Add(PatchAdd($"/fields/{approvedRef}",
+                    IsBooleanField(orgBase, approvedRef) ? true : ApprovedTrueValue));
 
             // Campos de classificação (picklist obrigatórios na criação, ex.: Custom.Type).
             if (classificationFields != null)
@@ -3073,17 +3074,37 @@ namespace NXProject.Services
             var url = $"{orgBase}/_apis/wit/fields?{ApiVersion}";
             using var doc = await GetJsonAsync(url, auth, ct);
             var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var types = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (doc.RootElement.TryGetProperty("value", out var arr))
             {
                 foreach (var f in arr.EnumerateArray())
                 {
                     var name = f.TryGetProperty("name", out var n) ? n.GetString() : null;
                     var refName = f.TryGetProperty("referenceName", out var r) ? r.GetString() : null;
-                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(refName))
-                        map[Normalize(name)] = refName!;
+                    if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(refName)) continue;
+
+                    map[Normalize(name)] = refName!;
+                    // Tipo declarado no processo (boolean, string, integer...): usado para gravar
+                    // o valor no formato certo mesmo quando o campo ainda está vazio no item.
+                    if (f.TryGetProperty("type", out var t) && t.GetString() is { } tp)
+                        types[refName!] = tp;
                 }
             }
+            lock (FieldTypeCache) FieldTypeCache[orgBase] = types;
             return map;
+        }
+
+        /// <summary>Tipo declarado de cada campo (por referenceName), por organização.</summary>
+        private static readonly Dictionary<string, Dictionary<string, string>> FieldTypeCache =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        private static bool IsBooleanField(string orgBase, string? refName)
+        {
+            if (string.IsNullOrEmpty(refName)) return false;
+            lock (FieldTypeCache)
+                return FieldTypeCache.TryGetValue(orgBase, out var types)
+                    && types.TryGetValue(refName!, out var t)
+                    && string.Equals(t, "boolean", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -3548,7 +3569,7 @@ namespace NXProject.Services
                 try
                 {
                     var fieldMap = await LoadFieldMapCachedAsync(orgBase, auth, ct);
-                    approvedRef = ResolveField(fieldMap, options.ApprovedFieldName, new[] { options.ApprovedFieldName });
+                    approvedRef = ResolveField(fieldMap, options.ApprovedFieldName, new[] { options.ApprovedFieldName, "Approved", "Aprovado" });
                 }
                 catch { /* campo inexistente no processo: segue sem ele */ }
             }
@@ -5286,12 +5307,16 @@ namespace NXProject.Services
         /// Valor a gravar respeitando o tipo do campo no processo: boolean recebe true,
         /// os demais recebem o texto padrão.
         /// </summary>
-        private static object ApprovedWriteValue(WorkItem item, string refName)
+        private static object ApprovedWriteValue(string orgBase, WorkItem item, string refName)
         {
+            // Campo booleano (caso do "Approved" tipo Boolean) recebe true; texto recebe "Sim".
+            if (IsBooleanField(orgBase, refName)) return true;
+
             if (item.Fields.ValueKind == JsonValueKind.Object &&
                 item.Fields.TryGetProperty(refName, out var el) &&
                 el.ValueKind is JsonValueKind.True or JsonValueKind.False)
                 return true;
+
             return ApprovedTrueValue;
         }
 

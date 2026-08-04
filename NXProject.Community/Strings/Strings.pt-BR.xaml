@@ -2019,4 +2019,13 @@
     <sys:String x:Key="Cfg_EpicTypeEnable">Ler tipo do EPIC (EPIC_TYPE)</sys:String>
     <sys:String x:Key="Cfg_EpicTypeField">Campo de tipo do EPIC</sys:String>
     <sys:String x:Key="Cfg_EpicTypeTip">Quando habilitado, o import le este campo do EPIC no DevOps: BACKLOG tira as horas do EPIC do total do projeto (banner do cronograma); qualquer outro valor, inclusive vazio, e tratado como DELIVERY e soma normalmente.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyScopeAsk">Você tem linhas selecionadas na planilha. O que deseja aplicar no cronograma?</sys:String>
+    <sys:String x:Key="TaskPlan_ApplySelectionOption">Aplicar apenas a seleção ({0} linha(s))</sys:String>
+    <sys:String x:Key="TaskPlan_ApplySelectionOptionHint">Só as linhas selecionadas e aprovadas entram no cronograma.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyAllOption">Aplicar todas as linhas aprovadas ({0})</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyAllOptionHint">Ignora a seleção e aplica a planilha inteira, como antes.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyCancelOption">Cancelar</sys:String>
+    <sys:String x:Key="TaskPlan_ApplySelectionNotApproved">Nenhuma das linhas selecionadas está aprovada, então a seleção não pode ser aplicada.</sys:String>
+    <sys:String x:Key="TaskPlan_MissingEpicSkipOption">Desconsiderar esses EPICs e aplicar o restante</sys:String>
+    <sys:String x:Key="TaskPlan_MissingEpicSkipHint">As linhas dos EPICs listados ficam de fora; as demais Tasks são aplicadas normalmente.</sys:String>
 </ResourceDictionary>

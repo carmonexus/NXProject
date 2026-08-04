@@ -1158,6 +1158,9 @@ namespace NXProject.Views
                 .ToList();
             foreach (var t in tasks) story.Children.Remove(t);
             story.TasksSuppressed = false;
+            // Sem filhos ela volta a ser folha: manter IsSummary tiraria o menu da grid de
+            // Tasks (Tech Lead) e a edição direta da Story.
+            if (story.Children.Count == 0) story.IsSummary = false;
             vm.Project.IsDirty = true;
             vm.RebuildFlatTasks();
             GanttCtrl.ForceRender();
@@ -1172,6 +1175,7 @@ namespace NXProject.Views
                 .Where(c => string.Equals(c.TfsType, "Task", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             foreach (var t in tasks) storyVm.Model.Children.Remove(t);
+            if (storyVm.Model.Children.Count == 0) storyVm.Model.IsSummary = false;
             vm.Project.IsDirty = true;
             vm.RebuildFlatTasks();
             GanttCtrl.ForceRender();

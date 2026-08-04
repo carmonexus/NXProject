@@ -177,6 +177,7 @@ namespace NXProject.ViewModels
         public void RebuildFlatTasks()
         {
             NormalizeNoDevOpsType(Project.Tasks);
+            NormalizeSummaryFlag(Project.Tasks);
             SyncOriginalHoursWhenZeroPercent(Project.Tasks);
             RecalculateLeafFinishesFromAssignments(Project.Tasks);
             RecalcTaskDatesFromPriority(Project.Tasks);
@@ -194,6 +195,20 @@ namespace NXProject.ViewModels
             SelectedTask = selectedModel == null
                 ? null
                 : FlatTasks.FirstOrDefault(vm => vm.Model == selectedModel);
+        }
+
+        /// <summary>
+        /// Atividade sem filhos não é resumo. Corrige arquivos onde a Story ficou marcada como
+        /// summary depois que as Tasks foram liberadas — nesse estado ela perdia o menu da grid
+        /// de Tasks e a edição direta.
+        /// </summary>
+        private static void NormalizeSummaryFlag(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var t in tasks)
+            {
+                if (t.IsSummary && t.Children.Count == 0) t.IsSummary = false;
+                NormalizeSummaryFlag(t.Children);
+            }
         }
 
         public double RecalculateProjectPercent()

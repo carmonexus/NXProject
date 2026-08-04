@@ -2021,4 +2021,13 @@
     <sys:String x:Key="Cfg_EpicTypeEnable">Read EPIC type (EPIC_TYPE)</sys:String>
     <sys:String x:Key="Cfg_EpicTypeField">EPIC type field</sys:String>
     <sys:String x:Key="Cfg_EpicTypeTip">When enabled, the import reads this EPIC field in DevOps: BACKLOG keeps the EPIC hours out of the project total (schedule banner); any other value, including empty, is treated as DELIVERY and counts normally.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyScopeAsk">You have rows selected in the sheet. What do you want to apply to the schedule?</sys:String>
+    <sys:String x:Key="TaskPlan_ApplySelectionOption">Apply the selection only ({0} row(s))</sys:String>
+    <sys:String x:Key="TaskPlan_ApplySelectionOptionHint">Only the selected and approved rows go to the schedule.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyAllOption">Apply all approved rows ({0})</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyAllOptionHint">Ignores the selection and applies the whole sheet, as before.</sys:String>
+    <sys:String x:Key="TaskPlan_ApplyCancelOption">Cancel</sys:String>
+    <sys:String x:Key="TaskPlan_ApplySelectionNotApproved">None of the selected rows is approved, so the selection cannot be applied.</sys:String>
+    <sys:String x:Key="TaskPlan_MissingEpicSkipOption">Skip these EPICs and apply the rest</sys:String>
+    <sys:String x:Key="TaskPlan_MissingEpicSkipHint">Rows of the listed EPICs are left out; the other Tasks are applied normally.</sys:String>
 </ResourceDictionary>
