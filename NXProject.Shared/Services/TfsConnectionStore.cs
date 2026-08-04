@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -99,6 +99,18 @@ namespace NXProject.Services
         /// ou "Custom.Aprovado". Só é usado quando <see cref="ApprovedFieldEnabled"/> está ligado.
         /// </summary>
         public string ApprovedFieldName { get; set; } = "Aprovado";
+
+        /// <summary>
+        /// Habilita a leitura do tipo do EPIC no DevOps (ENTREGA/BACKLOG). Desligado, todo EPIC
+        /// conta as horas normalmente. Padrão: desabilitado.
+        /// </summary>
+        public bool EpicTypeFieldEnabled { get; set; } = false;
+
+        /// <summary>
+        /// Nome (ou reference name) do campo de tipo do EPIC — ex.: "EPIC_TYPE" ou
+        /// "Custom.EPIC_TYPE". Só é usado com <see cref="EpicTypeFieldEnabled"/> ligado.
+        /// </summary>
+        public string EpicTypeFieldName { get; set; } = "EPIC_TYPE";
 
         /// <summary>Tag DevOps que marca data de início fixada/negociada (ex.: "DT-INI-NEG").</summary>
         public string FixedStartTagName { get; set; } = "DT-INI-NEG";

@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using ClosedXML.Excel;
 using NXProject.Models;
 using NXProject.Services;
@@ -103,6 +104,22 @@ namespace NXProject.Views
         }
 
         private void OnTimeSheetClearClick(object sender, RoutedEventArgs e) => ClearTimeSheet();
+
+        /// <summary>
+        /// Troca de atividade na grade: reescreve a linha com os dados do cronograma escolhido
+        /// (descrição do projeto, Projeto Capex, Elemento PEP, gestor e cronograma de origem).
+        /// Feito no code-behind porque a combo vive no CellTemplate e a escrita pelo binding
+        /// nem sempre chega ao objeto da linha.
+        /// </summary>
+        private void OnTimeSheetOptionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is not ComboBox combo) return;
+            if (combo.DataContext is not TimeSheetRow row) return;
+            if (combo.SelectedItem is not TimeSheetOption option) return;
+            if (ReferenceEquals(row.SelectedOption, option)) return;
+
+            row.SelectedOption = option;
+        }
 
         private void ClearTimeSheet()
         {

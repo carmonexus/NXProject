@@ -1047,6 +1047,9 @@ namespace NXProject.Views
             if (firstAdded != null)
             {
                 story.IsSummary = true;
+                // A Story pode estar recolhida no cronograma (inclusive por nunca ter tido
+                // filhos): sem expandir, as Tasks aplicadas ficariam invisíveis.
+                vm.ExpandTask(story);
                 // Recalcula TKs da story com base nos filhos do tipo Task
                 story.DevopsTaskCount = story.Children.Count(c =>
                     string.Equals(c.TfsType, "Task", StringComparison.OrdinalIgnoreCase));
@@ -1904,9 +1907,10 @@ namespace NXProject.Views
         {
             if (DevOpsProjectBanner.Visibility != Visibility.Visible) return;
 
-            // Usa FlatTasks (depth=0) para ter o DurationHours correto (SumTaskHours)
+            // Usa FlatTasks (depth=0) para ter o DurationHours correto (SumTaskHours).
+            // EPIC marcado como BACKLOG (campo EPIC_TYPE) fica fora do total do projeto.
             var epicHours = vm.FlatTasks
-                .Where(t => t.Depth == 0 && t.IsSummary)
+                .Where(t => t.Depth == 0 && t.IsSummary && !EpicTypes.IsBacklog(t.Model.EpicType))
                 .Sum(t => t.DurationHours);
 
             DevOpsEpicHoursLabel.Text = epicHours > 0

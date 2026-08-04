@@ -162,6 +162,12 @@ namespace NXProject.Services
             };
             var syncVersionRef = ResolveField(fieldMap, options.SyncVersionFieldName, new[] { "Sync_version", "SyncVersion", "Sync Version" });
             var syncNameRef    = ResolveField(fieldMap, options.SyncNameFieldName,    new[] { "Sync_Name", "SyncName", "Sync Name" });
+            // Tipo do EPIC (opcional): EPIC de BACKLOG não soma horas no total do projeto.
+            var epicTypeRef = options.EpicTypeFieldEnabled && !string.IsNullOrWhiteSpace(options.EpicTypeFieldName)
+                ? ResolveField(fieldMap, options.EpicTypeFieldName, new[] { options.EpicTypeFieldName })
+                : null;
+            if (epicTypeRef != null && !requestedFields.Contains(epicTypeRef)) requestedFields.Add(epicTypeRef);
+
             // Campos do work item raiz (Project) usados no apontamento de horas.
             var pepElementRef  = ResolveField(fieldMap, null, new[] { "Elemento_PEP", "Elemento PEP", "ElementoPEP" });
             var pepProjectRef  = ResolveField(fieldMap, null, new[] { "Nome_Projeto_PEP", "Nome Projeto PEP", "NomeProjetoPEP" });
@@ -251,6 +257,7 @@ namespace NXProject.Services
                 TipoCentroCustoRef = tipoCentroCustoRef,
                 CurrentHoursRef    = realizedHoursRef,
                 SyncVersionRef = syncVersionRef,
+                EpicTypeRef = epicTypeRef,
                 HoursPerDay = options.HoursPerDay <= 0 ? ProjectCalendarService.WorkingHoursPerDay : options.HoursPerDay,
                 ProjectStart = project.StartDate,
                 SprintStartByPath = sprintStarts,
@@ -2422,6 +2429,7 @@ namespace NXProject.Services
             public string? PercAlocRef;
             public string? PercConclusaoRef;
             public string? SyncVersionRef;
+            public string? EpicTypeRef;
             public string? TipoCentroCustoRef;
             public string? CurrentHoursRef;
             /// <summary>Campos Custom DevOps por tipo DevOps (ex: "Feature" → [Custom.Type, ...]).</summary>
@@ -2501,7 +2509,9 @@ namespace NXProject.Services
                 TfsStackRank = item.StackRank,
                 TfsIterationPath = item.IterationPath,
                 Justificativa = ParseJustificativa(item.Description),
-                TipoCentroCusto = ReadTipoCentroCusto(item, ctx.TipoCentroCustoRef)
+                TipoCentroCusto = ReadTipoCentroCusto(item, ctx.TipoCentroCustoRef),
+                // EPIC_TYPE (opcional): BACKLOG tira o EPIC do total de horas do projeto.
+                EpicType = NormalizeEpicType(ReadString(item, ctx.EpicTypeRef))
             };
 
             // Lê valores dos campos Custom DevOps para Epic/Feature
@@ -3287,6 +3297,17 @@ namespace NXProject.Services
         /// o Data_Inicio real do DevOps — senão o cronograma empurraria para o futuro um
         /// trabalho já executado. A tag de data negociada fixa a data em qualquer estado.
         /// </summary>
+        /// <summary>
+        /// Normaliza o valor do campo EPIC_TYPE: só "BACKLOG" muda o comportamento; qualquer
+        /// outro valor (inclusive vazio ou o campo desligado) é tratado como DELIVERY.
+        /// </summary>
+        public static string? NormalizeEpicType(string? raw)
+        {
+            var v = raw?.Trim();
+            if (string.IsNullOrEmpty(v)) return null;
+            return EpicTypes.IsBacklog(v) ? EpicTypes.Backlog : EpicTypes.Delivery;
+        }
+
         public static DateTime ResolveImportStart(
             DateTime? explicitStart, DateTime queueStart, bool hasFixedStartTag,
             string? state, double percentComplete = 0)

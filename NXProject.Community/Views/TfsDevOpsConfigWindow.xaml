@@ -1,4 +1,4 @@
-<Window x:Class="NXProject.Views.TfsDevOpsConfigWindow"
+﻿<Window x:Class="NXProject.Views.TfsDevOpsConfigWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource Cfg_Title}"
@@ -162,6 +162,28 @@
                             <TextBox x:Name="PercConclusaoFieldBox" Height="26" Padding="6,3"/>
                         </StackPanel>
                     </Grid>
+                    <!-- Tipo do EPIC (opcional): EPIC de BACKLOG fica fora do total de horas -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Bottom">
+                            <CheckBox x:Name="EpicTypeFieldEnabledBox"
+                                      Content="{DynamicResource Cfg_EpicTypeEnable}"
+                                      ToolTip="{DynamicResource Cfg_EpicTypeTip}"
+                                      FontSize="11" Margin="0,0,0,6"
+                                      Checked="OnEpicTypeFieldEnabledChanged"
+                                      Unchecked="OnEpicTypeFieldEnabledChanged"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="{DynamicResource Cfg_EpicTypeField}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                            <TextBox x:Name="EpicTypeFieldBox" Height="26" Padding="6,3" IsEnabled="False"
+                                     ToolTip="{DynamicResource Cfg_EpicTypeTip}"/>
+                        </StackPanel>
+                    </Grid>
+
                     <!-- Campo de aprovação da Task (opcional): alimenta a coluna "Aprovada" do Task Plan -->
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>

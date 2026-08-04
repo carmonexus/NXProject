@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -2739,6 +2739,16 @@ namespace NXProject.ViewModels
             Project.IsDirty = true;
             RebuildFlatTasks();
             StatusMessage = $"Encadeadas {toChain.Count} atividades na mesma hierarquia.";
+        }
+
+        /// <summary>
+        /// Garante que a atividade (e os pais dela) fiquem expandidos — usado quando algo é
+        /// adicionado embaixo dela por outra tela, para o novo item aparecer no cronograma.
+        /// </summary>
+        public void ExpandTask(ProjectTask? task)
+        {
+            for (var t = task; t != null; t = t.Parent)
+                _collapsedTaskIds.Remove(t.Id);
         }
 
         [RelayCommand]

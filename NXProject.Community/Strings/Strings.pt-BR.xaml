@@ -2016,4 +2016,7 @@
     <sys:String x:Key="PMap_TsOpenBaseTip">Carrega um XML de base de cálculo e mostra a visão gravada (somente leitura).</sys:String>
     <sys:String x:Key="PMap_TsBaseSaved">Base de cálculo gravada em:&#10;{0}</sys:String>
     <sys:String x:Key="PMap_TsBaseLoaded">Base de cálculo carregada — {0}, {1}. Total: {2:0.##} h</sys:String>
+    <sys:String x:Key="Cfg_EpicTypeEnable">Ler tipo do EPIC (EPIC_TYPE)</sys:String>
+    <sys:String x:Key="Cfg_EpicTypeField">Campo de tipo do EPIC</sys:String>
+    <sys:String x:Key="Cfg_EpicTypeTip">Quando habilitado, o import le este campo do EPIC no DevOps: BACKLOG tira as horas do EPIC do total do projeto (banner do cronograma); qualquer outro valor, inclusive vazio, e tratado como DELIVERY e soma normalmente.</sys:String>
 </ResourceDictionary>

@@ -2018,4 +2018,7 @@
     <sys:String x:Key="PMap_TsOpenBaseTip">Loads a calculation base XML and shows the saved view (read-only).</sys:String>
     <sys:String x:Key="PMap_TsBaseSaved">Calculation base saved to:&#10;{0}</sys:String>
     <sys:String x:Key="PMap_TsBaseLoaded">Calculation base loaded — {0}, {1}. Total: {2:0.##} h</sys:String>
+    <sys:String x:Key="Cfg_EpicTypeEnable">Read EPIC type (EPIC_TYPE)</sys:String>
+    <sys:String x:Key="Cfg_EpicTypeField">EPIC type field</sys:String>
+    <sys:String x:Key="Cfg_EpicTypeTip">When enabled, the import reads this EPIC field in DevOps: BACKLOG keeps the EPIC hours out of the project total (schedule banner); any other value, including empty, is treated as DELIVERY and counts normally.</sys:String>
 </ResourceDictionary>

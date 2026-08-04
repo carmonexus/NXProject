@@ -123,6 +123,12 @@ namespace NXProject.Models
         // Quantidade de Tasks filhas no DevOps (null = não calculado, 0 = sem tasks → vermelho).
         public int? DevopsTaskCount { get; set; }
 
+        /// <summary>
+        /// Tipo do EPIC vindo do DevOps (campo EPIC_TYPE): "DELIVERY" (padrão) ou "BACKLOG".
+        /// EPIC de BACKLOG não soma horas no total do projeto. Vazio = DELIVERY.
+        /// </summary>
+        public string? EpicType { get; set; }
+
         // Resumo das Tasks filhas no DevOps por recurso (dono + horas), gravado no Sync e no
         // import do Mapa de Alocação. Permite a alocação decompor o HH da Story entre as pessoas
         // das tasks sem carregar as tasks inteiras no cronograma. Horas: Closed → Completed;
@@ -276,6 +282,19 @@ namespace NXProject.Models
 
     /// <summary>Resumo de uma Task filha (no DevOps) por recurso: quem a executa e quantas horas.
     /// Usado pela decomposição de alocação sem precisar carregar as Tasks no cronograma.</summary>
+    /// <summary>Valores do campo EPIC_TYPE importado do DevOps.</summary>
+    public static class EpicTypes
+    {
+        /// <summary>EPIC de entrega — comportamento padrão, soma horas no total do projeto.</summary>
+        public const string Delivery = "DELIVERY";
+
+        /// <summary>EPIC de backlog — NÃO soma horas no total do projeto.</summary>
+        public const string Backlog  = "BACKLOG";
+
+        public static bool IsBacklog(string? epicType)
+            => string.Equals(epicType?.Trim(), Backlog, StringComparison.OrdinalIgnoreCase);
+    }
+
     public class TaskAllocationSummary
     {
         public string Resource { get; set; } = string.Empty;

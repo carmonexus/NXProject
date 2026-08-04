@@ -506,6 +506,7 @@
                                         <Grid>
                                             <ComboBox ItemsSource="{Binding Options}"
                                                       SelectedItem="{Binding SelectedOption, Mode=TwoWay}"
+                                                      SelectionChanged="OnTimeSheetOptionChanged"
                                                       DisplayMemberPath="Display"
                                                       FontSize="11" BorderThickness="0"
                                                       Background="Transparent"

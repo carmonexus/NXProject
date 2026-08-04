@@ -224,6 +224,7 @@ namespace NXProject.Services
                 new XElement(EXT + "TfsParentId", task.TfsParentId?.ToString() ?? ""),
                 new XElement(EXT + "TfsType", task.TfsType ?? ""),
                 new XElement(EXT + "TfsClassification", task.TfsClassification ?? ""),
+                new XElement(EXT + "EpicType", task.EpicType ?? ""),
                 task.CustomDevopsFieldValues.Count > 0
                     ? new XElement(EXT + "CustomDevopsFieldValues",
                         task.CustomDevopsFieldValues.Select(kv =>
@@ -518,6 +519,7 @@ namespace NXProject.Services
                 TfsParentId = int.TryParse(el.Element(EXT + "TfsParentId")?.Value, out var tfsPid) ? tfsPid : null,
                 TfsType = string.IsNullOrWhiteSpace(el.Element(EXT + "TfsType")?.Value) ? null : el.Element(EXT + "TfsType")?.Value,
                 TfsClassification = string.IsNullOrWhiteSpace(el.Element(EXT + "TfsClassification")?.Value) ? null : el.Element(EXT + "TfsClassification")?.Value,
+                EpicType = string.IsNullOrWhiteSpace(el.Element(EXT + "EpicType")?.Value) ? null : el.Element(EXT + "EpicType")?.Value,
                 CustomDevopsFieldValues = el.Element(EXT + "CustomDevopsFieldValues")
                     ?.Elements(EXT + "CF")
                     .Where(cf => cf.Attribute("ref") != null)

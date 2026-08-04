@@ -58,6 +58,9 @@ namespace NXProject.Views
             FinishFieldBox.Text = saved.FinishFieldName;
             PercAlocFieldBox.Text = saved.PercAlocFieldName;
             PercConclusaoFieldBox.Text = saved.PercConclusaoFieldName;
+            EpicTypeFieldEnabledBox.IsChecked = saved.EpicTypeFieldEnabled;
+            EpicTypeFieldBox.Text = string.IsNullOrWhiteSpace(saved.EpicTypeFieldName) ? "EPIC_TYPE" : saved.EpicTypeFieldName;
+            EpicTypeFieldBox.IsEnabled = saved.EpicTypeFieldEnabled;
             ApprovedFieldEnabledBox.IsChecked = saved.ApprovedFieldEnabled;
             ApprovedFieldBox.Text = string.IsNullOrWhiteSpace(saved.ApprovedFieldName) ? "Aprovado" : saved.ApprovedFieldName;
             ApprovedFieldBox.IsEnabled = saved.ApprovedFieldEnabled;
@@ -107,7 +110,13 @@ namespace NXProject.Views
             }
         }
 
-        // O nome do campo de aprovação só é editável com a leitura habilitada.
+        // Os nomes dos campos opcionais só são editáveis com a leitura habilitada.
+        private void OnEpicTypeFieldEnabledChanged(object sender, RoutedEventArgs e)
+        {
+            if (EpicTypeFieldBox == null) return;
+            EpicTypeFieldBox.IsEnabled = EpicTypeFieldEnabledBox.IsChecked == true;
+        }
+
         private void OnApprovedFieldEnabledChanged(object sender, RoutedEventArgs e)
         {
             if (ApprovedFieldBox == null) return;
@@ -218,6 +227,8 @@ namespace NXProject.Views
             FinishFieldName     = string.IsNullOrWhiteSpace(FinishFieldBox.Text)    ? "Data_Fim"      : FinishFieldBox.Text.Trim(),
             PercAlocFieldName   = string.IsNullOrWhiteSpace(PercAlocFieldBox.Text)  ? "Perc_Alocacao" : PercAlocFieldBox.Text.Trim(),
             PercConclusaoFieldName = string.IsNullOrWhiteSpace(PercConclusaoFieldBox.Text) ? "Perc_Conclusao" : PercConclusaoFieldBox.Text.Trim(),
+            EpicTypeFieldEnabled = EpicTypeFieldEnabledBox.IsChecked == true,
+            EpicTypeFieldName = string.IsNullOrWhiteSpace(EpicTypeFieldBox.Text) ? "EPIC_TYPE" : EpicTypeFieldBox.Text.Trim(),
             ApprovedFieldEnabled = ApprovedFieldEnabledBox.IsChecked == true,
             ApprovedFieldName = string.IsNullOrWhiteSpace(ApprovedFieldBox.Text) ? "Aprovado" : ApprovedFieldBox.Text.Trim(),
             SyncVersionFieldName = string.IsNullOrWhiteSpace(SyncVersionFieldBox.Text) ? "Sync_version" : SyncVersionFieldBox.Text.Trim(),
