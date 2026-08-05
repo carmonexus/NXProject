@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using NXProject.Models;
 using NXProject.Services;
 using NXProject.ViewModels;
 
@@ -44,6 +45,7 @@ namespace NXProject.Views
             SelectByText(TypeBox, task.TfsType);
             SelectByText(StateBox, task.TfsState);
             RefreshFeatureTypePanel(task.TfsType, task.TfsClassification);
+            RefreshEpicTypePanel(task.TfsType, task.Model.EpicType);
 
             TypeBox.SelectionChanged += OnTypeBoxChanged;
             TagsBox.Text = task.Tags ?? string.Empty;
@@ -251,6 +253,25 @@ namespace NXProject.Views
         {
             var type = (TypeBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
             RefreshFeatureTypePanel(type, null);
+            RefreshEpicTypePanel(type, _task.Model.EpicType);
+        }
+
+        /// <summary>
+        /// Tipo do EPIC: só aparece para Epic e quando o campo está habilitado na configuração
+        /// TFS. O valor é gravado de volta no DevOps pelo Export → Sincronizar, se tiver mudado.
+        /// </summary>
+        private void RefreshEpicTypePanel(string? tfsType, string? currentEpicType)
+        {
+            var options = TfsConnectionStore.Load("NXProject.Community");
+            bool show = options.EpicTypeFieldEnabled && TfsImportService.IsEpicType(tfsType);
+            EpicTypePanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            if (!show) return;
+
+            var wanted = EpicTypes.IsBacklog(currentEpicType) ? EpicTypes.Backlog : EpicTypes.Delivery;
+            foreach (ComboBoxItem item in EpicTypeBox.Items)
+                if (string.Equals(item.Content?.ToString(), wanted, StringComparison.OrdinalIgnoreCase))
+                    EpicTypeBox.SelectedItem = item;
+            if (EpicTypeBox.SelectedIndex < 0) EpicTypeBox.SelectedIndex = 0;
         }
 
         private void RefreshFeatureTypePanel(string? tfsType, string? currentClassification)
@@ -351,6 +372,12 @@ namespace NXProject.Views
             }
 
             _task.Tags = string.Join("; ", SplitTags(TagsBox.Text));
+
+            if (EpicTypePanel.Visibility == Visibility.Visible)
+            {
+                var epicType = (EpicTypeBox.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                _task.Model.EpicType = TfsImportService.NormalizeEpicType(epicType);
+            }
 
             if (FeatureTypePanel.Visibility == Visibility.Visible)
                 _task.TfsClassification = (FeatureTypeBox.SelectedItem as ComboBoxItem)?.Content?.ToString();

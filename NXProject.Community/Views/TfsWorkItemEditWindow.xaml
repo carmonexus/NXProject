@@ -1,4 +1,4 @@
-<Window x:Class="NXProject.Views.TfsWorkItemEditWindow"
+﻿<Window x:Class="NXProject.Views.TfsWorkItemEditWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource WiEdit_Title}"
@@ -103,6 +103,22 @@
                             <ComboBoxItem>Hotfix</ComboBoxItem>
                             <ComboBoxItem>Refactor</ComboBoxItem>
                         </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- Tipo do EPIC (EPIC_TYPE): só para Epic e com o campo habilitado na config -->
+                <Border x:Name="EpicTypePanel" Visibility="Collapsed"
+                        Background="#F5F7FA" BorderBrush="#D0D7E0" BorderThickness="1"
+                        CornerRadius="4" Padding="10,8" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="{DynamicResource WiEdit_EpicTypeLabel}" FontWeight="SemiBold" FontSize="12"
+                                   Foreground="#2B579A" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="EpicTypeBox" Height="28">
+                            <ComboBoxItem Content="DELIVERY"/>
+                            <ComboBoxItem Content="BACKLOG"/>
+                        </ComboBox>
+                        <TextBlock Text="{DynamicResource WiEdit_EpicTypeHint}"
+                                   FontSize="11" Foreground="#888" Margin="0,3,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 

@@ -1033,6 +1033,7 @@ namespace NXProject.Views
                     Priority         = r.Priority > 0 ? r.Priority : 5,
                     TfsStackRank     = r.BacklogRank,
                     TfsState         = r.State,
+                    Approved         = r.Approved,
                     TfsIterationPath = story.TfsIterationPath,
                     SprintNumber     = story.SprintNumber,
                     Start            = story.Start,

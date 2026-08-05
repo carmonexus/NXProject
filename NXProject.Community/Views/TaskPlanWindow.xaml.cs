@@ -3258,6 +3258,11 @@ namespace NXProject.Views
                     title: string.IsNullOrWhiteSpace(title) ? null : title,
                     descriptionHtml: descHtml);
 
+                // Aprovação da planilha vai junto — só grava se estiver diferente no DevOps.
+                if (ApprovalCol is { } approvalCol)
+                    await TfsImportService.UpdateTaskApprovedAsync(options, taskId,
+                        IsApprovalYes(row[approvalCol]?.ToString()));
+
                 StatusText.Text = AppStrings.Get("TaskPlan_SelSaved", taskId);
                 if (blockedByRich)
                 {

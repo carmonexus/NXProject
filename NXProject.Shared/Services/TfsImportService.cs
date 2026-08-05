@@ -528,6 +528,11 @@ namespace NXProject.Services
             var percConclusaoRef = ResolveField(fieldMap, options.PercConclusaoFieldName, PercConclusaoFieldNames);
             var syncVersionRef = ResolveField(fieldMap, options.SyncVersionFieldName, new[] { "Sync_version", "SyncVersion", "Sync Version" });
             var syncNameRef    = ResolveField(fieldMap, options.SyncNameFieldName,    new[] { "Sync_Name", "SyncName", "Sync Name" });
+            // Tipo do EPIC (opcional): só é gravado de volta quando MUDOU no cronograma.
+            var syncEpicTypeRef = options.EpicTypeFieldEnabled && !string.IsNullOrWhiteSpace(options.EpicTypeFieldName)
+                ? ResolveField(fieldMap, options.EpicTypeFieldName, new[] { options.EpicTypeFieldName, "EPIC_TYPE", "Tipo_Epic" })
+                : null;
+
             // Campo de aprovação da Task (opcional): a sincronização OFICIALIZA a aprovação —
             // uma Task que chega como não aprovada sai daqui aprovada.
             var approvedRef = options.ApprovedFieldEnabled && !string.IsNullOrWhiteSpace(options.ApprovedFieldName)
@@ -907,11 +912,29 @@ namespace NXProject.Services
                     // "não aprovado", grava aprovado; já aprovado não gera operação.
                     if (isTask && approvedRef != null)
                     {
-                        var currentApproved = ReadFieldText(wi, approvedRef);
-                        if (!IsApprovedValue(currentApproved))
+                        var currentApproved = IsApprovedValue(ReadFieldText(wi, approvedRef));
+                        // Com valor definido no cronograma (grade do Tech Lead / Task Plan),
+                        // manda o que está aqui — e só quando mudou. Sem valor, sincronizar
+                        // apenas OFICIALIZA a aprovação.
+                        var desiredApproved = task.Approved ?? true;
+                        if (desiredApproved != currentApproved)
                         {
-                            ops.Add(PatchAdd($"/fields/{approvedRef}", ApprovedWriteValue(orgBase, wi, approvedRef)));
-                            changes.Add("aprovação");
+                            ops.Add(PatchAdd($"/fields/{approvedRef}",
+                                ApprovedWriteValue(orgBase, wi, approvedRef, desiredApproved)));
+                            changes.Add(desiredApproved ? "aprovação" : "aprovação removida");
+                        }
+                    }
+
+                    // Tipo do EPIC: grava só se mudou (compara com o que está no DevOps).
+                    if (syncEpicTypeRef != null && IsEpicType(task.TfsType)
+                        && !string.IsNullOrWhiteSpace(task.EpicType))
+                    {
+                        var desiredEpicType = NormalizeEpicType(task.EpicType);
+                        var currentEpicType = NormalizeEpicType(ReadFieldText(wi, syncEpicTypeRef));
+                        if (desiredEpicType != null && !string.Equals(desiredEpicType, currentEpicType, StringComparison.OrdinalIgnoreCase))
+                        {
+                            ops.Add(PatchAdd($"/fields/{syncEpicTypeRef}", desiredEpicType));
+                            changes.Add($"tipo do EPIC: {currentEpicType ?? "(vazio)"}→{desiredEpicType}");
                         }
                     }
 
@@ -3225,6 +3248,10 @@ namespace NXProject.Services
             IsStoryType(type);
 
         public static bool IsStoryTypePublic(string? type) => IsStoryType(type);
+
+        /// <summary>Tipo EPIC (o campo EPIC_TYPE só existe nesse nível).</summary>
+        public static bool IsEpicType(string? type)
+            => string.Equals(type?.Trim(), "Epic", StringComparison.OrdinalIgnoreCase);
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
 
         /// <summary>Busca no DevOps as Tasks de cada Story do projeto e grava/atualiza o resumo de
@@ -3871,6 +3898,39 @@ namespace NXProject.Services
                 ops.Add(PatchAdd("/fields/System.IterationPath", iterationPath.Trim()));
 
             return await CreateWorkItemAsync(orgBase, auth, options.TeamProject, "Task", ops, ct);
+        }
+
+        /// <summary>
+        /// Grava a aprovação de uma Task no DevOps quando ela difere do que está lá. Devolve
+        /// true se chegou a gravar. Sem o campo habilitado/encontrado, não faz nada.
+        /// </summary>
+        public static async Task<bool> UpdateTaskApprovedAsync(
+            TfsConnectionOptions options, int taskId, bool approved, CancellationToken ct = default)
+        {
+            if (options == null || taskId <= 0) return false;
+            if (!options.ApprovedFieldEnabled || string.IsNullOrWhiteSpace(options.ApprovedFieldName)) return false;
+
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue(
+                "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+
+            var fieldMap = await LoadFieldMapCachedAsync(orgBase, auth, ct);
+            var approvedRef = ResolveField(fieldMap, options.ApprovedFieldName,
+                new[] { options.ApprovedFieldName, "Approved", "Aprovado" });
+            if (approvedRef == null) return false;
+
+            var items = await LoadWorkItemsAsync(orgBase, auth, new[] { taskId },
+                new List<string> { "System.Id", approvedRef }, ct, expandRelations: false);
+            if (!items.TryGetValue(taskId, out var wi)) return false;
+
+            if (IsApprovedValue(ReadFieldText(wi, approvedRef)) == approved) return false;
+
+            var ops = new List<object>
+            {
+                PatchAdd($"/fields/{approvedRef}", ApprovedWriteValue(orgBase, wi, approvedRef, approved))
+            };
+            await PatchWorkItemAsync(orgBase, auth, taskId, ops, ct);
+            return true;
         }
 
         /// <summary>
@@ -5288,7 +5348,8 @@ namespace NXProject.Services
 
         // ── Campo de aprovação da Task ───────────────────────────────────────────
         /// <summary>Valor gravado quando a sincronização oficializa a aprovação de uma Task.</summary>
-        private const string ApprovedTrueValue = "Sim";
+        private const string ApprovedTrueValue  = "Sim";
+        private const string ApprovedFalseValue = "Não";
 
         /// <summary>Lê o campo de aprovação como texto (bool, número ou string no DevOps).</summary>
         private static string? ReadFieldText(WorkItem item, string? refName)
@@ -5318,17 +5379,17 @@ namespace NXProject.Services
         /// Valor a gravar respeitando o tipo do campo no processo: boolean recebe true,
         /// os demais recebem o texto padrão.
         /// </summary>
-        private static object ApprovedWriteValue(string orgBase, WorkItem item, string refName)
+        private static object ApprovedWriteValue(string orgBase, WorkItem item, string refName, bool approved = true)
         {
-            // Campo booleano (caso do "Approved" tipo Boolean) recebe true; texto recebe "Sim".
-            if (IsBooleanField(orgBase, refName)) return true;
+            // Campo booleano (caso do "Approved" tipo Boolean) recebe true/false; texto, Sim/Não.
+            if (IsBooleanField(orgBase, refName)) return approved;
 
             if (item.Fields.ValueKind == JsonValueKind.Object &&
                 item.Fields.TryGetProperty(refName, out var el) &&
                 el.ValueKind is JsonValueKind.True or JsonValueKind.False)
-                return true;
+                return approved;
 
-            return ApprovedTrueValue;
+            return approved ? ApprovedTrueValue : ApprovedFalseValue;
         }
 
         private static double? ReadDouble(WorkItem item, string? refName)

@@ -124,6 +124,13 @@ namespace NXProject.Models
         public int? DevopsTaskCount { get; set; }
 
         /// <summary>
+        /// Aprovação da Task (campo configurável no DevOps). Null = nunca definida aqui; a
+        /// sincronização então apenas oficializa. Com valor, o sync grava o que está no
+        /// cronograma quando diferir do DevOps.
+        /// </summary>
+        public bool? Approved { get; set; }
+
+        /// <summary>
         /// Tipo do EPIC vindo do DevOps (campo EPIC_TYPE): "DELIVERY" (padrão) ou "BACKLOG".
         /// EPIC de BACKLOG não soma horas no total do projeto. Vazio = DELIVERY.
         /// </summary>

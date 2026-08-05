@@ -2037,4 +2037,6 @@
     <sys:String x:Key="Cfg_OpenTokensPage">Criar/renovar o PAT no Azure DevOps (abre no navegador)</sys:String>
     <sys:String x:Key="Cfg_OpenTokensPageTip">Abre a pagina de Personal Access Tokens da organizacao informada acima.</sys:String>
     <sys:String x:Key="Cfg_OpenTokensNeedUrl">Informe a URL da organizacao para abrir a pagina de tokens.</sys:String>
+    <sys:String x:Key="WiEdit_EpicTypeLabel">Tipo do EPIC (EPIC_TYPE)</sys:String>
+    <sys:String x:Key="WiEdit_EpicTypeHint">BACKLOG tira as horas deste EPIC do total do projeto. A mudanca vai para o DevOps no Exportar / Sincronizar.</sys:String>
 </ResourceDictionary>
