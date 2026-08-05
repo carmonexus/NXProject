@@ -233,6 +233,10 @@ namespace NXProject.ViewModels
         {
             foreach (var task in tasks)
             {
+                // EPIC de BACKLOG fica fora do % do projeto (mesma regra do total de HH).
+                if (EpicTypes.IsBacklog(task.EpicType))
+                    continue;
+
                 if (!task.IsSummary || task.Children.Count == 0)
                 {
                     yield return task;

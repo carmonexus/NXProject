@@ -1922,14 +1922,15 @@ namespace NXProject.Views
                 ? AppStrings.Get("Banner_EpicHours", epicHours)
                 : string.Empty;
 
-            var scheduleTasks = vm.FlatTasks
+            // Datas do projeto no banner também ignoram EPICs BACKLOG (mesma regra do HH e do %).
+            var scheduleTasks = NonBacklogTasks(vm.Project.Tasks)
                 .Where(t => !t.IsMilestone)
                 .ToList();
             if (scheduleTasks.Count > 0)
             {
-                var start = scheduleTasks.Min(t => t.Model.Start.Date);
+                var start = scheduleTasks.Min(t => t.Start.Date);
                 var finish = scheduleTasks
-                    .Select(t => ProjectCalendarService.GetInclusiveFinishDate(t.Model.Start, t.Model.Finish).Date)
+                    .Select(t => ProjectCalendarService.GetInclusiveFinishDate(t.Start, t.Finish).Date)
                     .Max();
                 DevOpsScheduleDatesLabel.Text = AppStrings.Get("Banner_Dates", start, finish);
             }
@@ -1941,6 +1942,20 @@ namespace NXProject.Views
             DevOpsPercentLabel.Text = vm.Project.Tasks.Count > 0
                 ? AppStrings.Get("Banner_Percent", vm.ProjectPercent)
                 : string.Empty;
+        }
+
+        /// <summary>Percorre a árvore pulando subárvores de EPIC marcado como BACKLOG.</summary>
+        private static IEnumerable<Models.ProjectTask> NonBacklogTasks(IEnumerable<Models.ProjectTask> tasks)
+        {
+            foreach (var task in tasks)
+            {
+                if (EpicTypes.IsBacklog(task.EpicType))
+                    continue;
+
+                yield return task;
+                foreach (var child in NonBacklogTasks(task.Children))
+                    yield return child;
+            }
         }
 
         private void UpdateDevOpsProjectBanner(string? name, int id, string? owner = null)
