@@ -62,7 +62,7 @@ namespace NXProject.Views
             EpicTypeFieldBox.Text = string.IsNullOrWhiteSpace(saved.EpicTypeFieldName) ? "EPIC_TYPE" : saved.EpicTypeFieldName;
             EpicTypeFieldBox.IsEnabled = saved.EpicTypeFieldEnabled;
             ApprovedFieldEnabledBox.IsChecked = saved.ApprovedFieldEnabled;
-            ApprovedFieldBox.Text = string.IsNullOrWhiteSpace(saved.ApprovedFieldName) ? "Aprovado" : saved.ApprovedFieldName;
+            ApprovedFieldBox.Text = string.IsNullOrWhiteSpace(saved.ApprovedFieldName) ? "Approved" : saved.ApprovedFieldName;
             ApprovedFieldBox.IsEnabled = saved.ApprovedFieldEnabled;
             SyncVersionFieldBox.Text = saved.SyncVersionFieldName;
             SyncNameFieldBox.Text = saved.SyncNameFieldName;
@@ -255,7 +255,7 @@ namespace NXProject.Views
             EpicTypeFieldEnabled = EpicTypeFieldEnabledBox.IsChecked == true,
             EpicTypeFieldName = string.IsNullOrWhiteSpace(EpicTypeFieldBox.Text) ? "EPIC_TYPE" : EpicTypeFieldBox.Text.Trim(),
             ApprovedFieldEnabled = ApprovedFieldEnabledBox.IsChecked == true,
-            ApprovedFieldName = string.IsNullOrWhiteSpace(ApprovedFieldBox.Text) ? "Aprovado" : ApprovedFieldBox.Text.Trim(),
+            ApprovedFieldName = string.IsNullOrWhiteSpace(ApprovedFieldBox.Text) ? "Approved" : ApprovedFieldBox.Text.Trim(),
             SyncVersionFieldName = string.IsNullOrWhiteSpace(SyncVersionFieldBox.Text) ? "Sync_version" : SyncVersionFieldBox.Text.Trim(),
             SyncNameFieldName   = string.IsNullOrWhiteSpace(SyncNameFieldBox.Text)   ? "Sync_Name"    : SyncNameFieldBox.Text.Trim(),
             FixedStartTagName   = string.IsNullOrWhiteSpace(FixedStartTagBox.Text)  ? "DT-INI-NEG"   : FixedStartTagBox.Text.Trim(),
