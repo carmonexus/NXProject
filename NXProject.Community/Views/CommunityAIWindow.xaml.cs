@@ -649,6 +649,15 @@ namespace NXProject.Views
             return false;
         }
 
+        // Botões que substituem as abas: cada botão seleciona a visão correspondente.
+        private void OnTabButtonChecked(object sender, RoutedEventArgs e)
+        {
+            if (MainTabControl == null || sender is not System.Windows.Controls.RadioButton rb) return;
+            if (int.TryParse(rb.Tag?.ToString(), out var index)
+                && index >= 0 && index < MainTabControl.Items.Count)
+                MainTabControl.SelectedIndex = index;
+        }
+
         private void OnCopyResultClick(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(_lastResultText))

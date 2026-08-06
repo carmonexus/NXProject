@@ -74,7 +74,9 @@ Today NXProject turns Azure DevOps data into a management view of planning and e
 - [Download NXProject.Community-Release.zip (update)](../../releases/latest/download/NXProject.Community-Release.zip)
 - [View release notes and source code downloads](../../releases/latest)
 
-> `NXProject.Community-Release.zip` alone does **not** include the .NET runtime or third-party libraries (PdfSharp, WebView2, CommunityToolkit.Mvvm) — it only contains the app files (`.exe`/`.dll`) that change every release, and must be extracted **on top of** an existing installation (created by NXProject-Setup or a previous full release). Use NXProject-Setup.zip for a first-time install on a new machine.
+> `NXProject.Community-Release.zip` alone does **not** include the .NET runtime or third-party libraries (PdfSharp, WebView2, CommunityToolkit.Mvvm, LLamaSharp) — it only contains the app files (`.exe`/`.dll`) that change every release, and must be extracted **on top of** an existing installation (created by NXProject-Setup or a previous full release). Use NXProject-Setup.zip for a first-time install on a new machine.
+>
+> **About Local AI**: besides NXProject's compiled code, the distribution includes `LLamaSharp.dll`, which is **just an open-source .NET wrapper (MIT license)** for llama.cpp — by itself it does not run any model. The native engine (`llama.dll`) and the GGUF model are **not** shipped in the Setup: they are optionally downloaded by NXProject itself (AI menu → Manage Local AI) into a user-chosen folder, with validation and auditable code ([LLamaSharp](https://github.com/SciSharp/LLamaSharp) / [llama.cpp](https://github.com/ggml-org/llama.cpp)).
 >
 > The binaries were built in an environment with McAfee antivirus. If you prefer to build from source, see the instructions below.
 

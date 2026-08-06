@@ -17,6 +17,21 @@ namespace NXProject.Services
         // cancelaria antes de timeouts maiores, ex.: OpenRouter em 240s).
         private static readonly HttpClient HttpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
+        /// <summary>
+        /// Gerador da IA Local (LLaMA), registrado pelo app na inicialização. Recebe
+        /// (prompt de sistema, prompt do usuário já com contexto) e devolve o texto da
+        /// resposta. Quando o provedor é LocalLlama, as chamadas usam este gerador no
+        /// lugar do HTTP — nada sai da máquina.
+        /// </summary>
+        public static Func<string, string, CancellationToken, Task<string>>? LocalGenerator { get; set; }
+
+        private static Task<string> RunLocalAsync(string systemPrompt, string userRequest, string projectContext, CancellationToken ct)
+        {
+            if (LocalGenerator == null)
+                throw new InvalidOperationException("IA Local não inicializada. Use o menu IA → Gerenciar IA Local para instalar e validar os recursos.");
+            return LocalGenerator(systemPrompt, BuildUserPrompt(userRequest, projectContext), ct);
+        }
+
         public static async Task<AIAssistantResponse> GenerateTaskSuggestionsAsync(
             AISettings settings,
             string userRequest,
@@ -24,6 +39,13 @@ namespace NXProject.Services
             string? customDeveloperPrompt = null,
             CancellationToken cancellationToken = default)
         {
+            if (settings.Provider == AIProvider.LocalLlama)
+            {
+                var localPrompt = string.IsNullOrWhiteSpace(customDeveloperPrompt) ? TaskDeveloperPrompt : customDeveloperPrompt;
+                var localContent = await RunLocalAsync(localPrompt, userRequest, projectContext, cancellationToken);
+                return ParseAssistantResponse(localContent);
+            }
+
             var apiKey = AISettingsStore.SanitizeSecret(settings.ApiKey);
             if (string.IsNullOrWhiteSpace(apiKey))
                 throw new InvalidOperationException("Informe um token de IA antes de gerar sugestoes.");
@@ -97,6 +119,11 @@ namespace NXProject.Services
             string projectContext,
             CancellationToken cancellationToken = default)
         {
+            if (settings.Provider == AIProvider.LocalLlama)
+                return await RunLocalAsync(
+                    string.IsNullOrWhiteSpace(systemPrompt) ? "Voce e um assistente util." : systemPrompt,
+                    userRequest, projectContext, cancellationToken);
+
             var apiKey = AISettingsStore.SanitizeSecret(settings.ApiKey);
             if (string.IsNullOrWhiteSpace(apiKey))
                 throw new InvalidOperationException("Informe um token de IA antes de executar.");

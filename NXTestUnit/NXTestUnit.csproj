@@ -13,6 +13,7 @@
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="LLamaSharp" Version="0.27.0" />
     <ProjectReference Include="..\NXProject.Shared\NXProject.Shared.csproj" />
   </ItemGroup>
 
@@ -43,6 +44,12 @@
     </Compile>
     <Compile Include="..\NXProject.Community\Services\TaskPlanSettingsStore.cs">
       <Link>Services\TaskPlanSettingsStore.cs</Link>
+    </Compile>
+    <Compile Include="..\NXProject.Community\Services\LocalAIResourceStore.cs">
+      <Link>Services\LocalAIResourceStore.cs</Link>
+    </Compile>
+    <Compile Include="..\NXProject.Community\Services\LocalLlamaService.cs">
+      <Link>Services\LocalLlamaService.cs</Link>
     </Compile>
   </ItemGroup>
 

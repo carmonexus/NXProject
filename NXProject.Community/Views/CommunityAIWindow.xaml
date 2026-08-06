@@ -11,6 +11,24 @@
         WindowStartupLocation="CenterOwner"
         Background="White">
 
+    <Window.Resources>
+        <!-- Botões que trocam a visão (substituem as abas do assistente) -->
+        <Style x:Key="AiTabButton" TargetType="RadioButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
+            <Setter Property="Padding" Value="16,7"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="MinWidth" Value="110"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="#2B579A"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -38,7 +56,25 @@
                            Text="{DynamicResource AI_SecretNote}"/>
             </StackPanel>
 
-            <TabControl Grid.Row="1" Margin="0,0,0,14">
+            <DockPanel Grid.Row="1" Margin="0,0,0,14">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="0" IsChecked="True"
+                                 Content="{DynamicResource AI_TabAssistant}" Checked="OnTabButtonChecked"/>
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="1"
+                                 Content="{DynamicResource AI_TabGeneral}" Checked="OnTabButtonChecked"/>
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="2"
+                                 Content="OpenAI" Checked="OnTabButtonChecked"/>
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="3"
+                                 Content="Work IQ" Checked="OnTabButtonChecked"/>
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="4"
+                                 Content="OpenRouter" Checked="OnTabButtonChecked"/>
+                </StackPanel>
+                <TabControl x:Name="MainTabControl">
+                    <TabControl.ItemContainerStyle>
+                        <Style TargetType="TabItem">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </Style>
+                    </TabControl.ItemContainerStyle>
                     <TabItem Header="{DynamicResource AI_TabAssistant}">
                         <Grid Margin="10">
                             <Grid.RowDefinitions>
@@ -106,6 +142,7 @@
                                         <ComboBoxItem Content="OpenAI" Tag="OpenAI"/>
                                         <ComboBoxItem Content="Work IQ" Tag="WorkIQ"/>
                                         <ComboBoxItem Content="OpenRouter" Tag="OpenRouter"/>
+                                        <ComboBoxItem Content="IA Local (LLaMA)" Tag="LocalLlama"/>
                                     </ComboBox>
 
                                     <TextBlock Text="{DynamicResource AI_ScheduleMode_Label}" FontSize="15" FontWeight="SemiBold" Margin="0,20,0,4"/>
@@ -260,6 +297,7 @@
                         </ScrollViewer>
                     </TabItem>
                 </TabControl>
+            </DockPanel>
         </Grid>
 
         <DockPanel Grid.Row="1" Margin="0,16,0,0" LastChildFill="False">

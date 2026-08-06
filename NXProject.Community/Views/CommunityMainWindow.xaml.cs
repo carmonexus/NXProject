@@ -53,6 +53,8 @@ namespace NXProject.Views
         public CommunityMainWindow()
         {
             InitializeComponent();
+            // IA Local (LLaMA): registra o gerador usado quando o provedor padrão é LocalLlama.
+            Services.ProjectAIAssistantService.LocalGenerator = Community.Services.LocalLlamaService.GenerateAsync;
             var v = Assembly.GetExecutingAssembly().GetName().Version;
             if (v != null)
                 Title = $"NXProject Community {v.Major}.{v.Minor}.{v.Build} build({v.Revision})";

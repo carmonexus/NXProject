@@ -20,7 +20,8 @@ namespace NXProject.Models
         OpenAI,         // OpenAI / Codex
         OpenRouter,     // OpenRouter OpenAI-compatible API
         GitHubCopilot,  // Azure OpenAI via Copilot
-        WorkIQ          // Work IQ (OpenAI-compatible por padrao)
+        WorkIQ,         // Work IQ (OpenAI-compatible por padrao)
+        LocalLlama      // IA Local (llama.cpp/LLamaSharp, recursos na pasta do usuario)
     }
 
     /// <summary>Como o token de acesso e obtido para o provedor.</summary>
@@ -162,10 +163,12 @@ namespace NXProject.Models
             _ => string.Empty
         };
 
-        /// <summary>Timeout padrao por provedor. OpenRouter (free costuma ser lento) usa 240s.</summary>
+        /// <summary>Timeout padrao por provedor. OpenRouter (free costuma ser lento) usa 240s;
+        /// IA Local em CPU pode levar minutos.</summary>
         public static int GetDefaultTimeoutSeconds(AIProvider provider) => provider switch
         {
             AIProvider.OpenRouter => 240,
+            AIProvider.LocalLlama => 600,
             _ => 120
         };
 
@@ -193,6 +196,7 @@ namespace NXProject.Models
             AIProvider.OpenAI => "OpenAI",
             AIProvider.OpenRouter => "OpenRouter",
             AIProvider.WorkIQ => "Work IQ",
+            AIProvider.LocalLlama => "IA Local (LLaMA)",
             AIProvider.Claude => "Claude",
             AIProvider.GitHubCopilot => "GitHub Copilot",
             _ => provider.ToString()

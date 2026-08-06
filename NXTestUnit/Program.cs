@@ -117,8 +117,19 @@ internal static class Program
             "packaging-community" => [PackagingTests[0], PackagingTests[3]],
             "packaging-setup" => [PackagingTests[1], PackagingTests[2], PackagingTests[3]],
             "packaging" => PackagingTests,
+            "ai" => AiIntegrationTests,
             _ => ScheduleTests
         };
+
+        // Integração com IA Local: só roda quando os recursos estão instalados na máquina
+        // de compilação (pasta configurada com llama.dll + modelo .gguf); senão, pula.
+        if (ReferenceEquals(tests, AiIntegrationTests) && !IsLocalAiInstalled())
+        {
+            Console.WriteLine("NXTestUnit - integracao com IA Local");
+            Console.WriteLine();
+            Console.WriteLine("[SKIP] IA Local nao instalada nesta maquina - bloco de integracao ignorado.");
+            return 0;
+        }
 
         // Qualquer categoria desconhecida cai nos testes de cronograma (default do switch),
         // entao "isSchedule" deve seguir a MESMA regra — senao os testes de cronograma
@@ -131,7 +142,9 @@ internal static class Program
         var failures = new List<string>();
         Console.WriteLine(isSchedule
             ? "NXTestUnit - testes criticos de cronograma"
-            : "NXTestUnit - validacao de empacotamento (zips de release)");
+            : ReferenceEquals(tests, AiIntegrationTests)
+                ? "NXTestUnit - integracao com IA Local"
+                : "NXTestUnit - validacao de empacotamento (zips de release)");
         Console.WriteLine();
 
         foreach (var (name, test) in tests)
@@ -152,13 +165,14 @@ internal static class Program
         }
 
         Console.WriteLine();
+        var suiteLabel = ReferenceEquals(tests, AiIntegrationTests) ? "Integracao IA Local" : "NXTestUnit";
         if (failures.Count == 0)
         {
-            Console.WriteLine($"NXTestUnit concluido: {tests.Count} testes passaram.");
+            Console.WriteLine($"{suiteLabel} concluido: {tests.Count} testes passaram.");
             return 0;
         }
 
-        Console.WriteLine($"NXTestUnit falhou: {failures.Count} de {tests.Count} testes falharam.");
+        Console.WriteLine($"{suiteLabel} falhou: {failures.Count} de {tests.Count} testes falharam.");
         foreach (var failure in failures)
             Console.WriteLine($" - {failure}");
 
@@ -172,6 +186,45 @@ internal static class Program
         ("Setup: timestamp e intrinseco ao zip e igual ao embutido no build", ValidateSetupTimestampIntrinsic),
         ("Empacotamento: toda DLL de terceiros do publish esta no NXProject-Setup.zip", ValidateThirdPartyLibsAreInSetupZip)
     ];
+
+    // ── Integração com IA Local (LLaMA) — roda só com os recursos instalados ─────
+    private static readonly List<(string Name, Action Test)> AiIntegrationTests =
+    [
+        ("IA Local: instalacao valida (llama.dll carrega e modelo GGUF integro)", AiLocalInstallationIsValid),
+        ("IA Local: inferencia responde a um prompt minimo", AiLocalInferenceResponds)
+    ];
+
+    private static bool IsLocalAiInstalled()
+    {
+        var folder = LocalAIResourceStore.LoadFolder();
+        return !string.IsNullOrWhiteSpace(folder)
+               && Directory.Exists(folder)
+               && File.Exists(Path.Combine(folder, LocalAIResourceStore.NativeDllName))
+               && Directory.EnumerateFiles(folder, "*.gguf").Any();
+    }
+
+    private static void AiLocalInstallationIsValid()
+    {
+        var folder = LocalAIResourceStore.LoadFolder();
+        var r = LocalAIResourceStore.Validate(folder);
+        if (!r.NativePresent || !r.NativeLoads)
+            throw new InvalidOperationException(r.NativeMessage ?? "llama.dll nao carregou.");
+        if (!r.ModelPresent || !r.ModelValid)
+            throw new InvalidOperationException(r.ModelMessage ?? "modelo GGUF invalido.");
+    }
+
+    private static void AiLocalInferenceResponds()
+    {
+        // Prompt mínimo: valida o ciclo completo (carga do modelo + geração) em CPU.
+        var answer = LocalLlamaService.GenerateAsync(
+                "Responda SEMPRE com uma unica palavra: OK",
+                "Diga OK.",
+                new CancellationTokenSource(TimeSpan.FromMinutes(5)).Token)
+            .GetAwaiter().GetResult();
+
+        if (string.IsNullOrWhiteSpace(answer))
+            throw new InvalidOperationException("A inferencia local devolveu resposta vazia.");
+    }
 
     /// <summary>Garante que a identidade do Setup (timestamp) FICA NO proprio Setup e que a
     /// release so cria a tag, sem recarimbar. O valor gravado dentro do NXProject-Setup.zip

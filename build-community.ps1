@@ -84,6 +84,13 @@ Invoke-DotnetCommandWithRetry -ActionLabel "O NXTestUnit" -Command {
     dotnet run --project $TestProjectFile -c $Configuration --no-restore --nologo
 }
 
+Write-Step "Rodando NXTestUnit (integracao IA Local, se instalada)..."
+# Chama o exe direto: o dotnet run nao repassa o argumento de categoria de forma confiavel.
+$TestExe = Join-Path $SolutionDir "NXTestUnit\bin\$Configuration\net10.0-windows\NXTestUnit.exe"
+Invoke-DotnetCommandWithRetry -ActionLabel "O NXTestUnit (IA Local)" -Command {
+    & $TestExe ai $SolutionDir
+}
+
 Write-Step "Compilando Community ($Configuration)..."
 Invoke-DotnetCommandWithRetry -ActionLabel "A compilacao" -Command {
     dotnet build $ProjectFile -c $Configuration --nologo --no-restore

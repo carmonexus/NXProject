@@ -3632,7 +3632,7 @@ namespace NXProject.Views
             var featureCol = FindColumn("Feature", "Nome da Feature");
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
-            if (string.IsNullOrWhiteSpace(settings.ApiKey))
+            if (string.IsNullOrWhiteSpace(settings.ApiKey) && settings.Provider != AIProvider.LocalLlama)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -3792,7 +3792,7 @@ namespace NXProject.Views
 
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
-            if (string.IsNullOrWhiteSpace(settings.ApiKey))
+            if (string.IsNullOrWhiteSpace(settings.ApiKey) && settings.Provider != AIProvider.LocalLlama)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -4019,7 +4019,7 @@ namespace NXProject.Views
 
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
-            if (string.IsNullOrWhiteSpace(settings.ApiKey))
+            if (string.IsNullOrWhiteSpace(settings.ApiKey) && settings.Provider != AIProvider.LocalLlama)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
