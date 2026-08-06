@@ -1149,10 +1149,11 @@ namespace NXProject.Services
                             }
                         }
 
-                        // Priority (Microsoft.VSTS.Common.Priority). DevOps aceita apenas 1–4.
+                        // Priority (Microsoft.VSTS.Common.Priority). Padrão DevOps: 1–4;
+                        // faixa personalizada opcional na configuração TFS.
                         var currentPriority = ReadDouble(wi, "Microsoft.VSTS.Common.Priority");
                         int rawPriority = task.Priority is > 0 ? task.Priority.Value : 4;
-                        int desiredPriority = Math.Clamp(rawPriority, 1, 4);
+                        int desiredPriority = ClampTaskPriority(options, rawPriority);
                         if (currentPriority == null || (int)currentPriority.Value != desiredPriority)
                         {
                             ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Priority", desiredPriority));
@@ -3252,6 +3253,22 @@ namespace NXProject.Services
         /// <summary>Tipo EPIC (o campo EPIC_TYPE só existe nesse nível).</summary>
         public static bool IsEpicType(string? type)
             => string.Equals(type?.Trim(), "Epic", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Limita a prioridade da Task à faixa em vigor: padrão do DevOps (1–4) ou a faixa
+        /// personalizada da configuração TFS, quando habilitada. Valor acima do que o
+        /// processo do DevOps aceita causa erro na gravação — o erro aparece no log do sync.
+        /// </summary>
+        public static int ClampTaskPriority(TfsConnectionOptions? options, int priority)
+        {
+            int min = 1, max = 4;
+            if (options is { TaskPriorityRangeEnabled: true })
+            {
+                min = Math.Max(1, options.TaskPriorityMin);
+                max = Math.Max(min, options.TaskPriorityMax);
+            }
+            return Math.Clamp(priority, min, max);
+        }
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
 
         /// <summary>Busca no DevOps as Tasks de cada Story do projeto e grava/atualiza o resumo de

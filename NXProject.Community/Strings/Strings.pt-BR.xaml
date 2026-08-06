@@ -2049,6 +2049,10 @@
     <sys:String x:Key="TaskPlan_AiFindTip">A IA localiza na planilha a(s) atividade(s) descrita(s) no texto e seleciona a(s) linha(s) na grade.</sys:String>
     <sys:String x:Key="TaskPlan_AiFindDone">IA: {0} linha(s) encontrada(s) e selecionada(s) na planilha.</sys:String>
     <sys:String x:Key="TaskPlan_AiFindNone">IA: nenhuma linha da planilha corresponde ao texto.</sys:String>
+    <sys:String x:Key="Cfg_TaskPrioRangeEnable">Faixa de prioridade da Task personalizada</sys:String>
+    <sys:String x:Key="Cfg_TaskPrioRangeTip">Desligado, a gravação usa a faixa padrão do DevOps (1–4). Ligue apenas se o processo do seu DevOps aceitar outra faixa — valor fora do que o processo aceita dá erro na gravação do TFS (o erro aparece no log da sincronização).</sys:String>
+    <sys:String x:Key="Cfg_TaskPrioMin">Prioridade mínima</sys:String>
+    <sys:String x:Key="Cfg_TaskPrioMax">Prioridade máxima</sys:String>
     <sys:String x:Key="Help_SearchHint">Buscar palavra ou texto nos tópicos</sys:String>
     <sys:String x:Key="Help_SearchNoResult">Nenhum tópico contém o texto pesquisado.</sys:String>
     <sys:String x:Key="WiEdit_EpicTypeLabel">Tipo do EPIC (EPIC_TYPE)</sys:String>

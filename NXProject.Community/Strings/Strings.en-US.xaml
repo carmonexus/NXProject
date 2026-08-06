@@ -2051,6 +2051,10 @@
     <sys:String x:Key="TaskPlan_AiFindTip">The AI locates the activity(ies) described in the text and selects the matching row(s) in the grid.</sys:String>
     <sys:String x:Key="TaskPlan_AiFindDone">AI: {0} row(s) found and selected in the sheet.</sys:String>
     <sys:String x:Key="TaskPlan_AiFindNone">AI: no sheet row matches the text.</sys:String>
+    <sys:String x:Key="Cfg_TaskPrioRangeEnable">Custom Task priority range</sys:String>
+    <sys:String x:Key="Cfg_TaskPrioRangeTip">Off, writes use the DevOps default range (1–4). Enable only if your DevOps process accepts another range — a value outside what the process accepts fails on the TFS write (the error shows in the sync log).</sys:String>
+    <sys:String x:Key="Cfg_TaskPrioMin">Minimum priority</sys:String>
+    <sys:String x:Key="Cfg_TaskPrioMax">Maximum priority</sys:String>
     <sys:String x:Key="Help_SearchHint">Search a word or text in the topics</sys:String>
     <sys:String x:Key="Help_SearchNoResult">No topic contains the searched text.</sys:String>
     <sys:String x:Key="WiEdit_EpicTypeLabel">EPIC type (EPIC_TYPE)</sys:String>

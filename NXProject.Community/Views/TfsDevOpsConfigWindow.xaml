@@ -213,6 +213,40 @@
                                      ToolTip="{DynamicResource Cfg_ApprovedFieldTip}"/>
                         </StackPanel>
                     </Grid>
+
+                    <!-- Faixa personalizada de prioridade da Task (padrão DevOps: 1–4) -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Bottom">
+                            <CheckBox x:Name="TaskPriorityRangeEnabledBox"
+                                      Content="{DynamicResource Cfg_TaskPrioRangeEnable}"
+                                      ToolTip="{DynamicResource Cfg_TaskPrioRangeTip}"
+                                      FontSize="11" Margin="0,0,0,6"
+                                      Checked="OnTaskPriorityRangeEnabledChanged"
+                                      Unchecked="OnTaskPriorityRangeEnabledChanged"/>
+                        </StackPanel>
+                        <Grid Grid.Column="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{DynamicResource Cfg_TaskPrioMin}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TaskPriorityMinBox" Height="26" Padding="6,3" IsEnabled="False"
+                                         ToolTip="{DynamicResource Cfg_TaskPrioRangeTip}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="{DynamicResource Cfg_TaskPrioMax}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TaskPriorityMaxBox" Height="26" Padding="6,3" IsEnabled="False"
+                                         ToolTip="{DynamicResource Cfg_TaskPrioRangeTip}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>

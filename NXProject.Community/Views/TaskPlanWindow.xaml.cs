@@ -3133,13 +3133,14 @@ namespace NXProject.Views
             if (estCol != null && TryParsePlanNumber(row[estCol]?.ToString(), out var h) && h >= 0) est = h;
             int prio = 0;
             if (prioCol != null && int.TryParse(row[prioCol]?.ToString()?.Trim(), out var p) && p > 0)
-                prio = Math.Clamp(p, 1, 4);
+                prio = p;
 
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             StatusText.Text = AppStrings.Get("TaskPlan_CreatingTask", title);
             try
             {
                 var options = TfsConnectionStore.Load("NXProject.Community");
+                if (prio > 0) prio = TfsImportService.ClampTaskPriority(options, prio);
 
                 // Duplicidade: a chave e o nome da Task dentro da Story.
                 var existing = await TfsImportService.FetchChildTasksFromDevOpsAsync(options, storyId.Value);
@@ -3227,13 +3228,14 @@ namespace NXProject.Views
             if (estCol != null && TryParsePlanNumber(row[estCol]?.ToString(), out var h) && h >= 0) est = h;
             int prio = 0;
             if (prioCol != null && int.TryParse(row[prioCol]?.ToString()?.Trim(), out var p) && p > 0)
-                prio = Math.Clamp(p, 1, 4);
+                prio = p;
 
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
             StatusText.Text = AppStrings.Get("TaskPlan_SelSaving", taskId);
             try
             {
                 var options = TfsConnectionStore.Load("NXProject.Community");
+                if (prio > 0) prio = TfsImportService.ClampTaskPriority(options, prio);
 
                 // Descrição: a planilha só conhece TEXTO. Se no DevOps ela tiver conteúdo rico
                 // (imagem, tabela, lista, link), gravar o texto apagaria esse conteúdo — então

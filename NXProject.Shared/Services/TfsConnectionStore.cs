@@ -112,6 +112,19 @@ namespace NXProject.Services
         /// </summary>
         public string EpicTypeFieldName { get; set; } = "EPIC_TYPE";
 
+        /// <summary>
+        /// Habilita faixa personalizada de prioridade da Task. Desligado (padrão), a gravação
+        /// usa a faixa padrão do DevOps (1–4). Ligue apenas se o processo do DevOps aceitar
+        /// valores maiores — valor fora da faixa do processo dá erro na gravação do TFS.
+        /// </summary>
+        public bool TaskPriorityRangeEnabled { get; set; } = false;
+
+        /// <summary>Prioridade mínima da Task quando a faixa personalizada está habilitada.</summary>
+        public int TaskPriorityMin { get; set; } = 1;
+
+        /// <summary>Prioridade máxima da Task quando a faixa personalizada está habilitada.</summary>
+        public int TaskPriorityMax { get; set; } = 4;
+
         /// <summary>Tag DevOps que marca data de início fixada/negociada (ex.: "DT-INI-NEG").</summary>
         public string FixedStartTagName { get; set; } = "DT-INI-NEG";
 
@@ -261,6 +274,9 @@ namespace NXProject.Services
             public string ApprovedFieldName { get; set; } = "Approved";
             public bool   EpicTypeFieldEnabled { get; set; } = true;
             public string EpicTypeFieldName { get; set; } = "EPIC_TYPE";
+            public bool   TaskPriorityRangeEnabled { get; set; }
+            public int    TaskPriorityMin { get; set; } = 1;
+            public int    TaskPriorityMax { get; set; } = 4;
             public bool SyncPredecessorLinks { get; set; } = true;
             public bool EnforceStoryCompletionWithTasks { get; set; } = true;
             public bool EnableOrgPeopleDiscovery { get; set; }
@@ -330,6 +346,10 @@ namespace NXProject.Services
                 options.EpicTypeFieldEnabled = stored.EpicTypeFieldEnabled;
                 options.EpicTypeFieldName = string.IsNullOrWhiteSpace(stored.EpicTypeFieldName)
                     ? options.EpicTypeFieldName : stored.EpicTypeFieldName.Trim();
+                options.TaskPriorityRangeEnabled = stored.TaskPriorityRangeEnabled;
+                options.TaskPriorityMin = stored.TaskPriorityMin >= 1 ? stored.TaskPriorityMin : 1;
+                options.TaskPriorityMax = stored.TaskPriorityMax >= options.TaskPriorityMin
+                    ? stored.TaskPriorityMax : Math.Max(options.TaskPriorityMin, 4);
                 options.SyncPredecessorLinks = stored.SyncPredecessorLinks;
                 options.EnforceStoryCompletionWithTasks = stored.EnforceStoryCompletionWithTasks;
                 options.EnableOrgPeopleDiscovery = stored.EnableOrgPeopleDiscovery;
@@ -380,6 +400,9 @@ namespace NXProject.Services
                 ApprovedFieldName = string.IsNullOrWhiteSpace(options.ApprovedFieldName) ? "Approved" : options.ApprovedFieldName.Trim(),
                 EpicTypeFieldEnabled = options.EpicTypeFieldEnabled,
                 EpicTypeFieldName = string.IsNullOrWhiteSpace(options.EpicTypeFieldName) ? "EPIC_TYPE" : options.EpicTypeFieldName.Trim(),
+                TaskPriorityRangeEnabled = options.TaskPriorityRangeEnabled,
+                TaskPriorityMin = options.TaskPriorityMin >= 1 ? options.TaskPriorityMin : 1,
+                TaskPriorityMax = options.TaskPriorityMax >= 1 ? options.TaskPriorityMax : 4,
                 SyncPredecessorLinks = options.SyncPredecessorLinks,
                 EnforceStoryCompletionWithTasks = options.EnforceStoryCompletionWithTasks,
                 EnableOrgPeopleDiscovery = options.EnableOrgPeopleDiscovery,

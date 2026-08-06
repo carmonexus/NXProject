@@ -64,6 +64,11 @@ namespace NXProject.Views
             ApprovedFieldEnabledBox.IsChecked = saved.ApprovedFieldEnabled;
             ApprovedFieldBox.Text = string.IsNullOrWhiteSpace(saved.ApprovedFieldName) ? "Approved" : saved.ApprovedFieldName;
             ApprovedFieldBox.IsEnabled = saved.ApprovedFieldEnabled;
+            TaskPriorityRangeEnabledBox.IsChecked = saved.TaskPriorityRangeEnabled;
+            TaskPriorityMinBox.Text = saved.TaskPriorityMin.ToString(CultureInfo.InvariantCulture);
+            TaskPriorityMaxBox.Text = saved.TaskPriorityMax.ToString(CultureInfo.InvariantCulture);
+            TaskPriorityMinBox.IsEnabled = saved.TaskPriorityRangeEnabled;
+            TaskPriorityMaxBox.IsEnabled = saved.TaskPriorityRangeEnabled;
             SyncVersionFieldBox.Text = saved.SyncVersionFieldName;
             SyncNameFieldBox.Text = saved.SyncNameFieldName;
             FixedStartTagBox.Text = saved.FixedStartTagName;
@@ -144,6 +149,14 @@ namespace NXProject.Views
         {
             if (ApprovedFieldBox == null) return;
             ApprovedFieldBox.IsEnabled = ApprovedFieldEnabledBox.IsChecked == true;
+        }
+
+        private void OnTaskPriorityRangeEnabledChanged(object sender, RoutedEventArgs e)
+        {
+            if (TaskPriorityMinBox == null || TaskPriorityMaxBox == null) return;
+            var enabled = TaskPriorityRangeEnabledBox.IsChecked == true;
+            TaskPriorityMinBox.IsEnabled = enabled;
+            TaskPriorityMaxBox.IsEnabled = enabled;
         }
 
         private void OnManageListClick(object sender, RoutedEventArgs e)
@@ -256,6 +269,9 @@ namespace NXProject.Views
             EpicTypeFieldName = string.IsNullOrWhiteSpace(EpicTypeFieldBox.Text) ? "EPIC_TYPE" : EpicTypeFieldBox.Text.Trim(),
             ApprovedFieldEnabled = ApprovedFieldEnabledBox.IsChecked == true,
             ApprovedFieldName = string.IsNullOrWhiteSpace(ApprovedFieldBox.Text) ? "Approved" : ApprovedFieldBox.Text.Trim(),
+            TaskPriorityRangeEnabled = TaskPriorityRangeEnabledBox.IsChecked == true,
+            TaskPriorityMin = int.TryParse(TaskPriorityMinBox.Text?.Trim(), out var prioMin) && prioMin >= 1 ? prioMin : 1,
+            TaskPriorityMax = int.TryParse(TaskPriorityMaxBox.Text?.Trim(), out var prioMax) && prioMax >= 1 ? prioMax : 4,
             SyncVersionFieldName = string.IsNullOrWhiteSpace(SyncVersionFieldBox.Text) ? "Sync_version" : SyncVersionFieldBox.Text.Trim(),
             SyncNameFieldName   = string.IsNullOrWhiteSpace(SyncNameFieldBox.Text)   ? "Sync_Name"    : SyncNameFieldBox.Text.Trim(),
             FixedStartTagName   = string.IsNullOrWhiteSpace(FixedStartTagBox.Text)  ? "DT-INI-NEG"   : FixedStartTagBox.Text.Trim(),
