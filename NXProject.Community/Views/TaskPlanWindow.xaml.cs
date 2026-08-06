@@ -654,9 +654,16 @@ namespace NXProject.Views
             EnsureRegisterDates();
             if (ApprovalCol is not { } approvalCol) return;
             var idCol = FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task");
+            var normTaskCol = FindColumn("Task", "Tarefa", "Nome da Task");
             foreach (DataRow row in _data.Table.Rows)
             {
+                if (row.RowState == DataRowState.Deleted) continue;
                 var id = idCol != null ? row[idCol]?.ToString()?.Trim() ?? "" : "";
+
+                // Linha vazia (sem task e sem ID) fica sem "False": é só o rascunho da planilha.
+                if (id.Length == 0 && normTaskCol != null
+                    && string.IsNullOrWhiteSpace(row[normTaskCol]?.ToString()))
+                    continue;
                 var target = id.EndsWith(":T", StringComparison.OrdinalIgnoreCase)
                     ? ApprovalTrue
                     : IsApprovalYes(row[approvalCol]?.ToString()) ? ApprovalTrue : ApprovalFalse;
@@ -3580,7 +3587,10 @@ namespace NXProject.Views
                 MarkBackupFunction(backupFunction);
             }
             if (added > 0)
+            {
+                RemoveBlankPlanRows();
                 RenumberTaskPlanRows();
+            }
             BuildEpicFilter();
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
@@ -3743,6 +3753,488 @@ namespace NXProject.Views
             if (EpicIdCol is { } epicIdCol && !MatchesPlanId(AncestorNode(src.Story, "Epic"), row[epicIdCol]?.ToString())) return false;
 
             return true;
+        }
+
+        // ── Painel de IA: incluir tasks na planilha a partir da lista da reunião ──
+        private void OnEnableAiChanged(object sender, RoutedEventArgs e)
+        {
+            if (AiIncludePanel == null) return;
+            AiIncludePanel.Visibility = EnableAiCheckBox.IsChecked == true
+                ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// Ação "Incluir Tasks na Planilha" (configurável na tela IA Geral): recebe a lista
+        /// colada da reunião (mínimo Story + Task por item), a IA casa o nome da Story com o
+        /// cronograma e a task entra na planilha com Aprovada = False e ID interno (:I),
+        /// quando ainda não existe outra com o mesmo nome na mesma Story.
+        /// </summary>
+        private async void OnAiIncludeClick(object sender, RoutedEventArgs e)
+        {
+            var text = AiIncludeInputBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                AiIncludeLog(AppStrings.Get("TaskPlan_AiIncludeNoText"));
+                return;
+            }
+            if (_data == null)
+            {
+                AiIncludeLog(AppStrings.Get("TaskPlan_AiIncludeNoPlan"));
+                return;
+            }
+            if (_vm?.Project == null || _vm.Project.Tasks.Count == 0)
+            {
+                AiIncludeLog(AppStrings.Get("TaskPlan_AiIncludeNoSchedule"));
+                return;
+            }
+
+            var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
+            var settings = ws.ResolveActiveSettings();
+            if (string.IsNullOrWhiteSpace(settings.ApiKey))
+            {
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var systemPrompt = ws.ActionTypes
+                .FirstOrDefault(a => a.Name == AIActionType.PlanIncludeActionName)?.Prompt;
+            if (string.IsNullOrWhiteSpace(systemPrompt))
+                systemPrompt = AISettingsStore.PlanIncludeActionPrompt;
+
+            PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+            // Filtros ativos esconderiam as linhas novas: limpa tudo antes de incluir.
+            _columnFilters.Clear();
+            _columnColorFilters.Clear();
+            if (OpenTasksOnlyCheckBox != null) OpenTasksOnlyCheckBox.IsChecked = false;
+            if (EpicFilterCombo.Items.Count > 0) EpicFilterCombo.SelectedIndex = 0;
+            ApplyEpicFilter();
+
+            // Janela de log ao vivo da integração (fica aberta ao final para conferência).
+            var (logWin, logBox, logClose) = CreateAiIncludeLogWindow();
+            void WinLog(string msg)
+            {
+                logBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}{Environment.NewLine}");
+                logBox.ScrollToEnd();
+            }
+            logWin.Show();
+
+            var taskCol  = FindColumn("Task", "Tarefa", "Nome da Task");
+            var storyCol = FindColumn("Story", "Nome da Story");
+            if (taskCol == null)
+            {
+                WinLog("Coluna \"Task\" não encontrada na planilha — inclusão cancelada.");
+                logClose.IsEnabled = true;
+                return;
+            }
+
+            var flat = Flatten(_vm.Project.Tasks).ToList();
+            var stories = flat.Where(x => IsType(x, "Story")).ToList();
+            WinLog($"Contexto montado: {stories.Count} Story(ies) do cronograma, provedor {AIProviderDefaults.GetDisplayName(settings.Provider)} ({settings.Model}).");
+
+            // Contexto para a IA: Stories do cronograma + tasks já existentes na planilha.
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("STORIES:");
+            foreach (var s in stories)
+                sb.AppendLine($"- id={s.Id}; nome=\"{s.Name}\"; feature=\"{Ancestor(s, "Feature")}\"; epic=\"{Ancestor(s, "Epic")}\"");
+            sb.AppendLine();
+            sb.AppendLine("TASKS_PLANILHA:");
+            foreach (DataRow r in _data.Table.Rows)
+            {
+                if (r.RowState == DataRowState.Deleted) continue;
+                var name = r[taskCol]?.ToString()?.Trim();
+                if (string.IsNullOrEmpty(name)) continue;
+                var st = storyCol != null ? r[storyCol]?.ToString()?.Trim() : "";
+                sb.AppendLine($"- story=\"{st}\"; task=\"{name}\"");
+            }
+            sb.AppendLine();
+            sb.AppendLine("TEXTO:");
+            sb.AppendLine(text);
+
+            string raw;
+            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            AiIncludeSendBtn.IsEnabled = false;
+            try
+            {
+                StatusText.Text = AppStrings.Get("TaskPlan_AiIncludeRunning");
+                WinLog("Enviando para a IA...");
+                raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
+                    settings, systemPrompt,
+                    "Encontre a Story de cada atividade do TEXTO e devolva o JSON.", sb.ToString());
+                WinLog("Resposta recebida da IA:");
+                WinLog(raw);
+            }
+            catch (Exception ex)
+            {
+                WinLog("ERRO na chamada da IA: " + ex);
+                logClose.IsEnabled = true;
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = ex.Message;
+                return;
+            }
+            finally
+            {
+                System.Windows.Input.Mouse.OverrideCursor = null;
+                AiIncludeSendBtn.IsEnabled = true;
+            }
+
+            int added = 0, existing = 0, noStory = 0;
+            try
+            {
+                var start = raw.IndexOf('[');
+                var end = raw.LastIndexOf(']');
+                if (start < 0 || end <= start)
+                {
+                    WinLog("A resposta da IA não trouxe um JSON de atividades — nada incluído.");
+                    logClose.IsEnabled = true;
+                    return;
+                }
+
+                var idCol = TaskIdCol;
+                var featureCol = FindColumn("Feature", "Nome da Feature");
+                var estCol = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+                var touchedStories = new HashSet<ProjectTask>();
+
+                // Planilha nova nasce com uma linha em branco — remove antes de incluir,
+                // senão ela fica como uma linha "fantasma" com Aprovada=False no topo.
+                RemoveBlankPlanRows();
+
+                using var doc = System.Text.Json.JsonDocument.Parse(raw[start..(end + 1)]);
+                foreach (var item in doc.RootElement.EnumerateArray())
+                {
+                    var taskName = item.TryGetProperty("task", out var tp) ? tp.GetString()?.Trim() : null;
+                    if (string.IsNullOrWhiteSpace(taskName)) continue;
+
+                    int storyId = item.TryGetProperty("story_id", out var sp) && sp.TryGetInt32(out var sid) ? sid : 0;
+                    var storyNode = stories.FirstOrDefault(s => s.Id == storyId);
+                    if (storyNode == null)
+                    {
+                        noStory++;
+                        var obs = item.TryGetProperty("obs", out var op) ? op.GetString() : null;
+                        WinLog($"✗ \"{taskName}\": Story não encontrada no cronograma{(string.IsNullOrWhiteSpace(obs) ? "" : $" ({obs})")}.");
+                        continue;
+                    }
+
+                    // Já existe? Na planilha (mesma Story + mesmo nome) ou como filha da Story no cronograma.
+                    bool inPlan = _data.Table.Rows.Cast<DataRow>().Any(r =>
+                        r.RowState != DataRowState.Deleted
+                        && string.Equals(r[taskCol]?.ToString()?.Trim(), taskName, StringComparison.OrdinalIgnoreCase)
+                        && (storyCol == null
+                            || string.IsNullOrWhiteSpace(r[storyCol]?.ToString())
+                            || string.Equals(r[storyCol]?.ToString()?.Trim(), storyNode.Name?.Trim(), StringComparison.OrdinalIgnoreCase)));
+                    bool inSchedule = storyNode.Children.Any(c =>
+                        string.Equals((c.Name ?? "").Trim(), taskName, StringComparison.OrdinalIgnoreCase));
+                    if (inPlan || inSchedule)
+                    {
+                        existing++;
+                        WinLog($"= \"{taskName}\" já existe na Story \"{storyNode.Name}\".");
+                        continue;
+                    }
+
+                    // Task interna no cronograma (padrão do Aplicar) → ID interno :I na planilha.
+                    var task = TaskPlanScheduleRules.CreateInternalTask(storyNode, _vm.NextId(), taskName, null, 1.0);
+                    storyNode.Children.Add(task);
+                    storyNode.IsSummary = true;
+                    touchedStories.Add(storyNode);
+                    flat.Add(task);
+                    if (!string.IsNullOrEmpty(_path))
+                    {
+                        task.SourcePlanPath = _path;
+                        task.SourcePlanRowKey = $"{task.Id}:I";
+                    }
+
+                    var dr = _data.Table.NewRow();
+                    if (storyCol != null) dr[storyCol] = storyNode.Name ?? "";
+                    if (featureCol != null) dr[featureCol] = Ancestor(storyNode, "Feature");
+                    if (_epicColumn != null) dr[_epicColumn] = Ancestor(storyNode, "Epic");
+                    FillHierarchyIdsFromNode(dr, task);
+                    dr[taskCol] = taskName;
+                    if (idCol != null) dr[idCol] = $"{task.Id}:I";
+                    if (ApprovalCol is { } apCol) dr[apCol] = "False";
+                    if (RegisterDateCol is { } regCol) dr[regCol] = FormatRegisterDate(DateTime.Today);
+                    if (estCol != null) dr[estCol] = "1";
+                    _data.Table.Rows.Add(dr);
+                    added++;
+                    WinLog($"✓ \"{taskName}\" incluída na Story \"{storyNode.Name}\" ({task.Id}:I).");
+                }
+
+                foreach (var s in touchedStories.Where(TaskPlanScheduleRules.CanAdjustStoryDuration))
+                    s.RecalcSummary();
+
+                if (added > 0)
+                {
+                    _dirty = true;
+                    _vm.Project.IsDirty = true;
+                    if (!string.IsNullOrEmpty(_path)) _vm.Project.PlanSheetPath = _path;
+                    _vm.RebuildFlatTasks();
+                    RenumberTaskPlanRows();
+                    BuildEpicFilter();
+                    ValidateAgainstSchedule();
+                    PlanGrid.Items.Refresh();
+                    UpdateActiveFilterIndicator();
+                    AiIncludeInputBox.Clear();
+
+                    // Mostra as linhas recém-incluídas (fim da grade).
+                    if (PlanGrid.Items.Count > 0)
+                        PlanGrid.ScrollIntoView(PlanGrid.Items[PlanGrid.Items.Count - 1]);
+                }
+
+                var summary = AppStrings.Get("TaskPlan_AiIncludeDone", added, existing, noStory);
+                WinLog(summary);
+                AiIncludeLog(summary);
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                StatusText.Text = summary;
+            }
+            catch (Exception ex)
+            {
+                WinLog("ERRO ao interpretar a resposta da IA: " + ex);
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = ex.Message;
+            }
+            finally
+            {
+                logClose.IsEnabled = true;
+            }
+        }
+
+        /// <summary>
+        /// Ação "Consultar Task na Planilha" (configurável na tela IA Geral): a IA localiza
+        /// na planilha a(s) atividade(s) descrita(s) no texto e a grade seleciona/mostra as linhas.
+        /// </summary>
+        private async void OnAiFindClick(object sender, RoutedEventArgs e)
+        {
+            var text = AiIncludeInputBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                AiIncludeLog(AppStrings.Get("TaskPlan_AiIncludeNoText"));
+                return;
+            }
+            if (_data == null)
+            {
+                AiIncludeLog(AppStrings.Get("TaskPlan_AiIncludeNoPlan"));
+                return;
+            }
+
+            var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
+            var settings = ws.ResolveActiveSettings();
+            if (string.IsNullOrWhiteSpace(settings.ApiKey))
+            {
+                MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var systemPrompt = ws.ActionTypes
+                .FirstOrDefault(a => a.Name == AIActionType.PlanFindActionName)?.Prompt;
+            if (string.IsNullOrWhiteSpace(systemPrompt))
+                systemPrompt = AISettingsStore.PlanFindActionPrompt;
+
+            PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+            var taskCol  = FindColumn("Task", "Tarefa", "Nome da Task");
+            var storyCol = FindColumn("Story", "Nome da Story");
+            if (taskCol == null) return;
+
+            // Filtros ativos esconderiam as linhas encontradas: limpa antes de consultar.
+            _columnFilters.Clear();
+            _columnColorFilters.Clear();
+            if (OpenTasksOnlyCheckBox != null) OpenTasksOnlyCheckBox.IsChecked = false;
+            if (EpicFilterCombo.Items.Count > 0) EpicFilterCombo.SelectedIndex = 0;
+            ApplyEpicFilter();
+
+            var (logWin, logBox, logClose) = CreateAiIncludeLogWindow();
+            void WinLog(string msg)
+            {
+                logBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}{Environment.NewLine}");
+                logBox.ScrollToEnd();
+            }
+            logWin.Show();
+
+            var idCol = TaskIdCol;
+            var rows = new List<(int Number, DataRow Row)>();
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("LINHAS:");
+            int number = 1;
+            foreach (DataRow r in _data.Table.Rows)
+            {
+                if (r.RowState == DataRowState.Deleted) continue;
+                var name = r[taskCol]?.ToString()?.Trim() ?? "";
+                if (name.Length > 0)
+                {
+                    var st = storyCol != null ? r[storyCol]?.ToString()?.Trim() : "";
+                    var id = idCol != null ? r[idCol]?.ToString()?.Trim() : "";
+                    sb.AppendLine($"{number}. story=\"{st}\"; task=\"{name}\"; id=\"{id}\"");
+                    rows.Add((number, r));
+                }
+                number++;
+            }
+            sb.AppendLine();
+            sb.AppendLine("TEXTO:");
+            sb.AppendLine(text);
+            WinLog($"Consultando {rows.Count} linha(s) da planilha (provedor {AIProviderDefaults.GetDisplayName(settings.Provider)}, {settings.Model}).");
+
+            string raw;
+            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            AiFindBtn.IsEnabled = false;
+            try
+            {
+                WinLog("Enviando para a IA...");
+                raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
+                    settings, systemPrompt,
+                    "Localize nas LINHAS as atividades do TEXTO e devolva o JSON.", sb.ToString());
+                WinLog("Resposta recebida da IA:");
+                WinLog(raw);
+            }
+            catch (Exception ex)
+            {
+                WinLog("ERRO na chamada da IA: " + ex);
+                logClose.IsEnabled = true;
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = ex.Message;
+                return;
+            }
+            finally
+            {
+                System.Windows.Input.Mouse.OverrideCursor = null;
+                AiFindBtn.IsEnabled = true;
+            }
+
+            try
+            {
+                var found = new List<DataRow>();
+                var start = raw.IndexOf('[');
+                var end = raw.LastIndexOf(']');
+                if (start >= 0 && end > start)
+                {
+                    var byNumber = rows.ToDictionary(x => x.Number, x => x.Row);
+                    using var doc = System.Text.Json.JsonDocument.Parse(raw[start..(end + 1)]);
+                    foreach (var item in doc.RootElement.EnumerateArray())
+                    {
+                        if (!item.TryGetProperty("linha", out var lp) || !lp.TryGetInt32(out var line)) continue;
+                        if (!byNumber.TryGetValue(line, out var row) || found.Contains(row)) continue;
+                        found.Add(row);
+                        WinLog($"✓ Linha {line}: \"{row[taskCol]}\"" +
+                            (storyCol != null ? $" (Story \"{row[storyCol]}\")" : ""));
+                    }
+                }
+
+                if (found.Count == 0)
+                {
+                    var none = AppStrings.Get("TaskPlan_AiFindNone");
+                    WinLog(none);
+                    StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                    StatusText.Text = none;
+                    return;
+                }
+
+                // Seleciona as linhas na grade e rola até a primeira.
+                PlanGrid.SelectedCells.Clear();
+                object? firstItem = null;
+                foreach (var item in PlanGrid.Items)
+                {
+                    if (item is not DataRowView drv || !found.Contains(drv.Row)) continue;
+                    firstItem ??= item;
+                    foreach (var col in PlanGrid.Columns)
+                        if (col.Visibility == Visibility.Visible)
+                            PlanGrid.SelectedCells.Add(new DataGridCellInfo(item, col));
+                }
+                if (firstItem != null)
+                {
+                    PlanGrid.ScrollIntoView(firstItem);
+                    PlanGrid.Focus();
+                }
+
+                var done = AppStrings.Get("TaskPlan_AiFindDone", found.Count);
+                WinLog(done);
+                AiIncludeLog(done);
+                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                StatusText.Text = done;
+            }
+            catch (Exception ex)
+            {
+                WinLog("ERRO ao interpretar a resposta da IA: " + ex);
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = ex.Message;
+            }
+            finally
+            {
+                logClose.IsEnabled = true;
+            }
+        }
+
+        private void AiIncludeLog(string message)
+        {
+            AiIncludeLogBox.Text = message;
+            AiIncludeLogBox.Visibility = string.IsNullOrWhiteSpace(message)
+                ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Exclui linhas totalmente vazias da planilha (só sobram valores automáticos como
+        /// Nr/Aprovada/DT_Registro). Usado quando linhas novas de conteúdo são inseridas
+        /// (inclusão via IA, merge/buscar), para não sobrar linha "fantasma" em branco.
+        /// </summary>
+        private void RemoveBlankPlanRows(DataRow? keep = null)
+        {
+            if (_data == null) return;
+            var contentCols = _data.Table.Columns.Cast<DataColumn>()
+                .Select(c => c.ColumnName)
+                .Where(n => !n.StartsWith("__", StringComparison.Ordinal)
+                    && n != NumberCol && n != ApprovalCol && n != RegisterDateCol)
+                .ToList();
+            if (contentCols.Count == 0) return;
+
+            foreach (var row in _data.Table.Rows.Cast<DataRow>()
+                         .Where(r => r.RowState != DataRowState.Deleted
+                             && !ReferenceEquals(r, keep)
+                             && contentCols.All(c => string.IsNullOrWhiteSpace(r[c]?.ToString())))
+                         .ToList())
+                row.Delete();
+        }
+
+        // Janela de acompanhamento da inclusão via IA: log ao vivo + botão fechar (habilita no fim).
+        private (Window Win, TextBox Log, Button Close) CreateAiIncludeLogWindow()
+        {
+            var logBox = new TextBox
+            {
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                FontSize = 12,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(8)
+            };
+            var closeBtn = new Button
+            {
+                Content = AppStrings.Get("TaskPlan_Close"),
+                Width = 100, Height = 30,
+                Margin = new Thickness(0, 8, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                IsEnabled = false
+            };
+
+            var panel = new DockPanel { Margin = new Thickness(10) };
+            DockPanel.SetDock(closeBtn, Dock.Bottom);
+            panel.Children.Add(closeBtn);
+            panel.Children.Add(new Border
+            {
+                BorderBrush = System.Windows.Media.Brushes.Silver,
+                BorderThickness = new Thickness(1),
+                Child = logBox
+            });
+
+            var win = new Window
+            {
+                Title = AppStrings.Get("TaskPlan_AiIncludeTitle"),
+                Owner = this,
+                Width = 640, Height = 420,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Content = panel
+            };
+            closeBtn.Click += (_, _) => win.Close();
+            // Enquanto a integração roda, o X não fecha (evita perder o log no meio).
+            win.Closing += (_, args) => { if (!closeBtn.IsEnabled) args.Cancel = true; };
+            return (win, logBox, closeBtn);
         }
 
         // Lista o de/para encontrado pela IA e pede confirmação antes de concluir.
@@ -4510,6 +5002,8 @@ namespace NXProject.Views
             // Âncora: a linha do menu de contexto; se o clique não caiu numa célula, usa a
             // linha selecionada — senão a inserção iria para o fim sem o usuário perceber.
             var targetRow = anchorRow ?? _ctxRow ?? CurrentGridRow();
+            // Linhas em branco antigas saem antes da inserção (âncora e linha nova preservadas).
+            RemoveBlankPlanRows(keep: targetRow);
             var idx = targetRow != null ? _data.Table.Rows.IndexOf(targetRow) : -1;
             var newRow = _data.Table.NewRow();
             // Com filtro ativo (inclusive filtro de cor), a linha nasce vazia e não casaria com

@@ -59,6 +59,10 @@ namespace NXProject.Models
         public const string AnalysisActionName = "Analisar Cronograma";
         // Merge de planilha externa (Task Plan) com as Tasks do DevOps.
         public const string MergeExternalActionName = "Merge de Arquivo Externo com Task";
+        // Inclusão de tasks na planilha do Task Plan a partir de texto de reunião.
+        public const string PlanIncludeActionName = "Incluir Tasks na Planilha";
+        // Consulta/localização de tasks na planilha do Task Plan a partir de texto.
+        public const string PlanFindActionName = "Consultar Task na Planilha";
     }
 
     /// <summary>Configuracao persistida de um provedor especifico.</summary>

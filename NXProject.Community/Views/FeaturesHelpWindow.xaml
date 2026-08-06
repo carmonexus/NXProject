@@ -20,6 +20,12 @@
                 <StackPanel DockPanel.Dock="Top" Margin="16,18,16,12">
                     <TextBlock Text="NXProject" FontSize="15" FontWeight="Bold" Foreground="#2B579A"/>
                     <TextBlock Text="{DynamicResource Help_Subtitle}" FontSize="10" Foreground="#667" Margin="0,2,0,0"/>
+                    <TextBox x:Name="SearchBox" Height="26" Margin="0,10,0,0" FontSize="12"
+                             VerticalContentAlignment="Center"
+                             ToolTip="{DynamicResource Help_SearchHint}"
+                             TextChanged="OnSearchChanged"/>
+                    <TextBlock x:Name="SearchHintText" Text="{DynamicResource Help_SearchHint}"
+                               FontSize="10" Foreground="#889" Margin="1,3,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
                 <ListBox x:Name="TopicList"
                          BorderThickness="0"

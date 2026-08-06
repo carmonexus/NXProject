@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using NXProject.Community.Services;
+using NXProject.Services;
 
 namespace NXProject.Views
 {
@@ -24,44 +26,136 @@ namespace NXProject.Views
             RenderTopic(_topics[TopicList.SelectedIndex]);
         }
 
+        // ── Busca por palavra/texto nos tópicos ───────────────────────────
+        private string _searchTerm = string.Empty;
+
+        private static int IndexOfTerm(string text, string term, int start = 0)
+            => System.Globalization.CultureInfo.InvariantCulture.CompareInfo.IndexOf(
+                text, term, start,
+                System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace);
+
+        private static bool ContainsTerm(string? text, string term)
+            => !string.IsNullOrEmpty(text) && IndexOfTerm(text!, term) >= 0;
+
+        private static bool TopicMatches(
+            (string Title, string Subtitle, List<(string Head, string Body)> Sections, string? Tip) topic, string term)
+            => ContainsTerm(topic.Title, term)
+               || ContainsTerm(topic.Subtitle, term)
+               || ContainsTerm(topic.Tip, term)
+               || topic.Sections.Exists(s => ContainsTerm(s.Head, term) || ContainsTerm(s.Body, term));
+
+        private void OnSearchChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_topics == null || TopicList == null) return;
+            _searchTerm = SearchBox.Text?.Trim() ?? string.Empty;
+
+            int first = -1;
+            for (int i = 0; i < TopicList.Items.Count && i < _topics.Count; i++)
+            {
+                bool match = _searchTerm.Length == 0 || TopicMatches(_topics[i], _searchTerm);
+                if (TopicList.Items[i] is ListBoxItem item)
+                    item.Visibility = match ? Visibility.Visible : Visibility.Collapsed;
+                if (match && first < 0) first = i;
+            }
+
+            if (first < 0)
+            {
+                TopicList.SelectedIndex = -1;
+                ContentPanel.Children.Clear();
+                ContentPanel.Children.Add(new TextBlock
+                {
+                    Text = AppStrings.Get("Help_SearchNoResult"),
+                    FontSize = 13,
+                    Foreground = new SolidColorBrush(Color.FromRgb(150, 60, 60)),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 8, 0, 0)
+                });
+                return;
+            }
+
+            // Mantém o tópico atual se ele continua visível; senão vai para o primeiro que casa.
+            var current = TopicList.SelectedIndex;
+            bool currentVisible = current >= 0 && current < TopicList.Items.Count
+                && TopicList.Items[current] is ListBoxItem cur && cur.Visibility == Visibility.Visible;
+            if (!currentVisible)
+                TopicList.SelectedIndex = first;
+            else
+                RenderTopic(_topics[current]); // re-renderiza para atualizar o destaque
+        }
+
+        /// <summary>Preenche o TextBlock destacando as ocorrências do termo pesquisado.</summary>
+        private void SetHighlightedText(TextBlock tb, string text)
+        {
+            if (_searchTerm.Length == 0 || string.IsNullOrEmpty(text))
+            {
+                tb.Text = text;
+                return;
+            }
+
+            var highlight = new SolidColorBrush(Color.FromRgb(255, 235, 130));
+            int pos = 0;
+            while (pos <= text.Length)
+            {
+                var i = IndexOfTerm(text, _searchTerm, pos);
+                if (i < 0)
+                {
+                    tb.Inlines.Add(new Run(text[pos..]));
+                    break;
+                }
+                if (i > pos) tb.Inlines.Add(new Run(text[pos..i]));
+                var len = Math.Min(_searchTerm.Length, text.Length - i);
+                tb.Inlines.Add(new Run(text.Substring(i, len))
+                {
+                    Background = highlight,
+                    FontWeight = FontWeights.SemiBold
+                });
+                pos = i + len;
+            }
+        }
+
         private void RenderTopic((string Title, string Subtitle, List<(string Head, string Body)> Sections, string? Tip) topic)
         {
             ContentPanel.Children.Clear();
 
             // Título
-            ContentPanel.Children.Add(new TextBlock
+            var titleTb = new TextBlock
             {
-                Text = topic.Title,
                 FontSize = 22,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(43, 87, 154)),
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 6)
-            });
+            };
+            SetHighlightedText(titleTb, topic.Title);
+            ContentPanel.Children.Add(titleTb);
 
             // Subtítulo
             if (!string.IsNullOrWhiteSpace(topic.Subtitle))
-                ContentPanel.Children.Add(new TextBlock
+            {
+                var subTb = new TextBlock
                 {
-                    Text = topic.Subtitle,
                     FontSize = 13,
                     Foreground = new SolidColorBrush(Color.FromRgb(80, 90, 110)),
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 0, 0, 18)
-                });
+                };
+                SetHighlightedText(subTb, topic.Subtitle);
+                ContentPanel.Children.Add(subTb);
+            }
 
             // Seções
             foreach (var (head, body) in topic.Sections)
             {
-                ContentPanel.Children.Add(new TextBlock
+                var headTb = new TextBlock
                 {
-                    Text = head,
                     FontSize = 14,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = new SolidColorBrush(Color.FromRgb(43, 87, 154)),
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 14, 0, 6)
-                });
+                };
+                SetHighlightedText(headTb, head);
+                ContentPanel.Children.Add(headTb);
 
                 // Corpo: linhas iniciadas com "• " viram bullets; demais são parágrafo normal
                 foreach (var line in body.Split('\n'))
@@ -72,7 +166,6 @@ namespace NXProject.Views
                     bool isBullet = trimmed.StartsWith("•");
                     var tb = new TextBlock
                     {
-                        Text = trimmed,
                         FontSize = 12,
                         Foreground = new SolidColorBrush(Color.FromRgb(40, 45, 55)),
                         TextWrapping = TextWrapping.Wrap,
@@ -80,6 +173,7 @@ namespace NXProject.Views
                             ? new Thickness(16, 2, 0, 2)
                             : new Thickness(0, 2, 0, 4)
                     };
+                    SetHighlightedText(tb, trimmed);
                     ContentPanel.Children.Add(tb);
                 }
             }
@@ -96,13 +190,14 @@ namespace NXProject.Views
                     Padding = new Thickness(14, 10, 14, 10),
                     Margin = new Thickness(0, 20, 0, 0)
                 };
-                tipBorder.Child = new TextBlock
+                var tipTb = new TextBlock
                 {
-                    Text = "💡 " + topic.Tip,
                     FontSize = 12,
                     TextWrapping = TextWrapping.Wrap,
                     Foreground = new SolidColorBrush(Color.FromRgb(60, 50, 20))
                 };
+                SetHighlightedText(tipTb, "💡 " + topic.Tip);
+                tipBorder.Child = tipTb;
                 ContentPanel.Children.Add(tipBorder);
             }
         }
@@ -569,7 +664,13 @@ namespace NXProject.Views
                      "• Aplicar ao Cronograma: cria no cronograma as tasks do plano que não existem (sob a Story correspondente, pela mesma rotina da grid de Tasks; cria a Feature/Story internas que faltarem na cascata). A coluna Estimado HH aceita horas (8) ou dias (2d) e, quando zero/vazia, usa 1h. Story em New/0% pode ter a duração ajustada; iniciada, o período é preservado. Valida antes: EPIC informado precisa existir no cronograma, e a mesma Story não pode ter duas Tasks com o mesmo nome — se houver, nada é aplicado (a sincronização também bloqueia esses casos).\n" +
                      "• Após a sincronização do cronograma, o NX oferece atualizar o ID interno (:I) das Tasks criadas pela planilha para o ID do DevOps (:T) na própria planilha. Se ela estiver aberta no Excel (ou você adiar), um log \"<nome>_Sync_NXProject.xml\" é gravado na pasta do arquivo e aplicado automaticamente na próxima vez que a planilha for aberta no Task Plan — a sincronização conclui normalmente de qualquer forma.\n" +
                      "• Ctrl+clique nas células EPIC/Feature/Story abre a busca no cronograma; na Task, busca as filhas da Story no DevOps. Botão direito → Ver no cronograma foca a atividade no Gantt; Abrir no TFS/DevOps abre o work item pelo ID (:T) da célula.\n" +
-                     "• Células de EPIC/Feature/Story/Task encontradas no cronograma ficam verdes; fora do pai correto ficam vermelhas até correção. As colunas ID Feature e ID Story são preenchidas conforme a digitação. O Status é uma combo com os estados do DevOps (a coluna legada \"Concluída (X)\" é migrada automaticamente).")
+                     "• Células de EPIC/Feature/Story/Task encontradas no cronograma ficam verdes; fora do pai correto ficam vermelhas até correção. As colunas ID Feature e ID Story são preenchidas conforme a digitação. O Status é uma combo com os estados do DevOps (a coluna legada \"Concluída (X)\" é migrada automaticamente)."),
+                    ("IA no Task Plan (Ativar IA)",
+                     "Marcando o checkbox 'Ativar IA', um painel de IA aparece acima da grade com dois botões:\n\n" +
+                     "• Incluir tasks: cole a lista de atividades citadas em reunião (cada item com pelo menos a Story e o nome da Task). A IA casa o nome da Story com a Story do cronograma (tolerando abreviações e acentos) e inclui cada task na planilha com Aprovada = False, ID interno (:I), IDs de EPIC/Feature/Story preenchidos e DT_Registro de hoje — criando também a task interna no cronograma, no mesmo padrão do Aplicar. Se já existir task com o mesmo nome na mesma Story (na planilha ou no cronograma), não duplica: reporta 'já existe'.\n" +
+                     "• Consultar task: digite/cole a descrição da atividade procurada; a IA localiza as linhas correspondentes e a grade seleciona e rola até elas.\n\n" +
+                     "Nos dois casos uma janela de log ao vivo mostra cada passo (contexto, envio, resposta da IA, resultado item a item e o resumo). Antes de executar, os filtros ativos são limpos (senão as linhas ficariam escondidas) e linhas totalmente em branco são removidas.\n\n" +
+                     "Os prompts são as ações 'Incluir Tasks na Planilha' e 'Consultar Task na Planilha' da tela IA Geral — podem ser ajustados lá, como as demais ações. Requer cronograma aberto (para incluir), planilha aberta e token de IA configurado.")
                 },
                 "Fluxo sugerido: monte o plano no Excel ou pelo Novo, use Merge com Cronograma para associar os IDs do DevOps e Aplicar ao Cronograma para criar o que faltar — sempre revisando o de/para quando usar a IA."
             ),
@@ -607,7 +708,16 @@ namespace NXProject.Views
                      "• Na importação, o valor do campo é lido do DevOps e armazenado na atividade.\n" +
                      "• Para editar o valor de uma atividade, clique com o botão direito → 'Campos Custom DevOps...'.\n" +
                      "• Se nenhum campo estiver configurado, um link direto para a janela de configuração é exibido.\n\n" +
-                     "Os campos Custom DevOps são apenas de leitura/classificação — não são sincronizados de volta ao DevOps pela sincronização padrão.")
+                     "Os campos Custom DevOps são apenas de leitura/classificação — não são sincronizados de volta ao DevOps pela sincronização padrão."),
+                    ("Tipo do EPIC (EPIC_TYPE) e aprovação de Task",
+                     "Tipo do EPIC (EPIC_TYPE):\n" +
+                     "• Na janela de Vínculo DevOps (clique no ID), quando o tipo é Epic aparece o painel 'Tipo do EPIC' com DELIVERY/BACKLOG. O valor é salvo no arquivo do projeto e enviado ao DevOps no Exportar/Sincronizar quando mudou.\n" +
+                     "• EPIC marcado como BACKLOG fica FORA do total do projeto: não soma no HH do banner, não entra no % concluído nem nas datas início/fim exibidas no título do cronograma.\n" +
+                     "• O campo (padrão EPIC_TYPE) vem habilitado por padrão na Configuração TFS/DevOps e pode ser desligado lá.\n\n" +
+                     "Aprovação de Task (campo Approved):\n" +
+                     "• O campo booleano de aprovação da Task no DevOps (padrão 'Approved' / Custom.Approved) também vem habilitado por padrão.\n" +
+                     "• Com valor definido no cronograma/planilha, a sincronização grava o que está aqui — inclusive REMOVENDO a aprovação no DevOps quando o cronograma diz não aprovada. Sem valor definido, mantém o comportamento clássico de apenas oficializar a aprovação.\n" +
+                     "• No Task Plan, a coluna Aprovada é enviada ao DevOps ao usar Gravar sel. TFS (grava só quando difere do que está lá).")
                 },
                 "Os nomes de campos (HH Estimado, Data_Inicio, Data_Fim) podem ser personalizados na área Campos (avançado) da tela de importação."
             ),
@@ -1390,7 +1500,13 @@ namespace NXProject.Views
                      "• Apply to Schedule: creates in the schedule the plan tasks that don't exist (under the matching Story, via the same routine as the Task grid; creates the missing internal Feature/Story in the cascade). The Estimated HH column accepts hours (8) or days (2d), and when zero/empty uses 1h. A Story in New/0% may have its duration adjusted; once started, its period is preserved. Validates first: an informed EPIC must exist in the schedule, and the same Story cannot have two Tasks with the same name — if so, nothing is applied (sync blocks these cases too).\n" +
                      "• After the schedule sync, NX offers to update the internal ID (:I) of the Tasks created from the sheet to the DevOps ID (:T) in the sheet itself. If it is open in Excel (or you defer), a log \"<name>_Sync_NXProject.xml\" is saved in the file's folder and applied automatically the next time the sheet is opened in Task Plan — sync completes normally regardless.\n" +
                      "• Ctrl+click on EPIC/Feature/Story cells opens the schedule search; on Task, it searches the Story's children in DevOps. Right-click → View in schedule focuses the activity in the Gantt; Open in TFS/DevOps opens the work item by the cell's ID (:T).\n" +
-                     "• EPIC/Feature/Story/Task cells found in the schedule turn green; outside the correct parent they turn red until fixed. The ID Feature and ID Story columns are filled as you type. Status is a combo with the DevOps states (the legacy \"Concluída (X)\" column is migrated automatically).")
+                     "• EPIC/Feature/Story/Task cells found in the schedule turn green; outside the correct parent they turn red until fixed. The ID Feature and ID Story columns are filled as you type. Status is a combo with the DevOps states (the legacy \"Concluída (X)\" column is migrated automatically)."),
+                    ("AI in Task Plan (Enable AI)",
+                     "Checking the 'Enable AI' checkbox shows an AI panel above the grid with two buttons:\n\n" +
+                     "• Include tasks: paste the list of activities from a meeting (each item with at least the Story and the Task name). The AI matches the Story name against the schedule Stories (tolerating abbreviations and accents) and adds each task to the sheet with Approved = False, an internal ID (:I), EPIC/Feature/Story IDs filled and today's DT_Registro — also creating the internal task in the schedule, using the same pattern as Apply. If a task with the same name already exists in the same Story (in the sheet or the schedule), it is not duplicated: it is reported as 'already exists'.\n" +
+                     "• Find task: type/paste the description of the activity; the AI locates the matching rows and the grid selects and scrolls to them.\n\n" +
+                     "In both cases a live log window shows every step (context, request, AI response, per-item result and the summary). Before running, active filters are cleared (otherwise the rows would be hidden) and fully blank rows are removed.\n\n" +
+                     "The prompts are the 'Incluir Tasks na Planilha' and 'Consultar Task na Planilha' actions of the General AI screen — adjustable there like the other actions. Requires an open schedule (to include), an open sheet and an AI token configured.")
                 },
                 "Suggested flow: build the plan in Excel or via New, use Merge with Schedule to link the DevOps IDs and Apply to Schedule to create what's missing — always reviewing the from/to list when using AI."
             ),
@@ -1428,7 +1544,16 @@ namespace NXProject.Views
                      "• On import, the field value is read from DevOps and stored on the activity.\n" +
                      "• To edit a value, right-click the activity → 'Custom DevOps Fields...'.\n" +
                      "• If no fields are configured, a direct link to the configuration window is shown.\n\n" +
-                     "Custom DevOps Fields are read-only / classification-only — they are not written back to DevOps by the standard sync.")
+                     "Custom DevOps Fields are read-only / classification-only — they are not written back to DevOps by the standard sync."),
+                    ("EPIC type (EPIC_TYPE) and Task approval",
+                     "EPIC type (EPIC_TYPE):\n" +
+                     "• In the DevOps Link window (click the ID), when the type is Epic the 'EPIC type' panel appears with DELIVERY/BACKLOG. The value is saved in the project file and pushed to DevOps on Export/Sync when changed.\n" +
+                     "• An EPIC marked as BACKLOG stays OUT of the project totals: it does not add to the banner HH, nor to the completed % or the start/finish dates shown in the schedule title.\n" +
+                     "• The field (default EPIC_TYPE) comes enabled by default in the TFS/DevOps Configuration and can be turned off there.\n\n" +
+                     "Task approval (Approved field):\n" +
+                     "• The Task approval boolean field in DevOps (default 'Approved' / Custom.Approved) also comes enabled by default.\n" +
+                     "• With a value set in the schedule/sheet, sync writes what is here — including REMOVING the approval in DevOps when the schedule says not approved. Without a value, the classic behavior of only officializing the approval is kept.\n" +
+                     "• In Task Plan, the Approved column is sent to DevOps when using Save sel. TFS (written only when it differs from what is there).")
                 },
                 "Field names (Estimated HH, Data_Inicio, Data_Fim) can be customized in the Fields (advanced) section of the import screen."
             ),

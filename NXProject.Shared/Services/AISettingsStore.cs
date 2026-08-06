@@ -57,8 +57,8 @@ namespace NXProject.Services
         private const string LegacyScheduleDevOpsActionName = "Fazer Cronograma Devops";
         private const string LegacyScheduleNoDevOpsActionName = "Cronograma NoDevops";
 
-        // Versao atual do schema de acoes (v2: "Fazer Cronograma DevOps"; v3: merge de arquivo externo; v4: merge por hierarquia/ID; v5: ID interno nao bloqueia busca TFS).
-        private const int CurrentActionsSchemaVersion = 5;
+        // Versao atual do schema de acoes (v2: "Fazer Cronograma DevOps"; v3: merge de arquivo externo; v4: merge por hierarquia/ID; v5: ID interno nao bloqueia busca TFS; v6: incluir tasks na planilha; v7: consultar task na planilha).
+        private const int CurrentActionsSchemaVersion = 7;
 
         /// <summary>Prompt do merge de planilha externa (Task Plan) com as Tasks do DevOps.</summary>
         private const string LegacyMergeExternalActionPrompt =
@@ -87,6 +87,30 @@ namespace NXProject.Services
             "Responda SOMENTE com um JSON válido, sem comentários, no formato: " +
             "[{\"linha\": 1, \"id_devops\": 123, \"task_devops\": \"título\", \"confianca\": \"alta|media|baixa\"}]. " +
             "Inclua apenas linhas com correspondência; não invente IDs.";
+
+        /// <summary>Prompt da inclusão de tasks na planilha do Task Plan a partir de texto de reunião.</summary>
+        public const string PlanIncludeActionPrompt =
+            "Você é um assistente do NXProject que inclui tasks na planilha do Task Plan a partir de uma " +
+            "lista de atividades citadas em reunião. Você recebe: STORIES (Stories do cronograma, com id, " +
+            "nome, feature e epic), TASKS_PLANILHA (tasks que já existem na planilha, com story e task) e " +
+            "TEXTO (lista de atividades, tendo no mínimo a story e o nome da task em cada item). " +
+            "Para cada atividade do TEXTO, encontre a Story do cronograma cujo nome melhor corresponde ao " +
+            "citado (tolere abreviações, acentos e pequenas diferenças de escrita). " +
+            "Responda SOMENTE com um JSON válido, sem comentários, no formato: " +
+            "[{\"story_id\": 123, \"story\": \"nome da story do cronograma\", \"task\": \"nome da task\", \"obs\": \"\"}]. " +
+            "Use story_id EXATAMENTE como veio em STORIES; não invente stories nem ids. " +
+            "Não inclua atividades que já existem em TASKS_PLANILHA com o mesmo nome de task na mesma Story. " +
+            "Se não encontrar Story correspondente para um item, devolva-o com story_id 0 e o motivo em obs.";
+
+        /// <summary>Prompt da consulta/localização de tasks na planilha do Task Plan.</summary>
+        public const string PlanFindActionPrompt =
+            "Você é um assistente do NXProject que localiza atividades na planilha do Task Plan. " +
+            "Você recebe: LINHAS (linhas da planilha, com número, story, task e id) e TEXTO (descrição " +
+            "da(s) atividade(s) procurada(s), podendo citar story e task). Encontre as linhas que " +
+            "correspondem ao TEXTO, tolerando abreviações, acentos e pequenas diferenças de escrita; " +
+            "quando o TEXTO citar a story, respeite-a. Responda SOMENTE com um JSON válido, sem " +
+            "comentários, no formato: [{\"linha\": 1, \"task\": \"nome da task\", \"obs\": \"\"}]. " +
+            "Inclua apenas correspondências reais; não invente linhas. Se nada corresponder, devolva [].";
 
         /// <summary>Prompt do modo livre: responde no dominio de projeto, sem gerar tarefas.</summary>
         private const string FreeActionPrompt =
@@ -125,6 +149,18 @@ namespace NXProject.Services
             {
                 Name = AIActionType.MergeExternalActionName,
                 Prompt = MergeExternalActionPrompt,
+                CreatesTasks = false
+            },
+            new AIActionType
+            {
+                Name = AIActionType.PlanIncludeActionName,
+                Prompt = PlanIncludeActionPrompt,
+                CreatesTasks = false
+            },
+            new AIActionType
+            {
+                Name = AIActionType.PlanFindActionName,
+                Prompt = PlanFindActionPrompt,
                 CreatesTasks = false
             },
         };
@@ -174,6 +210,14 @@ namespace NXProject.Services
                 var merge = workspace.ActionTypes.FirstOrDefault(a => a.Name == AIActionType.MergeExternalActionName);
                 if (merge != null && IsDefaultMergeExternalPrompt(merge.Prompt))
                     merge.Prompt = MergeExternalActionPrompt;
+
+                // v6: garante a acao "Incluir Tasks na Planilha" (usada pelo painel de IA do Task Plan).
+                if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.PlanIncludeActionName))
+                    workspace.ActionTypes.Add(GetDefaultActions().First(a => a.Name == AIActionType.PlanIncludeActionName));
+
+                // v7: garante a acao "Consultar Task na Planilha" (botão Consultar do painel de IA).
+                if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.PlanFindActionName))
+                    workspace.ActionTypes.Add(GetDefaultActions().First(a => a.Name == AIActionType.PlanFindActionName));
             }
 
             workspace.ActionsSchemaVersion = CurrentActionsSchemaVersion;

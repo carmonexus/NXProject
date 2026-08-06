@@ -2039,6 +2039,20 @@
     <sys:String x:Key="Cfg_OpenTokensPage">Create/renew the PAT in Azure DevOps (opens in browser)</sys:String>
     <sys:String x:Key="Cfg_OpenTokensPageTip">Opens the Personal Access Tokens page of the organization entered above.</sys:String>
     <sys:String x:Key="Cfg_OpenTokensNeedUrl">Enter the organization URL to open the tokens page.</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeTitle">Include tasks with AI (meeting list: Story + Task per line)</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeInputTip">Paste the list of activities from the meeting. Each item must have at least the Story and the Task name. The AI matches the schedule Story by name and adds the Task to the sheet with Approved = False and an internal ID, if one with the same name does not exist yet.</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeSend">Include tasks</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeNoText">Paste the activity list before sending.</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeNoSchedule">Open the project schedule before including tasks with AI.</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeNoPlan">Open or create a sheet before including tasks with AI.</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeRunning">Asking the AI to include the tasks...</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeDone">AI: {0} task(s) added, {1} already existed, {2} without a matching Story.</sys:String>
+    <sys:String x:Key="TaskPlan_AiFind">Find task</sys:String>
+    <sys:String x:Key="TaskPlan_AiFindTip">The AI locates the activity(ies) described in the text and selects the matching row(s) in the grid.</sys:String>
+    <sys:String x:Key="TaskPlan_AiFindDone">AI: {0} row(s) found and selected in the sheet.</sys:String>
+    <sys:String x:Key="TaskPlan_AiFindNone">AI: no sheet row matches the text.</sys:String>
+    <sys:String x:Key="Help_SearchHint">Search a word or text in the topics</sys:String>
+    <sys:String x:Key="Help_SearchNoResult">No topic contains the searched text.</sys:String>
     <sys:String x:Key="WiEdit_EpicTypeLabel">EPIC type (EPIC_TYPE)</sys:String>
     <sys:String x:Key="WiEdit_EpicTypeHint">BACKLOG keeps this EPIC hours out of the project total. The change is pushed to DevOps on Export / Sync.</sys:String>
 </ResourceDictionary>
