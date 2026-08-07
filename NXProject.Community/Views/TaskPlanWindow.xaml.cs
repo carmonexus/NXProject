@@ -4931,8 +4931,17 @@ namespace NXProject.Views
                 var phase = Community.Services.LocalLlamaService.CurrentStatus ?? "processando";
                 var inferThreads = Community.Services.LocalLlamaService.ConfiguredThreads;
                 var backend = Community.Services.LocalLlamaService.ActiveBackendLabel;
+                // Backend GPU NVIDIA: mostra o uso da placa (nvidia-smi, leitura em
+                // background — o valor pedido neste tick aparece no próximo).
+                string? gpuInfo = null;
+                if (backend != null && backend.Contains("CUDA", StringComparison.OrdinalIgnoreCase))
+                {
+                    gpuInfo = Community.Services.NvidiaGpuProbe.Last;
+                    Community.Services.NvidiaGpuProbe.RequestUpdate();
+                }
                 log($"IA Local · {elapsedText} · {phase}"
                     + (backend != null ? $" · backend {backend}" : "")
+                    + (gpuInfo != null ? $" · {gpuInfo}" : "")
                     + $" · CPU {Math.Clamp(cpuPercent, 0, 100):0}%"
                     + (inferThreads > 0 ? $" · {inferThreads} thread(s) de inferência" : "")
                     + $" · {process.Threads.Count} threads no processo · memória {process.WorkingSet64 / (1024 * 1024):N0} MB");
