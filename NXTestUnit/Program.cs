@@ -118,8 +118,19 @@ internal static class Program
 
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
         {
-            "packaging-community" => [PackagingTests[0], PackagingTests[3]],
-            "packaging-setup" => [PackagingTests[1], PackagingTests[2], PackagingTests[3]],
+            "packaging-community" =>
+            [
+                ("Empacotamento: NXProject.Community-Release.zip contem arquivos essenciais", ValidateCommunityReleaseZip),
+                ("Empacotamento: Release.zip nao vira standalone", ValidateCommunityReleaseIsNotStandalone),
+                ("Empacotamento: toda DLL de terceiros do publish esta no NXProject-Setup.zip", ValidateThirdPartyLibsAreInSetupZip)
+            ],
+            "packaging-setup" =>
+            [
+                ("Empacotamento: NXProject-Setup.zip contem runtime e libs essenciais", ValidateSetupZip),
+                ("Empacotamento: NXProject-Setup.zip contem DLLs necessarias", ValidateSetupZipKeepsRequiredDlls),
+                ("Setup: timestamp e intrinseco ao zip e igual ao embutido no build", ValidateSetupTimestampIntrinsic),
+                ("Empacotamento: toda DLL de terceiros do publish esta no NXProject-Setup.zip", ValidateThirdPartyLibsAreInSetupZip)
+            ],
             "packaging" => PackagingTests,
             "ai" => AiIntegrationTests,
             _ => ScheduleTests
@@ -186,7 +197,9 @@ internal static class Program
     private static readonly List<(string Name, Action Test)> PackagingTests =
     [
         ("Empacotamento: NXProject.Community-Release.zip contem arquivos essenciais", ValidateCommunityReleaseZip),
+        ("Empacotamento: Release.zip nao vira standalone", ValidateCommunityReleaseIsNotStandalone),
         ("Empacotamento: NXProject-Setup.zip contem runtime e libs essenciais", ValidateSetupZip),
+        ("Empacotamento: NXProject-Setup.zip contem DLLs necessarias", ValidateSetupZipKeepsRequiredDlls),
         ("Setup: timestamp e intrinseco ao zip e igual ao embutido no build", ValidateSetupTimestampIntrinsic),
         ("Empacotamento: toda DLL de terceiros do publish esta no NXProject-Setup.zip", ValidateThirdPartyLibsAreInSetupZip)
     ];
@@ -348,6 +361,13 @@ internal static class Program
         ValidateSelfContainedNotSingleFile(zipPath, "NXProject.Community.exe", "NXProject.Community.dll", "NXProject.Community.runtimeconfig.json");
     }
 
+    private static void ValidateCommunityReleaseIsNotStandalone()
+    {
+        var zipPath = Path.Combine(_solutionRoot, "dist", "community", "NXProject.Community-Release.zip");
+        var manifestPath = Path.Combine(AppContext.BaseDirectory, "PackagingManifests", "release-zip-forbidden-standalone-files.json");
+        ValidateZipDoesNotContainManifest(zipPath, manifestPath);
+    }
+
     private static void SimulateOpenAi()
     {
         Console.WriteLine("Simulacao: parse do retorno do script JS e fluxo de tratamento.");
@@ -436,6 +456,13 @@ internal static class Program
         ValidateSelfContainedNotSingleFile(zipPath, "NXProject-Setup.exe", "NXProject-Setup.dll", "NXProject-Setup.runtimeconfig.json");
     }
 
+    private static void ValidateSetupZipKeepsRequiredDlls()
+    {
+        var zipPath = Path.Combine(_solutionRoot, "dist", "setup", "NXProject-Setup.zip");
+        var manifestPath = Path.Combine(AppContext.BaseDirectory, "PackagingManifests", "dlls-necessarias.md");
+        ValidateZipContainsMarkdownDllList(zipPath, manifestPath);
+    }
+
     /// <summary>Confirma que o publish foi self-contained (runtimeconfig.json com
     /// "includedFrameworks", nao "frameworks") e nao foi PublishSingleFile (o .dll
     /// companheiro do .exe existe como entrada separada no zip, nao embutido).</summary>
@@ -484,6 +511,57 @@ internal static class Program
             throw new InvalidOperationException(
                 $"'{Path.GetFileName(zipPath)}' esta incompleto. Arquivos faltando: {string.Join(", ", missing)}");
     }
+
+    private static void ValidateZipDoesNotContainManifest(string zipPath, string manifestPath)
+    {
+        if (!File.Exists(zipPath))
+            throw new InvalidOperationException($"Zip nao encontrado: {zipPath}");
+        if (!File.Exists(manifestPath))
+            throw new InvalidOperationException($"Manifest nao encontrado: {manifestPath}");
+
+        var forbiddenNames = JsonSerializer.Deserialize<string[]>(File.ReadAllText(manifestPath))
+            ?? throw new InvalidOperationException($"Manifest vazio ou invalido: {manifestPath}");
+
+        using var zip = ZipFile.OpenRead(zipPath);
+        var entryNames = zip.Entries.Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var present = forbiddenNames.Where(n => entryNames.Contains(n)).ToList();
+        if (present.Count > 0)
+            throw new InvalidOperationException(
+                $"'{Path.GetFileName(zipPath)}' virou pacote standalone/base. " +
+                $"Arquivos que pertencem ao NXProject-Setup.zip encontrados: {string.Join(", ", present)}");
+    }
+
+    private static void ValidateZipContainsMarkdownDllList(string zipPath, string manifestPath)
+    {
+        if (!File.Exists(zipPath))
+            throw new InvalidOperationException($"Zip nao encontrado: {zipPath}");
+        if (!File.Exists(manifestPath))
+            throw new InvalidOperationException($"Lista de DLLs necessarias nao encontrada: {manifestPath}");
+
+        var requiredDlls = ReadRequiredDllsFromMarkdown(manifestPath);
+        if (requiredDlls.Count == 0)
+            throw new InvalidOperationException($"Lista de DLLs necessarias vazia: {manifestPath}");
+
+        using var zip = ZipFile.OpenRead(zipPath);
+        var entryNames = zip.Entries.Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missing = requiredDlls.Where(n => !entryNames.Contains(n)).ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException(
+                $"'{Path.GetFileName(zipPath)}' nao contem DLL(s) necessarias: {string.Join(", ", missing)}. " +
+                $"Atualize release-nxproject-setup.ps1 ou revise {Path.GetFileName(manifestPath)}.");
+    }
+
+    private static List<string> ReadRequiredDllsFromMarkdown(string manifestPath) =>
+        File.ReadLines(manifestPath)
+            .Select(l => l.Trim())
+            .Where(l => l.StartsWith("- ", StringComparison.Ordinal))
+            .Select(l => l[2..].Trim())
+            .Where(l => l.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(l => l, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     private static void ResetCalendar()
     {

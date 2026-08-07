@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-Gera o NXProject-Setup (self-contained, multi-arquivo): instalador leve que ja
-carrega, soltos ao lado do proprio exe, o runtime .NET/WPF e as bibliotecas de
-terceiros (PdfSharp, WebView2, CommunityToolkit.Mvvm — raramente mudam). Na
-instalacao, ele copia esses arquivos e baixa do GitHub so a versao mais recente
-do NXProject (NXProject.Community-Release.zip), sempre self-contained.
+Gera o NXProject-Setup (self-contained, multi-arquivo): instalador que ja carrega,
+soltos ao lado do proprio exe, o runtime .NET/WPF e as bibliotecas de terceiros
+(PdfSharp, WebView2, CommunityToolkit.Mvvm, LLamaSharp — raramente mudam). Na
+instalacao, ele copia esses arquivos de base e baixa do GitHub so o pacote
+incremental do nucleo do NXProject (NXProject.Community-Release.zip).
 
 Rode este script quando as dependencias NuGet do projeto mudarem (upgrade de
 pacote) ou o codigo do proprio Setup mudar. Releases normais do app usam so

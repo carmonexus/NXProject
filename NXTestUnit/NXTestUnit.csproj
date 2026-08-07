@@ -54,7 +54,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="PackagingManifests\*.json">
+    <Content Include="PackagingManifests\*.json;PackagingManifests\*.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
