@@ -118,8 +118,10 @@ internal static class Program
 
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
         {
-            "packaging-community" => [PackagingTests[0], PackagingTests[3]],
-            "packaging-setup" => [PackagingTests[1], PackagingTests[2], PackagingTests[3]],
+            // Indices: 0=release zip, 1=standalone zip, 2=setup zip, 3=setup timestamp,
+            // 4=DLLs de terceiros no Setup.
+            "packaging-community" => [PackagingTests[0], PackagingTests[1], PackagingTests[4]],
+            "packaging-setup" => [PackagingTests[2], PackagingTests[3], PackagingTests[4]],
             "packaging" => PackagingTests,
             "ai" => AiIntegrationTests,
             _ => ScheduleTests
@@ -186,6 +188,7 @@ internal static class Program
     private static readonly List<(string Name, Action Test)> PackagingTests =
     [
         ("Empacotamento: NXProject.Community-Release.zip contem arquivos essenciais", ValidateCommunityReleaseZip),
+        ("Empacotamento: NXProject.Community-Standalone.zip roda sem .NET instalado", ValidateCommunityStandaloneZip),
         ("Empacotamento: NXProject-Setup.zip contem runtime e libs essenciais", ValidateSetupZip),
         ("Setup: timestamp e intrinseco ao zip e igual ao embutido no build", ValidateSetupTimestampIntrinsic),
         ("Empacotamento: toda DLL de terceiros do publish esta no NXProject-Setup.zip", ValidateThirdPartyLibsAreInSetupZip)
@@ -338,6 +341,19 @@ internal static class Program
             throw new InvalidOperationException(
                 $"Timestamp do Setup divergente: embutido no build = '{embedded}', dentro do zip = '{inZip}'. " +
                 "A release nao pode recarimbar o timestamp; ele deve ficar no Setup e so a tag muda.");
+    }
+
+    /// <summary>
+    /// O pacote standalone precisa levar o RUNTIME junto (hostfxr/hostpolicy/coreclr):
+    /// sem eles, em maquina sem .NET, o Windows abre "You must install .NET Desktop
+    /// Runtime" — foi assim que o pacote de atualizacao (que e incremental) confundiu.
+    /// </summary>
+    private static void ValidateCommunityStandaloneZip()
+    {
+        var zipPath = Path.Combine(_solutionRoot, "dist", "community", "NXProject.Community-Standalone.zip");
+        var manifestPath = Path.Combine(AppContext.BaseDirectory, "PackagingManifests", "standalone-zip-required-files.json");
+        ValidateZipAgainstManifest(zipPath, manifestPath);
+        ValidateSelfContainedNotSingleFile(zipPath, "NXProject.Community.exe", "NXProject.Community.dll", "NXProject.Community.runtimeconfig.json");
     }
 
     private static void ValidateCommunityReleaseZip()

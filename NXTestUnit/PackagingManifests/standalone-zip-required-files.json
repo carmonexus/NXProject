@@ -1,0 +1,18 @@
+[
+  "NXProject.Community.exe",
+  "NXProject.Community.dll",
+  "NXProject.Shared.dll",
+  "NXProject.Community.runtimeconfig.json",
+  "hostfxr.dll",
+  "hostpolicy.dll",
+  "coreclr.dll",
+  "System.Private.CoreLib.dll",
+  "PresentationFramework.dll",
+  "PresentationCore.dll",
+  "WindowsBase.dll",
+  "LLamaSharp.dll",
+  "ClosedXML.dll",
+  "README-INSTALACAO.txt",
+  "LICENSE.txt",
+  "THIRD-PARTY-NOTICES.txt"
+]
