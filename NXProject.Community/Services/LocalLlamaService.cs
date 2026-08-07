@@ -126,10 +126,10 @@ namespace NXProject.Community.Services
             var executor = new StatelessExecutor(_weights!, _modelParams!);
             var inference = new InferenceParams
             {
-                // Teto de saída: um loop do modelo não pode custar minutos. 2048 comporta
-                // listas de reunião grandes (1024 truncava o JSON de ~13 tasks em produção);
-                // resposta ainda truncada é recuperada pelo reparo de JSON no Task Plan.
-                MaxTokens = 2048,
+                // Teto de saída (configurável no Gerenciar IA Local; padrão 2048): um loop
+                // do modelo não pode custar minutos. 1024 truncava o JSON de ~13 tasks em
+                // produção; resposta truncada é recuperada pelo reparo de JSON no Task Plan.
+                MaxTokens = LocalAIResourceStore.LoadMaxResponseTokens(),
                 AntiPrompts = new[] { "<|im_end|>", "<|im_start|>" }.ToList(),
                 // Extração estruturada pede decodificação DETERMINÍSTICA (greedy): mesma
                 // entrada → mesma saída, e menos loops/deriva que amostragem com temperatura.

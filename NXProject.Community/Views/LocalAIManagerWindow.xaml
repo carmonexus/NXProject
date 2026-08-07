@@ -60,7 +60,18 @@
                                  VerticalAlignment="Center"
                                  Checked="OnBackendKindChanged"
                                  ToolTip="{DynamicResource LocalAI_BackendVulkanTip}"/>
+                    <!-- Teto de tokens da resposta (MaxTokens da inferência) -->
+                    <TextBlock Text="{DynamicResource LocalAI_MaxTokensLabel}" FontSize="12"
+                               Foreground="#666" Margin="22,0,0,0" VerticalAlignment="Center"
+                               ToolTip="{DynamicResource LocalAI_MaxTokensTip}"/>
+                    <TextBox x:Name="MaxTokensBox" Width="56" Height="22" Margin="6,0,0,0"
+                             FontSize="12" VerticalContentAlignment="Center"
+                             LostFocus="OnMaxTokensChanged"
+                             ToolTip="{DynamicResource LocalAI_MaxTokensTip}"/>
                 </StackPanel>
+                <!-- Explicação rápida dos backends (o que é CUDA/Vulkan) -->
+                <TextBlock Text="{DynamicResource LocalAI_BackendHint}" FontSize="10.5"
+                           Foreground="#778" TextWrapping="Wrap" Margin="0,0,0,8"/>
                 <TextBlock Text="{DynamicResource LocalAI_StatusHead}" FontWeight="SemiBold" FontSize="12"
                            Foreground="#2B579A" Margin="0,0,0,6"/>
                 <TextBlock x:Name="NativeStatusText" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,3"/>

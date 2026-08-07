@@ -66,6 +66,25 @@ namespace NXProject.Community.Services
         {
             public string ResourcesFolder { get; set; } = string.Empty;
             public string Backend { get; set; } = string.Empty; // "Cpu" | "Cuda12" | "Vulkan"
+            public int MaxResponseTokens { get; set; } = DefaultMaxResponseTokens;
+        }
+
+        // Teto de tokens da RESPOSTA da IA Local (configurável no Gerenciador). O contexto
+        // total do modelo é 8192 (ContextSize), dividido entre prompt e resposta — por isso
+        // o máximo fica em 6144, sobrando espaço para o prompt.
+        public const int DefaultMaxResponseTokens = 2048;
+        public const int MinResponseTokens = 256;
+        public const int MaxResponseTokensLimit = 6144;
+
+        public static int LoadMaxResponseTokens()
+            => Math.Clamp(LoadSettings().MaxResponseTokens is var t && t > 0 ? t : DefaultMaxResponseTokens,
+                MinResponseTokens, MaxResponseTokensLimit);
+
+        public static void SaveMaxResponseTokens(int tokens)
+        {
+            var s = LoadSettings();
+            s.MaxResponseTokens = Math.Clamp(tokens, MinResponseTokens, MaxResponseTokensLimit);
+            SaveSettings(s);
         }
 
         private static string SettingsFile => Path.Combine(

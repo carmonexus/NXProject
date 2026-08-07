@@ -25,6 +25,7 @@ namespace NXProject.Views
 
             FolderBox.Text = LocalAIResourceStore.LoadFolder();
             SetKindRadios(LocalAIResourceStore.LoadBackendKind());
+            MaxTokensBox.Text = LocalAIResourceStore.LoadMaxResponseTokens().ToString();
             UpdateManualLinks();
 
             Loaded += (_, _) =>
@@ -62,18 +63,22 @@ namespace NXProject.Views
         }
 
         /// <summary>
-        /// Troca de backend: em GPU, checa se a máquina tem GPU/driver compatível
-        /// (nvcuda.dll para CUDA, vulkan-1.dll para Vulkan) e avisa quando não tem —
-        /// o usuário pode voltar para CPU ou seguir por conta (ex.: pasta de rede
-        /// preparada para outra máquina).
+        /// Troca de backend: valida a MELHOR escolha para a máquina. Sem GPU/driver
+        /// compatível (nvcuda.dll para CUDA, vulkan-1.dll para Vulkan), avisa e oferece
+        /// voltar para CPU — confirmar segue por conta (ex.: pasta de rede preparada para
+        /// outra máquina). Vulkan com NVIDIA presente sugere CUDA (rende mais); CPU com
+        /// GPU disponível ganha uma dica no log.
         /// </summary>
         private void OnBackendKindChanged(object sender, RoutedEventArgs e)
         {
             if (_updatingKindRadios || !IsLoaded) return;
             var kind = SelectedKind;
+            var hasCuda = LocalAIResourceStore.IsBackendSupported(LocalAIResourceStore.BackendKind.Cuda12);
+            var hasVulkan = LocalAIResourceStore.IsBackendSupported(LocalAIResourceStore.BackendKind.Vulkan);
 
             if (kind != LocalAIResourceStore.BackendKind.Cpu && !LocalAIResourceStore.IsBackendSupported(kind))
             {
+                // GPU escolhida mas a máquina não tem o driver: avisa; Não volta para CPU.
                 var key = kind == LocalAIResourceStore.BackendKind.Cuda12
                     ? "LocalAI_GpuNotFoundCuda" : "LocalAI_GpuNotFoundVulkan";
                 var r = MessageBox.Show(this, AppStrings.Get(key),
@@ -84,10 +89,34 @@ namespace NXProject.Views
                     kind = LocalAIResourceStore.BackendKind.Cpu;
                 }
             }
+            else if (kind == LocalAIResourceStore.BackendKind.Vulkan && hasCuda)
+            {
+                // Vulkan funciona, mas com NVIDIA presente o CUDA é a melhor escolha.
+                var r = MessageBox.Show(this, AppStrings.Get("LocalAI_GpuBetterCuda"),
+                    AppStrings.Get("LocalAI_Title"), MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (r == MessageBoxResult.Yes)
+                {
+                    SetKindRadios(LocalAIResourceStore.BackendKind.Cuda12);
+                    kind = LocalAIResourceStore.BackendKind.Cuda12;
+                }
+            }
+            else if (kind == LocalAIResourceStore.BackendKind.Cpu && (hasCuda || hasVulkan))
+            {
+                Log(AppStrings.Get("LocalAI_GpuAvailableHint",
+                    hasCuda ? AppStrings.Get("LocalAI_BackendCuda") : AppStrings.Get("LocalAI_BackendVulkan")));
+            }
 
             LocalAIResourceStore.SaveBackendKind(kind);
             UpdateManualLinks();
             RefreshStatus(validateLoad: false);
+        }
+
+        // Teto de tokens da resposta da IA Local: grava com clamp e reexibe o valor efetivo.
+        private void OnMaxTokensChanged(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(MaxTokensBox.Text?.Trim(), out var tokens))
+                LocalAIResourceStore.SaveMaxResponseTokens(tokens);
+            MaxTokensBox.Text = LocalAIResourceStore.LoadMaxResponseTokens().ToString();
         }
 
         private void UpdateManualLinks()
