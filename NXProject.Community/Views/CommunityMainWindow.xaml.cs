@@ -32,6 +32,25 @@ namespace NXProject.Views
         private static readonly string LicenseAcceptanceFile =
             Path.Combine(LicenseAcceptanceDirectory, "license.accepted");
 
+        /// <summary>
+        /// Log da atualizacao de base via NXProject-Setup. Quando esse fluxo falha na
+        /// maquina do usuario (antivirus segurando o zip, politica bloqueando o exe), este
+        /// arquivo e a unica evidencia — o caminho e mostrado ANTES da atualizacao.
+        /// </summary>
+        private static readonly string SetupUpdateLogFile =
+            Path.Combine(LicenseAcceptanceDirectory, "setup_update.log");
+
+        private static void LogSetupUpdate(string message)
+        {
+            try
+            {
+                Directory.CreateDirectory(LicenseAcceptanceDirectory);
+                File.AppendAllText(SetupUpdateLogFile,
+                    $"[{DateTime.Now:dd/MM/yyyy HH:mm:ss}] {message}{Environment.NewLine}");
+            }
+            catch { /* log e best-effort: nunca atrapalha a atualizacao */ }
+        }
+
         private static readonly string AiLastOpenedFile =
             Path.Combine(LicenseAcceptanceDirectory, "ai.last-opened.txt");
 
@@ -370,18 +389,11 @@ namespace NXProject.Views
                 if (setupUpdate is not null)
                 {
                     IsEnabled = true;
-                    var proceedSetup = MessageBox.Show(
-                        "Uma nova versao base do NXProject foi publicada (por exemplo, uma biblioteca nova foi adicionada) " +
-                        "e requer reinstalacao pelo NXProject-Setup.\n\n" +
-                        "IMPORTANTE: salve o projeto aberto antes de continuar — este aplicativo sera encerrado " +
-                        "automaticamente, sem perguntar se deseja salvar.\n\n" +
-                        "O NXProject-Setup.zip sera baixado para a pasta Downloads e aberto em seguida " +
-                        "(se algo falhar, o arquivo fica em Downloads para tentar de novo).\n\nDeseja continuar?",
-                        "Atualizacao de base necessaria",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning);
+                    var proceedSetup = ShowSetupUpdateDialog();
 
-                    if (proceedSetup == MessageBoxResult.Yes)
+                    LogSetupUpdate($"Atualizacao de base oferecida (tag {setupUpdate.TagName}, timestamp remoto {setupUpdate.UpdatedAt:o}); usuario continuou: {proceedSetup}.");
+
+                    if (proceedSetup)
                     {
                         IsEnabled = false;
                         await DownloadAndLaunchSetupAsync(setupUpdate.DownloadUrl);
@@ -438,7 +450,9 @@ namespace NXProject.Views
             {
                 // Baixa o .zip para Downloads (local fixo e visivel) — se a instalacao
                 // falhar, o usuario acha o pacote e roda de novo sem precisar baixar outra vez.
+                LogSetupUpdate($"Baixando {downloadUrl} para {zipPath}...");
                 await NXProject.Services.UpdateService.DownloadFileAsync(downloadUrl, zipPath);
+                LogSetupUpdate($"Download concluido: {new System.IO.FileInfo(zipPath).Length / (1024 * 1024)} MB.");
 
                 // Antivirus (ex.: McAfee) costuma segurar o zip recem-baixado por alguns
                 // segundos: tenta extrair com novas tentativas antes de desistir.
@@ -450,10 +464,12 @@ namespace NXProject.Views
                     try
                     {
                         System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, tempExtractDir);
+                        LogSetupUpdate($"Extraido em {tempExtractDir} (tentativa {attempt}).");
                         break;
                     }
-                    catch (System.IO.IOException) when (attempt < maxTries)
+                    catch (System.IO.IOException ioEx) when (attempt < maxTries)
                     {
+                        LogSetupUpdate($"Falha ao extrair (tentativa {attempt}/{maxTries}): {ioEx.Message} — nova tentativa em 1,5s.");
                         await System.Threading.Tasks.Task.Delay(1500);
                     }
                 }
@@ -462,15 +478,17 @@ namespace NXProject.Views
                 if (!System.IO.File.Exists(setupExePath))
                 {
                     IsEnabled = true;
+                    LogSetupUpdate($"ERRO: NXProject-Setup.exe nao encontrado em {tempExtractDir}.");
                     TryOpenExplorerSelectingFile(zipPath);
                     MessageBox.Show(this,
-                        $"Nao foi possivel encontrar o NXProject-Setup.exe no pacote baixado.\n\nO arquivo baixado foi mantido em: {zipPath} (pasta aberta ao lado). Extraia o zip e rode o NXProject-Setup.exe manualmente, com o NXProject fechado.",
+                        $"Nao foi possivel encontrar o NXProject-Setup.exe no pacote baixado.\n\nO arquivo baixado foi mantido em: {zipPath} (pasta aberta ao lado). Extraia o zip e rode o NXProject-Setup.exe manualmente, com o NXProject fechado.\n\nLog: {SetupUpdateLogFile}",
                         "Atualizacao de base necessaria",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                     return;
                 }
 
+                LogSetupUpdate($"Iniciando {setupExePath}...");
                 var setupProcess = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(setupExePath)
                 {
                     WorkingDirectory = tempExtractDir,
@@ -479,6 +497,7 @@ namespace NXProject.Views
                 if (setupProcess == null)
                     throw new InvalidOperationException(
                         "O Windows nao iniciou o NXProject-Setup.exe (possivel bloqueio de politica de seguranca ou antivirus).");
+                LogSetupUpdate($"Setup iniciado (PID {setupProcess.Id}). Encerrando o NXProject.");
 
                 // Chegou ate aqui com sucesso: apaga o zip baixado, nao precisa mais dele.
                 try { System.IO.File.Delete(zipPath); } catch { /* best-effort */ }
@@ -492,6 +511,7 @@ namespace NXProject.Views
             catch (Exception ex)
             {
                 IsEnabled = true;
+                LogSetupUpdate("ERRO: " + ex);
                 // Fallback: abre a pasta Downloads com o zip selecionado para rodar manualmente.
                 var zipKept = System.IO.File.Exists(zipPath);
                 if (zipKept) TryOpenExplorerSelectingFile(zipPath);
@@ -501,11 +521,141 @@ namespace NXProject.Views
                 // Owner = this: sem ele, a mensagem podia ficar ESCONDIDA atras da janela
                 // desabilitada — o usuario via "nada acontecer".
                 MessageBox.Show(this,
-                    $"Falha ao baixar/abrir o NXProject-Setup.\n\n{ex.Message}{zipHint}",
+                    $"Falha ao baixar/abrir o NXProject-Setup.\n\n{ex.Message}{zipHint}\n\nLog (envie ao suporte): {SetupUpdateLogFile}",
                     "Atualizacao de base necessaria",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+        }
+
+        /// <summary>
+        /// Aviso da atualizacao de base: informa o nome/local do log e deixa o usuario ABRIR
+        /// A PASTA DO LOG antes de continuar (facilita enviar o arquivo ao suporte se falhar).
+        /// Devolve true quando o usuario opta por continuar.
+        /// </summary>
+        private bool ShowSetupUpdateDialog()
+        {
+            var dlg = new Window
+            {
+                Title = "Atualizacao de base necessaria",
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                SizeToContent = SizeToContent.Height,
+                ResizeMode = ResizeMode.NoResize,
+                Width = 560,
+                Background = System.Windows.Media.Brushes.White
+            };
+
+            var panel = new StackPanel { Margin = new Thickness(18) };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Uma nova versão base do NXProject foi publicada (por exemplo, uma biblioteca nova) "
+                     + "e requer reinstalação pelo NXProject-Setup.",
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+            panel.Children.Add(new TextBlock
+            {
+                Text = "IMPORTANTE: salve o projeto aberto antes de continuar — este aplicativo será "
+                     + "encerrado automaticamente, sem perguntar se deseja salvar.",
+                TextWrapping = TextWrapping.Wrap,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(150, 60, 60)),
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+            panel.Children.Add(new TextBlock
+            {
+                Text = "O NXProject-Setup.zip será baixado para a pasta Downloads e aberto em seguida "
+                     + "(se algo falhar, o arquivo fica em Downloads para tentar de novo).",
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+
+            var logBox = new Border
+            {
+                Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(245, 247, 250)),
+                BorderBrush = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(208, 215, 224)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(10, 8, 10, 8),
+                Margin = new Thickness(0, 0, 0, 14)
+            };
+            var logPanel = new StackPanel();
+            logPanel.Children.Add(new TextBlock
+            {
+                Text = "Cada passo é registrado no arquivo de log:",
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 0, 0, 4)
+            });
+            logPanel.Children.Add(new TextBlock
+            {
+                Text = Path.GetFileName(SetupUpdateLogFile),
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(0, 0, 0, 2)
+            });
+            logPanel.Children.Add(new TextBlock
+            {
+                Text = "Pasta: " + LicenseAcceptanceDirectory,
+                FontSize = 11,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(90, 100, 115)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+            var openFolderBtn = new Button
+            {
+                Content = "Abrir pasta do log",
+                Width = 150,
+                Height = 28,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            openFolderBtn.Click += (_, _) =>
+            {
+                try
+                {
+                    Directory.CreateDirectory(LicenseAcceptanceDirectory);
+                    if (File.Exists(SetupUpdateLogFile))
+                        TryOpenExplorerSelectingFile(SetupUpdateLogFile);
+                    else
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                            LicenseAcceptanceDirectory) { UseShellExecute = true });
+                }
+                catch { /* best-effort */ }
+            };
+            logPanel.Children.Add(openFolderBtn);
+            logPanel.Children.Add(new TextBlock
+            {
+                Text = "Se a atualização falhar, envie esse arquivo para o suporte.",
+                FontSize = 11,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(90, 100, 115)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 6, 0, 0)
+            });
+            logBox.Child = logPanel;
+            panel.Children.Add(logBox);
+
+            var proceed = false;
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            var okBtn = new Button { Content = "Continuar", Width = 110, Height = 30, IsDefault = true };
+            var cancelBtn = new Button { Content = "Cancelar", Width = 110, Height = 30, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
+            okBtn.Click += (_, _) => { proceed = true; dlg.Close(); };
+            cancelBtn.Click += (_, _) => dlg.Close();
+            buttons.Children.Add(okBtn);
+            buttons.Children.Add(cancelBtn);
+            panel.Children.Add(buttons);
+
+            dlg.Content = panel;
+            dlg.ShowDialog();
+            return proceed;
         }
 
         /// <summary>Abre o Explorer com o arquivo selecionado (fallback da atualizacao do Setup).</summary>
