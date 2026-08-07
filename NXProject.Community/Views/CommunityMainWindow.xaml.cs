@@ -440,27 +440,45 @@ namespace NXProject.Views
                 // falhar, o usuario acha o pacote e roda de novo sem precisar baixar outra vez.
                 await NXProject.Services.UpdateService.DownloadFileAsync(downloadUrl, zipPath);
 
+                // Antivirus (ex.: McAfee) costuma segurar o zip recem-baixado por alguns
+                // segundos: tenta extrair com novas tentativas antes de desistir.
                 var tempExtractDir = System.IO.Path.Combine(
                     System.IO.Path.GetTempPath(), $"nxsetupupdate_{Guid.NewGuid():N}");
-                System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, tempExtractDir);
+                const int maxTries = 5;
+                for (var attempt = 1; ; attempt++)
+                {
+                    try
+                    {
+                        System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, tempExtractDir);
+                        break;
+                    }
+                    catch (System.IO.IOException) when (attempt < maxTries)
+                    {
+                        await System.Threading.Tasks.Task.Delay(1500);
+                    }
+                }
 
                 var setupExePath = System.IO.Path.Combine(tempExtractDir, "NXProject-Setup.exe");
                 if (!System.IO.File.Exists(setupExePath))
                 {
                     IsEnabled = true;
-                    MessageBox.Show(
-                        $"Nao foi possivel encontrar o NXProject-Setup.exe no pacote baixado.\n\nO arquivo baixado foi mantido em: {zipPath}",
+                    TryOpenExplorerSelectingFile(zipPath);
+                    MessageBox.Show(this,
+                        $"Nao foi possivel encontrar o NXProject-Setup.exe no pacote baixado.\n\nO arquivo baixado foi mantido em: {zipPath} (pasta aberta ao lado). Extraia o zip e rode o NXProject-Setup.exe manualmente, com o NXProject fechado.",
                         "Atualizacao de base necessaria",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
                     return;
                 }
 
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(setupExePath)
+                var setupProcess = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(setupExePath)
                 {
                     WorkingDirectory = tempExtractDir,
                     UseShellExecute = true
                 });
+                if (setupProcess == null)
+                    throw new InvalidOperationException(
+                        "O Windows nao iniciou o NXProject-Setup.exe (possivel bloqueio de politica de seguranca ou antivirus).");
 
                 // Chegou ate aqui com sucesso: apaga o zip baixado, nao precisa mais dele.
                 try { System.IO.File.Delete(zipPath); } catch { /* best-effort */ }
@@ -474,15 +492,32 @@ namespace NXProject.Views
             catch (Exception ex)
             {
                 IsEnabled = true;
-                var zipHint = System.IO.File.Exists(zipPath)
-                    ? $"\n\nO arquivo baixado foi mantido em: {zipPath} — pode roda-lo manualmente."
+                // Fallback: abre a pasta Downloads com o zip selecionado para rodar manualmente.
+                var zipKept = System.IO.File.Exists(zipPath);
+                if (zipKept) TryOpenExplorerSelectingFile(zipPath);
+                var zipHint = zipKept
+                    ? $"\n\nO arquivo foi mantido em: {zipPath} (pasta aberta ao lado). Extraia o zip e rode o NXProject-Setup.exe manualmente, com o NXProject fechado."
                     : "";
-                MessageBox.Show(
+                // Owner = this: sem ele, a mensagem podia ficar ESCONDIDA atras da janela
+                // desabilitada — o usuario via "nada acontecer".
+                MessageBox.Show(this,
                     $"Falha ao baixar/abrir o NXProject-Setup.\n\n{ex.Message}{zipHint}",
                     "Atualizacao de base necessaria",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+        }
+
+        /// <summary>Abre o Explorer com o arquivo selecionado (fallback da atualizacao do Setup).</summary>
+        private static void TryOpenExplorerSelectingFile(string path)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    "explorer.exe", $"/select,\"{path}\"")
+                { UseShellExecute = true });
+            }
+            catch { /* best-effort */ }
         }
 
         private enum UpdateChoice { Auto, Manual, Cancel }
