@@ -1,0 +1,129 @@
+==============================================================================
+NXProject - Avisos de Software de Terceiros / Third-Party Software Notices
+==============================================================================
+
+O NXProject distribui os componentes de terceiros listados abaixo. Sao
+bibliotecas de APOIO a funcionalidades especificas — o nucleo do NXProject
+(cronograma, Gantt, integracao Azure DevOps) e codigo proprio e funciona sem
+elas. Os avisos de copyright e as licencas correspondentes sao reproduzidos
+aqui em cumprimento aos seus termos. / NXProject distributes the third-party
+components listed below. They are SUPPORT libraries for specific features —
+NXProject's core (schedule, Gantt, Azure DevOps integration) is original code
+and works without them. Their copyright notices and licenses are reproduced
+here in compliance with their terms.
+
+------------------------------------------------------------------------------
+Componentes sob licenca MIT (texto integral da licenca ao final deste arquivo)
+Components under the MIT License (full license text at the end of this file)
+------------------------------------------------------------------------------
+
+- .NET Runtime e bibliotecas (runtime self-contained)
+  Funcao no NXProject: plataforma de execucao (.NET/WPF) embarcada para o app
+  rodar sem instalacao previa do .NET.
+  Copyright (c) .NET Foundation and Contributors
+  https://github.com/dotnet/runtime
+
+- ClosedXML e ClosedXML.Parser
+  Funcao no NXProject: leitura/gravacao dos arquivos Excel (.xlsx) do Task
+  Plan e das exportacoes para Excel.
+  Copyright (c) 2016 ClosedXML
+  https://github.com/ClosedXML/ClosedXML
+
+- CommunityToolkit.Mvvm e CommunityToolkit.HighPerformance
+  Funcao no NXProject: utilitarios de infraestrutura MVVM (notificacao de
+  propriedades e comandos) das telas.
+  Copyright (c) .NET Foundation and Contributors
+  https://github.com/CommunityToolkit/dotnet
+
+- DocumentFormat.OpenXml e DocumentFormat.OpenXml.Framework (Open XML SDK)
+  Funcao no NXProject: base de leitura do formato Office Open XML usada pelo
+  ClosedXML (dependencia transitiva).
+  Copyright (c) Microsoft Corporation
+  https://github.com/dotnet/Open-XML-SDK
+
+- ExcelNumberFormat
+  Funcao no NXProject: interpretacao dos formatos numericos do Excel
+  (dependencia transitiva do ClosedXML).
+  Copyright (c) 2017 Andreas Svensson
+  https://github.com/andersnm/ExcelNumberFormat
+
+- LLamaSharp (wrapper .NET do llama.cpp usado pela IA Local)
+  Funcao no NXProject: ponte gerenciada para o recurso OPCIONAL de IA Local;
+  sozinha nao executa modelo nenhum e o NX funciona normalmente sem usa-la.
+  Copyright (c) 2023 SciSharp STACK
+  https://github.com/SciSharp/LLamaSharp
+
+- llama.cpp (motor nativo da IA Local; NAO distribuido com o NXProject —
+  baixado opcionalmente pelo usuario via menu IA -> Gerenciar IA Local)
+  Funcao no NXProject: motor de inferencia do recurso opcional de IA Local.
+  Copyright (c) 2023-2024 The ggml authors
+  https://github.com/ggml-org/llama.cpp
+
+- Microsoft.Extensions.* (AI.Abstractions, DependencyInjection.Abstractions,
+  Logging.Abstractions)
+  Funcao no NXProject: abstracoes de infraestrutura exigidas pelo LLamaSharp
+  (dependencias transitivas).
+  Copyright (c) .NET Foundation and Contributors
+  https://github.com/dotnet/runtime
+
+- PDFsharp (PdfSharp.* )
+  Funcao no NXProject: geracao de relatorios/exportacoes em PDF.
+  Copyright (c) 2005-2024 empira Software GmbH, Troisdorf (Cologne Area,
+  Germany)
+  https://github.com/empira/PDFsharp
+
+- RBush
+  Funcao no NXProject: indexacao espacial usada pelo ClosedXML (dependencia
+  transitiva).
+  Copyright (c) 2017 viceroypenguin; port do RBush de Vladimir Agafonkin
+  https://github.com/viceroypenguin/RBush
+
+------------------------------------------------------------------------------
+Componentes sob outras licencas / Components under other licenses
+------------------------------------------------------------------------------
+
+- Microsoft Edge WebView2 (Microsoft.Web.WebView2.* e WebView2Loader.dll)
+  Funcao no NXProject: exibicao de conteudo HTML (ex.: resultado do
+  Assistente de IA) dentro do app.
+  Copyright (c) Microsoft Corporation. Todos os direitos reservados.
+  Distribuido sob os termos da licenca propria da Microsoft para o WebView2,
+  que permite a redistribuicao do componente com aplicativos:
+  https://www.nuget.org/packages/Microsoft.Web.WebView2/ (aba License)
+
+- SixLabors.Fonts (dependencia transitiva do ClosedXML)
+  Funcao no NXProject: medicao de fontes para largura de colunas do Excel
+  (usada internamente pelo ClosedXML).
+  Copyright (c) Six Labors
+  Distribuido sob a Six Labors Split License (uso permitido, entre outros,
+  quando consumido como dependencia transitiva de pacote de terceiros):
+  https://github.com/SixLabors/Fonts/blob/main/LICENSE
+
+- Modelo de IA Local (ex.: Qwen2.5-3B-Instruct, arquivo GGUF)
+  NAO e distribuido com o NXProject: o usuario baixa opcionalmente pela
+  janela "Gerenciar IA Local", diretamente da fonte (Hugging Face), e o uso
+  segue a licenca do proprio modelo (ex.: Qwen Research License):
+  https://huggingface.co/Qwen/Qwen2.5-3B-Instruct
+
+------------------------------------------------------------------------------
+Texto da licenca MIT / MIT License text
+------------------------------------------------------------------------------
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

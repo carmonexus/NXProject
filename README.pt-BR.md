@@ -76,6 +76,8 @@ Hoje o NXProject transforma dados do Azure DevOps em uma visão gerencial de pla
 
 > Sozinho, o `NXProject.Community-Release.zip` **não** inclui o runtime do .NET nem as bibliotecas de terceiros (PdfSharp, WebView2, CommunityToolkit.Mvvm, LLamaSharp) — ele só contém os arquivos do app (`.exe`/`.dll`) que mudam a cada release, e precisa ser extraído **por cima** de uma instalação já existente (feita pelo NXProject-Setup ou por uma versão completa anterior). Use o NXProject-Setup.zip para instalar em uma máquina nova.
 >
+> **Licenças de terceiros**: a distribuição inclui bibliotecas open source (na maioria sob licença MIT). Os avisos de copyright e os textos de licença estão no arquivo [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt), incluído também nos zips.
+>
 > **Sobre a IA Local**: além do código compilado do NXProject, a distribuição inclui a `LLamaSharp.dll`, que é **apenas um wrapper .NET open source (licença MIT)** do llama.cpp — ela sozinha não executa nenhum modelo. O motor nativo (`llama.dll`) e o modelo GGUF **não** vêm no Setup: são baixados opcionalmente pelo próprio NXProject (menu IA → Gerenciar IA Local) para uma pasta escolhida pelo usuário, com validação e código auditável ([LLamaSharp](https://github.com/SciSharp/LLamaSharp) / [llama.cpp](https://github.com/ggml-org/llama.cpp)).
 >
 > Os binários foram gerados em ambiente com antivírus McAfee. Se preferir compilar você mesmo, veja as instruções abaixo.

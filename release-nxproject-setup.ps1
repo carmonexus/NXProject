@@ -91,6 +91,13 @@ foreach ($f in $ownLibFiles) {
 Write-Host "  Bibliotecas de terceiros copiadas: $($ownLibFiles.Count)" -ForegroundColor DarkGray
 Write-Host "  Arquivos do nucleo (ficam fora, vem online): $($coreFiles.Count)" -ForegroundColor DarkGray
 
+# Avisos de terceiros (MIT etc.): o Setup e quem distribui as bibliotecas.
+$NoticesSrc = Join-Path $SolutionDir "THIRD-PARTY-NOTICES.txt"
+if (Test-Path $NoticesSrc) {
+    Copy-Item -Path $NoticesSrc -Destination (Join-Path $SetupPublishDir "THIRD-PARTY-NOTICES.txt") -Force
+    Write-Host "  Avisos de terceiros incluidos: THIRD-PARTY-NOTICES.txt" -ForegroundColor DarkGray
+}
+
 # Material de apresentacao — copiado junto para a pasta de instalacao do NXProject.
 $presentationFiles = @(
     "NXProject_Gestao_Inteligente_DevOps.pptx",

@@ -312,6 +312,12 @@ if (Test-Path $LicenseSrc) {
     Copy-Item -Path $LicenseSrc -Destination (Join-Path $StageDir "LICENSE.txt") -Force
 }
 
+# Avisos de terceiros (MIT etc.): obrigatorios na distribuicao dos binarios.
+$NoticesSrc = Join-Path $SolutionDir "THIRD-PARTY-NOTICES.txt"
+if (Test-Path $NoticesSrc) {
+    Copy-Item -Path $NoticesSrc -Destination (Join-Path $StageDir "THIRD-PARTY-NOTICES.txt") -Force
+}
+
 $TraceScriptSrc = Join-Path $SolutionDir "NXProject-Tracelog.ps1"
 if (Test-Path $TraceScriptSrc) {
     Copy-Item -Path $TraceScriptSrc -Destination (Join-Path $StageDir "NXProject-Tracelog.ps1") -Force
