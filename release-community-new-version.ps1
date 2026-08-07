@@ -68,10 +68,6 @@ $CurrentVersion = Get-ProjectVersion $ProjectFile
 $NewVersion = Step-Version $CurrentVersion $Bump
 
 $ZipPath = Join-Path $DistDir "NXProject.Community-Release.zip"
-# Pacote COMPLETO (runtime + libs): roda de qualquer pasta, sem instalar nada. O
-# Release.zip acima e so a atualizacao incremental (usa a base do Setup).
-$StandaloneStageDir = Join-Path $DistDir "NXProject.Community-Standalone"
-$StandaloneZipPath  = Join-Path $DistDir "NXProject.Community-Standalone.zip"
 
 function Write-Step($msg) {
     Write-Host ""
@@ -290,15 +286,6 @@ if (-not (Test-Path $exePath)) {
 }
 Copy-Item -Path (Join-Path $PublishDir "*") -Destination $StageDir -Recurse -Force
 Remove-UnusedSatelliteResourceFolders $StageDir
-
-# Standalone: copia do publish ANTES da poda dos arquivos que vem do Setup —
-# assim leva runtime .NET/WPF e libs, e roda em maquina sem .NET instalado.
-if (Test-Path $StandaloneStageDir) {
-    Remove-Item -LiteralPath $StandaloneStageDir -Recurse -Force
-}
-New-Item -ItemType Directory -Path $StandaloneStageDir -Force | Out-Null
-Copy-Item -Path (Join-Path $StageDir "*") -Destination $StandaloneStageDir -Recurse -Force
-
 Remove-SetupOwnedFilesFromRelease $StageDir
 
 @"
@@ -349,39 +336,10 @@ if (Test-Path $ZipPath) {
 }
 Compress-Archive -Path (Join-Path $StageDir "*") -DestinationPath $ZipPath -Force
 
-# Mesmos textos de apoio no pacote completo, com instrucao propria de uso.
-foreach ($extra in @("LICENSE.txt", "THIRD-PARTY-NOTICES.txt", "NXProject-Tracelog.ps1", "NXProject-FallbackLauncher.bat")) {
-    $src = Join-Path $StageDir $extra
-    if (Test-Path $src) { Copy-Item -Path $src -Destination (Join-Path $StandaloneStageDir $extra) -Force }
-}
-@"
-NXProject Community - pacote COMPLETO (standalone)
-
-Este pacote ja inclui o runtime .NET/WPF e as bibliotecas: roda de qualquer
-pasta, SEM instalar nada e SEM precisar do .NET Desktop Runtime.
-
-Como executar:
-1. Extraia TODO o conteudo deste zip em uma pasta.
-2. Execute o NXProject.Community.exe dessa pasta.
-
-Diferenca entre os pacotes da release:
-- NXProject-Setup.zip .............. instala o NXProject na maquina (atalho,
-  base compartilhada e atualizacoes automaticas).
-- NXProject.Community-Standalone.zip  este arquivo: roda sem instalar.
-- NXProject.Community-Release.zip .. SO a atualizacao do aplicativo; precisa
-  ser extraida por cima de uma instalacao existente (nao roda sozinho).
-"@ | Set-Content -Path (Join-Path $StandaloneStageDir "README-INSTALACAO.txt") -Encoding UTF8
-
-if (Test-Path $StandaloneZipPath) {
-    Remove-Item -LiteralPath $StandaloneZipPath -Force
-}
-Compress-Archive -Path (Join-Path $StandaloneStageDir "*") -DestinationPath $StandaloneZipPath -Force
-
 Write-Host ""
 Write-Host "Pacote Community gerado com sucesso!" -ForegroundColor Green
 Write-Host "  Pasta: $StageDir" -ForegroundColor DarkGray
-Write-Host "  Zip (atualizacao): $ZipPath ($([Math]::Round((Get-Item $ZipPath).Length / 1MB, 1)) MB)" -ForegroundColor DarkGray
-Write-Host "  Zip (standalone):  $StandaloneZipPath ($([Math]::Round((Get-Item $StandaloneZipPath).Length / 1MB, 1)) MB)" -ForegroundColor DarkGray
+Write-Host "  Zip:   $ZipPath" -ForegroundColor DarkGray
 
 Write-Step "Validando conteudo do NXProject.Community-Release.zip..."
 if (-not (Test-Path $TestExePath)) {
@@ -415,17 +373,6 @@ if (-not $ghAvailable) {
         Write-Host ""
         Write-Host "Release $tag publicada com sucesso no GitHub!" -ForegroundColor Green
         Write-Host "  https://github.com/nexusxdata/NXProject/releases/tag/$tag" -ForegroundColor DarkGray
-
-        # Pacote completo: para quem baixa da release e quer rodar sem instalar.
-        if (Test-Path $StandaloneZipPath) {
-            Write-Step "Publicando NXProject.Community-Standalone.zip na release $tag..."
-            gh release upload $tag $StandaloneZipPath --repo nexusxdata/NXProject --clobber
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "  NXProject.Community-Standalone.zip publicado." -ForegroundColor Green
-            } else {
-                Write-Host "  Aviso: falha ao publicar o pacote standalone." -ForegroundColor Yellow
-            }
-        }
 
         # Reaproveita o NXProject-Setup.zip ja gerado (nao muda a cada release do
         # Community) e sobe na mesma tag, para aparecer junto na mesma release.
