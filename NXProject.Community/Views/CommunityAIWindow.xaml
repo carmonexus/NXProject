@@ -4,10 +4,10 @@
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="{DynamicResource AI_WindowTitle}"
-        Width="860"
-        Height="680"
-        MinWidth="760"
-        MinHeight="560"
+        Width="1180"
+        Height="720"
+        MinWidth="1040"
+        MinHeight="600"
         WindowStartupLocation="CenterOwner"
         Background="White">
 
@@ -56,7 +56,80 @@
                            Text="{DynamicResource AI_SecretNote}"/>
             </StackPanel>
 
-            <DockPanel Grid.Row="1" Margin="0,0,0,14">
+            <!-- Coluna esquerda: o que era a aba "Geral" agora fica SEMPRE visível.
+                 Coluna direita: provedor padrão, botões e as visões restantes. -->
+            <Grid Grid.Row="1" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="430"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,0,4,0">
+                        <Border Padding="14" CornerRadius="8"
+                                BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource AI_ScheduleMode_Label}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock Text="{DynamicResource AI_ScheduleMode_Desc}"
+                                           TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,8"/>
+                                <CheckBox x:Name="CreateTasksCheck"
+                                          Content="{DynamicResource AI_CreateTaskCheck}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="14" CornerRadius="8" Margin="0,12,0,0"
+                                BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource AI_ContextRules}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock Text="{DynamicResource AI_ProjectContextLabel}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="ProjectContextTextBox" Margin="0,6,0,10" Height="92"
+                                         IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                                <TextBlock Text="{DynamicResource AI_AllowedScope}" FontWeight="SemiBold"/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#555"
+                                           Text="{DynamicResource AI_AllowedScope_Desc}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Tipos de acao com IA -->
+                        <Border Padding="14" CornerRadius="8" Margin="0,12,0,0"
+                                BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource AI_ActionType_Label}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_ActionType_Desc}"/>
+
+                                <ComboBox x:Name="ActionTypeCombo" Height="30" Margin="0,0,0,6"
+                                          DisplayMemberPath="Name"
+                                          SelectionChanged="OnActionTypeSelectionChanged"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Button Content="{DynamicResource AI_NewAction}" Width="64" Height="30" Click="OnNewActionClick"/>
+                                    <Button Content="{DynamicResource AI_DeleteAction}" Width="64" Height="30" Margin="6,0,0,0" Click="OnDeleteActionClick"/>
+                                    <Button Content="{DynamicResource AI_RestoreDefaults}" Width="120" Height="30" Margin="6,0,0,0" Click="OnRestoreDefaultActionsClick"/>
+                                </StackPanel>
+
+                                <TextBlock Text="{DynamicResource AI_ActionNameLabel}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="ActionNameBox" Margin="0,4,0,8" Height="28"
+                                         TextChanged="OnActionFieldChanged"/>
+                                <CheckBox x:Name="ActionCreatesTasksCheck" Content="{DynamicResource AI_ActionCreatesTasks}"
+                                          Margin="0,0,0,8" Click="OnActionFieldChanged"/>
+                                <TextBlock Text="{DynamicResource AI_ActionPromptLabel}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="ActionPromptBox" Margin="0,4,0,8" Height="150"
+                                         AcceptsReturn="True" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12"
+                                         TextChanged="OnActionFieldChanged"/>
+
+                                <TextBlock Text="{DynamicResource AI_AnalysisTaskLimitLabel}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="AnalysisTaskLimitBox" Margin="0,4,0,0" Height="28" Width="120"
+                                         HorizontalAlignment="Left"/>
+                                <TextBlock Text="{DynamicResource AI_AnalysisTaskLimitDesc}"
+                                           TextWrapping="Wrap" Foreground="#555" FontSize="11" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+            <DockPanel Grid.Column="2">
                 <!-- Provedor padrão sempre visível, ACIMA dos botões; mudou = salvo automaticamente -->
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
                     <TextBlock Text="{DynamicResource AI_DefaultProvider_Label}" VerticalAlignment="Center"
@@ -74,12 +147,10 @@
                     <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="0" IsChecked="True"
                                  Content="{DynamicResource AI_TabAssistant}" Checked="OnTabButtonChecked"/>
                     <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="1"
-                                 Content="{DynamicResource AI_TabGeneral}" Checked="OnTabButtonChecked"/>
-                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="2"
                                  Content="OpenAI" Checked="OnTabButtonChecked"/>
-                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="3"
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="2"
                                  Content="Work IQ" Checked="OnTabButtonChecked"/>
-                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="4"
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="3"
                                  Content="OpenRouter" Checked="OnTabButtonChecked"/>
                 </StackPanel>
                 <TabControl x:Name="MainTabControl">
@@ -132,87 +203,6 @@
                                 </TabItem>
                             </TabControl>
                         </Grid>
-                    </TabItem>
-
-                    <!-- ══ Geral ══════════════════════════════════════ -->
-                    <TabItem Header="{DynamicResource AI_TabGeneral}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="10">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="12"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <Border Grid.Column="0" Padding="14" CornerRadius="8"
-                                    BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
-                                <StackPanel>
-                                    <TextBlock Text="{DynamicResource AI_ScheduleMode_Label}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                    <TextBlock Text="{DynamicResource AI_ScheduleMode_Desc}"
-                                               TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,8"/>
-                                    <CheckBox x:Name="CreateTasksCheck"
-                                              Content="{DynamicResource AI_CreateTaskCheck}"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Grid.Column="2" Padding="14" CornerRadius="8"
-                                    BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
-                                <StackPanel>
-                                    <TextBlock Text="{DynamicResource AI_ContextRules}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
-                                    <TextBlock Text="{DynamicResource AI_ProjectContextLabel}" FontWeight="SemiBold"/>
-                                    <TextBox x:Name="ProjectContextTextBox" Margin="0,6,0,10" Height="92"
-                                             IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
-                                    <TextBlock Text="{DynamicResource AI_AllowedScope}" FontWeight="SemiBold"/>
-                                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="#555"
-                                               Text="{DynamicResource AI_AllowedScope_Desc}"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-
-                        <!-- Tipos de acao com IA -->
-                        <Border Padding="14" CornerRadius="8" Margin="0,12,0,0"
-                                BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
-                            <StackPanel>
-                                <TextBlock Text="{DynamicResource AI_ActionType_Label}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
-                                           Text="{DynamicResource AI_ActionType_Desc}"/>
-
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="ActionTypeCombo" Grid.Column="0" Height="30"
-                                              DisplayMemberPath="Name"
-                                              SelectionChanged="OnActionTypeSelectionChanged"/>
-                                    <Button Grid.Column="1" Content="{DynamicResource AI_NewAction}" Width="64" Height="30" Margin="6,0,0,0" Click="OnNewActionClick"/>
-                                    <Button Grid.Column="2" Content="{DynamicResource AI_DeleteAction}" Width="64" Height="30" Margin="6,0,0,0" Click="OnDeleteActionClick"/>
-                                    <Button Grid.Column="3" Content="{DynamicResource AI_RestoreDefaults}" Width="120" Height="30" Margin="6,0,0,0" Click="OnRestoreDefaultActionsClick"/>
-                                </Grid>
-
-                                <TextBlock Text="{DynamicResource AI_ActionNameLabel}" FontWeight="SemiBold"/>
-                                <TextBox x:Name="ActionNameBox" Margin="0,4,0,8" Height="28"
-                                         TextChanged="OnActionFieldChanged"/>
-                                <CheckBox x:Name="ActionCreatesTasksCheck" Content="{DynamicResource AI_ActionCreatesTasks}"
-                                          Margin="0,0,0,8" Click="OnActionFieldChanged"/>
-                                <TextBlock Text="{DynamicResource AI_ActionPromptLabel}" FontWeight="SemiBold"/>
-                                <TextBox x:Name="ActionPromptBox" Margin="0,4,0,8" Height="150"
-                                         AcceptsReturn="True" TextWrapping="Wrap"
-                                         VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12"
-                                         TextChanged="OnActionFieldChanged"/>
-
-                                <TextBlock Text="{DynamicResource AI_AnalysisTaskLimitLabel}" FontWeight="SemiBold"/>
-                                <TextBox x:Name="AnalysisTaskLimitBox" Margin="0,4,0,0" Height="28" Width="120"
-                                         HorizontalAlignment="Left"/>
-                                <TextBlock Text="{DynamicResource AI_AnalysisTaskLimitDesc}"
-                                           TextWrapping="Wrap" Foreground="#555" FontSize="11" Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </Border>
-                        </StackPanel>
-                        </ScrollViewer>
                     </TabItem>
 
                     <!-- ══ OpenAI ══════════════════════════════════════ -->
@@ -301,6 +291,7 @@
                     </TabItem>
                 </TabControl>
             </DockPanel>
+            </Grid>
         </Grid>
 
         <DockPanel Grid.Row="1" Margin="0,16,0,0" LastChildFill="False">
