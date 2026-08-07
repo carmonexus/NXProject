@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -134,6 +135,16 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // Sem o runtime ao lado do exe (copia interrompida, antivirus, disco cheio), o
+            // app self-contained abre o dialogo generico "instale o .NET Desktop Runtime" —
+            // erro confuso. Falha aqui, apontando os arquivos que faltaram.
+            var missing = GetMissingRuntimeFiles(_installDir);
+            if (missing.Count > 0)
+            {
+                ShowError(App.Str("Setup_IncompleteInstall", string.Join(", ", missing)));
+                return;
+            }
+
             WriteReadme(_installDir);
             CreateDesktopShortcut(exePath);
             InstallProgress.Value = 100;
@@ -191,6 +202,21 @@ public partial class MainWindow : Window
         ErrorText.Visibility = Visibility.Visible;
         RetryButton.Visibility = Visibility.Visible;
     }
+
+    /// <summary>
+    /// Arquivos do runtime self-contained que precisam estar AO LADO do exe: sem eles o
+    /// Windows pede para "instalar o .NET Desktop Runtime", mesmo com o app self-contained.
+    /// </summary>
+    private static readonly string[] RequiredRuntimeFiles =
+    {
+        "hostfxr.dll", "hostpolicy.dll", "coreclr.dll",
+        "System.Private.CoreLib.dll", "PresentationFramework.dll",
+        "NXProject.Community.dll", "NXProject.Community.runtimeconfig.json"
+    };
+
+    /// <summary>Arquivos essenciais que NAO chegaram na pasta de instalacao.</summary>
+    private static List<string> GetMissingRuntimeFiles(string installDir) =>
+        RequiredRuntimeFiles.Where(f => !File.Exists(Path.Combine(installDir, f))).ToList();
 
     // Arquivos do proprio Setup — nao devem ir para a pasta de instalacao do NXProject.
     private static readonly string[] SetupOwnFileNames =
