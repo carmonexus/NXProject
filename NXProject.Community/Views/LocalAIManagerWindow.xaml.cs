@@ -107,6 +107,20 @@ namespace NXProject.Views
             }
 
             LocalAIResourceStore.SaveBackendKind(kind);
+
+            // Backend diferente do instalado com a DLL já carregada nesta sessão: avisa JÁ
+            // na troca do radio que a mudança exige reiniciar o NXProject (arquivos travados).
+            var folderNow = FolderBox.Text?.Trim() ?? "";
+            var installedNow = LocalAIResourceStore.GetInstalledBackendKind(folderNow)
+                               ?? LocalAIResourceStore.BackendKind.Cpu;
+            if (kind != installedNow && LocalAIResourceStore.IsNativeLoaded)
+            {
+                var msg = AppStrings.Get("LocalAI_BackendNeedRestart", LocalAIResourceStore.BackendDisplayName(kind));
+                MessageBox.Show(this, msg, AppStrings.Get("LocalAI_Title"),
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                Log(msg.Replace("\n\n", " ").Replace("\n", " "));
+            }
+
             UpdateManualLinks();
             RefreshStatus(validateLoad: false);
         }
@@ -239,8 +253,12 @@ namespace NXProject.Views
                 {
                     if (switchBackend && LocalAIResourceStore.IsNativeLoaded)
                     {
-                        // DLLs travadas nesta sessão: não dá para sobrescrever agora.
-                        Log(AppStrings.Get("LocalAI_UpdNeedRestart"));
+                        // DLLs travadas nesta sessão: não dá para sobrescrever agora —
+                        // alerta claro (não só log) de que precisa reiniciar o NXProject.
+                        var msg = AppStrings.Get("LocalAI_BackendNeedRestart", LocalAIResourceStore.BackendDisplayName(kind));
+                        MessageBox.Show(this, msg, AppStrings.Get("LocalAI_Title"),
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        Log(msg.Replace("\n\n", " ").Replace("\n", " "));
                     }
                     else
                     {
