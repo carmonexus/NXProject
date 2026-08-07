@@ -223,23 +223,63 @@ namespace NXProject.Community.Services
         }
 
         /// <summary>
-        /// A máquina suporta o backend escolhido? Checagem pela DLL de runtime do driver:
-        /// nvcuda.dll (instalada pelo driver NVIDIA) para CUDA e vulkan-1.dll (instalada
-        /// pelos drivers NVIDIA/AMD/Intel) para Vulkan — sem GPU/driver, a DLL não existe.
-        /// CPU sempre suporta.
+        /// A máquina suporta o backend escolhido? Checagem por DISPOSITIVO REAL, não só
+        /// pela DLL: vulkan-1.dll (loader) existe em quase todo Windows mesmo sem GPU
+        /// utilizável, então CUDA pergunta ao driver (cuInit + cuDeviceGetCount) e Vulkan
+        /// enumera os dispositivos físicos (vkEnumeratePhysicalDevices) — sem GPU, a DLL
+        /// falta (DllNotFoundException) ou a contagem vem zero. CPU sempre suporta.
         /// </summary>
         public static bool IsBackendSupported(BackendKind kind)
         {
-            var driverDll = kind switch
+            switch (kind)
             {
-                BackendKind.Cuda12 => "nvcuda.dll",
-                BackendKind.Vulkan => "vulkan-1.dll",
-                _ => null,
-            };
-            if (driverDll == null) return true;
-            var handle = LoadLibraryExW(driverDll, IntPtr.Zero, 0);
-            return handle != IntPtr.Zero; // fica carregada; é DLL do driver, sem custo relevante
+                case BackendKind.Cuda12:
+                    try { return cuInit(0) == 0 && cuDeviceGetCount(out var n) == 0 && n > 0; }
+                    catch { return false; } // sem nvcuda.dll = sem driver NVIDIA
+                case BackendKind.Vulkan:
+                    try
+                    {
+                        var info = new VkInstanceCreateInfo { sType = 1 }; // VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
+                        if (vkCreateInstance(ref info, IntPtr.Zero, out var instance) != 0)
+                            return false;
+                        uint count = 0;
+                        var ok = vkEnumeratePhysicalDevices(instance, ref count, IntPtr.Zero) == 0 && count > 0;
+                        vkDestroyInstance(instance, IntPtr.Zero);
+                        return ok;
+                    }
+                    catch { return false; } // sem vulkan-1.dll ou loader quebrado
+                default:
+                    return true;
+            }
         }
+
+        [DllImport("nvcuda.dll", ExactSpelling = true)]
+        private static extern int cuInit(uint flags);
+
+        [DllImport("nvcuda.dll", ExactSpelling = true)]
+        private static extern int cuDeviceGetCount(out int count);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct VkInstanceCreateInfo
+        {
+            public int sType;
+            public IntPtr pNext;
+            public uint flags;
+            public IntPtr pApplicationInfo;
+            public uint enabledLayerCount;
+            public IntPtr ppEnabledLayerNames;
+            public uint enabledExtensionCount;
+            public IntPtr ppEnabledExtensionNames;
+        }
+
+        [DllImport("vulkan-1.dll", ExactSpelling = true)]
+        private static extern int vkCreateInstance(ref VkInstanceCreateInfo createInfo, IntPtr allocator, out IntPtr instance);
+
+        [DllImport("vulkan-1.dll", ExactSpelling = true)]
+        private static extern int vkEnumeratePhysicalDevices(IntPtr instance, ref uint count, IntPtr devices);
+
+        [DllImport("vulkan-1.dll", ExactSpelling = true)]
+        private static extern void vkDestroyInstance(IntPtr instance, IntPtr allocator);
 
         /// <summary>Backend registrado na pasta pelo download do NX (null em instalação manual/antiga).</summary>
         public static BackendKind? GetInstalledBackendKind(string folder)
