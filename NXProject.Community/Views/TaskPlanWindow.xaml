@@ -254,6 +254,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource TaskPlan_AiIncludeTitle}"
@@ -273,7 +274,25 @@
                             ToolTip="{DynamicResource TaskPlan_AiFindTip}"
                             Click="OnAiFindClick"/>
                 </StackPanel>
-                <TextBox x:Name="AiIncludeLogBox" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                <!-- O que é NOVO no texto: muda o prompt e o contexto enviado à IA
+                     (só os níveis que JÁ EXISTEM no cronograma vão como contexto). -->
+                <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="0,6,0,0">
+                    <CheckBox x:Name="AiNewTaskCheckBox" IsChecked="True" IsEnabled="False"
+                              Content="{DynamicResource TaskPlan_AiNewTask}" FontSize="11"
+                              VerticalAlignment="Center"
+                              ToolTip="{DynamicResource TaskPlan_AiNewTaskTip}"/>
+                    <CheckBox x:Name="AiNewStoryCheckBox" Margin="14,0,0,0" FontSize="11"
+                              Content="{DynamicResource TaskPlan_AiNewStory}"
+                              VerticalAlignment="Center"
+                              Unchecked="OnAiNewStoryUnchecked"
+                              ToolTip="{DynamicResource TaskPlan_AiNewStoryTip}"/>
+                    <CheckBox x:Name="AiNewFeatureCheckBox" Margin="14,0,0,0" FontSize="11"
+                              Content="{DynamicResource TaskPlan_AiNewFeature}"
+                              VerticalAlignment="Center"
+                              Checked="OnAiNewFeatureChecked"
+                              ToolTip="{DynamicResource TaskPlan_AiNewFeatureTip}"/>
+                </StackPanel>
+                <TextBox x:Name="AiIncludeLogBox" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
                          IsReadOnly="True" TextWrapping="Wrap" MaxHeight="90" MinHeight="0"
                          VerticalScrollBarVisibility="Auto" FontSize="11" Foreground="#444"
                          BorderThickness="0" Background="Transparent" Margin="0,6,0,0"

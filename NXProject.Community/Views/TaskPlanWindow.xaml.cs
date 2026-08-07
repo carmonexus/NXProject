@@ -3811,6 +3811,40 @@ namespace NXProject.Views
             Community.Services.AiRunIndicator.Set(running);
         }
 
+        // Cascata dos checkboxes "o que é novo": Feature nova implica Story nova
+        // (a Story da Feature nova também não existe); desmarcar Story nova desfaz Feature nova.
+        private void OnAiNewFeatureChecked(object sender, RoutedEventArgs e)
+        {
+            if (AiNewStoryCheckBox != null) AiNewStoryCheckBox.IsChecked = true;
+        }
+
+        private void OnAiNewStoryUnchecked(object sender, RoutedEventArgs e)
+        {
+            if (AiNewFeatureCheckBox != null) AiNewFeatureCheckBox.IsChecked = false;
+        }
+
+        // Instruções de modo anexadas ao prompt configurável quando o texto traz
+        // Story/Feature NOVA: trocam o casamento por Story pela criação da hierarquia.
+        private const string AiNewStoryPromptSuffix =
+            "\n\nMODO STORY NOVA: as Stories do TEXTO ainda NÃO existem no cronograma — NÃO tente casar " +
+            "Story; em vez de STORIES você recebe FEATURES (tabela \"id | nome | epic\" com as Features " +
+            "existentes). Para cada atividade, devolva o nome da Story NOVA citada no TEXTO e a Feature " +
+            "existente onde ela deve nascer (a mais provável pelo contexto). O JSON passa a ser: " +
+            "[{\"feature_id\":123,\"story\":\"nome da story nova\",\"task\":\"nome da task\"," +
+            "\"responsavel\":\"\",\"esforco\":\"\",\"descricao\":\"\",\"obs\":\"\"}] — feature_id, story e " +
+            "task são obrigatórios; use feature_id EXATAMENTE como veio em FEATURES, não invente ids. " +
+            "Tasks da mesma Story nova repetem o MESMO nome de story.";
+
+        private const string AiNewFeaturePromptSuffix =
+            "\n\nMODO FEATURE NOVA: as Features e Stories do TEXTO ainda NÃO existem no cronograma — NÃO " +
+            "tente casar; em vez de STORIES você recebe EPICS (tabela \"id | nome\" com os EPICs " +
+            "existentes). Para cada atividade, devolva a Feature NOVA e a Story NOVA citadas no TEXTO e o " +
+            "EPIC existente onde a Feature deve nascer (o mais provável pelo contexto). O JSON passa a " +
+            "ser: [{\"epic_id\":123,\"feature\":\"nome da feature nova\",\"story\":\"nome da story nova\"," +
+            "\"task\":\"nome da task\",\"responsavel\":\"\",\"esforco\":\"\",\"descricao\":\"\",\"obs\":\"\"}] " +
+            "— epic_id, feature, story e task são obrigatórios; use epic_id EXATAMENTE como veio em " +
+            "EPICS, não invente ids. Tasks da mesma Story repetem os MESMOS nomes de feature e story.";
+
         private async Task RunAiIncludeAsync()
         {
             var text = AiIncludeInputBox.Text?.Trim();
@@ -3830,9 +3864,16 @@ namespace NXProject.Views
                 return;
             }
 
+            // O que é NOVO no texto (checkboxes do painel): muda o prompt e o contexto.
+            // Feature nova implica Story nova (cascata garantida na UI).
+            var newFeature = AiNewFeatureCheckBox?.IsChecked == true;
+            var newStory = newFeature || AiNewStoryCheckBox?.IsChecked == true;
+
             // Texto no padrão de reunião "Story – ..." é interpretado LOCALMENTE (parser,
             // instantâneo e determinístico) — a IA só entra quando o texto é livre.
-            var structured = System.Text.RegularExpressions.Regex.IsMatch(text, @"(?im)^\s*story\s*[–—:\-]");
+            // Com Story/Feature NOVA o parser não serve (ele casa Story EXISTENTE): vai por IA.
+            var structured = !newStory
+                && System.Text.RegularExpressions.Regex.IsMatch(text, @"(?im)^\s*story\s*[–—:\-]");
 
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
@@ -3846,6 +3887,10 @@ namespace NXProject.Views
                 .FirstOrDefault(a => a.Name == AIActionType.PlanIncludeActionName)?.Prompt;
             if (string.IsNullOrWhiteSpace(systemPrompt))
                 systemPrompt = AISettingsStore.PlanIncludeActionPrompt;
+            // Story/Feature nova: instrução de modo anexada ao prompt configurável —
+            // troca o casamento por Story pela criação da hierarquia nova.
+            if (newFeature) systemPrompt += AiNewFeaturePromptSuffix;
+            else if (newStory) systemPrompt += AiNewStoryPromptSuffix;
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
@@ -3903,8 +3948,9 @@ namespace NXProject.Views
             // Varredura local: Stories cujo nome (inteiro ou parte) aparece no texto viram
             // candidatas com peso — a IA recebe só elas e vai direto ao ponto (contexto
             // menor = resposta muito mais rápida na IA Local). Sem candidata, manda tudo.
+            // (Só no modo padrão: com Story/Feature nova as Stories nem vão de contexto.)
             const int maxContextStories = 30;
-            var candidates = RankStoriesByMeetingText(stories, text);
+            var candidates = newStory ? new List<ProjectTask>() : RankStoriesByMeetingText(stories, text);
             if (candidates.Count > 0 && candidates.Count < stories.Count)
             {
                 var kept = candidates.Count > maxContextStories
@@ -3914,27 +3960,72 @@ namespace NXProject.Views
                     + (kept.Count < candidates.Count ? $" — enviando as {kept.Count} de maior peso." : " — contexto reduzido."));
                 stories = kept;
             }
-            else if (stories.Count > maxContextStories)
+            else if (!newStory && stories.Count > maxContextStories)
             {
                 WinLog($"Atenção: {stories.Count} Stories no contexto (nenhuma candidata na varredura). " +
                     "Cite o nome das Stories no texto ou use o filtro de EPIC/Feature para acelerar.");
             }
 
+            // Story/Feature nova: o contexto leva SÓ os níveis que já existem no cronograma
+            // (Feature nova → EPICs; Story nova → Features). Stories não vão — são novas.
+            var epics = newFeature
+                ? flat.Where(x => IsType(x, "Epic")).ToList()
+                : new List<ProjectTask>();
+            var features = !newFeature && newStory
+                ? flat.Where(x => IsType(x, "Feature") && x.PercentComplete < 100)
+                    .Where(f => epicSel == null || string.Equals(Ancestor(f, "Epic").Trim(), epicSel, StringComparison.OrdinalIgnoreCase))
+                    .ToList()
+                : new List<ProjectTask>();
+            if (!newFeature && newStory && features.Count == 0)
+                features = flat.Where(x => IsType(x, "Feature")).ToList();
+            if (newFeature && epics.Count == 0)
+            {
+                WinLog("Nenhum EPIC no cronograma — a Feature nova não tem onde nascer. Inclusão cancelada.");
+                logClose.IsEnabled = true;
+                return;
+            }
+            if (!newFeature && newStory && features.Count == 0)
+            {
+                WinLog("Nenhuma Feature no cronograma — a Story nova não tem onde nascer. Inclusão cancelada.");
+                logClose.IsEnabled = true;
+                return;
+            }
+
             var engineLabel = structured
                 ? "parser local (padrão \"Story –\" detectado, sem IA)"
                 : $"provedor {AIProviderDefaults.GetDisplayName(settings.Provider)} ({settings.Model})";
-            WinLog(stories.Count < allStories.Count
-                ? $"Contexto montado: {stories.Count} de {allStories.Count} Story(ies) (filtro {epicSel ?? ""}{(featureSel != null ? $" / {featureSel}" : "")}), {engineLabel}."
-                : $"Contexto montado: {stories.Count} Story(ies) do cronograma, {engineLabel}.");
+            if (newFeature)
+                WinLog($"Contexto montado (Feature nova): {epics.Count} EPIC(s) do cronograma, {engineLabel}.");
+            else if (newStory)
+                WinLog($"Contexto montado (Story nova): {features.Count} Feature(s) do cronograma, {engineLabel}.");
+            else
+                WinLog(stories.Count < allStories.Count
+                    ? $"Contexto montado: {stories.Count} de {allStories.Count} Story(ies) (filtro {epicSel ?? ""}{(featureSel != null ? $" / {featureSel}" : "")}), {engineLabel}."
+                    : $"Contexto montado: {stories.Count} Story(ies) do cronograma, {engineLabel}.");
 
             // Contexto para a IA: Stories do cronograma + tasks já existentes na planilha.
             // Formato tabular compacto: menos tokens = prefill muito mais rápido na IA Local.
             // Tasks já existentes NÃO vão para a IA — a deduplicação é feita pelo código
             // depois da resposta (nome da task na planilha e nas filhas da Story).
             var ctxHeader = new System.Text.StringBuilder();
-            ctxHeader.AppendLine("STORIES (id | nome | feature | epic) — somente Stories em aberto:");
-            foreach (var s in stories)
-                ctxHeader.AppendLine($"{s.Id} | {s.Name} | {Ancestor(s, "Feature")} | {Ancestor(s, "Epic")}");
+            if (newFeature)
+            {
+                ctxHeader.AppendLine("EPICS (id | nome) — EPICs existentes no cronograma:");
+                foreach (var ep2 in epics)
+                    ctxHeader.AppendLine($"{ep2.Id} | {ep2.Name}");
+            }
+            else if (newStory)
+            {
+                ctxHeader.AppendLine("FEATURES (id | nome | epic) — Features existentes no cronograma:");
+                foreach (var f in features)
+                    ctxHeader.AppendLine($"{f.Id} | {f.Name} | {Ancestor(f, "Epic")}");
+            }
+            else
+            {
+                ctxHeader.AppendLine("STORIES (id | nome | feature | epic) — somente Stories em aberto:");
+                foreach (var s in stories)
+                    ctxHeader.AppendLine($"{s.Id} | {s.Name} | {Ancestor(s, "Feature")} | {Ancestor(s, "Epic")}");
+            }
             ctxHeader.AppendLine();
             ctxHeader.AppendLine("RECURSOS: " + string.Join(" | ",
                 _vm.Project.Resources.Where(x => x.Type == ResourceType.Work)
@@ -3986,9 +4077,13 @@ namespace NXProject.Views
                     StatusText.Text = AppStrings.Get("TaskPlan_AiIncludeRunning");
                     WinLog("Enviando para a IA...");
                     using var monitor = StartAiResourceMonitor(settings, WinLog);
+                    var userMsg = newFeature
+                        ? "Encontre o EPIC de cada Feature nova do TEXTO e devolva o JSON."
+                        : newStory
+                            ? "Encontre a Feature de cada Story nova do TEXTO e devolva o JSON."
+                            : "Encontre a Story de cada atividade do TEXTO e devolva o JSON.";
                     raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
-                        settings, systemPrompt,
-                        "Encontre a Story de cada atividade do TEXTO e devolva o JSON.", sb.ToString(), aiCts.Token);
+                        settings, systemPrompt, userMsg, sb.ToString(), aiCts.Token);
                     WinLog("Resposta recebida da IA:");
                     WinLog(raw);
                 }
@@ -4059,14 +4154,55 @@ namespace NXProject.Views
                     var taskName = item.TryGetProperty("task", out var tp) ? tp.GetString()?.Trim() : null;
                     if (string.IsNullOrWhiteSpace(taskName)) continue;
 
-                    int storyId = item.TryGetProperty("story_id", out var sp) && sp.TryGetInt32(out var sid) ? sid : 0;
-                    var storyNode = stories.FirstOrDefault(s => s.Id == storyId);
-                    if (storyNode == null)
+                    // Resolve a hierarquia da linha conforme o modo: no padrão a Story vem do
+                    // cronograma (story_id); com Story/Feature nova os nomes novos vêm da IA e
+                    // o nó âncora é a Feature (feature_id) ou o EPIC (epic_id) existente —
+                    // o Aplicar cria a cadeia que faltar (CreateStoryPath).
+                    string? storyName, featureName, epicName;
+                    ProjectTask? anchorNode;
+                    if (newFeature)
                     {
-                        noStory++;
-                        var obs = item.TryGetProperty("obs", out var op) ? op.GetString() : null;
-                        WinLog($"✗ \"{taskName}\": Story não encontrada no cronograma{(string.IsNullOrWhiteSpace(obs) ? "" : $" ({obs})")}.");
-                        continue;
+                        int epicId = item.TryGetProperty("epic_id", out var eip) && eip.TryGetInt32(out var eid) ? eid : 0;
+                        anchorNode = epics.FirstOrDefault(x => x.Id == epicId);
+                        storyName = item.TryGetProperty("story", out var snp) ? snp.GetString()?.Trim() : null;
+                        featureName = item.TryGetProperty("feature", out var fnp) ? fnp.GetString()?.Trim() ?? "" : "";
+                        epicName = anchorNode?.Name ?? "";
+                        if (anchorNode == null || string.IsNullOrWhiteSpace(storyName) || string.IsNullOrWhiteSpace(featureName))
+                        {
+                            noStory++;
+                            WinLog($"✗ \"{taskName}\": EPIC não encontrado no cronograma ou feature/story ausentes na resposta.");
+                            continue;
+                        }
+                    }
+                    else if (newStory)
+                    {
+                        int featureId = item.TryGetProperty("feature_id", out var fip) && fip.TryGetInt32(out var fid) ? fid : 0;
+                        anchorNode = features.FirstOrDefault(x => x.Id == featureId);
+                        storyName = item.TryGetProperty("story", out var snp) ? snp.GetString()?.Trim() : null;
+                        featureName = anchorNode?.Name ?? "";
+                        epicName = anchorNode != null ? Ancestor(anchorNode, "Epic") : "";
+                        if (anchorNode == null || string.IsNullOrWhiteSpace(storyName))
+                        {
+                            noStory++;
+                            WinLog($"✗ \"{taskName}\": Feature não encontrada no cronograma ou story ausente na resposta.");
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        int storyId = item.TryGetProperty("story_id", out var sp) && sp.TryGetInt32(out var sid) ? sid : 0;
+                        var storyNode = stories.FirstOrDefault(s => s.Id == storyId);
+                        if (storyNode == null)
+                        {
+                            noStory++;
+                            var obs = item.TryGetProperty("obs", out var op) ? op.GetString() : null;
+                            WinLog($"✗ \"{taskName}\": Story não encontrada no cronograma{(string.IsNullOrWhiteSpace(obs) ? "" : $" ({obs})")}.");
+                            continue;
+                        }
+                        anchorNode = storyNode;
+                        storyName = storyNode.Name?.Trim();
+                        featureName = Ancestor(storyNode, "Feature");
+                        epicName = Ancestor(storyNode, "Epic");
                     }
 
                     // Já existe NA PLANILHA (mesma Story + mesmo nome)? Aí sim pula.
@@ -4075,11 +4211,11 @@ namespace NXProject.Views
                         && string.Equals(r[taskCol]?.ToString()?.Trim(), taskName, StringComparison.OrdinalIgnoreCase)
                         && (storyCol == null
                             || string.IsNullOrWhiteSpace(r[storyCol]?.ToString())
-                            || string.Equals(r[storyCol]?.ToString()?.Trim(), storyNode.Name?.Trim(), StringComparison.OrdinalIgnoreCase)));
+                            || string.Equals(r[storyCol]?.ToString()?.Trim(), storyName, StringComparison.OrdinalIgnoreCase)));
                     if (inPlan)
                     {
                         existing++;
-                        WinLog($"= \"{taskName}\" já existe na planilha (Story \"{storyNode.Name}\").");
+                        WinLog($"= \"{taskName}\" já existe na planilha (Story \"{storyName}\").");
                         continue;
                     }
 
@@ -4100,10 +4236,12 @@ namespace NXProject.Views
                     // planilha. O botão Aplicar é quem cria/vincula no cronograma depois
                     // (lá nasce o ID interno :I). ID Task fica vazio até o Aplicar.
                     var dr = _data.Table.NewRow();
-                    if (storyCol != null) dr[storyCol] = storyNode.Name ?? "";
-                    if (featureCol != null) dr[featureCol] = Ancestor(storyNode, "Feature");
-                    if (_epicColumn != null) dr[_epicColumn] = Ancestor(storyNode, "Epic");
-                    FillHierarchyIdsFromNode(dr, storyNode);
+                    if (storyCol != null) dr[storyCol] = storyName ?? "";
+                    if (featureCol != null) dr[featureCol] = featureName;
+                    if (_epicColumn != null) dr[_epicColumn] = epicName;
+                    // IDs de hierarquia: só os níveis EXISTENTES (âncora Story/Feature/EPIC);
+                    // Story/Feature novas ficam sem ID até o Aplicar criar os nós.
+                    FillHierarchyIdsFromNode(dr, anchorNode);
                     dr[taskCol] = taskName;
                     if (ApprovalCol is { } apCol) dr[apCol] = "False";
                     if (RegisterDateCol is { } regCol) dr[regCol] = FormatRegisterDate(DateTime.Today);
@@ -4131,7 +4269,7 @@ namespace NXProject.Views
                         dr[obsCol] = obsText;
                     _data.Table.Rows.Add(dr);
                     added++;
-                    WinLog($"✓ \"{taskName}\" incluída na planilha (Story \"{storyNode.Name}\"; {hours:0.##}h"
+                    WinLog($"✓ \"{taskName}\" incluída na planilha (Story \"{storyName}\"; {hours:0.##}h"
                         + (resource != null ? $"; {ResourcePlanName(resource)}" : "")
                         + (!string.IsNullOrWhiteSpace(respText) && resource == null ? $"; responsável \"{respText}\" não encontrado nos recursos" : "")
                         + ") — use o Aplicar para levar ao cronograma.");

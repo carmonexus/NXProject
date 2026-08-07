@@ -2041,6 +2041,12 @@
     <sys:String x:Key="Cfg_OpenTokensNeedUrl">Enter the organization URL to open the tokens page.</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeTitle">Include tasks with AI (meeting list: Story + Task per line)</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeInputTip">Paste the list of activities from the meeting. Each item must have at least the Story and the Task name. The AI matches the schedule Story by name and adds the Task to the sheet with Approved = False and an internal ID, if one with the same name does not exist yet.</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewTask">New task</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewTaskTip">The text brings new tasks for Stories that ALREADY EXIST in the schedule (default mode): the AI receives the open Stories and matches each task to its Story.</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewStory">New story</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewStoryTip">The text brings NEW Story(ies) that do not exist in the schedule yet: the AI receives only the existing Features, creates the Story name and attaches the tasks to it. The Story is created in the schedule when you click Apply.</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewFeature">New feature</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewFeatureTip">The text brings NEW Feature(s): the AI receives only the existing EPICs, creates the new Feature and Story and attaches the tasks. Feature and Story are created in the schedule when you click Apply (the EPIC must exist).</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeSend">Include tasks</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeNoText">Paste the activity list before sending.</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeNoSchedule">Open the project schedule before including tasks with AI.</sys:String>

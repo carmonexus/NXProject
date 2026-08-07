@@ -2039,6 +2039,12 @@
     <sys:String x:Key="Cfg_OpenTokensNeedUrl">Informe a URL da organizacao para abrir a pagina de tokens.</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeTitle">Incluir tasks com IA (lista da reunião: Story + Task por linha)</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeInputTip">Cole aqui a lista de atividades citadas na reunião. Cada item deve ter pelo menos a Story e o nome da Task. A IA encontra a Story do cronograma pelo nome e inclui a Task na planilha com Aprovada = False e ID interno, se ainda não existir com o mesmo nome.</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewTask">Task nova</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewTaskTip">O texto traz tasks novas para Stories que JÁ EXISTEM no cronograma (modo padrão): a IA recebe as Stories em aberto e casa cada task com a sua Story.</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewStory">Story nova</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewStoryTip">O texto traz Story(ies) NOVA(s), que ainda não existem no cronograma: a IA recebe só as Features existentes, cria o nome da Story e pendura as tasks nela. A Story nasce no cronograma quando você usar o Aplicar.</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewFeature">Feature nova</sys:String>
+    <sys:String x:Key="TaskPlan_AiNewFeatureTip">O texto traz Feature(s) NOVA(s): a IA recebe só os EPICs existentes, cria Feature e Story novas e pendura as tasks. Feature e Story nascem no cronograma quando você usar o Aplicar (o EPIC precisa existir).</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeSend">Incluir tasks</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeNoText">Cole a lista de atividades antes de enviar.</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeNoSchedule">Abra o cronograma do projeto antes de incluir tasks com IA.</sys:String>
