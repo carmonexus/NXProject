@@ -12,7 +12,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>false</PublishSingleFile>
-    <Version>1.1.0.01</Version>
+    <Version>1.1.0.08</Version>
     <NoWarn>$(NoWarn);NU1900</NoWarn>
   </PropertyGroup>
 
