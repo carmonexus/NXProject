@@ -57,6 +57,19 @@
             </StackPanel>
 
             <DockPanel Grid.Row="1" Margin="0,0,0,14">
+                <!-- Provedor padrão sempre visível, ACIMA dos botões; mudou = salvo automaticamente -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+                    <TextBlock Text="{DynamicResource AI_DefaultProvider_Label}" VerticalAlignment="Center"
+                               FontWeight="SemiBold" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="DefaultProviderCombo" Height="30" Width="185"
+                              SelectionChanged="OnDefaultProviderChanged"
+                              ToolTip="{DynamicResource AI_DefaultProvider_Desc}">
+                        <ComboBoxItem Content="OpenAI" Tag="OpenAI"/>
+                        <ComboBoxItem Content="Work IQ" Tag="WorkIQ"/>
+                        <ComboBoxItem Content="OpenRouter" Tag="OpenRouter"/>
+                        <ComboBoxItem Content="IA Local (LLaMA)" Tag="LocalLlama"/>
+                    </ComboBox>
+                </StackPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
                     <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="0" IsChecked="True"
                                  Content="{DynamicResource AI_TabAssistant}" Checked="OnTabButtonChecked"/>
@@ -135,17 +148,7 @@
                             <Border Grid.Column="0" Padding="14" CornerRadius="8"
                                     BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
                                 <StackPanel>
-                                    <TextBlock Text="{DynamicResource AI_DefaultProvider_Label}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                    <TextBlock Text="{DynamicResource AI_DefaultProvider_Desc}"
-                                               TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"/>
-                                    <ComboBox x:Name="DefaultProviderCombo" Height="30" Width="240" HorizontalAlignment="Left">
-                                        <ComboBoxItem Content="OpenAI" Tag="OpenAI"/>
-                                        <ComboBoxItem Content="Work IQ" Tag="WorkIQ"/>
-                                        <ComboBoxItem Content="OpenRouter" Tag="OpenRouter"/>
-                                        <ComboBoxItem Content="IA Local (LLaMA)" Tag="LocalLlama"/>
-                                    </ComboBox>
-
-                                    <TextBlock Text="{DynamicResource AI_ScheduleMode_Label}" FontSize="15" FontWeight="SemiBold" Margin="0,20,0,4"/>
+                                    <TextBlock Text="{DynamicResource AI_ScheduleMode_Label}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                     <TextBlock Text="{DynamicResource AI_ScheduleMode_Desc}"
                                                TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,8"/>
                                     <CheckBox x:Name="CreateTasksCheck"

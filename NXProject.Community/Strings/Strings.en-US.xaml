@@ -2092,6 +2092,14 @@
     <sys:String x:Key="LocalAI_UpdDone">Backend updated to version {0}.</sys:String>
     <sys:String x:Key="LocalAI_SourceLabel">llama.dll source:</sys:String>
     <sys:String x:Key="LocalAI_DocsLabel">Documentation (LLamaSharp):</sys:String>
+    <sys:String x:Key="AI_ProviderSaved">Default provider saved: {0}.</sys:String>
+    <sys:String x:Key="Main_AiRunning">AI running...</sys:String>
+    <sys:String x:Key="TaskPlan_AlreadyOpenAsk">A Task Plan window is already open.&#10;&#10;Open a NEW sheet window?&#10;(No = go to the one already open)</sys:String>
+    <sys:String x:Key="TaskPlan_AiOnly">AI activities only</sys:String>
+    <sys:String x:Key="TaskPlan_AiOnlyTip">Shows only the rows created/adjusted by the AI (DT_IA column, with the run date and time). Uncheck to see all rows. The column is saved to the file — you can filter later by the adjustment day/time.</sys:String>
+    <sys:String x:Key="TaskPlan_AiCancel">Cancel</sys:String>
+    <sys:String x:Key="TaskPlan_AiCancelling">Cancelling the AI run...</sys:String>
+    <sys:String x:Key="TaskPlan_AiCancelled">AI run cancelled by the user — nothing was added/changed.</sys:String>
     <sys:String x:Key="LocalAI_Disclaimer">⚠ Nexus Xdata is not responsible for the use of llama.dll or the model: they are third-party components (LLamaSharp/llama.cpp, open source under the MIT license) downloaded from the links above. Being open source, the user or the company's IT can audit the source code and validate the binaries before use.</sys:String>
     <sys:String x:Key="Help_SearchHint">Search a word or text in the topics</sys:String>
     <sys:String x:Key="Help_SearchNoResult">No topic contains the searched text.</sys:String>

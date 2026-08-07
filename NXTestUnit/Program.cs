@@ -110,6 +110,10 @@ internal static class Program
             SimulateOpenAi();
             return 0;
         }
+        if (string.Equals(category, "ai-sim", StringComparison.OrdinalIgnoreCase))
+            return RunAiIncludeSimulation(
+                args.Length > 1 ? args[1] : "",
+                args.Length > 2 ? args[2] : "").GetAwaiter().GetResult();
         _solutionRoot = args.Length > 1 ? args[1] : Directory.GetCurrentDirectory();
 
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
@@ -211,6 +215,83 @@ internal static class Program
             throw new InvalidOperationException(r.NativeMessage ?? "llama.dll nao carregou.");
         if (!r.ModelPresent || !r.ModelValid)
             throw new InvalidOperationException(r.ModelMessage ?? "modelo GGUF invalido.");
+    }
+
+    /// <summary>
+    /// Simulação da ação "Incluir Tasks na Planilha" com a IA Local, no formato de contexto
+    /// OFICIAL do Task Plan (Stories em aberto, tabela compacta "id | nome | feature | epic",
+    /// sem tasks da planilha). Mede prefill (contexto), geração (tokens/s) e tempo total.
+    /// Uso: NXTestUnit.exe ai-sim "cronograma.xml" "texto.txt"
+    /// </summary>
+    private static async Task<int> RunAiIncludeSimulation(string xmlPath, string textPath)
+    {
+        if (!File.Exists(xmlPath) || !File.Exists(textPath))
+        {
+            Console.WriteLine($"Arquivos nao encontrados:\n  {xmlPath}\n  {textPath}");
+            return 1;
+        }
+
+        var project = XmlProjectService.Load(xmlPath);
+        var text = File.ReadAllText(textPath);
+
+        var stories = new List<ProjectTask>();
+        void Collect(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var t in tasks)
+            {
+                if (TfsImportService.IsStoryTypePublic(t.TfsType) && t.PercentComplete < 100)
+                    stories.Add(t);
+                Collect(t.Children);
+            }
+        }
+        Collect(project.Tasks);
+
+        static string AncestorName(ProjectTask t, string type)
+        {
+            for (var p = t.Parent; p != null; p = p.Parent)
+                if (string.Equals(p.TfsType?.Trim(), type, StringComparison.OrdinalIgnoreCase))
+                    return p.Name ?? "";
+            return "";
+        }
+
+        var resources = project.Resources
+            .Where(r => r.Type == ResourceType.Work)
+            .Select(r => string.IsNullOrWhiteSpace(r.Name) ? (r.DisplayName ?? "").TrimStart('*').Trim() : r.Name.Trim())
+            .Where(n => n.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var ctx = new System.Text.StringBuilder();
+        ctx.AppendLine("STORIES (id | nome | feature | epic) — somente Stories em aberto:");
+        foreach (var s in stories)
+            ctx.AppendLine($"{s.Id} | {s.Name} | {AncestorName(s, "Feature")} | {AncestorName(s, "Epic")}");
+        ctx.AppendLine().AppendLine("RECURSOS: " + string.Join(" | ", resources));
+        ctx.AppendLine().AppendLine("TEXTO:").AppendLine(text);
+
+        Console.WriteLine($"Cronograma: {stories.Count} stories em aberto | recursos: {resources.Count} | contexto: {ctx.Length:N0} chars");
+        Console.WriteLine();
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(20));
+        var monitor = new System.Timers.Timer(10000);
+        monitor.Elapsed += (_, _) => Console.WriteLine($"   [{sw.Elapsed:mm\\:ss}] {LocalLlamaService.CurrentStatus ?? "..."}");
+        monitor.Start();
+        try
+        {
+            var answer = await LocalLlamaService.GenerateAsync(AISettingsStore.PlanIncludeActionPrompt,
+                "Encontre a Story de cada atividade do TEXTO e devolva o JSON.\n\n" + ctx, cts.Token);
+            monitor.Stop();
+            sw.Stop();
+            Console.WriteLine($"Tempo total: {sw.Elapsed:mm\\:ss} | resposta: {answer.Length:N0} chars");
+            Console.WriteLine("Resposta: " + answer);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            monitor.Stop();
+            Console.WriteLine($"FALHOU apos {sw.Elapsed:mm\\:ss}: {ex.Message}");
+            return 1;
+        }
     }
 
     private static void AiLocalInferenceResponds()

@@ -208,6 +208,22 @@
                           Checked="OnOpenTasksOnlyChanged"
                           Unchecked="OnOpenTasksOnlyChanged"
                           ToolTip="{DynamicResource TaskPlan_OpenTasksOnlyTip}"/>
+                <CheckBox x:Name="AiOnlyCheckBox"
+                          Content="{DynamicResource TaskPlan_AiOnly}"
+                          IsChecked="False"
+                          VerticalAlignment="Center"
+                          Margin="8,0,4,2"
+                          Checked="OnAiOnlyChanged"
+                          Unchecked="OnAiOnlyChanged"
+                          ToolTip="{DynamicResource TaskPlan_AiOnlyTip}"/>
+                <!-- Indicador "IA em execução" (visível enquanto Incluir/Consultar rodam) -->
+                <StackPanel x:Name="AiRunningPanel" Orientation="Horizontal" Visibility="Collapsed"
+                            VerticalAlignment="Center" Margin="12,0,4,2">
+                    <TextBlock Text="&#x1F916;" FontSize="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <ProgressBar IsIndeterminate="True" Width="46" Height="10" Margin="0,0,6,0"/>
+                    <TextBlock Text="{DynamicResource Main_AiRunning}" FontSize="11" FontWeight="SemiBold"
+                               Foreground="#2B579A" VerticalAlignment="Center"/>
+                </StackPanel>
 
             </WrapPanel>
         </Border>

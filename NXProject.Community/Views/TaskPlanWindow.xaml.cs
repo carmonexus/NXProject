@@ -1571,6 +1571,12 @@ namespace NXProject.Views
 
         private void OnOpenTasksOnlyChanged(object sender, RoutedEventArgs e) => ApplyEpicFilter();
 
+        // Filtro "Só atividades da IA" (coluna DT_ALTR_IA); desmarcado, volta a mostrar todas.
+        private void OnAiOnlyChanged(object sender, RoutedEventArgs e) => ApplyEpicFilter();
+
+        /// <summary>Coluna com o carimbo data/hora das linhas criadas/ajustadas pela IA.</summary>
+        private string? AiDateCol => FindColumn("DT_IA", "DT IA", "DT_ALTR_IA", "DT_ALTER_IA");
+
         // Bind central da tabela: limpa as colunas antes (as inseridas manualmente,
         // como a combo de Status, não são removidas pela regeneração automática).
         private void BindTable()
@@ -1888,6 +1894,10 @@ namespace NXProject.Views
             var statusCol = FindColumn("Status", "Estado", "State");
             if (OpenTasksOnlyCheckBox?.IsChecked == true && statusCol != null)
                 parts.Add($"([{statusCol}] IS NULL OR [{statusCol}] = '' OR [{statusCol}] <> 'Closed')");
+
+            // "Só atividades da IA": linhas com carimbo DT_ALTR_IA (criadas/ajustadas pela IA).
+            if (AiOnlyCheckBox?.IsChecked == true && AiDateCol is { } aiDateCol)
+                parts.Add($"([{aiDateCol}] IS NOT NULL AND [{aiDateCol}] <> '')");
             foreach (var kv in _columnFilters)
             {
                 if (!_data.Table.Columns.Contains(kv.Key) || kv.Value.Count == 0) continue;
@@ -2178,6 +2188,8 @@ namespace NXProject.Views
             _columnColorFilters.Clear();
             if (OpenTasksOnlyCheckBox != null)
                 OpenTasksOnlyCheckBox.IsChecked = false;
+            if (AiOnlyCheckBox != null)
+                AiOnlyCheckBox.IsChecked = false;
             if (EpicFilterCombo.Items.Count > 0) EpicFilterCombo.SelectedIndex = 0;
             ApplyEpicFilter();
         }
@@ -3683,6 +3695,8 @@ namespace NXProject.Views
             {
                 StatusText.Text = AppStrings.Get("TaskPlan_MergeAiRunning");
                 log.AppendLine($"[{DateTime.Now:HH:mm:ss}] Enviando para a IA ({rows.Count} linha(s), {sources.Count} task(s) DevOps)...");
+                using var monitor = StartAiResourceMonitor(settings,
+                    msg => StatusText.Text = msg);
                 raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
                     settings, systemPrompt, "Faça o merge das LINHAS com as TASKS_DEVOPS e devolva o JSON.", sb.ToString());
                 log.AppendLine($"[{DateTime.Now:HH:mm:ss}] Resposta da IA:");
@@ -3773,6 +3787,32 @@ namespace NXProject.Views
         /// </summary>
         private async void OnAiIncludeClick(object sender, RoutedEventArgs e)
         {
+            // Blindagem: exceção não tratada em handler async void DERRUBA o app.
+            try
+            {
+                SetAiRunning(true);
+                await RunAiIncludeAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Falha na inclusão via IA:\n\n" + ex,
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                SetAiRunning(false);
+            }
+        }
+
+        // Indicador "IA em execução": no Task Plan e (via sinal global) no cronograma.
+        private void SetAiRunning(bool running)
+        {
+            AiRunningPanel.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+            Community.Services.AiRunIndicator.Set(running);
+        }
+
+        private async Task RunAiIncludeAsync()
+        {
             var text = AiIncludeInputBox.Text?.Trim();
             if (string.IsNullOrWhiteSpace(text))
             {
@@ -3790,9 +3830,13 @@ namespace NXProject.Views
                 return;
             }
 
+            // Texto no padrão de reunião "Story – ..." é interpretado LOCALMENTE (parser,
+            // instantâneo e determinístico) — a IA só entra quando o texto é livre.
+            var structured = System.Text.RegularExpressions.Regex.IsMatch(text, @"(?im)^\s*story\s*[–—:\-]");
+
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
-            if (string.IsNullOrWhiteSpace(settings.ApiKey) && settings.Provider != AIProvider.LocalLlama)
+            if (!structured && string.IsNullOrWhiteSpace(settings.ApiKey) && settings.Provider != AIProvider.LocalLlama)
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -3805,21 +3849,36 @@ namespace NXProject.Views
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
+            // Otimização do contexto: com filtro de EPIC/Feature ativo, só as Stories
+            // filtradas vão para a IA (contexto menor = resposta muito mais rápida na
+            // IA Local). Captura a seleção ANTES de limpar os filtros.
+            var allLabel = AppStrings.Get("TaskPlan_EpicAll");
+            var epicSel = EpicFilterCombo.SelectedItem as string;
+            var featureSel = FeatureFilterCombo.SelectedItem as string;
+            if (string.IsNullOrEmpty(epicSel) || epicSel == allLabel) epicSel = null;
+            if (string.IsNullOrEmpty(featureSel) || featureSel == allLabel) featureSel = null;
+
             // Filtros ativos esconderiam as linhas novas: limpa tudo antes de incluir.
             _columnFilters.Clear();
             _columnColorFilters.Clear();
             if (OpenTasksOnlyCheckBox != null) OpenTasksOnlyCheckBox.IsChecked = false;
+            if (AiOnlyCheckBox != null) AiOnlyCheckBox.IsChecked = false;
             if (EpicFilterCombo.Items.Count > 0) EpicFilterCombo.SelectedIndex = 0;
             ApplyEpicFilter();
 
             // Janela de log ao vivo da integração (fica aberta ao final para conferência).
-            var (logWin, logBox, logClose) = CreateAiIncludeLogWindow();
+            using var aiCts = new CancellationTokenSource();
+            var (logWin, logBox, logClose) = CreateAiIncludeLogWindow(aiCts);
             void WinLog(string msg)
             {
                 logBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}{Environment.NewLine}");
                 logBox.ScrollToEnd();
             }
+            // Foca o Task Plan e ENTÃO mostra o log — o log nasce por cima do Task Plan
+            // (mas segue independente: dá para minimizar/ir para trás enquanto roda).
+            Activate();
             logWin.Show();
+            logWin.Activate();
 
             var taskCol  = FindColumn("Task", "Tarefa", "Nome da Task");
             var storyCol = FindColumn("Story", "Nome da Story");
@@ -3831,40 +3890,116 @@ namespace NXProject.Views
             }
 
             var flat = Flatten(_vm.Project.Tasks).ToList();
-            var stories = flat.Where(x => IsType(x, "Story")).ToList();
-            WinLog($"Contexto montado: {stories.Count} Story(ies) do cronograma, provedor {AIProviderDefaults.GetDisplayName(settings.Provider)} ({settings.Model}).");
+            // Só Stories EM ABERTO (< 100%): concluída não recebe task nova, e o contexto
+            // menor deixa a IA Local muito mais rápida.
+            var allStories = flat.Where(x => IsType(x, "Story") && x.PercentComplete < 100).ToList();
+            var stories = allStories;
+            if (epicSel != null)
+                stories = stories.Where(s => string.Equals(Ancestor(s, "Epic").Trim(), epicSel, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (featureSel != null)
+                stories = stories.Where(s => string.Equals(Ancestor(s, "Feature").Trim(), featureSel, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (stories.Count == 0) stories = allStories; // filtro sem correspondência: manda tudo
+
+            // Varredura local: Stories cujo nome (inteiro ou parte) aparece no texto viram
+            // candidatas com peso — a IA recebe só elas e vai direto ao ponto (contexto
+            // menor = resposta muito mais rápida na IA Local). Sem candidata, manda tudo.
+            const int maxContextStories = 30;
+            var candidates = RankStoriesByMeetingText(stories, text);
+            if (candidates.Count > 0 && candidates.Count < stories.Count)
+            {
+                var kept = candidates.Count > maxContextStories
+                    ? candidates.Take(maxContextStories).ToList()
+                    : candidates;
+                WinLog($"Varredura pelo nome: {candidates.Count} de {stories.Count} Story(ies) candidatas no texto"
+                    + (kept.Count < candidates.Count ? $" — enviando as {kept.Count} de maior peso." : " — contexto reduzido."));
+                stories = kept;
+            }
+            else if (stories.Count > maxContextStories)
+            {
+                WinLog($"Atenção: {stories.Count} Stories no contexto (nenhuma candidata na varredura). " +
+                    "Cite o nome das Stories no texto ou use o filtro de EPIC/Feature para acelerar.");
+            }
+
+            var engineLabel = structured
+                ? "parser local (padrão \"Story –\" detectado, sem IA)"
+                : $"provedor {AIProviderDefaults.GetDisplayName(settings.Provider)} ({settings.Model})";
+            WinLog(stories.Count < allStories.Count
+                ? $"Contexto montado: {stories.Count} de {allStories.Count} Story(ies) (filtro {epicSel ?? ""}{(featureSel != null ? $" / {featureSel}" : "")}), {engineLabel}."
+                : $"Contexto montado: {stories.Count} Story(ies) do cronograma, {engineLabel}.");
 
             // Contexto para a IA: Stories do cronograma + tasks já existentes na planilha.
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("STORIES:");
+            // Formato tabular compacto: menos tokens = prefill muito mais rápido na IA Local.
+            // Tasks já existentes NÃO vão para a IA — a deduplicação é feita pelo código
+            // depois da resposta (nome da task na planilha e nas filhas da Story).
+            var ctxHeader = new System.Text.StringBuilder();
+            ctxHeader.AppendLine("STORIES (id | nome | feature | epic) — somente Stories em aberto:");
             foreach (var s in stories)
-                sb.AppendLine($"- id={s.Id}; nome=\"{s.Name}\"; feature=\"{Ancestor(s, "Feature")}\"; epic=\"{Ancestor(s, "Epic")}\"");
-            sb.AppendLine();
-            sb.AppendLine("TASKS_PLANILHA:");
-            foreach (DataRow r in _data.Table.Rows)
-            {
-                if (r.RowState == DataRowState.Deleted) continue;
-                var name = r[taskCol]?.ToString()?.Trim();
-                if (string.IsNullOrEmpty(name)) continue;
-                var st = storyCol != null ? r[storyCol]?.ToString()?.Trim() : "";
-                sb.AppendLine($"- story=\"{st}\"; task=\"{name}\"");
-            }
-            sb.AppendLine();
+                ctxHeader.AppendLine($"{s.Id} | {s.Name} | {Ancestor(s, "Feature")} | {Ancestor(s, "Epic")}");
+            ctxHeader.AppendLine();
+            ctxHeader.AppendLine("RECURSOS: " + string.Join(" | ",
+                _vm.Project.Resources.Where(x => x.Type == ResourceType.Work)
+                    .Select(ResourcePlanName).Where(n => n.Length > 0)));
+            ctxHeader.AppendLine();
+            var sb = new System.Text.StringBuilder(ctxHeader.ToString());
             sb.AppendLine("TEXTO:");
             sb.AppendLine(text);
 
+            // Sem cursor global de espera: o usuário pode seguir trabalhando enquanto a IA roda.
             string raw;
-            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
             AiIncludeSendBtn.IsEnabled = false;
             try
             {
-                StatusText.Text = AppStrings.Get("TaskPlan_AiIncludeRunning");
-                WinLog("Enviando para a IA...");
-                raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
-                    settings, systemPrompt,
-                    "Encontre a Story de cada atividade do TEXTO e devolva o JSON.", sb.ToString());
-                WinLog("Resposta recebida da IA:");
-                WinLog(raw);
+                if (structured)
+                {
+                    // Parser local: casa cada "Story –" com o cronograma e extrai as tasks
+                    // (nome, esforço, %, responsável, bloqueio) por regras. A IA entra em duas
+                    // chamadas curtas: seções ambíguas/parciais e ajuste de nomes sem verbo.
+                    using var monitor = StartAiResourceMonitor(settings, WinLog);
+                    var (localJson, aiText) = await BuildStructuredIncludeJsonAsync(text, stories, settings, WinLog, aiCts.Token);
+                    WinLog("Itens interpretados localmente:");
+                    WinLog(localJson);
+                    raw = localJson;
+
+                    if (!string.IsNullOrWhiteSpace(aiText))
+                    {
+                        var aiAvailable = settings.Provider == AIProvider.LocalLlama
+                                          || !string.IsNullOrWhiteSpace(settings.ApiKey);
+                        if (!aiAvailable)
+                        {
+                            WinLog("Seções ambíguas/parciais NÃO resolvidas (IA não configurada) — ignoradas.");
+                        }
+                        else
+                        {
+                            WinLog("Enviando as seções ambíguas/parciais para a IA decidir...");
+                            var aiRaw = await ProjectAIAssistantService.GenerateFreeTextAsync(
+                                settings, systemPrompt,
+                                "Encontre a Story de cada atividade do TEXTO e devolva o JSON.",
+                                ctxHeader + "TEXTO:\n" + aiText, aiCts.Token);
+                            WinLog("Resposta da IA para as seções ambíguas:");
+                            WinLog(aiRaw);
+                            raw = MergeJsonArrays(localJson, aiRaw);
+                        }
+                    }
+                }
+                else
+                {
+                    StatusText.Text = AppStrings.Get("TaskPlan_AiIncludeRunning");
+                    WinLog("Enviando para a IA...");
+                    using var monitor = StartAiResourceMonitor(settings, WinLog);
+                    raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
+                        settings, systemPrompt,
+                        "Encontre a Story de cada atividade do TEXTO e devolva o JSON.", sb.ToString(), aiCts.Token);
+                    WinLog("Resposta recebida da IA:");
+                    WinLog(raw);
+                }
+            }
+            catch (OperationCanceledException) when (aiCts.IsCancellationRequested)
+            {
+                WinLog(AppStrings.Get("TaskPlan_AiCancelled"));
+                logClose.IsEnabled = true;
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = AppStrings.Get("TaskPlan_AiCancelled");
+                return;
             }
             catch (Exception ex)
             {
@@ -3876,7 +4011,6 @@ namespace NXProject.Views
             }
             finally
             {
-                System.Windows.Input.Mouse.OverrideCursor = null;
                 AiIncludeSendBtn.IsEnabled = true;
             }
 
@@ -3892,10 +4026,28 @@ namespace NXProject.Views
                     return;
                 }
 
-                var idCol = TaskIdCol;
                 var featureCol = FindColumn("Feature", "Nome da Feature");
                 var estCol = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
-                var touchedStories = new HashSet<ProjectTask>();
+
+                var aiDescCol = FindColumn("Descrição da Task", "Descricao da Task", "Descrição", "Descricao", "Description");
+
+                // Carimbo DT_IA (dd/MM/aaaa HH:mm): registra quando a IA criou/ajustou a linha
+                // — persiste no arquivo e alimenta o filtro "Só atividades da IA". Fica ANTES
+                // da coluna de Observação.
+                const string aiDateColumn = "DT_IA";
+                var aiStamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+                bool aiDateColCreated = false;
+                string EnsureAiDateColumn()
+                {
+                    if (_data.Table.Columns.Contains(aiDateColumn)) return aiDateColumn;
+                    var col = _data.Table.Columns.Add(aiDateColumn, typeof(string));
+                    if (ObservationCol is { } obsAnchor && _data.Table.Columns.Contains(obsAnchor))
+                        col.SetOrdinal(_data.Table.Columns[obsAnchor]!.Ordinal);
+                    else if (RegisterDateCol is { } regAnchor && _data.Table.Columns.Contains(regAnchor))
+                        col.SetOrdinal(Math.Min(_data.Table.Columns[regAnchor]!.Ordinal + 1, _data.Table.Columns.Count - 1));
+                    aiDateColCreated = true;
+                    return aiDateColumn;
+                }
 
                 // Planilha nova nasce com uma linha em branco — remove antes de incluir,
                 // senão ela fica como uma linha "fantasma" com Aprovada=False no topo.
@@ -3917,64 +4069,90 @@ namespace NXProject.Views
                         continue;
                     }
 
-                    // Já existe? Na planilha (mesma Story + mesmo nome) ou como filha da Story no cronograma.
+                    // Já existe NA PLANILHA (mesma Story + mesmo nome)? Aí sim pula.
                     bool inPlan = _data.Table.Rows.Cast<DataRow>().Any(r =>
                         r.RowState != DataRowState.Deleted
                         && string.Equals(r[taskCol]?.ToString()?.Trim(), taskName, StringComparison.OrdinalIgnoreCase)
                         && (storyCol == null
                             || string.IsNullOrWhiteSpace(r[storyCol]?.ToString())
                             || string.Equals(r[storyCol]?.ToString()?.Trim(), storyNode.Name?.Trim(), StringComparison.OrdinalIgnoreCase)));
-                    bool inSchedule = storyNode.Children.Any(c =>
-                        string.Equals((c.Name ?? "").Trim(), taskName, StringComparison.OrdinalIgnoreCase));
-                    if (inPlan || inSchedule)
+                    if (inPlan)
                     {
                         existing++;
-                        WinLog($"= \"{taskName}\" já existe na Story \"{storyNode.Name}\".");
+                        WinLog($"= \"{taskName}\" já existe na planilha (Story \"{storyNode.Name}\").");
                         continue;
                     }
 
-                    // Task interna no cronograma (padrão do Aplicar) → ID interno :I na planilha.
-                    var task = TaskPlanScheduleRules.CreateInternalTask(storyNode, _vm.NextId(), taskName, null, 1.0);
-                    storyNode.Children.Add(task);
-                    storyNode.IsSummary = true;
-                    touchedStories.Add(storyNode);
-                    flat.Add(task);
-                    if (!string.IsNullOrEmpty(_path))
-                    {
-                        task.SourcePlanPath = _path;
-                        task.SourcePlanRowKey = $"{task.Id}:I";
-                    }
+                    // Esforço citado na reunião: horas ("8", "6,5") ou dias ("2d"); sem citação, 1h.
+                    var esforcoText = item.TryGetProperty("esforco", out var ep) ? ep.GetString()?.Trim() : null;
+                    var hours = TaskPlanScheduleRules.ParseEstimatedHours(esforcoText) ?? 1.0;
 
+                    // Responsável citado (a IA devolve o nome da lista RECURSOS; o código
+                    // revalida, aceitando nome parcial contra os recursos do cronograma).
+                    var respText = item.TryGetProperty("responsavel", out var rp) ? rp.GetString()?.Trim() : null;
+                    var resource = FindScheduleResource(respText) ?? FindScheduleResourceInText(respText);
+
+                    // Detalhe adicional citado na reunião vira a descrição da task.
+                    var descText = item.TryGetProperty("descricao", out var dp) ? dp.GetString()?.Trim() : null;
+                    if (string.IsNullOrWhiteSpace(descText)) descText = null;
+
+                    // A task NÃO entra no cronograma aqui: a inclusão via IA mexe SÓ na
+                    // planilha. O botão Aplicar é quem cria/vincula no cronograma depois
+                    // (lá nasce o ID interno :I). ID Task fica vazio até o Aplicar.
                     var dr = _data.Table.NewRow();
                     if (storyCol != null) dr[storyCol] = storyNode.Name ?? "";
                     if (featureCol != null) dr[featureCol] = Ancestor(storyNode, "Feature");
                     if (_epicColumn != null) dr[_epicColumn] = Ancestor(storyNode, "Epic");
-                    FillHierarchyIdsFromNode(dr, task);
+                    FillHierarchyIdsFromNode(dr, storyNode);
                     dr[taskCol] = taskName;
-                    if (idCol != null) dr[idCol] = $"{task.Id}:I";
                     if (ApprovalCol is { } apCol) dr[apCol] = "False";
                     if (RegisterDateCol is { } regCol) dr[regCol] = FormatRegisterDate(DateTime.Today);
-                    if (estCol != null) dr[estCol] = "1";
+                    dr[EnsureAiDateColumn()] = aiStamp;
+                    if (estCol != null) dr[estCol] = hours.ToString("0.##");
+                    // Responsável ENCONTRADO nos recursos do projeto vai direto na coluna
+                    // oficial; citado mas não encontrado vira nota na Observação.
+                    if (resource != null && ResourceCol is { } respCol)
+                        dr[respCol] = ResourcePlanName(resource);
+                    if (descText != null && aiDescCol != null)
+                        dr[aiDescCol] = descText;
+
+                    // Percentual: o citado ("70%") ou 0 explícito na planilha.
+                    var pctClamped = item.TryGetProperty("percentual", out var pctProp) && pctProp.TryGetInt32(out var pctValue)
+                        ? Math.Clamp(pctValue, 0, 100) : 0;
+                    if (PercConclusaoCol is { } pctCol) dr[pctCol] = pctClamped.ToString("0");
+
+                    // Observação (ex.: "Bloqueado", dependências, responsável não encontrado).
+                    var obsText = item.TryGetProperty("obs", out var obsProp) ? obsProp.GetString()?.Trim() : null;
+                    if (resource == null && !string.IsNullOrWhiteSpace(respText))
+                        obsText = string.IsNullOrWhiteSpace(obsText)
+                            ? $"Responsável citado: {respText}"
+                            : $"{obsText}; Responsável citado: {respText}";
+                    if (!string.IsNullOrWhiteSpace(obsText) && ObservationCol is { } obsCol)
+                        dr[obsCol] = obsText;
                     _data.Table.Rows.Add(dr);
                     added++;
-                    WinLog($"✓ \"{taskName}\" incluída na Story \"{storyNode.Name}\" ({task.Id}:I).");
+                    WinLog($"✓ \"{taskName}\" incluída na planilha (Story \"{storyNode.Name}\"; {hours:0.##}h"
+                        + (resource != null ? $"; {ResourcePlanName(resource)}" : "")
+                        + (!string.IsNullOrWhiteSpace(respText) && resource == null ? $"; responsável \"{respText}\" não encontrado nos recursos" : "")
+                        + ") — use o Aplicar para levar ao cronograma.");
                 }
-
-                foreach (var s in touchedStories.Where(TaskPlanScheduleRules.CanAdjustStoryDuration))
-                    s.RecalcSummary();
 
                 if (added > 0)
                 {
+                    // Só a PLANILHA muda; o cronograma fica intacto até o usuário Aplicar.
                     _dirty = true;
-                    _vm.Project.IsDirty = true;
-                    if (!string.IsNullOrEmpty(_path)) _vm.Project.PlanSheetPath = _path;
-                    _vm.RebuildFlatTasks();
                     RenumberTaskPlanRows();
+                    // Coluna nova (DT_IA): religa o grid para ela aparecer na posição.
+                    if (aiDateColCreated) BindTable();
                     BuildEpicFilter();
                     ValidateAgainstSchedule();
                     PlanGrid.Items.Refresh();
                     UpdateActiveFilterIndicator();
                     AiIncludeInputBox.Clear();
+
+                    // Liga o filtro "Só atividades da IA" para o usuário ver o que a rodada fez
+                    // (desmarcar o checkbox volta a mostrar todas as linhas).
+                    if (AiOnlyCheckBox != null) AiOnlyCheckBox.IsChecked = true;
 
                     // Mostra as linhas recém-incluídas (fim da grade).
                     if (PlanGrid.Items.Count > 0)
@@ -4004,6 +4182,25 @@ namespace NXProject.Views
         /// na planilha a(s) atividade(s) descrita(s) no texto e a grade seleciona/mostra as linhas.
         /// </summary>
         private async void OnAiFindClick(object sender, RoutedEventArgs e)
+        {
+            // Blindagem: exceção não tratada em handler async void DERRUBA o app.
+            try
+            {
+                SetAiRunning(true);
+                await RunAiFindAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Falha na consulta via IA:\n\n" + ex,
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                SetAiRunning(false);
+            }
+        }
+
+        private async Task RunAiFindAsync()
         {
             var text = AiIncludeInputBox.Text?.Trim();
             if (string.IsNullOrWhiteSpace(text))
@@ -4043,13 +4240,17 @@ namespace NXProject.Views
             if (EpicFilterCombo.Items.Count > 0) EpicFilterCombo.SelectedIndex = 0;
             ApplyEpicFilter();
 
-            var (logWin, logBox, logClose) = CreateAiIncludeLogWindow();
+            using var aiCts = new CancellationTokenSource();
+            var (logWin, logBox, logClose) = CreateAiIncludeLogWindow(aiCts);
             void WinLog(string msg)
             {
                 logBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}{Environment.NewLine}");
                 logBox.ScrollToEnd();
             }
+            // Foca o Task Plan e ENTÃO mostra o log — o log nasce por cima do Task Plan.
+            Activate();
             logWin.Show();
+            logWin.Activate();
 
             var idCol = TaskIdCol;
             var rows = new List<(int Number, DataRow Row)>();
@@ -4074,17 +4275,26 @@ namespace NXProject.Views
             sb.AppendLine(text);
             WinLog($"Consultando {rows.Count} linha(s) da planilha (provedor {AIProviderDefaults.GetDisplayName(settings.Provider)}, {settings.Model}).");
 
+            // Sem cursor global de espera: o usuário pode seguir trabalhando enquanto a IA roda.
             string raw;
-            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
             AiFindBtn.IsEnabled = false;
             try
             {
                 WinLog("Enviando para a IA...");
+                using var monitor = StartAiResourceMonitor(settings, WinLog);
                 raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
                     settings, systemPrompt,
-                    "Localize nas LINHAS as atividades do TEXTO e devolva o JSON.", sb.ToString());
+                    "Localize nas LINHAS as atividades do TEXTO e devolva o JSON.", sb.ToString(), aiCts.Token);
                 WinLog("Resposta recebida da IA:");
                 WinLog(raw);
+            }
+            catch (OperationCanceledException) when (aiCts.IsCancellationRequested)
+            {
+                WinLog(AppStrings.Get("TaskPlan_AiCancelled"));
+                logClose.IsEnabled = true;
+                StatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                StatusText.Text = AppStrings.Get("TaskPlan_AiCancelled");
+                return;
             }
             catch (Exception ex)
             {
@@ -4096,7 +4306,6 @@ namespace NXProject.Views
             }
             finally
             {
-                System.Windows.Input.Mouse.OverrideCursor = null;
                 AiFindBtn.IsEnabled = true;
             }
 
@@ -4163,6 +4372,383 @@ namespace NXProject.Views
             }
         }
 
+        /// <summary>
+        /// A linha da planilha pertence à Story? Prioriza o ID Story da linha (:T = TfsId,
+        /// :I = Id interno — desambigua Stories de mesmo nome); sem ID, cai no nome.
+        /// </summary>
+        private bool PlanRowBelongsToStory(DataRow row, ProjectTask story, string? storyCol)
+        {
+            if (StoryIdCol is { } sc)
+            {
+                var id = row[sc]?.ToString();
+                if (ParsePlanIdNumber(id, ":T") is { } tfsId) return story.TfsId == tfsId;
+                if (ParsePlanIdNumber(id, ":I") is { } internalId) return story.Id == internalId;
+            }
+            var name = storyCol != null ? row[storyCol]?.ToString()?.Trim() : null;
+            return !string.IsNullOrEmpty(name)
+                && string.Equals(name, story.Name?.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Parser LOCAL do texto de reunião estruturado ("Story – nome" seguido das linhas de
+        /// task). Devolve o MESMO JSON que a IA devolveria (story_id/task/esforco/responsavel/
+        /// percentual/obs), então todo o fluxo de inclusão/deduplicação é compartilhado.
+        /// Regras por linha de task: 1º segmento (separado por " – ") é o nome; no restante,
+        /// "2h"/"0,5h" = esforço em horas, "2d" = dias, "70%" = percentual, nome de recurso do
+        /// cronograma = responsável, "bloqueado" = observação. "Dependência: ..." e linhas
+        /// soltas de contexto vão para a observação do item anterior.
+        /// </summary>
+        private async Task<(string Json, string AiFallbackText)> BuildStructuredIncludeJsonAsync(
+            string text, List<ProjectTask> stories, AISettings settings, Action<string> log, CancellationToken ct)
+        {
+            var items = new List<Dictionary<string, object>>();
+            ProjectTask? currentStory = null;
+            string? currentFeature = null;
+            // Seções ambíguas (mais de uma Story candidata com o mesmo peso e sem Feature
+            // para desempatar) não são decididas pela heurística: vão para a IA.
+            var aiFallback = new System.Text.StringBuilder();
+            var collectingForAi = false;
+
+            var workResources = _vm!.Project.Resources
+                .Where(r => r.Type == ResourceType.Work)
+                .Select(r => (Resource: r, Norm: NormalizeForMatch(ResourcePlanName(r))))
+                .Where(x => x.Norm.Length > 0)
+                .ToList();
+
+            foreach (var rawLine in text.Split('\n'))
+            {
+                var line = rawLine.Trim().TrimEnd('.');
+                if (line.Length == 0) continue;
+
+                var storyHeader = System.Text.RegularExpressions.Regex.Match(line, @"^(?i)story\s*[–—:\-]\s*(.+)$");
+                if (storyHeader.Success)
+                {
+                    // Nome do cabeçalho sem o sufixo de horas "(33 horas)".
+                    var headerName = System.Text.RegularExpressions.Regex
+                        .Replace(storyHeader.Groups[1].Value, @"\s*\([^)]*\)\s*$", "").Trim();
+                    var (match, score, ambiguous, candidates) = MatchStoryHeader(headerName, currentFeature, stories);
+                    collectingForAi = false;
+                    // Heurística decide quando: (a) UMA única Story candidata (mesmo por parte
+                    // do nome) e EM ANDAMENTO (>0% e <100% — a lista já exclui as 100%), ou
+                    // (b) mais de uma candidata mas com cobertura TOTAL do nome e sem empate.
+                    // Qualquer outro caso (várias parciais, empate ou única a 0%) vai para a IA.
+                    var singleInProgress = candidates == 1 && match is { PercentComplete: > 0 };
+                    if (match != null && ambiguous == null && (singleInProgress || score >= 0.999))
+                    {
+                        currentStory = match;
+                        log($"Story \"{headerName}\" → \"{currentStory.Name}\" (id {currentStory.Id}, feature \"{Ancestor(currentStory, "Feature")}\", "
+                            + (singleInProgress && score < 0.999
+                                ? $"única candidata em andamento, semelhança {score:P0})"
+                                : "correspondência total)"));
+                    }
+                    else
+                    {
+                        currentStory = null;
+                        collectingForAi = true;
+                        aiFallback.AppendLine(line);
+                        log($"? Story \"{headerName}\": " + (ambiguous != null
+                                ? $"empate entre candidatas ({string.Join(" | ", ambiguous)})"
+                                : match != null
+                                    ? $"{candidates} candidatas parciais (mais próxima: \"{match.Name}\", {score:P0})"
+                                    : "sem correspondência clara")
+                            + " — seção enviada para a IA decidir.");
+                    }
+                    continue;
+                }
+
+                var featureHeader = System.Text.RegularExpressions.Regex.Match(line, @"^(?i)feature\s*[–—:\-]\s*(.+)$");
+                if (featureHeader.Success)
+                {
+                    currentFeature = featureHeader.Groups[1].Value.Trim();
+                    continue;
+                }
+
+                // "Dependência: X" (ou linha solta de contexto) complementa a task anterior.
+                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^(?i)depend") && items.Count > 0)
+                {
+                    var last = items[^1];
+                    last["obs"] = last.TryGetValue("obs", out var prev) && prev is string p && p.Length > 0
+                        ? $"{p}; {line}" : line;
+                    continue;
+                }
+
+                if (currentStory == null)
+                {
+                    // Seção ambígua: as linhas de task acompanham o cabeçalho para a IA.
+                    if (collectingForAi) aiFallback.AppendLine(line);
+                    continue;
+                }
+
+                // Linha de task: nome – detalhes (esforço, %, responsável, bloqueio).
+                var segments = System.Text.RegularExpressions.Regex.Split(line, @"\s+[–—]\s+|\s+-\s+");
+                if (segments[0].Trim().Length == 0) continue;
+
+                // Opção b: tema sem verbo + segmento seguinte com verbo viram "tema - Verbo...".
+                int consumed = 1;
+                string taskName;
+                if (!StartsWithInfinitiveVerb(segments[0]) && segments.Length > 1 && StartsWithInfinitiveVerb(segments[1]))
+                {
+                    taskName = $"{segments[0].Trim()} - {segments[1].Trim()}";
+                    consumed = 2;
+                }
+                else
+                {
+                    // Nome sem verbo fica como está aqui; o ajuste para iniciar com verbo é
+                    // feito ao final, numa chamada curta de IA só com os nomes detectados.
+                    taskName = segments[0].Trim();
+                }
+                var tail = string.Join(" ", segments.Skip(consumed));
+
+                var item = new Dictionary<string, object>
+                {
+                    ["story_id"] = currentStory.Id,
+                    ["task"] = taskName
+                };
+
+                var hours = System.Text.RegularExpressions.Regex.Match(tail, @"(\d+(?:[.,]\d+)?)\s*h\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var days = System.Text.RegularExpressions.Regex.Match(tail, @"(\d+(?:[.,]\d+)?)\s*d\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (hours.Success) item["esforco"] = hours.Groups[1].Value;
+                else if (days.Success) item["esforco"] = days.Groups[1].Value + "d";
+
+                var pct = System.Text.RegularExpressions.Regex.Match(tail, @"(\d{1,3})\s*%");
+                if (pct.Success) item["percentual"] = int.Parse(pct.Groups[1].Value);
+
+                if (line.Contains("bloquead", StringComparison.OrdinalIgnoreCase))
+                    item["obs"] = "Bloqueado";
+
+                // Responsável: procurado só na PARTE DE DETALHES (o nome da task pode citar
+                // outras pessoas, ex.: "... para João"). Casa por PARTE do nome — os tokens
+                // são fatiados por não-letras ("Fenoci, Mateus (Contractor)" → fenoci/mateus).
+                var tailNorm = NormalizeForMatch(tail);
+                var respMatches = new List<(string Name, int Pos)>();
+                foreach (var (res, norm) in workResources)
+                {
+                    var variants = System.Text.RegularExpressions.Regex
+                        .Split(norm, @"[^\p{L}\p{N}]+")
+                        .Where(w => w.Length >= 3 && w != "contractor" && w != "consultant")
+                        .Append(norm);
+                    var pos = -1;
+                    foreach (var variant in variants)
+                    {
+                        var i = tailNorm.LastIndexOf(variant, StringComparison.Ordinal);
+                        if (i > pos) pos = i;
+                    }
+                    if (pos >= 0) respMatches.Add((ResourcePlanName(res), pos));
+                }
+
+                void AppendObs(string note)
+                    => item["obs"] = item.TryGetValue("obs", out var prevObs) && prevObs is string po && po.Length > 0
+                        ? $"{po}; {note}" : note;
+
+                if (respMatches.Count == 1)
+                    item["responsavel"] = respMatches[0].Name;
+                else if (respMatches.Count > 1)
+                    // Mais de um recurso casou: não adivinha — registra na observação.
+                    AppendObs("Responsável ambíguo: " + string.Join(" | ",
+                        respMatches.OrderByDescending(m => m.Pos).Select(m => m.Name)));
+                else
+                {
+                    // Nenhum recurso casou: preserva o citado (detalhes sem horas/%/bloqueio)
+                    // — o fluxo de inclusão registra "Responsável citado: X" na observação.
+                    var cited = System.Text.RegularExpressions.Regex.Replace(tail,
+                        @"\d+(?:[.,]\d+)?\s*[hd]\b|\d{1,3}\s*%|\(?\s*bloquead\w*\s*\)?", "",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim(' ', '-', '–', '—', ';', ',');
+                    if (cited.Length >= 3) item["responsavel"] = cited;
+                }
+
+                items.Add(item);
+            }
+
+            // Convenção de nome de task (verbo no infinitivo): os nomes que o parser achou
+            // SEM verbo são ajustados por uma chamada CURTA de IA (só a lista de nomes).
+            // IA indisponível ou falha: mantém como no texto — nunca bloqueia a inclusão.
+            var noVerb = items.Select(i => (string)i["task"])
+                .Where(n => !StartsWithInfinitiveVerb(n))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (noVerb.Count > 0)
+            {
+                var aiAvailable = settings.Provider == AIProvider.LocalLlama
+                                  || !string.IsNullOrWhiteSpace(settings.ApiKey);
+                if (!aiAvailable)
+                {
+                    log($"{noVerb.Count} nome(s) sem verbo no início mantidos como no texto (IA não configurada).");
+                }
+                else
+                {
+                    log($"Ajustando {noVerb.Count} nome(s) de task para iniciar com verbo no infinitivo (IA)...");
+                    try
+                    {
+                        // Prompt da ação "Ajustar Nome de Task (verbo)" da tela IA Geral (editável).
+                        var verbPrompt = AISettingsStore.LoadWorkspace("NXProject.Community").ActionTypes
+                            .FirstOrDefault(a => a.Name == AIActionType.TaskNameFixActionName)?.Prompt;
+                        if (string.IsNullOrWhiteSpace(verbPrompt))
+                            verbPrompt = AISettingsStore.TaskNameFixActionPrompt;
+                        var resposta = await ProjectAIAssistantService.GenerateFreeTextAsync(
+                            settings, verbPrompt, "Reescreva os NOMES e devolva o JSON.",
+                            "NOMES:\n" + string.Join("\n", noVerb.Select(n => $"- {n}")), ct);
+                        var ini = resposta.IndexOf('[');
+                        var fim = resposta.LastIndexOf(']');
+                        if (ini >= 0 && fim > ini)
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(resposta[ini..(fim + 1)]);
+                            var mapa = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (var el in doc.RootElement.EnumerateArray())
+                                if (el.TryGetProperty("de", out var de) && el.TryGetProperty("para", out var para)
+                                    && de.GetString() is { Length: > 0 } d && para.GetString() is { Length: > 0 } p)
+                                    mapa[d.Trim()] = p.Trim();
+                            foreach (var it in items)
+                                if (mapa.TryGetValue((string)it["task"], out var novo)
+                                    && !string.Equals(novo, (string)it["task"], StringComparison.Ordinal))
+                                {
+                                    log($"  \"{it["task"]}\" → \"{novo}\"");
+                                    it["task"] = novo;
+                                }
+                        }
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex)
+                    {
+                        log("Ajuste de nomes pela IA falhou (mantidos como no texto): " + ex.Message);
+                    }
+                }
+            }
+
+            return (System.Text.Json.JsonSerializer.Serialize(items), aiFallback.ToString().Trim());
+        }
+
+        /// <summary>Primeira palavra parece verbo no infinitivo (termina em ar/er/ir)?</summary>
+        private static bool StartsWithInfinitiveVerb(string? name)
+        {
+            var first = NormalizeForMatch(name).TrimStart()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            if (first.Length < 3) return false;
+            // Palavras comuns de tecnologia que terminam em "er"/"ar" mas não são verbos.
+            if (first is "power" or "user" or "super" or "master" or "server" or "docker" or "sap") return false;
+            return first.EndsWith("ar") || first.EndsWith("er") || first.EndsWith("ir");
+        }
+
+        /// <summary>
+        /// Casa o nome do cabeçalho "Story – X" com a Story do cronograma: maior sobreposição
+        /// de palavras; a Feature corrente do texto desempata Stories homônimas.
+        /// </summary>
+        private (ProjectTask? Story, double Score, List<string>? Ambiguous, int Candidates) MatchStoryHeader(
+            string headerName, string? currentFeature, List<ProjectTask> stories)
+        {
+            var headerNorm = NormalizeForMatch(headerName);
+            var headerWords = new HashSet<string>(
+                System.Text.RegularExpressions.Regex.Split(headerNorm, @"[^\p{L}\p{N}]+").Where(w => w.Length >= 3));
+            if (headerWords.Count == 0) return (null, 0, null, 0);
+
+            // Vetor de frequência do cabeçalho (para a similaridade do cosseno).
+            var headerTokens = System.Text.RegularExpressions.Regex
+                .Split(headerNorm, @"[^\p{L}\p{N}]+").Where(w => w.Length >= 3).ToList();
+            var headerVec = headerTokens.GroupBy(t => t).ToDictionary(g => g.Key, g => (double)g.Count());
+            var headerLen = Math.Sqrt(headerVec.Values.Sum(v => v * v));
+
+            var scored = stories
+                .Select(s =>
+                {
+                    var words = System.Text.RegularExpressions.Regex
+                        .Split(NormalizeForMatch(s.Name), @"[^\p{L}\p{N}]+")
+                        .Where(w => w.Length >= 3).ToList();
+                    var hits = words.Count(headerWords.Contains);
+
+                    // Cobertura = fração do NOME DA STORY presente no cabeçalho (regra de
+                    // decisão: 100% = correspondência total). O padrão de reunião cita a
+                    // Story e acrescenta contexto.
+                    var coverage = words.Count == 0 ? 0 : (double)hits / words.Count;
+
+                    // Similaridade do COSSENO (vetores de frequência de palavras): ordena as
+                    // candidatas com mais eficiência que contagem simples — nomes longos não
+                    // dominam só por terem mais palavras.
+                    var vec = words.GroupBy(w => w).ToDictionary(g => g.Key, g => (double)g.Count());
+                    var dot = vec.Sum(kv => headerVec.TryGetValue(kv.Key, out var hv) ? kv.Value * hv : 0);
+                    var len = Math.Sqrt(vec.Values.Sum(v => v * v));
+                    var cosine = len <= 0 || headerLen <= 0 ? 0 : dot / (len * headerLen);
+
+                    var featureBonus = currentFeature != null
+                        && NormalizeForMatch(Ancestor(s, "Feature")).Contains(NormalizeForMatch(currentFeature))
+                        ? 0.25 : 0;
+                    return (Story: s, Score: coverage, Rank: cosine + featureBonus, Hits: hits);
+                })
+                .Where(x => x.Hits > 0)
+                .OrderByDescending(x => x.Rank)
+                .ThenByDescending(x => x.Score)
+                .ThenByDescending(x => x.Hits)
+                .ToList();
+
+            if (scored.Count == 0) return (null, 0, null, 0);
+            var top = scored[0];
+
+            // Empate real (mesmo rank/palavras, sem Feature desempatando) = ambíguo → IA decide.
+            var tied = scored
+                .Where(x => Math.Abs(x.Rank - top.Rank) < 0.001 && x.Hits == top.Hits)
+                .Select(x => x.Story.Name ?? "")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return tied.Count > 1
+                ? (top.Story, top.Score, tied, scored.Count)
+                : (top.Story, top.Score, null, scored.Count);
+        }
+
+        /// <summary>Minúsculas e sem acentos, para casar nomes com diferenças de escrita.</summary>
+        private static string NormalizeForMatch(string? s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            var decomposed = s.Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder(decomposed.Length);
+            foreach (var c in decomposed)
+                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                    != System.Globalization.UnicodeCategory.NonSpacingMark)
+                    sb.Append(char.ToLowerInvariant(c));
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Varredura local do texto da reunião: pontua cada Story pela fração de palavras
+        /// significativas (4+ letras) do nome dela presentes no texto. Devolve as candidatas
+        /// (peso &gt; 0) ordenadas da mais provável para a menos — a IA recebe só essas.
+        /// </summary>
+        private static List<ProjectTask> RankStoriesByMeetingText(List<ProjectTask> stories, string meetingText)
+        {
+            var textNorm = NormalizeForMatch(meetingText);
+            var textWords = new HashSet<string>(
+                System.Text.RegularExpressions.Regex.Split(textNorm, @"[^\p{L}\p{N}]+")
+                    .Where(w => w.Length >= 4));
+
+            return stories
+                .Select(s =>
+                {
+                    var words = System.Text.RegularExpressions.Regex
+                        .Split(NormalizeForMatch(s.Name), @"[^\p{L}\p{N}]+")
+                        .Where(w => w.Length >= 4)
+                        .ToList();
+                    var hits = words.Count(w => textWords.Contains(w) || textNorm.Contains(w));
+                    return (Story: s, Hits: hits, Weight: words.Count == 0 ? 0 : (double)hits / words.Count);
+                })
+                .Where(x => x.Hits > 0)
+                .OrderByDescending(x => x.Weight)
+                .ThenByDescending(x => x.Hits)
+                .Select(x => x.Story)
+                .ToList();
+        }
+
+        /// <summary>Concatena dois JSONs de array ("[...]" + "[...]") em um só.</summary>
+        private static string MergeJsonArrays(string a, string b)
+        {
+            static string Inner(string s)
+            {
+                var i = s.IndexOf('[');
+                var j = s.LastIndexOf(']');
+                return i >= 0 && j > i ? s[(i + 1)..j].Trim() : "";
+            }
+            var innerA = Inner(a);
+            var innerB = Inner(b);
+            if (innerA.Length == 0) return innerB.Length == 0 ? "[]" : $"[{innerB}]";
+            return innerB.Length == 0 ? $"[{innerA}]" : $"[{innerA},{innerB}]";
+        }
+
         private void AiIncludeLog(string message)
         {
             AiIncludeLogBox.Text = message;
@@ -4193,14 +4779,61 @@ namespace NXProject.Views
                 row.Delete();
         }
 
-        // Janela de acompanhamento da inclusão via IA: log ao vivo + botão fechar (habilita no fim).
-        private (Window Win, TextBox Log, Button Close) CreateAiIncludeLogWindow()
+        /// <summary>
+        /// Com a IA Local, loga a cada 10s o %CPU do processo e a memória em uso — para o
+        /// usuário ver que a inferência está trabalhando (em CPU ela pode levar minutos).
+        /// Provedores de nuvem não precisam (a espera é da rede, não da máquina).
+        /// </summary>
+        private static IDisposable? StartAiResourceMonitor(AISettings settings, Action<string> log)
+        {
+            if (settings.Provider != AIProvider.LocalLlama) return null;
+
+            var process = System.Diagnostics.Process.GetCurrentProcess();
+            var started = DateTime.UtcNow;
+            var lastCpu = process.TotalProcessorTime;
+            var lastTick = DateTime.UtcNow;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            timer.Tick += (_, _) =>
+            {
+                process.Refresh();
+                var now = DateTime.UtcNow;
+                var elapsedMs = (now - lastTick).TotalMilliseconds;
+                var cpuPercent = elapsedMs <= 0 ? 0 :
+                    (process.TotalProcessorTime - lastCpu).TotalMilliseconds
+                    / (Environment.ProcessorCount * elapsedMs) * 100;
+                lastCpu = process.TotalProcessorTime;
+                lastTick = now;
+
+                var total = now - started;
+                var elapsedText = total.TotalMinutes >= 1
+                    ? $"{(int)total.TotalMinutes}m{total.Seconds:00}s"
+                    : $"{total.Seconds}s";
+                var phase = Community.Services.LocalLlamaService.CurrentStatus ?? "processando";
+                var inferThreads = Community.Services.LocalLlamaService.ConfiguredThreads;
+                log($"IA Local · {elapsedText} · {phase} · CPU {Math.Clamp(cpuPercent, 0, 100):0}%"
+                    + (inferThreads > 0 ? $" · {inferThreads} thread(s) de inferência" : "")
+                    + $" · {process.Threads.Count} threads no processo · memória {process.WorkingSet64 / (1024 * 1024):N0} MB");
+            };
+            timer.Start();
+            return new StopTimerOnDispose(timer);
+        }
+
+        private sealed class StopTimerOnDispose(System.Windows.Threading.DispatcherTimer timer) : IDisposable
+        {
+            public void Dispose() => timer.Stop();
+        }
+
+        // Janela de acompanhamento da inclusão via IA: log ao vivo + Cancelar (também pela
+        // tecla ESC, enquanto a IA trabalha) + Fechar (habilita no fim).
+        private (Window Win, TextBox Log, Button Close) CreateAiIncludeLogWindow(CancellationTokenSource? cts = null)
         {
             var logBox = new TextBox
             {
                 IsReadOnly = true,
-                TextWrapping = TextWrapping.Wrap,
+                // Uma entrada por linha (sem quebra); o excedente rola na horizontal.
+                TextWrapping = TextWrapping.NoWrap,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
                 FontFamily = new System.Windows.Media.FontFamily("Consolas"),
                 FontSize = 12,
                 BorderThickness = new Thickness(0),
@@ -4210,14 +4843,37 @@ namespace NXProject.Views
             {
                 Content = AppStrings.Get("TaskPlan_Close"),
                 Width = 100, Height = 30,
-                Margin = new Thickness(0, 8, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(8, 8, 0, 0),
                 IsEnabled = false
             };
+            var cancelBtn = new Button
+            {
+                Content = AppStrings.Get("TaskPlan_AiCancel"),
+                Width = 100, Height = 30,
+                Margin = new Thickness(0, 8, 0, 0),
+                IsEnabled = cts != null
+            };
+            void CancelRun()
+            {
+                if (cts == null || !cancelBtn.IsEnabled) return;
+                cancelBtn.IsEnabled = false;
+                cts.Cancel();
+                logBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {AppStrings.Get("TaskPlan_AiCancelling")}{Environment.NewLine}");
+                logBox.ScrollToEnd();
+            }
+            cancelBtn.Click += (_, _) => CancelRun();
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            buttons.Children.Add(cancelBtn);
+            buttons.Children.Add(closeBtn);
 
             var panel = new DockPanel { Margin = new Thickness(10) };
-            DockPanel.SetDock(closeBtn, Dock.Bottom);
-            panel.Children.Add(closeBtn);
+            DockPanel.SetDock(buttons, Dock.Bottom);
+            panel.Children.Add(buttons);
             panel.Children.Add(new Border
             {
                 BorderBrush = System.Windows.Media.Brushes.Silver,
@@ -4225,17 +4881,41 @@ namespace NXProject.Views
                 Child = logBox
             });
 
+            // Não-modal e INDEPENDENTE (sem Owner): não fica presa por cima do Task Plan —
+            // pode ser minimizada ou ir para trás enquanto o usuário trabalha no cronograma;
+            // ao terminar, restaura e pega o foco.
             var win = new Window
             {
                 Title = AppStrings.Get("TaskPlan_AiIncludeTitle"),
-                Owner = this,
                 Width = 640, Height = 420,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                ShowInTaskbar = true,
+                ShowActivated = true,
                 Content = panel
             };
             closeBtn.Click += (_, _) => win.Close();
+            // ESC cancela a execução em andamento; com tudo terminado, ESC fecha a janela.
+            win.PreviewKeyDown += (_, args) =>
+            {
+                if (args.Key != System.Windows.Input.Key.Escape) return;
+                args.Handled = true;
+                if (cancelBtn.IsEnabled) CancelRun();
+                else if (closeBtn.IsEnabled) win.Close();
+            };
             // Enquanto a integração roda, o X não fecha (evita perder o log no meio).
             win.Closing += (_, args) => { if (!closeBtn.IsEnabled) args.Cancel = true; };
+            // Fim da execução: Fechar habilita, Cancelar desabilita e a janela volta ao
+            // foco (restaura se estiver minimizada) para o usuário ver o resultado.
+            closeBtn.IsEnabledChanged += (_, _) =>
+            {
+                if (!closeBtn.IsEnabled) return;
+                cancelBtn.IsEnabled = false;
+                if (win.WindowState == WindowState.Minimized)
+                    win.WindowState = WindowState.Normal;
+                win.Activate();
+                win.Topmost = true;   // pulso para vir à frente...
+                win.Topmost = false;  // ...sem ficar sempre no topo
+            };
             return (win, logBox, closeBtn);
         }
 

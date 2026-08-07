@@ -649,6 +649,16 @@ namespace NXProject.Views
             return false;
         }
 
+        // Provedor padrão sempre visível no topo: mudou, salvou (sem precisar do botão Salvar).
+        private void OnDefaultProviderChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded || _workspace == null) return;
+            _workspace.DefaultProvider = GetSelectedDefaultProvider();
+            AISettingsStore.SaveWorkspace(_workspace, SettingsStorageKey);
+            StatusTextBlock.Text = AppStrings.Get("AI_ProviderSaved",
+                AIProviderDefaults.GetDisplayName(_workspace.DefaultProvider));
+        }
+
         // Botões que substituem as abas: cada botão seleciona a visão correspondente.
         private void OnTabButtonChecked(object sender, RoutedEventArgs e)
         {

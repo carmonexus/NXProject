@@ -26,6 +26,16 @@ namespace NXProject.Community.Services
         private static string? _loadedModelPath;
         private static bool _nativeConfigured;
 
+        /// <summary>
+        /// Situação atual da inferência para a UI (fase + tokens + velocidade),
+        /// atualizada durante a geração. Nulo quando não há inferência em andamento.
+        /// </summary>
+        public static string? CurrentStatus => _status;
+        private static volatile string? _status;
+
+        /// <summary>Threads de inferência configuradas no motor (núcleos físicos); 0 = modelo ainda não carregado.</summary>
+        public static int ConfiguredThreads { get; private set; }
+
         /// <summary>Descarta o modelo carregado (ex.: troca de pasta/modelo). A DLL nativa permanece.</summary>
         public static void ResetModel()
         {
@@ -51,11 +61,13 @@ namespace NXProject.Community.Services
             await Gate.WaitAsync(ct);
             try
             {
+                _status = "aguardando/carregando modelo (primeira vez pode levar ~1 min)";
                 EnsureModelLoaded(folder, check.ModelFile!);
                 return await Task.Run(() => InferAsync(systemPrompt, userPrompt, ct), ct);
             }
             finally
             {
+                _status = null;
                 Gate.Release();
             }
         }
@@ -83,8 +95,12 @@ namespace NXProject.Community.Services
             _modelParams = new ModelParams(modelPath)
             {
                 ContextSize = 8192,
-                GpuLayerCount = 0
+                GpuLayerCount = 0,
+                // llama.cpp rende melhor com os núcleos FÍSICOS (metade dos lógicos com HT).
+                Threads = Math.Max(1, Environment.ProcessorCount / 2),
+                BatchSize = 512
             };
+            ConfiguredThreads = Math.Max(1, Environment.ProcessorCount / 2);
             _weights = LLamaWeights.LoadFromFile(_modelParams);
             _loadedModelPath = modelPath;
         }
@@ -102,14 +118,36 @@ namespace NXProject.Community.Services
             var executor = new StatelessExecutor(_weights!, _modelParams!);
             var inference = new InferenceParams
             {
-                MaxTokens = 2048,
+                // Teto de saída: um loop do modelo não pode custar minutos (JSON esperado é curto).
+                MaxTokens = 1024,
                 AntiPrompts = new[] { "<|im_end|>", "<|im_start|>" }.ToList(),
-                SamplingPipeline = new DefaultSamplingPipeline { Temperature = 0.2f }
+                // Extração estruturada pede decodificação DETERMINÍSTICA (greedy): mesma
+                // entrada → mesma saída, e menos loops/deriva que amostragem com temperatura.
+                SamplingPipeline = new GreedySamplingPipeline()
             };
 
+            // O primeiro token só sai depois do modelo "ler" todo o contexto (prompt eval) —
+            // é a fase mais longa quando o cronograma tem muitas Stories.
+            _status = "processando o contexto (ainda sem gerar resposta)";
             var sb = new StringBuilder();
+            var tokens = 0;
+            var start = DateTime.UtcNow;
+            double prefillSecs = 0;
+            var genStart = start;
             await foreach (var token in executor.InferAsync(prompt, inference, ct))
+            {
+                if (tokens == 0)
+                {
+                    // Primeiro token: o prefill (leitura do contexto) terminou aqui.
+                    prefillSecs = (DateTime.UtcNow - start).TotalSeconds;
+                    genStart = DateTime.UtcNow;
+                }
                 sb.Append(token);
+                tokens++;
+                var secs = (DateTime.UtcNow - genStart).TotalSeconds;
+                _status = $"contexto lido em {prefillSecs:0}s · gerando resposta: {tokens} token(s)"
+                          + (secs > 1 ? $" ({tokens / secs:0.0} tok/s)" : "");
+            }
 
             var text = sb.ToString();
             foreach (var stop in new[] { "<|im_end|>", "<|im_start|>" })

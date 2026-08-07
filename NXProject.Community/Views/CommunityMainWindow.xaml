@@ -561,6 +561,16 @@
             </Button>
         </ToolBar>
 
+        <!-- Indicador "IA em execução" (Task Plan rodando Incluir/Consultar via IA):
+             faixa fina ABAIXO da toolbar, sempre visível quando ativa -->
+        <StackPanel x:Name="AiRunningBadge" DockPanel.Dock="Top" Orientation="Horizontal"
+                    Visibility="Collapsed" Margin="8,2,0,2">
+            <TextBlock Text="&#x1F916;" FontSize="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+            <ProgressBar IsIndeterminate="True" Width="46" Height="10" Margin="0,0,6,0" VerticalAlignment="Center"/>
+            <TextBlock Text="{DynamicResource Main_AiRunning}" FontSize="11" FontWeight="SemiBold"
+                       Foreground="#2B579A" VerticalAlignment="Center"/>
+        </StackPanel>
+
         <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource PrimaryBrush}" Foreground="White" Height="22">
             <StatusBarItem>
                 <TextBlock Text="{Binding StatusMessage}" FontSize="11"/>

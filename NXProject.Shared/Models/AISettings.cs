@@ -64,6 +64,8 @@ namespace NXProject.Models
         public const string PlanIncludeActionName = "Incluir Tasks na Planilha";
         // Consulta/localização de tasks na planilha do Task Plan a partir de texto.
         public const string PlanFindActionName = "Consultar Task na Planilha";
+        // Ajuste de nomes de task para iniciar com verbo no infinitivo (parser do Task Plan).
+        public const string TaskNameFixActionName = "Ajustar Nome de Task (verbo)";
     }
 
     /// <summary>Configuracao persistida de um provedor especifico.</summary>

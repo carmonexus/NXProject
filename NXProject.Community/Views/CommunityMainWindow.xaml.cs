@@ -55,6 +55,9 @@ namespace NXProject.Views
             InitializeComponent();
             // IA Local (LLaMA): registra o gerador usado quando o provedor padrão é LocalLlama.
             Services.ProjectAIAssistantService.LocalGenerator = Community.Services.LocalLlamaService.GenerateAsync;
+            // Indicador de IA em execução no canto da toolbar (sinal vindo do Task Plan).
+            Community.Services.AiRunIndicator.Changed += running =>
+                Dispatcher.Invoke(() => AiRunningBadge.Visibility = running ? Visibility.Visible : Visibility.Collapsed);
             var v = Assembly.GetExecutingAssembly().GetName().Version;
             if (v != null)
                 Title = $"NXProject Community {v.Major}.{v.Minor}.{v.Build} build({v.Revision})";
@@ -3002,6 +3005,20 @@ namespace NXProject.Views
 
         private void OnTaskPlanClick(object sender, RoutedEventArgs e)
         {
+            // Já existe um Task Plan aberto? Pergunta se abre outra planilha; "Não" foca a atual.
+            var open = Application.Current.Windows.OfType<TaskPlanWindow>().FirstOrDefault();
+            if (open != null)
+            {
+                var r = MessageBox.Show(this, AppStrings.Get("TaskPlan_AlreadyOpenAsk"),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (r != MessageBoxResult.Yes)
+                {
+                    if (open.WindowState == WindowState.Minimized) open.WindowState = WindowState.Normal;
+                    open.Activate();
+                    return;
+                }
+            }
+
             var vm = DataContext as MainViewModel;
             new TaskPlanWindow(vm) { Owner = this }.Show();
         }

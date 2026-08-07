@@ -57,8 +57,8 @@ namespace NXProject.Services
         private const string LegacyScheduleDevOpsActionName = "Fazer Cronograma Devops";
         private const string LegacyScheduleNoDevOpsActionName = "Cronograma NoDevops";
 
-        // Versao atual do schema de acoes (v2: "Fazer Cronograma DevOps"; v3: merge de arquivo externo; v4: merge por hierarquia/ID; v5: ID interno nao bloqueia busca TFS; v6: incluir tasks na planilha; v7: consultar task na planilha).
-        private const int CurrentActionsSchemaVersion = 7;
+        // Versao atual do schema de acoes (v2: "Fazer Cronograma DevOps"; v3: merge de arquivo externo; v4: merge por hierarquia/ID; v5: ID interno nao bloqueia busca TFS; v6: incluir tasks na planilha; v7: consultar task na planilha; v8: incluir captura responsavel/esforco; v9: nome da task com verbo no infinitivo + descricao; v10: acao de ajuste de nome de task).
+        private const int CurrentActionsSchemaVersion = 10;
 
         /// <summary>Prompt do merge de planilha externa (Task Plan) com as Tasks do DevOps.</summary>
         private const string LegacyMergeExternalActionPrompt =
@@ -88,8 +88,8 @@ namespace NXProject.Services
             "[{\"linha\": 1, \"id_devops\": 123, \"task_devops\": \"título\", \"confianca\": \"alta|media|baixa\"}]. " +
             "Inclua apenas linhas com correspondência; não invente IDs.";
 
-        /// <summary>Prompt da inclusão de tasks na planilha do Task Plan a partir de texto de reunião.</summary>
-        public const string PlanIncludeActionPrompt =
+        /// <summary>Prompt v1 da inclusão de tasks (mantido para a migração v8 detectar prompt não editado).</summary>
+        private const string PlanIncludeActionPromptV1 =
             "Você é um assistente do NXProject que inclui tasks na planilha do Task Plan a partir de uma " +
             "lista de atividades citadas em reunião. Você recebe: STORIES (Stories do cronograma, com id, " +
             "nome, feature e epic), TASKS_PLANILHA (tasks que já existem na planilha, com story e task) e " +
@@ -102,6 +102,62 @@ namespace NXProject.Services
             "Não inclua atividades que já existem em TASKS_PLANILHA com o mesmo nome de task na mesma Story. " +
             "Se não encontrar Story correspondente para um item, devolva-o com story_id 0 e o motivo em obs.";
 
+        /// <summary>Prompt v2 da inclusão de tasks (mantido para a migração v9 detectar prompt não editado).</summary>
+        private const string PlanIncludeActionPromptV2 =
+            "Você é um assistente do NXProject que inclui tasks na planilha do Task Plan a partir de uma " +
+            "lista de atividades citadas em reunião. Você recebe: STORIES (Stories do cronograma, com id, " +
+            "nome, feature e epic), RECURSOS (nomes das pessoas do cronograma), TASKS_PLANILHA (tasks que " +
+            "já existem na planilha, com story e task) e TEXTO (lista de atividades, tendo no mínimo a " +
+            "story e o nome da task em cada item; pode citar também o responsável e o esforço). " +
+            "Para cada atividade do TEXTO, encontre a Story do cronograma cujo nome melhor corresponde ao " +
+            "citado (tolere abreviações, acentos e pequenas diferenças de escrita). " +
+            "Responda SOMENTE com um JSON válido, sem comentários, no formato: " +
+            "[{\"story_id\": 123, \"story\": \"nome da story\", \"task\": \"nome da task\", " +
+            "\"responsavel\": \"\", \"esforco\": \"\", \"obs\": \"\"}]. " +
+            "Use story_id EXATAMENTE como veio em STORIES; não invente stories nem ids. " +
+            "responsavel: quando o TEXTO citar quem fará a task (mesmo só parte do nome, apelido ou primeiro " +
+            "nome), devolva o nome EXATO correspondente da lista RECURSOS; sem correspondência, deixe vazio. " +
+            "esforco: quando o TEXTO citar o esforço, devolva número em HORAS (ex.: \"8\", \"6,5\"); se o texto " +
+            "der em DIAS, devolva o número com sufixo d (ex.: \"2d\"); sem esforço citado, deixe vazio. " +
+            "Não inclua atividades que já existem em TASKS_PLANILHA com o mesmo nome de task na mesma Story. " +
+            "Se não encontrar Story correspondente para um item, devolva-o com story_id 0 e o motivo em obs.";
+
+        /// <summary>Prompt da inclusão de tasks na planilha do Task Plan a partir de texto de reunião.</summary>
+        public const string PlanIncludeActionPrompt =
+            "Você é um assistente do NXProject que inclui tasks na planilha do Task Plan a partir de uma " +
+            "lista de atividades citadas em reunião. Você recebe: STORIES (tabela \"id | nome | feature | " +
+            "epic\" com as Stories EM ABERTO do cronograma — pode haver Stories de MESMO NOME em feature/epic " +
+            "diferentes; use feature e epic para distinguir), RECURSOS (nomes das pessoas) e TEXTO (lista de " +
+            "atividades, tendo no mínimo a story e o nome da task em cada item; pode citar também o " +
+            "responsável, o esforço e detalhes). " +
+            "Convenção de nomes do NXProject: nome de STORY é NOMINAL e NUNCA se inicia com verbo (identifica " +
+            "o tema/entrega, ex.: \"Backup de dados\", \"Condição Y014\"); nome de TASK SEMPRE começa com VERBO " +
+            "NO INFINITIVO (identifica a ação, ex.: \"Validar cargas de backup\"). Use essa convenção para " +
+            "distinguir, no TEXTO, o que é Story e o que é task. " +
+            "Para cada atividade do TEXTO, encontre a Story do cronograma cujo nome melhor corresponde ao " +
+            "citado (tolere abreviações, acentos e pequenas diferenças de escrita). " +
+            "Responda SOMENTE com um JSON válido, COMPACTO (uma linha, sem espaços desnecessários), sem " +
+            "comentários, no formato: [{\"story_id\":123,\"task\":\"nome da task\",\"responsavel\":\"\"," +
+            "\"esforco\":\"\",\"descricao\":\"\",\"obs\":\"\"}]. NÃO repita o nome da story na resposta e " +
+            "OMITA os campos vazios — só story_id e task são obrigatórios. " +
+            "Cada atividade do TEXTO gera EXATAMENTE UM item na resposta: escolha a ÚNICA Story mais " +
+            "provável (desempate por feature/epic e pelo contexto do TEXTO) — NUNCA repita a mesma task " +
+            "em várias stories, e a resposta NUNCA tem mais itens que as linhas de atividade do TEXTO. " +
+            "Use story_id EXATAMENTE como veio em STORIES; não invente stories nem ids. " +
+            "task: nome CURTO da atividade começando com um VERBO NO INFINITIVO (ex.: \"Ajustar views de " +
+            "condição\", \"Criar tabela T001W\"). NUNCA use o nome da Story (nem tema sem verbo) como nome da " +
+            "task — Story identifica o tema, task identifica a AÇÃO. Se o TEXTO trouxer um tema sem verbo e a " +
+            "ação em seguida, componha \"tema - Verbo + complemento\" ou apenas \"Verbo + complemento (tema)\". " +
+            "descricao: o detalhe adicional citado no TEXTO sobre a atividade (contexto, escopo, observação " +
+            "técnica); omita se não houver — NÃO repita o nome da task. " +
+            "responsavel: quando o TEXTO citar quem fará a task (mesmo só parte do nome, apelido ou primeiro " +
+            "nome), devolva o nome EXATO correspondente da lista RECURSOS; sem correspondência na lista, " +
+            "devolva o nome COMO CITADO no TEXTO (o NX registra na observação) — só omita se o TEXTO não " +
+            "citar ninguém. " +
+            "esforco: quando o TEXTO citar o esforço, devolva número em HORAS (ex.: \"8\", \"6,5\"); se o texto " +
+            "der em DIAS, devolva o número com sufixo d (ex.: \"2d\"); sem esforço citado, omita. " +
+            "Se não encontrar Story correspondente para um item, devolva-o com story_id 0 e o motivo em obs.";
+
         /// <summary>Prompt da consulta/localização de tasks na planilha do Task Plan.</summary>
         public const string PlanFindActionPrompt =
             "Você é um assistente do NXProject que localiza atividades na planilha do Task Plan. " +
@@ -111,6 +167,13 @@ namespace NXProject.Services
             "quando o TEXTO citar a story, respeite-a. Responda SOMENTE com um JSON válido, sem " +
             "comentários, no formato: [{\"linha\": 1, \"task\": \"nome da task\", \"obs\": \"\"}]. " +
             "Inclua apenas correspondências reais; não invente linhas. Se nada corresponder, devolva [].";
+
+        /// <summary>Prompt do ajuste de nomes de task (verbo no infinitivo) — usado pelo parser do Task Plan.</summary>
+        public const string TaskNameFixActionPrompt =
+            "Você recebe NOMES de tasks de projeto. Reescreva cada um para começar com um VERBO NO " +
+            "INFINITIVO em português, curto e mantendo o significado (ex.: \"Validação do PBI\" → " +
+            "\"Validar o PBI\"; \"Import de Backup TK13\" → \"Importar Backup TK13\"). " +
+            "Responda SOMENTE com JSON compacto: [{\"de\":\"nome original\",\"para\":\"nome ajustado\"}].";
 
         /// <summary>Prompt do modo livre: responde no dominio de projeto, sem gerar tarefas.</summary>
         private const string FreeActionPrompt =
@@ -161,6 +224,12 @@ namespace NXProject.Services
             {
                 Name = AIActionType.PlanFindActionName,
                 Prompt = PlanFindActionPrompt,
+                CreatesTasks = false
+            },
+            new AIActionType
+            {
+                Name = AIActionType.TaskNameFixActionName,
+                Prompt = TaskNameFixActionPrompt,
                 CreatesTasks = false
             },
         };
@@ -218,6 +287,17 @@ namespace NXProject.Services
                 // v7: garante a acao "Consultar Task na Planilha" (botão Consultar do painel de IA).
                 if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.PlanFindActionName))
                     workspace.ActionTypes.Add(GetDefaultActions().First(a => a.Name == AIActionType.PlanFindActionName));
+
+                // v10: garante a acao "Ajustar Nome de Task (verbo)" (parser do Task Plan).
+                if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.TaskNameFixActionName))
+                    workspace.ActionTypes.Add(GetDefaultActions().First(a => a.Name == AIActionType.TaskNameFixActionName));
+
+                // v8/v9: prompts padrao antigos do incluir sao atualizados; editados pelo usuario ficam.
+                var planInclude = workspace.ActionTypes.FirstOrDefault(a => a.Name == AIActionType.PlanIncludeActionName);
+                if (planInclude != null
+                    && (string.Equals(planInclude.Prompt, PlanIncludeActionPromptV1, StringComparison.Ordinal)
+                        || string.Equals(planInclude.Prompt, PlanIncludeActionPromptV2, StringComparison.Ordinal)))
+                    planInclude.Prompt = PlanIncludeActionPrompt;
             }
 
             workspace.ActionsSchemaVersion = CurrentActionsSchemaVersion;
