@@ -141,11 +141,15 @@ public static class UpdateService
     }
 
     /// <summary>Baixa um arquivo para o caminho indicado, reportando progresso 0-100.</summary>
+    /// <param name="bytesProgress">Progresso em bytes (baixado, total) — permite mostrar MB
+    /// na UI; o pacote base passou de poucos MB para dezenas, e sem esse retorno o download
+    /// longo parece travado.</param>
     public static async Task DownloadFileAsync(
         string downloadUrl,
         string destPath,
         IProgress<int>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IProgress<(long Downloaded, long Total)>? bytesProgress = null)
     {
         using var client = CreateClient();
 
@@ -157,6 +161,7 @@ public static class UpdateService
 
         var buffer = new byte[81920];
         long downloaded = 0;
+        long lastReportedMb = -1;
         int read;
         while ((read = await stream.ReadAsync(buffer, ct)) > 0)
         {
@@ -164,21 +169,31 @@ public static class UpdateService
             downloaded += read;
             if (total > 0)
                 progress?.Report((int)(downloaded * 100 / total));
+
+            // Reporta a cada MB: suficiente para a UI e sem custo de marshalling a cada 80 KB.
+            var mb = downloaded / (1024 * 1024);
+            if (mb != lastReportedMb)
+            {
+                lastReportedMb = mb;
+                bytesProgress?.Report((downloaded, total));
+            }
         }
 
         progress?.Report(100);
+        bytesProgress?.Report((downloaded, total > 0 ? total : downloaded));
     }
 
     public static async Task<string> DownloadAndExtractAsync(
         string downloadUrl,
         IProgress<int>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IProgress<(long Downloaded, long Total)>? bytesProgress = null)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"nxupdate_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
         var zipPath = Path.Combine(tempDir, "update.zip");
-        await DownloadFileAsync(downloadUrl, zipPath, progress, ct);
+        await DownloadFileAsync(downloadUrl, zipPath, progress, ct, bytesProgress);
 
         var extractDir = Path.Combine(tempDir, "extracted");
         ZipFile.ExtractToDirectory(zipPath, extractDir);

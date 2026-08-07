@@ -446,13 +446,25 @@ namespace NXProject.Views
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
             var zipPath = System.IO.Path.Combine(downloadsDir, "NXProject-Setup.zip");
 
+            // Progresso do download: o pacote base tem dezenas de MB (cresceu com as
+            // bibliotecas novas) e sem barra a espera parece travamento.
+            var (progressWin, progressBar, progressText) = CreateSetupProgressWindow();
+            progressWin.Show();
             try
             {
                 // Baixa o .zip para Downloads (local fixo e visivel) — se a instalacao
                 // falhar, o usuario acha o pacote e roda de novo sem precisar baixar outra vez.
                 LogSetupUpdate($"Baixando {downloadUrl} para {zipPath}...");
-                await NXProject.Services.UpdateService.DownloadFileAsync(downloadUrl, zipPath);
+                var percent = new Progress<int>(p => progressBar.Value = p);
+                var bytes = new Progress<(long Downloaded, long Total)>(b =>
+                    progressText.Text = b.Total > 0
+                        ? $"{b.Downloaded / 1024d / 1024d:0.0} MB de {b.Total / 1024d / 1024d:0.0} MB ({b.Downloaded * 100 / b.Total}%)"
+                        : $"{b.Downloaded / 1024d / 1024d:0.0} MB");
+                await NXProject.Services.UpdateService.DownloadFileAsync(
+                    downloadUrl, zipPath, percent, default, bytes);
                 LogSetupUpdate($"Download concluido: {new System.IO.FileInfo(zipPath).Length / (1024 * 1024)} MB.");
+                progressBar.IsIndeterminate = true;
+                progressText.Text = "Extraindo o pacote e iniciando o NXProject-Setup...";
 
                 // Antivirus (ex.: McAfee) costuma segurar o zip recem-baixado por alguns
                 // segundos: tenta extrair com novas tentativas antes de desistir.
@@ -478,6 +490,7 @@ namespace NXProject.Views
                 if (!System.IO.File.Exists(setupExePath))
                 {
                     IsEnabled = true;
+                    progressWin.Close();
                     LogSetupUpdate($"ERRO: NXProject-Setup.exe nao encontrado em {tempExtractDir}.");
                     TryOpenExplorerSelectingFile(zipPath);
                     MessageBox.Show(this,
@@ -498,6 +511,7 @@ namespace NXProject.Views
                     throw new InvalidOperationException(
                         "O Windows nao iniciou o NXProject-Setup.exe (possivel bloqueio de politica de seguranca ou antivirus).");
                 LogSetupUpdate($"Setup iniciado (PID {setupProcess.Id}). Encerrando o NXProject.");
+                progressWin.Close();
 
                 // Chegou ate aqui com sucesso: apaga o zip baixado, nao precisa mais dele.
                 try { System.IO.File.Delete(zipPath); } catch { /* best-effort */ }
@@ -511,6 +525,7 @@ namespace NXProject.Views
             catch (Exception ex)
             {
                 IsEnabled = true;
+                progressWin.Close();
                 LogSetupUpdate("ERRO: " + ex);
                 // Fallback: abre a pasta Downloads com o zip selecionado para rodar manualmente.
                 var zipKept = System.IO.File.Exists(zipPath);
@@ -656,6 +671,49 @@ namespace NXProject.Views
             dlg.Content = panel;
             dlg.ShowDialog();
             return proceed;
+        }
+
+        /// <summary>Janela de progresso do download do NXProject-Setup.zip (dezenas de MB).</summary>
+        private (Window Win, System.Windows.Controls.ProgressBar Bar, TextBlock Text) CreateSetupProgressWindow()
+        {
+            var bar = new System.Windows.Controls.ProgressBar
+            {
+                Height = 14, Minimum = 0, Maximum = 100, Value = 0,
+                Margin = new Thickness(0, 0, 0, 6)
+            };
+            var text = new TextBlock
+            {
+                Text = "Iniciando o download...",
+                FontSize = 11,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(85, 85, 85))
+            };
+
+            var panel = new StackPanel { Margin = new Thickness(24), VerticalAlignment = VerticalAlignment.Center };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Baixando o NXProject-Setup...",
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(43, 87, 154)),
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+            panel.Children.Add(bar);
+            panel.Children.Add(text);
+
+            var win = new Window
+            {
+                Title = "Atualizacao de base",
+                Owner = this,
+                Width = 430,
+                Height = 170,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                Background = System.Windows.Media.Brushes.White,
+                Content = panel
+            };
+            return (win, bar, text);
         }
 
         /// <summary>Abre o Explorer com o arquivo selecionado (fallback da atualizacao do Setup).</summary>
