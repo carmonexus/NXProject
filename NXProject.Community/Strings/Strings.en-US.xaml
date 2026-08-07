@@ -2097,6 +2097,16 @@
     <sys:String x:Key="LocalAI_UpdNeedRestart">The library is already loaded in this session (files locked). Close and reopen NXProject, then check for the update again before validating.</sys:String>
     <sys:String x:Key="LocalAI_UpdDone">Backend updated to version {0}.</sys:String>
     <sys:String x:Key="LocalAI_SourceLabel">llama.dll source:</sys:String>
+    <sys:String x:Key="LocalAI_BackendKindLabel">Processing:</sys:String>
+    <sys:String x:Key="LocalAI_BackendCpu">CPU</sys:String>
+    <sys:String x:Key="LocalAI_BackendCpuTip">Runs on any machine (AVX2 variant, ~35 MB download). Slower than GPU.</sys:String>
+    <sys:String x:Key="LocalAI_BackendCuda">NVIDIA GPU (CUDA 12)</sys:String>
+    <sys:String x:Key="LocalAI_BackendCudaTip">Requires an NVIDIA card with an up-to-date driver (~214 MB download). Much faster inference.</sys:String>
+    <sys:String x:Key="LocalAI_BackendVulkan">GPU (Vulkan)</sys:String>
+    <sys:String x:Key="LocalAI_BackendVulkanTip">Runs on NVIDIA, AMD or Intel GPUs via Vulkan (~19 MB download). Middle ground between CPU and CUDA.</sys:String>
+    <sys:String x:Key="LocalAI_BackendSwitch">Selected backend ({0}) differs from the installed one ({1}) — downloading the new backend DLLs...</sys:String>
+    <sys:String x:Key="LocalAI_GpuNotFoundCuda">No NVIDIA GPU with a driver was found on this machine (nvcuda.dll missing).&#10;&#10;The CUDA 12 backend will NOT work without an NVIDIA card with an up-to-date driver.&#10;&#10;Download anyway (~214 MB)?</sys:String>
+    <sys:String x:Key="LocalAI_GpuNotFoundVulkan">No GPU driver with Vulkan support was found on this machine (vulkan-1.dll missing).&#10;&#10;The Vulkan backend will NOT work without a GPU with an up-to-date driver (NVIDIA, AMD or Intel).&#10;&#10;Download anyway (~19 MB)?</sys:String>
     <sys:String x:Key="LocalAI_DocsLabel">Documentation (LLamaSharp):</sys:String>
     <sys:String x:Key="AI_ProviderSaved">Default provider saved: {0}.</sys:String>
     <sys:String x:Key="Main_AiRunning">AI running...</sys:String>

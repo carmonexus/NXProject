@@ -36,6 +36,9 @@ namespace NXProject.Community.Services
         /// <summary>Threads de inferência configuradas no motor (núcleos físicos); 0 = modelo ainda não carregado.</summary>
         public static int ConfiguredThreads { get; private set; }
 
+        /// <summary>Backend em uso na inferência ("CPU", "GPU CUDA 12", "GPU Vulkan"); nulo antes da carga.</summary>
+        public static string? ActiveBackendLabel { get; private set; }
+
         /// <summary>Descarta o modelo carregado (ex.: troca de pasta/modelo). A DLL nativa permanece.</summary>
         public static void ResetModel()
         {
@@ -92,10 +95,15 @@ namespace NXProject.Community.Services
                 return;
 
             ResetModel();
+            // Backend registrado na pasta (radio do Gerenciador): GPU descarrega TODAS as
+            // camadas do modelo para a placa (999 = "todas"); CPU mantém tudo na memória.
+            // Sem registro (instalação manual/antiga), assume CPU.
+            var kind = LocalAIResourceStore.GetInstalledBackendKind(folder) ?? LocalAIResourceStore.BackendKind.Cpu;
+            ActiveBackendLabel = LocalAIResourceStore.BackendDisplayName(kind);
             _modelParams = new ModelParams(modelPath)
             {
                 ContextSize = 8192,
-                GpuLayerCount = 0,
+                GpuLayerCount = kind == LocalAIResourceStore.BackendKind.Cpu ? 0 : 999,
                 // llama.cpp rende melhor com os núcleos FÍSICOS (metade dos lógicos com HT).
                 Threads = Math.Max(1, Environment.ProcessorCount / 2),
                 BatchSize = 512
@@ -118,8 +126,10 @@ namespace NXProject.Community.Services
             var executor = new StatelessExecutor(_weights!, _modelParams!);
             var inference = new InferenceParams
             {
-                // Teto de saída: um loop do modelo não pode custar minutos (JSON esperado é curto).
-                MaxTokens = 1024,
+                // Teto de saída: um loop do modelo não pode custar minutos. 2048 comporta
+                // listas de reunião grandes (1024 truncava o JSON de ~13 tasks em produção);
+                // resposta ainda truncada é recuperada pelo reparo de JSON no Task Plan.
+                MaxTokens = 2048,
                 AntiPrompts = new[] { "<|im_end|>", "<|im_start|>" }.ToList(),
                 // Extração estruturada pede decodificação DETERMINÍSTICA (greedy): mesma
                 // entrada → mesma saída, e menos loops/deriva que amostragem com temperatura.

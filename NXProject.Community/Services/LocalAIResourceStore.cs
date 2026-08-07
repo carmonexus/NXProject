@@ -21,13 +21,39 @@ namespace NXProject.Community.Services
     /// </summary>
     public static class LocalAIResourceStore
     {
-        // Backend CPU do LlamaSharp — o .nupkg é um zip com as DLLs nativas em runtimes/win-x64/native.
-        // BackendVersion = versão HOMOLOGADA pelo NXProject (testada com o app).
+        // Backend do LlamaSharp — o .nupkg é um zip com as DLLs nativas em runtimes/win-x64/native.
+        // BackendVersion = versão HOMOLOGADA pelo NXProject (testada com o app). O wrapper
+        // gerenciado (LLamaSharp.dll, no Setup) é o MESMO para todos os backends — CPU ou GPU
+        // muda só o pacote de DLLs nativas baixado para a pasta de recursos.
         public const string BackendVersion = "0.27.0";
-        public const string BackendNupkgUrl = "https://www.nuget.org/api/v2/package/LLamaSharp.Backend.Cpu/" + BackendVersion;
         public const string NativeDllName = "llama.dll";
         private const string BackendVersionFile = "backend-version.txt";
-        private const string BackendVersionsIndexUrl = "https://api.nuget.org/v3-flatcontainer/llamasharp.backend.cpu/index.json";
+        private const string BackendKindFile = "backend-kind.txt";
+
+        /// <summary>Tipo de processamento da IA Local (define o pacote de DLLs nativas).</summary>
+        public enum BackendKind { Cpu, Cuda12, Vulkan }
+
+        /// <summary>Id do pacote NuGet com as DLLs nativas win-x64 do backend.</summary>
+        public static string BackendPackageId(BackendKind kind) => kind switch
+        {
+            BackendKind.Cuda12 => "LLamaSharp.Backend.Cuda12.Windows",
+            BackendKind.Vulkan => "LLamaSharp.Backend.Vulkan.Windows",
+            _ => "LLamaSharp.Backend.Cpu",
+        };
+
+        /// <summary>Nome curto do backend para logs e status.</summary>
+        public static string BackendDisplayName(BackendKind kind) => kind switch
+        {
+            BackendKind.Cuda12 => "GPU CUDA 12",
+            BackendKind.Vulkan => "GPU Vulkan",
+            _ => "CPU",
+        };
+
+        public static string BackendNupkgUrl(BackendKind kind, string? version = null)
+            => $"https://www.nuget.org/api/v2/package/{BackendPackageId(kind)}/{(string.IsNullOrWhiteSpace(version) ? BackendVersion : version)}";
+
+        private static string BackendVersionsIndexUrl(BackendKind kind)
+            => $"https://api.nuget.org/v3-flatcontainer/{BackendPackageId(kind).ToLowerInvariant()}/index.json";
 
         // Modelo padrão: Qwen2.5 3B Instruct quantizado (~2 GB), bom custo/benefício em CPU.
         public const string ModelFileName = "Qwen2.5-3B-Instruct-Q4_K_M.gguf";
@@ -39,29 +65,49 @@ namespace NXProject.Community.Services
         private sealed class StoredSettings
         {
             public string ResourcesFolder { get; set; } = string.Empty;
+            public string Backend { get; set; } = string.Empty; // "Cpu" | "Cuda12" | "Vulkan"
         }
 
         private static string SettingsFile => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "NXProject.Community", "local-ai.json");
 
-        public static string LoadFolder()
+        private static StoredSettings LoadSettings()
         {
             try
             {
                 if (File.Exists(SettingsFile))
-                    return JsonSerializer.Deserialize<StoredSettings>(File.ReadAllText(SettingsFile))?.ResourcesFolder ?? "";
+                    return JsonSerializer.Deserialize<StoredSettings>(File.ReadAllText(SettingsFile)) ?? new StoredSettings();
             }
             catch { /* volta ao default */ }
-            return string.Empty;
+            return new StoredSettings();
         }
+
+        private static void SaveSettings(StoredSettings s)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SettingsFile)!);
+            File.WriteAllText(SettingsFile, JsonSerializer.Serialize(s,
+                new JsonSerializerOptions { WriteIndented = true }));
+        }
+
+        public static string LoadFolder() => LoadSettings().ResourcesFolder;
 
         public static void SaveFolder(string folder)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(SettingsFile)!);
-            File.WriteAllText(SettingsFile, JsonSerializer.Serialize(
-                new StoredSettings { ResourcesFolder = folder?.Trim() ?? "" },
-                new JsonSerializerOptions { WriteIndented = true }));
+            var s = LoadSettings();
+            s.ResourcesFolder = folder?.Trim() ?? "";
+            SaveSettings(s);
+        }
+
+        /// <summary>Backend escolhido pelo usuário (CPU quando nunca escolheu — compatível com instalações antigas).</summary>
+        public static BackendKind LoadBackendKind()
+            => Enum.TryParse<BackendKind>(LoadSettings().Backend, ignoreCase: true, out var k) ? k : BackendKind.Cpu;
+
+        public static void SaveBackendKind(BackendKind kind)
+        {
+            var s = LoadSettings();
+            s.Backend = kind.ToString();
+            SaveSettings(s);
         }
 
         // ── Validação da instalação ──────────────────────────────────────────
@@ -157,12 +203,43 @@ namespace NXProject.Community.Services
             catch { return null; }
         }
 
+        /// <summary>
+        /// A máquina suporta o backend escolhido? Checagem pela DLL de runtime do driver:
+        /// nvcuda.dll (instalada pelo driver NVIDIA) para CUDA e vulkan-1.dll (instalada
+        /// pelos drivers NVIDIA/AMD/Intel) para Vulkan — sem GPU/driver, a DLL não existe.
+        /// CPU sempre suporta.
+        /// </summary>
+        public static bool IsBackendSupported(BackendKind kind)
+        {
+            var driverDll = kind switch
+            {
+                BackendKind.Cuda12 => "nvcuda.dll",
+                BackendKind.Vulkan => "vulkan-1.dll",
+                _ => null,
+            };
+            if (driverDll == null) return true;
+            var handle = LoadLibraryExW(driverDll, IntPtr.Zero, 0);
+            return handle != IntPtr.Zero; // fica carregada; é DLL do driver, sem custo relevante
+        }
+
+        /// <summary>Backend registrado na pasta pelo download do NX (null em instalação manual/antiga).</summary>
+        public static BackendKind? GetInstalledBackendKind(string folder)
+        {
+            try
+            {
+                var file = Path.Combine(folder, BackendKindFile);
+                return File.Exists(file) && Enum.TryParse<BackendKind>(File.ReadAllText(file).Trim(), ignoreCase: true, out var k)
+                    ? k : null;
+            }
+            catch { return null; }
+        }
+
         /// <summary>Última versão estável do backend publicada no NuGet.</summary>
-        public static async Task<string?> GetLatestBackendVersionAsync(CancellationToken ct)
+        public static async Task<string?> GetLatestBackendVersionAsync(CancellationToken ct, BackendKind kind = BackendKind.Cpu)
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
-            var json = await Http.GetStringAsync(BackendVersionsIndexUrl, cts.Token);
+            var json = await Http.GetStringAsync(BackendVersionsIndexUrl(kind), cts.Token);
             using var doc = JsonDocument.Parse(json);
             return doc.RootElement.GetProperty("versions").EnumerateArray()
                 .Select(v => v.GetString() ?? "")
@@ -178,16 +255,18 @@ namespace NXProject.Community.Services
         public static bool IsNativeLoaded => _loadedNativePath != null;
 
         /// <summary>
-        /// Baixa o .nupkg do backend CPU e extrai as DLLs nativas (variante AVX2) para a pasta.
-        /// Sem <paramref name="version"/>, usa a versão homologada pelo NX.
+        /// Baixa o .nupkg do backend (CPU/CUDA/Vulkan) e extrai as DLLs nativas para a pasta.
+        /// Sem <paramref name="version"/>, usa a versão homologada pelo NX. A subpasta preferida
+        /// dentro de runtimes/win-x64/native depende do backend (avx2 | cuda12 | vulkan).
         /// </summary>
-        public static async Task DownloadBackendAsync(string folder, IProgress<string> status, CancellationToken ct, string? version = null)
+        public static async Task DownloadBackendAsync(string folder, IProgress<string> status, CancellationToken ct,
+            string? version = null, BackendKind kind = BackendKind.Cpu)
         {
             version = string.IsNullOrWhiteSpace(version) ? BackendVersion : version.Trim();
             Directory.CreateDirectory(folder);
-            status.Report($"Baixando backend CPU (LLamaSharp {version}) do NuGet...");
+            status.Report($"Baixando backend {BackendDisplayName(kind)} (LLamaSharp {version}) do NuGet...");
             var tmp = Path.Combine(folder, "_backend.nupkg.tmp");
-            await DownloadFileAsync("https://www.nuget.org/api/v2/package/LLamaSharp.Backend.Cpu/" + version, tmp, null, status, ct);
+            await DownloadFileAsync(BackendNupkgUrl(kind, version), tmp, null, status, ct);
 
             status.Report("Extraindo DLLs nativas...");
             using (var zip = ZipFile.OpenRead(tmp))
@@ -199,8 +278,15 @@ namespace NXProject.Community.Services
                 if (native.Count == 0)
                     throw new InvalidOperationException("O pacote do backend não contém DLLs nativas win-x64.");
 
-                // Preferência: variante AVX2 (CPUs modernas); senão, as DLLs na raiz do native.
-                var avx2 = native.Where(e => e.FullName.Replace('\\', '/').Contains("/avx2/", StringComparison.OrdinalIgnoreCase)).ToList();
+                // Preferência por backend: CPU → variante AVX2; CUDA → cuda12; Vulkan → vulkan.
+                // As DLLs na raiz do native entram como base e a subpasta preferida sobrepõe.
+                var preferredToken = kind switch
+                {
+                    BackendKind.Cuda12 => "/cuda12/",
+                    BackendKind.Vulkan => "/vulkan/",
+                    _ => "/avx2/",
+                };
+                var preferred = native.Where(e => e.FullName.Replace('\\', '/').Contains(preferredToken, StringComparison.OrdinalIgnoreCase)).ToList();
                 var flat = native.Where(e =>
                 {
                     var p = e.FullName.Replace('\\', '/');
@@ -210,7 +296,10 @@ namespace NXProject.Community.Services
 
                 var chosen = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
                 foreach (var e in flat) chosen[e.Name] = e;
-                foreach (var e in avx2) chosen[e.Name] = e; // avx2 sobrepõe a raiz quando existir
+                foreach (var e in preferred) chosen[e.Name] = e; // subpasta preferida sobrepõe a raiz
+                // Pacote sem raiz nem a subpasta esperada (layout novo): pega tudo, dedup por nome.
+                if (chosen.Count == 0)
+                    foreach (var e in native) chosen[e.Name] = e;
                 foreach (var e in chosen.Values)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -220,6 +309,7 @@ namespace NXProject.Community.Services
             }
             File.Delete(tmp);
             File.WriteAllText(Path.Combine(folder, BackendVersionFile), version);
+            File.WriteAllText(Path.Combine(folder, BackendKindFile), kind.ToString());
         }
 
         /// <summary>Baixa o modelo GGUF (~2 GB) para a pasta, com progresso por MB.</summary>

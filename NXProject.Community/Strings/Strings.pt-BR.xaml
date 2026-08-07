@@ -2095,6 +2095,16 @@
     <sys:String x:Key="LocalAI_UpdNeedRestart">A biblioteca já está carregada nesta sessão (arquivos travados). Feche e reabra o NXProject e verifique a atualização de novo, antes de validar.</sys:String>
     <sys:String x:Key="LocalAI_UpdDone">Backend atualizado para a versão {0}.</sys:String>
     <sys:String x:Key="LocalAI_SourceLabel">Origem do llama.dll:</sys:String>
+    <sys:String x:Key="LocalAI_BackendKindLabel">Processamento:</sys:String>
+    <sys:String x:Key="LocalAI_BackendCpu">CPU</sys:String>
+    <sys:String x:Key="LocalAI_BackendCpuTip">Roda em qualquer máquina (variante AVX2, ~35 MB de download). Mais lento que GPU.</sys:String>
+    <sys:String x:Key="LocalAI_BackendCuda">GPU NVIDIA (CUDA 12)</sys:String>
+    <sys:String x:Key="LocalAI_BackendCudaTip">Requer placa NVIDIA com driver atualizado (~214 MB de download). Inferência muito mais rápida.</sys:String>
+    <sys:String x:Key="LocalAI_BackendVulkan">GPU (Vulkan)</sys:String>
+    <sys:String x:Key="LocalAI_BackendVulkanTip">Roda em GPU NVIDIA, AMD ou Intel via Vulkan (~19 MB de download). Meio-termo entre CPU e CUDA.</sys:String>
+    <sys:String x:Key="LocalAI_BackendSwitch">Backend selecionado ({0}) difere do instalado ({1}) — baixando as DLLs do novo backend...</sys:String>
+    <sys:String x:Key="LocalAI_GpuNotFoundCuda">Nenhuma GPU NVIDIA com driver foi encontrada nesta máquina (nvcuda.dll ausente).&#10;&#10;O backend CUDA 12 NÃO vai funcionar sem uma placa NVIDIA com driver atualizado.&#10;&#10;Baixar mesmo assim (~214 MB)?</sys:String>
+    <sys:String x:Key="LocalAI_GpuNotFoundVulkan">Nenhum driver de GPU com suporte a Vulkan foi encontrado nesta máquina (vulkan-1.dll ausente).&#10;&#10;O backend Vulkan NÃO vai funcionar sem GPU com driver atualizado (NVIDIA, AMD ou Intel).&#10;&#10;Baixar mesmo assim (~19 MB)?</sys:String>
     <sys:String x:Key="LocalAI_DocsLabel">Documentação (LLamaSharp):</sys:String>
     <sys:String x:Key="AI_ProviderSaved">Provedor padrão salvo: {0}.</sys:String>
     <sys:String x:Key="Main_AiRunning">IA em execução...</sys:String>

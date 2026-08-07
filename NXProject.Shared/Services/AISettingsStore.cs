@@ -158,6 +158,46 @@ namespace NXProject.Services
             "der em DIAS, devolva o número com sufixo d (ex.: \"2d\"); sem esforço citado, omita. " +
             "Se não encontrar Story correspondente para um item, devolva-o com story_id 0 e o motivo em obs.";
 
+        /// <summary>
+        /// Sufixo do modo STORY NOVA da inclusão do Task Plan: a Story do TEXTO ainda não
+        /// existe — o contexto traz FEATURES e a IA devolve feature_id + nome da Story nova.
+        /// </summary>
+        public const string PlanIncludeNewStorySuffix =
+            "\n\nMODO STORY NOVA: as Stories do TEXTO ainda NÃO existem no cronograma — NÃO tente casar " +
+            "Story; em vez de STORIES você recebe FEATURES (tabela \"id | nome | epic\" com as Features " +
+            "existentes). Para cada atividade, devolva o nome da Story NOVA citada no TEXTO e a Feature " +
+            "existente onde ela deve nascer (a mais provável pelo contexto). O JSON passa a ser: " +
+            "[{\"feature_id\":123,\"story\":\"nome da story nova\",\"task\":\"nome da task\"," +
+            "\"responsavel\":\"\",\"esforco\":\"\",\"descricao\":\"\",\"obs\":\"\"}] — feature_id, story e " +
+            "task são obrigatórios; use feature_id EXATAMENTE como veio em FEATURES, não invente ids. " +
+            "Tasks da mesma Story nova repetem o MESMO nome de story. " +
+            "ATENÇÃO: CADA linha de atividade do TEXTO gera UM item na resposta — uma Story com N " +
+            "atividades gera N itens (repetindo a story); NUNCA resuma as atividades de uma Story em um " +
+            "único item. Use as chaves EXATAMENTE como no formato, SEM acentos (esforco, responsavel, " +
+            "descricao). Se o TEXTO der a estimativa por Story (não por atividade), distribua as horas " +
+            "da Story entre as suas tasks. Seja COMPACTO: OMITA descricao quando ela apenas repetir o " +
+            "nome da task e OMITA os campos vazios.";
+
+        /// <summary>
+        /// Sufixo do modo FEATURE NOVA da inclusão do Task Plan: Feature e Story do TEXTO
+        /// ainda não existem — o contexto traz EPICS e a IA devolve epic_id + nomes novos.
+        /// </summary>
+        public const string PlanIncludeNewFeatureSuffix =
+            "\n\nMODO FEATURE NOVA: as Features e Stories do TEXTO ainda NÃO existem no cronograma — NÃO " +
+            "tente casar; em vez de STORIES você recebe EPICS (tabela \"id | nome\" com os EPICs " +
+            "existentes). Para cada atividade, devolva a Feature NOVA e a Story NOVA citadas no TEXTO e o " +
+            "EPIC existente onde a Feature deve nascer (o mais provável pelo contexto). O JSON passa a " +
+            "ser: [{\"epic_id\":123,\"feature\":\"nome da feature nova\",\"story\":\"nome da story nova\"," +
+            "\"task\":\"nome da task\",\"responsavel\":\"\",\"esforco\":\"\",\"descricao\":\"\",\"obs\":\"\"}] " +
+            "— epic_id, feature, story e task são obrigatórios; use epic_id EXATAMENTE como veio em " +
+            "EPICS, não invente ids. Tasks da mesma Story repetem os MESMOS nomes de feature e story. " +
+            "ATENÇÃO: CADA linha de atividade do TEXTO gera UM item na resposta — uma Story com N " +
+            "atividades gera N itens (repetindo feature e story); NUNCA resuma as atividades de uma Story " +
+            "em um único item. Use as chaves EXATAMENTE como no formato, SEM acentos (esforco, " +
+            "responsavel, descricao). Se o TEXTO der a estimativa por Story (não por atividade), " +
+            "distribua as horas da Story entre as suas tasks. Seja COMPACTO: OMITA descricao quando ela " +
+            "apenas repetir o nome da task e OMITA os campos vazios.";
+
         /// <summary>Prompt da consulta/localização de tasks na planilha do Task Plan.</summary>
         public const string PlanFindActionPrompt =
             "Você é um assistente do NXProject que localiza atividades na planilha do Task Plan. " +

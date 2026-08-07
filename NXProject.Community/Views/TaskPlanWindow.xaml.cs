@@ -3823,28 +3823,6 @@ namespace NXProject.Views
             if (AiNewFeatureCheckBox != null) AiNewFeatureCheckBox.IsChecked = false;
         }
 
-        // Instruções de modo anexadas ao prompt configurável quando o texto traz
-        // Story/Feature NOVA: trocam o casamento por Story pela criação da hierarquia.
-        private const string AiNewStoryPromptSuffix =
-            "\n\nMODO STORY NOVA: as Stories do TEXTO ainda NÃO existem no cronograma — NÃO tente casar " +
-            "Story; em vez de STORIES você recebe FEATURES (tabela \"id | nome | epic\" com as Features " +
-            "existentes). Para cada atividade, devolva o nome da Story NOVA citada no TEXTO e a Feature " +
-            "existente onde ela deve nascer (a mais provável pelo contexto). O JSON passa a ser: " +
-            "[{\"feature_id\":123,\"story\":\"nome da story nova\",\"task\":\"nome da task\"," +
-            "\"responsavel\":\"\",\"esforco\":\"\",\"descricao\":\"\",\"obs\":\"\"}] — feature_id, story e " +
-            "task são obrigatórios; use feature_id EXATAMENTE como veio em FEATURES, não invente ids. " +
-            "Tasks da mesma Story nova repetem o MESMO nome de story.";
-
-        private const string AiNewFeaturePromptSuffix =
-            "\n\nMODO FEATURE NOVA: as Features e Stories do TEXTO ainda NÃO existem no cronograma — NÃO " +
-            "tente casar; em vez de STORIES você recebe EPICS (tabela \"id | nome\" com os EPICs " +
-            "existentes). Para cada atividade, devolva a Feature NOVA e a Story NOVA citadas no TEXTO e o " +
-            "EPIC existente onde a Feature deve nascer (o mais provável pelo contexto). O JSON passa a " +
-            "ser: [{\"epic_id\":123,\"feature\":\"nome da feature nova\",\"story\":\"nome da story nova\"," +
-            "\"task\":\"nome da task\",\"responsavel\":\"\",\"esforco\":\"\",\"descricao\":\"\",\"obs\":\"\"}] " +
-            "— epic_id, feature, story e task são obrigatórios; use epic_id EXATAMENTE como veio em " +
-            "EPICS, não invente ids. Tasks da mesma Story repetem os MESMOS nomes de feature e story.";
-
         private async Task RunAiIncludeAsync()
         {
             var text = AiIncludeInputBox.Text?.Trim();
@@ -3889,8 +3867,8 @@ namespace NXProject.Views
                 systemPrompt = AISettingsStore.PlanIncludeActionPrompt;
             // Story/Feature nova: instrução de modo anexada ao prompt configurável —
             // troca o casamento por Story pela criação da hierarquia nova.
-            if (newFeature) systemPrompt += AiNewFeaturePromptSuffix;
-            else if (newStory) systemPrompt += AiNewStoryPromptSuffix;
+            if (newFeature) systemPrompt += AISettingsStore.PlanIncludeNewFeatureSuffix;
+            else if (newStory) systemPrompt += AISettingsStore.PlanIncludeNewStorySuffix;
 
             PlanGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
@@ -4112,14 +4090,18 @@ namespace NXProject.Views
             int added = 0, existing = 0, noStory = 0;
             try
             {
-                var start = raw.IndexOf('[');
-                var end = raw.LastIndexOf(']');
-                if (start < 0 || end <= start)
+                // Extração com reparo: resposta truncada pelo teto de tokens aproveita os
+                // itens completos (antes descartava tudo e "nada incluído").
+                var (jsonArray, truncated) = TaskPlanScheduleRules.ExtractJsonArray(raw);
+                if (jsonArray == null)
                 {
                     WinLog("A resposta da IA não trouxe um JSON de atividades — nada incluído.");
                     logClose.IsEnabled = true;
                     return;
                 }
+                if (truncated)
+                    WinLog("Atenção: a resposta da IA veio TRUNCADA (teto de tokens) — aproveitando os itens completos; as últimas atividades do texto podem ter ficado de fora.");
+                using var doc = System.Text.Json.JsonDocument.Parse(jsonArray);
 
                 var featureCol = FindColumn("Feature", "Nome da Feature");
                 var estCol = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
@@ -4148,7 +4130,6 @@ namespace NXProject.Views
                 // senão ela fica como uma linha "fantasma" com Aprovada=False no topo.
                 RemoveBlankPlanRows();
 
-                using var doc = System.Text.Json.JsonDocument.Parse(raw[start..(end + 1)]);
                 foreach (var item in doc.RootElement.EnumerateArray())
                 {
                     var taskName = item.TryGetProperty("task", out var tp) ? tp.GetString()?.Trim() : null;
@@ -4219,17 +4200,18 @@ namespace NXProject.Views
                         continue;
                     }
 
-                    // Esforço citado na reunião: horas ("8", "6,5") ou dias ("2d"); sem citação, 1h.
-                    var esforcoText = item.TryGetProperty("esforco", out var ep) ? ep.GetString()?.Trim() : null;
+                    // Esforço citado na reunião: horas ("8", "6,5", "4h") ou dias ("2d"); sem
+                    // citação, 1h. Chave com fallback acentuado: modelos devolvem "esforço".
+                    var esforcoText = TaskPlanScheduleRules.GetJsonString(item, "esforco", "esforço")?.Trim();
                     var hours = TaskPlanScheduleRules.ParseEstimatedHours(esforcoText) ?? 1.0;
 
                     // Responsável citado (a IA devolve o nome da lista RECURSOS; o código
                     // revalida, aceitando nome parcial contra os recursos do cronograma).
-                    var respText = item.TryGetProperty("responsavel", out var rp) ? rp.GetString()?.Trim() : null;
+                    var respText = TaskPlanScheduleRules.GetJsonString(item, "responsavel", "responsável")?.Trim();
                     var resource = FindScheduleResource(respText) ?? FindScheduleResourceInText(respText);
 
                     // Detalhe adicional citado na reunião vira a descrição da task.
-                    var descText = item.TryGetProperty("descricao", out var dp) ? dp.GetString()?.Trim() : null;
+                    var descText = TaskPlanScheduleRules.GetJsonString(item, "descricao", "descrição")?.Trim();
                     if (string.IsNullOrWhiteSpace(descText)) descText = null;
 
                     // A task NÃO entra no cronograma aqui: a inclusão via IA mexe SÓ na
@@ -4948,7 +4930,10 @@ namespace NXProject.Views
                     : $"{total.Seconds}s";
                 var phase = Community.Services.LocalLlamaService.CurrentStatus ?? "processando";
                 var inferThreads = Community.Services.LocalLlamaService.ConfiguredThreads;
-                log($"IA Local · {elapsedText} · {phase} · CPU {Math.Clamp(cpuPercent, 0, 100):0}%"
+                var backend = Community.Services.LocalLlamaService.ActiveBackendLabel;
+                log($"IA Local · {elapsedText} · {phase}"
+                    + (backend != null ? $" · backend {backend}" : "")
+                    + $" · CPU {Math.Clamp(cpuPercent, 0, 100):0}%"
                     + (inferThreads > 0 ? $" · {inferThreads} thread(s) de inferência" : "")
                     + $" · {process.Threads.Count} threads no processo · memória {process.WorkingSet64 / (1024 * 1024):N0} MB");
             };

@@ -24,11 +24,8 @@ namespace NXProject.Views
             _autoInstall = autoInstall;
 
             FolderBox.Text = LocalAIResourceStore.LoadFolder();
-            ManualLinksBox.Text =
-                $"1) Backend CPU (renomeie para .zip e extraia as DLLs de runtimes/win-x64/native/avx2 para a pasta):\n" +
-                $"{LocalAIResourceStore.BackendNupkgUrl}\n\n" +
-                $"2) Modelo (~2 GB — copie o arquivo para a pasta):\n" +
-                $"{LocalAIResourceStore.ModelUrl}";
+            SetKindRadios(LocalAIResourceStore.LoadBackendKind());
+            UpdateManualLinks();
 
             Loaded += (_, _) =>
             {
@@ -45,6 +42,68 @@ namespace NXProject.Views
                     Log(AppStrings.Get("LocalAI_CancelFirst"));
                 }
             };
+        }
+
+        // ── Processamento (CPU/GPU) ──────────────────────────────────────────
+        private bool _updatingKindRadios;
+
+        private LocalAIResourceStore.BackendKind SelectedKind =>
+            BackendCudaRadio.IsChecked == true ? LocalAIResourceStore.BackendKind.Cuda12
+            : BackendVulkanRadio.IsChecked == true ? LocalAIResourceStore.BackendKind.Vulkan
+            : LocalAIResourceStore.BackendKind.Cpu;
+
+        private void SetKindRadios(LocalAIResourceStore.BackendKind kind)
+        {
+            _updatingKindRadios = true;
+            BackendCpuRadio.IsChecked = kind == LocalAIResourceStore.BackendKind.Cpu;
+            BackendCudaRadio.IsChecked = kind == LocalAIResourceStore.BackendKind.Cuda12;
+            BackendVulkanRadio.IsChecked = kind == LocalAIResourceStore.BackendKind.Vulkan;
+            _updatingKindRadios = false;
+        }
+
+        /// <summary>
+        /// Troca de backend: em GPU, checa se a máquina tem GPU/driver compatível
+        /// (nvcuda.dll para CUDA, vulkan-1.dll para Vulkan) e avisa quando não tem —
+        /// o usuário pode voltar para CPU ou seguir por conta (ex.: pasta de rede
+        /// preparada para outra máquina).
+        /// </summary>
+        private void OnBackendKindChanged(object sender, RoutedEventArgs e)
+        {
+            if (_updatingKindRadios || !IsLoaded) return;
+            var kind = SelectedKind;
+
+            if (kind != LocalAIResourceStore.BackendKind.Cpu && !LocalAIResourceStore.IsBackendSupported(kind))
+            {
+                var key = kind == LocalAIResourceStore.BackendKind.Cuda12
+                    ? "LocalAI_GpuNotFoundCuda" : "LocalAI_GpuNotFoundVulkan";
+                var r = MessageBox.Show(this, AppStrings.Get(key),
+                    AppStrings.Get("LocalAI_Title"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (r != MessageBoxResult.Yes)
+                {
+                    SetKindRadios(LocalAIResourceStore.BackendKind.Cpu);
+                    kind = LocalAIResourceStore.BackendKind.Cpu;
+                }
+            }
+
+            LocalAIResourceStore.SaveBackendKind(kind);
+            UpdateManualLinks();
+            RefreshStatus(validateLoad: false);
+        }
+
+        private void UpdateManualLinks()
+        {
+            var kind = SelectedKind;
+            var subfolder = kind switch
+            {
+                LocalAIResourceStore.BackendKind.Cuda12 => "runtimes/win-x64/native/cuda12",
+                LocalAIResourceStore.BackendKind.Vulkan => "runtimes/win-x64/native/vulkan",
+                _ => "runtimes/win-x64/native/avx2",
+            };
+            ManualLinksBox.Text =
+                $"1) Backend {LocalAIResourceStore.BackendDisplayName(kind)} (renomeie para .zip e extraia as DLLs de {subfolder} para a pasta):\n" +
+                $"{LocalAIResourceStore.BackendNupkgUrl(kind)}\n\n" +
+                $"2) Modelo (~2 GB — copie o arquivo para a pasta):\n" +
+                $"{LocalAIResourceStore.ModelUrl}";
         }
 
         private void Log(string message)
@@ -78,10 +137,9 @@ namespace NXProject.Views
                 installed ?? AppStrings.Get("LocalAI_UpdUnknown"),
                 LocalAIResourceStore.BackendVersion);
 
-            // Link de onde o llama.dll foi/será baixado (versão instalada; sem registro, a homologada).
-            BackendSourceLinkText.Text =
-                "https://www.nuget.org/api/v2/package/LLamaSharp.Backend.Cpu/"
-                + (installed ?? LocalAIResourceStore.BackendVersion);
+            // Link de onde o llama.dll foi/será baixado (backend selecionado; versão
+            // instalada quando registrada, senão a homologada).
+            BackendSourceLinkText.Text = LocalAIResourceStore.BackendNupkgUrl(SelectedKind, installed);
         }
 
         private void OnBackendSourceLinkClick(object sender, RoutedEventArgs e)
@@ -142,8 +200,28 @@ namespace NXProject.Views
             try
             {
                 var check = LocalAIResourceStore.Validate(folder);
-                if (!check.NativePresent)
-                    await LocalAIResourceStore.DownloadBackendAsync(folder, status, _cts.Token);
+                // Backend selecionado ≠ instalado (pasta sem registro = instalação antiga/manual,
+                // assumida CPU): re-baixa as DLLs nativas do backend novo por cima.
+                var kind = SelectedKind;
+                var installedKind = LocalAIResourceStore.GetInstalledBackendKind(folder)
+                                    ?? LocalAIResourceStore.BackendKind.Cpu;
+                var switchBackend = check.NativePresent && installedKind != kind;
+                if (!check.NativePresent || switchBackend)
+                {
+                    if (switchBackend && LocalAIResourceStore.IsNativeLoaded)
+                    {
+                        // DLLs travadas nesta sessão: não dá para sobrescrever agora.
+                        Log(AppStrings.Get("LocalAI_UpdNeedRestart"));
+                    }
+                    else
+                    {
+                        if (switchBackend)
+                            Log(AppStrings.Get("LocalAI_BackendSwitch",
+                                LocalAIResourceStore.BackendDisplayName(kind),
+                                LocalAIResourceStore.BackendDisplayName(installedKind)));
+                        await LocalAIResourceStore.DownloadBackendAsync(folder, status, _cts.Token, kind: kind);
+                    }
+                }
                 else
                     Log(AppStrings.Get("LocalAI_NativeSkip"));
 
@@ -213,7 +291,7 @@ namespace NXProject.Views
                 string? latest;
                 try
                 {
-                    latest = await LocalAIResourceStore.GetLatestBackendVersionAsync(CancellationToken.None);
+                    latest = await LocalAIResourceStore.GetLatestBackendVersionAsync(CancellationToken.None, SelectedKind);
                 }
                 catch (Exception ex)
                 {
@@ -269,7 +347,7 @@ namespace NXProject.Views
                 ValidateBtn.IsEnabled = false;
                 try
                 {
-                    await LocalAIResourceStore.DownloadBackendAsync(folder, new Progress<string>(Log), _cts.Token, chosenVersion);
+                    await LocalAIResourceStore.DownloadBackendAsync(folder, new Progress<string>(Log), _cts.Token, chosenVersion, SelectedKind);
                     Log(AppStrings.Get("LocalAI_UpdDone", chosenVersion));
                     RefreshStatus(validateLoad: true);
                 }

@@ -92,6 +92,7 @@ internal static class Program
         ("Task Plan: coluna nova grava no fim com prefixo e volta na posicao", TaskPlanNewColumnKeepsViewPosition),
         ("Task Plan: coluna excluida some da planilha ao salvar", TaskPlanDeletedColumnClearedOnSave),
         ("Task Plan: aplicar cria task interna no padrao do cronograma", TaskPlanApplyCreatesInternalTaskLikeSchedule),
+        ("Task Plan IA: esforco aceita sufixo h e chave acentuada", TaskPlanAiResponseAcceptsHourSuffixAndAccentedKeys),
         ("Task Plan: story iniciada NAO tem a duracao ajustada", TaskPlanStartedStoryKeepsDuration),
         ("Task Plan: log de sync atualiza ID interno para ID DevOps na planilha", TaskPlanBackfillIdsFromSyncLog),
         ("Arquivo: gravar com ID interno duplicado e BLOQUEADO com a atividade na mensagem", SaveBlocksDuplicateTaskIds),
@@ -113,7 +114,8 @@ internal static class Program
         if (string.Equals(category, "ai-sim", StringComparison.OrdinalIgnoreCase))
             return RunAiIncludeSimulation(
                 args.Length > 1 ? args[1] : "",
-                args.Length > 2 ? args[2] : "").GetAwaiter().GetResult();
+                args.Length > 2 ? args[2] : "",
+                args.Length > 3 ? args[3] : "").GetAwaiter().GetResult();
         _solutionRoot = args.Length > 1 ? args[1] : Directory.GetCurrentDirectory();
 
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
@@ -234,9 +236,9 @@ internal static class Program
     /// Simulação da ação "Incluir Tasks na Planilha" com a IA Local, no formato de contexto
     /// OFICIAL do Task Plan (Stories em aberto, tabela compacta "id | nome | feature | epic",
     /// sem tasks da planilha). Mede prefill (contexto), geração (tokens/s) e tempo total.
-    /// Uso: NXTestUnit.exe ai-sim "cronograma.xml" "texto.txt"
+    /// Uso: NXTestUnit.exe ai-sim "cronograma.xml" "texto.txt" [feature-nova|story-nova]
     /// </summary>
-    private static async Task<int> RunAiIncludeSimulation(string xmlPath, string textPath)
+    private static async Task<int> RunAiIncludeSimulation(string xmlPath, string textPath, string mode = "")
     {
         if (!File.Exists(xmlPath) || !File.Exists(textPath))
         {
@@ -274,14 +276,43 @@ internal static class Program
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // Modos "Story nova"/"Feature nova" (checkboxes do painel): contexto e prompt
+        // iguais aos do Task Plan — Features ou EPICs no lugar das Stories.
+        var newFeature = string.Equals(mode, "feature-nova", StringComparison.OrdinalIgnoreCase);
+        var newStory = newFeature || string.Equals(mode, "story-nova", StringComparison.OrdinalIgnoreCase);
+
+        var allNodes = new List<ProjectTask>();
+        void CollectAll(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var t in tasks) { allNodes.Add(t); CollectAll(t.Children); }
+        }
+        CollectAll(project.Tasks);
+        bool IsType(ProjectTask t, string type) => string.Equals(t.TfsType?.Trim(), type, StringComparison.OrdinalIgnoreCase);
+
         var ctx = new System.Text.StringBuilder();
-        ctx.AppendLine("STORIES (id | nome | feature | epic) — somente Stories em aberto:");
-        foreach (var s in stories)
-            ctx.AppendLine($"{s.Id} | {s.Name} | {AncestorName(s, "Feature")} | {AncestorName(s, "Epic")}");
+        if (newFeature)
+        {
+            var epics = allNodes.Where(t => IsType(t, "Epic")).ToList();
+            ctx.AppendLine("EPICS (id | nome) — EPICs existentes no cronograma:");
+            foreach (var ep in epics) ctx.AppendLine($"{ep.Id} | {ep.Name}");
+        }
+        else if (newStory)
+        {
+            var features = allNodes.Where(t => IsType(t, "Feature") && t.PercentComplete < 100).ToList();
+            ctx.AppendLine("FEATURES (id | nome | epic) — Features existentes no cronograma:");
+            foreach (var f in features) ctx.AppendLine($"{f.Id} | {f.Name} | {AncestorName(f, "Epic")}");
+        }
+        else
+        {
+            ctx.AppendLine("STORIES (id | nome | feature | epic) — somente Stories em aberto:");
+            foreach (var s in stories)
+                ctx.AppendLine($"{s.Id} | {s.Name} | {AncestorName(s, "Feature")} | {AncestorName(s, "Epic")}");
+        }
         ctx.AppendLine().AppendLine("RECURSOS: " + string.Join(" | ", resources));
         ctx.AppendLine().AppendLine("TEXTO:").AppendLine(text);
 
-        Console.WriteLine($"Cronograma: {stories.Count} stories em aberto | recursos: {resources.Count} | contexto: {ctx.Length:N0} chars");
+        Console.WriteLine($"Cronograma: {stories.Count} stories em aberto | recursos: {resources.Count} | contexto: {ctx.Length:N0} chars"
+            + (newFeature ? " | modo FEATURE NOVA" : newStory ? " | modo STORY NOVA" : ""));
         Console.WriteLine();
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -291,12 +322,43 @@ internal static class Program
         monitor.Start();
         try
         {
-            var answer = await LocalLlamaService.GenerateAsync(AISettingsStore.PlanIncludeActionPrompt,
-                "Encontre a Story de cada atividade do TEXTO e devolva o JSON.\n\n" + ctx, cts.Token);
+            var systemPrompt = AISettingsStore.PlanIncludeActionPrompt
+                + (newFeature ? AISettingsStore.PlanIncludeNewFeatureSuffix
+                    : newStory ? AISettingsStore.PlanIncludeNewStorySuffix : "");
+            var userMsg = newFeature
+                ? "Encontre o EPIC de cada Feature nova do TEXTO e devolva o JSON."
+                : newStory
+                    ? "Encontre a Feature de cada Story nova do TEXTO e devolva o JSON."
+                    : "Encontre a Story de cada atividade do TEXTO e devolva o JSON.";
+            var answer = await LocalLlamaService.GenerateAsync(systemPrompt, userMsg + "\n\n" + ctx, cts.Token);
             monitor.Stop();
             sw.Stop();
-            Console.WriteLine($"Tempo total: {sw.Elapsed:mm\\:ss} | resposta: {answer.Length:N0} chars");
+            Console.WriteLine($"Tempo total: {sw.Elapsed:mm\\:ss} | backend: {LocalLlamaService.ActiveBackendLabel ?? "?"} | resposta: {answer.Length:N0} chars");
             Console.WriteLine("Resposta: " + answer);
+
+            // Mesmo pós-processamento do Task Plan: extração com reparo + leitura dos campos.
+            var (json, truncated) = TaskPlanScheduleRules.ExtractJsonArray(answer);
+            if (json == null)
+            {
+                Console.WriteLine("RESULTADO: nenhum JSON de atividades recuperável — o Task Plan não incluiria nada.");
+                return 1;
+            }
+            if (truncated)
+                Console.WriteLine("AVISO: resposta truncada — itens completos aproveitados pelo reparo.");
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var n = 0;
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                var task = TaskPlanScheduleRules.GetJsonString(item, "task");
+                if (string.IsNullOrWhiteSpace(task)) continue;
+                n++;
+                var story = TaskPlanScheduleRules.GetJsonString(item, "story");
+                var hours = TaskPlanScheduleRules.ParseEstimatedHours(
+                    TaskPlanScheduleRules.GetJsonString(item, "esforco", "esforço")) ?? 1.0;
+                var resp = TaskPlanScheduleRules.GetJsonString(item, "responsavel", "responsável");
+                Console.WriteLine($"  {n,2}. [{story}] {task} — {hours:0.##}h{(resp != null ? $" — {resp}" : "")}");
+            }
+            Console.WriteLine($"RESULTADO: {n} task(s) seriam incluídas na planilha.");
             return 0;
         }
         catch (Exception ex)
@@ -3046,6 +3108,55 @@ internal static class Program
             AssertEqual(1, again.Table.Rows.Count, "As linhas restantes devem continuar integras.");
         }
         finally { File.Delete(path); }
+    }
+
+    // Simulação com resposta REAL da IA (modo Feature nova): sufixo "h" no esforço e
+    // chaves acentuadas ("esforço", "responsável") — antes viravam 1h e responsável perdido.
+    private static void TaskPlanAiResponseAcceptsHourSuffixAndAccentedKeys()
+    {
+        AssertEqual(4, TaskPlanScheduleRules.ParseEstimatedHours("4h") ?? -1, "'4h' deve virar 4 horas.");
+        AssertEqual(3, TaskPlanScheduleRules.ParseEstimatedHours("3 horas") ?? -1, "'3 horas' deve virar 3 horas.");
+        AssertEqual(6.5, TaskPlanScheduleRules.ParseEstimatedHours("6,5") ?? -1, "'6,5' segue aceito.");
+        AssertEqual(2 * ProjectCalendarService.WorkingHoursPerDay,
+            TaskPlanScheduleRules.ParseEstimatedHours("2 dias") ?? -1, "'2 dias' converte pelo expediente.");
+        if (TaskPlanScheduleRules.ParseEstimatedHours("horas") != null)
+            throw new InvalidOperationException("Unidade sem número não pode virar estimativa.");
+
+        // Trecho literal da resposta da IA registrada em produção (itens 1 e 3 do log).
+        const string raw = """
+            [{"epic_id":14,"feature":"BI de Torre de Controle – Planos Outbound","story":"User Story 1 – Organizar a base","task":"Corrigir nomes e informações das colunas","responsavel":"Oliveira, Alice De Muylder (Contractor)","esforco":"4h","obs":""},
+             {"epic_id":14,"feature":"BI de Torre de Controle – Planos Outbound","story":"User Story 3 – Configurar os filtros","task":"Sincronizar todos os filtros","responsável":"Oliveira, Alice De Muylder (Contractor)","esforço":"2h","obs":""}]
+            """;
+        using var doc = System.Text.Json.JsonDocument.Parse(raw);
+        var items = doc.RootElement.EnumerateArray().ToList();
+
+        var h1 = TaskPlanScheduleRules.ParseEstimatedHours(
+            TaskPlanScheduleRules.GetJsonString(items[0], "esforco", "esforço"));
+        AssertEqual(4, h1 ?? -1, "Item com chave 'esforco' e sufixo h deve dar 4 horas.");
+
+        var h2 = TaskPlanScheduleRules.ParseEstimatedHours(
+            TaskPlanScheduleRules.GetJsonString(items[1], "esforco", "esforço"));
+        AssertEqual(2, h2 ?? -1, "Item com chave ACENTUADA 'esforço' deve dar 2 horas (fallback).");
+
+        var resp = TaskPlanScheduleRules.GetJsonString(items[1], "responsavel", "responsável");
+        if (resp != "Oliveira, Alice De Muylder (Contractor)")
+            throw new InvalidOperationException("Chave acentuada 'responsável' deve ser lida pelo fallback.");
+
+        // Resposta TRUNCADA pelo teto de tokens (final real do log de produção: corta em
+        // "...,{"epic_id"): o reparo aproveita os objetos completos em vez de descartar tudo.
+        const string truncatedRaw =
+            """[{"epic_id":24,"story":"Formatar o painel","task":"Padronizar as cores","esforço":"3"},{"epic_id""";
+        var (json, truncated) = TaskPlanScheduleRules.ExtractJsonArray(truncatedRaw);
+        if (json == null || !truncated)
+            throw new InvalidOperationException("Resposta truncada deve ser reparada (itens completos aproveitados).");
+        using var repaired = System.Text.Json.JsonDocument.Parse(json);
+        AssertEqual(1, repaired.RootElement.GetArrayLength(), "Reparo deve manter só o objeto completo.");
+
+        var (okJson, okTrunc) = TaskPlanScheduleRules.ExtractJsonArray("""bla [{"task":"x"}] bla""");
+        if (okJson == null || okTrunc)
+            throw new InvalidOperationException("Array íntegro não pode ser marcado como truncado.");
+        if (TaskPlanScheduleRules.ExtractJsonArray("sem json aqui").Json != null)
+            throw new InvalidOperationException("Texto sem array não pode devolver JSON.");
     }
 
     private static void TaskPlanApplyCreatesInternalTaskLikeSchedule()
