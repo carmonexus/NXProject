@@ -1841,6 +1841,10 @@ namespace NXProject.Views
                             new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0xC7, 0xCE))));
                         badTrig.Setters.Add(new Setter(System.Windows.Controls.TextBlock.ForegroundProperty,
                             new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x9C, 0x00, 0x06))));
+                        // Hint do vermelho: explica POR QUE a célula não validou (o motivo
+                        // muda por tipo de coluna) — sem isso o usuário só vê a cor.
+                        badTrig.Setters.Add(new Setter(System.Windows.Controls.TextBlock.ToolTipProperty,
+                            InvalidCellHint(name, isResourceCol)));
                         style.Triggers.Add(badTrig);
                     }
 
@@ -5136,6 +5140,20 @@ namespace NXProject.Views
 
         // ── validação contra o cronograma ────────────────────────────────────
         private const string MatchColPrefix = "__m_";
+
+        /// <summary>Texto do hint (ToolTip) da célula vermelha — o motivo muda por tipo de coluna.</summary>
+        private string InvalidCellHint(string column, bool isResourceCol)
+        {
+            if (isResourceCol) return AppStrings.Get("TaskPlan_BadResourceHint");
+            return HierarchyType(column) switch
+            {
+                "Task" => AppStrings.Get("TaskPlan_BadTaskHint"),
+                "Story" => AppStrings.Get("TaskPlan_BadStoryHint"),
+                "Feature" => AppStrings.Get("TaskPlan_BadFeatureHint"),
+                "Epic" => AppStrings.Get("TaskPlan_BadEpicHint"),
+                _ => AppStrings.Get("TaskPlan_BadGenericHint"),
+            };
+        }
         private static readonly HashSet<string> LegacyMatchHighlightColors = new(StringComparer.OrdinalIgnoreCase)
         {
             "#C6EFCE",
@@ -5288,6 +5306,28 @@ namespace NXProject.Views
 
             var taskColV = FindColumn("Task", "Tarefa", "Nome da Task");
             var estColV  = FindColumn("Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+
+            // Mesma Story + mesma Task em mais de uma linha: a MESMA atividade não pode
+            // estar duplicada na planilha (o Aplicar criaria/atualizaria duas vezes).
+            // Todas as linhas do grupo ficam ✗ para o usuário ver o par e decidir.
+            static string TaskKey(string? story, string? task)
+                => (story ?? "").Trim() + "" + (task ?? "").Trim(); // separador impossivel em nome
+            var duplicateTaskKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (taskColV != null)
+            {
+                var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (DataRow dr in _data.Table.Rows)
+                {
+                    if (dr.RowState == DataRowState.Deleted) continue;
+                    var t = dr[taskColV]?.ToString()?.Trim();
+                    if (string.IsNullOrWhiteSpace(t)) continue;
+                    var key = TaskKey(storyCol != null ? dr[storyCol]?.ToString() : "", t);
+                    counts[key] = counts.TryGetValue(key, out var c) ? c + 1 : 1;
+                }
+                foreach (var kv in counts)
+                    if (kv.Value > 1) duplicateTaskKeys.Add(kv.Key);
+            }
+
             foreach (DataRow dr in _data.Table.Rows)
             {
                 var story   = storyCol   != null ? dr[storyCol]?.ToString()?.Trim()   : null;
@@ -5331,6 +5371,15 @@ namespace NXProject.Views
                     dr[sc] = storyNode != null ? DisplayIdOf(storyNode) : "";
                 }
 
+                // A Task só é ✓ se a hierarquia dela também for: Story preenchida que NÃO
+                // existe no cronograma torna a Task inválida (ela não tem onde viver), mesmo
+                // que a linha traga um ID DevOps antigo.
+                var storyOk = string.IsNullOrEmpty(story)
+                    || (StoryIdCol is { } storyIdCheck && NodeMatchesText(FindStoryByPlanId(flat, dr[storyIdCheck]?.ToString()), story))
+                    || FindStoryInSchedule(flat, story, feature, epic) != null;
+                var taskDuplicated = taskColV != null
+                    && duplicateTaskKeys.Contains(TaskKey(story, dr[taskColV]?.ToString()));
+
                 foreach (var col in valCols)
                 {
                     var value = dr[col]?.ToString()?.Trim() ?? "";
@@ -5359,7 +5408,8 @@ namespace NXProject.Views
                         : null;
                     bool ok = HierarchyType(col) switch
                     {
-                        "Task"  => tfsTaskId is > 0 || FindTaskInSchedule(flat, value, story, feature, epic) != null,
+                        "Task"  => storyOk && !taskDuplicated
+                                   && (tfsTaskId is > 0 || FindTaskInSchedule(flat, value, story, feature, epic) != null),
                         "Story" => (StoryIdCol is { } storyIdColumn && NodeMatchesText(FindStoryByPlanId(flat, dr[storyIdColumn]?.ToString()), value))
                             || FindStoryInSchedule(flat, value, feature, epic) != null,
                         "Feature" => flat.Any(x => IsType(x, "Feature")
@@ -5678,9 +5728,13 @@ namespace NXProject.Views
             {
                 var text = BindingValueToString(values.Length > 0 ? values[0] : null);
                 var state = BindingValueToString(values.Length > 1 ? values[1] : null);
-                if (string.IsNullOrWhiteSpace(text) || state != "1")
-                    return text;
-                return text.StartsWith("✓ ", StringComparison.Ordinal) ? text : "✓ " + text;
+                if (string.IsNullOrWhiteSpace(text)) return text;
+
+                // ✓ = existe no cronograma; ✗ = preenchido mas NÃO existe (nasce no Aplicar).
+                // Sem a marca de Nok, a célula só ficava vermelha e o usuário lia como "ok".
+                var marker = state switch { "1" => "✓ ", "0" => "✗ ", _ => null };
+                if (marker == null) return text;
+                return text.StartsWith(marker, StringComparison.Ordinal) ? text : marker + text;
             }
 
             public object[] ConvertBack(object value, Type[] targetTypes, object? parameter, System.Globalization.CultureInfo culture)

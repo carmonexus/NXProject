@@ -2041,6 +2041,12 @@
     <sys:String x:Key="Cfg_OpenTokensNeedUrl">Enter the organization URL to open the tokens page.</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeTitle">Include tasks with AI (meeting list: Story + Task per line)</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeInputTip">Paste the list of activities from the meeting. Each item must have at least the Story and the Task name. The AI matches the schedule Story by name and adds the Task to the sheet with Approved = False and an internal ID, if one with the same name does not exist yet.</sys:String>
+    <sys:String x:Key="TaskPlan_BadEpicHint">✗ Red: this EPIC does not exist in the open schedule.&#10;Fix the name (Ctrl+click opens the search) or open the right schedule.</sys:String>
+    <sys:String x:Key="TaskPlan_BadFeatureHint">✗ Red: this Feature does not exist in the open schedule under the given EPIC.&#10;A Feature with the same name under another EPIC does not count. Ctrl+click opens the search; if it is new, it is created in the schedule when you click Apply.</sys:String>
+    <sys:String x:Key="TaskPlan_BadStoryHint">✗ Red: this Story does not exist in the open schedule under the given Feature/EPIC.&#10;A Story with the same name under another Feature does not count. Ctrl+click opens the search; if it is new, it is created in the schedule when you click Apply.</sys:String>
+    <sys:String x:Key="TaskPlan_BadTaskHint">✗ Red: this Task is not valid. Possible reasons:&#10;• the row's Story does not exist in the schedule (the Task has no parent);&#10;• the same Story + Task is already in ANOTHER row (duplicated);&#10;• the Task does not exist in the schedule and has no ID yet.&#10;Ctrl+click opens the search; a new Task is created in the schedule on Apply.</sys:String>
+    <sys:String x:Key="TaskPlan_BadResourceHint">✗ Red: this assignee is not a resource of the open schedule.&#10;Ctrl+click lists the project people. With several names in the cell, ALL must exist.</sys:String>
+    <sys:String x:Key="TaskPlan_BadGenericHint">✗ Red: the value does not exist in the open schedule.</sys:String>
     <sys:String x:Key="TaskPlan_AiNewTask">New task</sys:String>
     <sys:String x:Key="TaskPlan_AiNewTaskTip">The text brings new tasks for Stories that ALREADY EXIST in the schedule (default mode): the AI receives the open Stories and matches each task to its Story.</sys:String>
     <sys:String x:Key="TaskPlan_AiNewStory">New story</sys:String>

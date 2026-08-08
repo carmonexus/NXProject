@@ -2039,6 +2039,12 @@
     <sys:String x:Key="Cfg_OpenTokensNeedUrl">Informe a URL da organizacao para abrir a pagina de tokens.</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeTitle">Incluir tasks com IA (lista da reunião: Story + Task por linha)</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeInputTip">Cole aqui a lista de atividades citadas na reunião. Cada item deve ter pelo menos a Story e o nome da Task. A IA encontra a Story do cronograma pelo nome e inclui a Task na planilha com Aprovada = False e ID interno, se ainda não existir com o mesmo nome.</sys:String>
+    <sys:String x:Key="TaskPlan_BadEpicHint">✗ Vermelho: este EPIC não existe no cronograma aberto.&#10;Corrija o nome (Ctrl+clique abre a busca) ou abra o cronograma certo.</sys:String>
+    <sys:String x:Key="TaskPlan_BadFeatureHint">✗ Vermelho: esta Feature não existe no cronograma aberto sob o EPIC informado.&#10;Feature de mesmo nome em outro EPIC não vale. Ctrl+clique abre a busca; se for nova, ela nasce no cronograma quando você usar o Aplicar.</sys:String>
+    <sys:String x:Key="TaskPlan_BadStoryHint">✗ Vermelho: esta Story não existe no cronograma aberto sob a Feature/EPIC informados.&#10;Story de mesmo nome em outra Feature não vale. Ctrl+clique abre a busca; se for nova, ela nasce no cronograma quando você usar o Aplicar.</sys:String>
+    <sys:String x:Key="TaskPlan_BadTaskHint">✗ Vermelho: esta Task não está válida. Motivos possíveis:&#10;• a Story da linha não existe no cronograma (a Task não tem onde viver);&#10;• a mesma Story + Task já está em OUTRA linha da planilha (duplicada);&#10;• a Task não existe no cronograma e ainda não tem ID.&#10;Ctrl+clique abre a busca; Task nova nasce no cronograma no Aplicar.</sys:String>
+    <sys:String x:Key="TaskPlan_BadResourceHint">✗ Vermelho: este responsável não é um recurso do cronograma aberto.&#10;Ctrl+clique lista as pessoas do projeto. Vários nomes na célula precisam TODOS existir.</sys:String>
+    <sys:String x:Key="TaskPlan_BadGenericHint">✗ Vermelho: o valor preenchido não existe no cronograma aberto.</sys:String>
     <sys:String x:Key="TaskPlan_AiNewTask">Task nova</sys:String>
     <sys:String x:Key="TaskPlan_AiNewTaskTip">O texto traz tasks novas para Stories que JÁ EXISTEM no cronograma (modo padrão): a IA recebe as Stories em aberto e casa cada task com a sua Story.</sys:String>
     <sys:String x:Key="TaskPlan_AiNewStory">Story nova</sys:String>
