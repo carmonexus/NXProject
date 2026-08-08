@@ -4217,13 +4217,42 @@ namespace NXProject.Views
                     // A task NÃO entra no cronograma aqui: a inclusão via IA mexe SÓ na
                     // planilha. O botão Aplicar é quem cria/vincula no cronograma depois
                     // (lá nasce o ID interno :I). ID Task fica vazio até o Aplicar.
+                    // Mesmo nos modos "novo", o nome pode JÁ EXISTIR no cronograma (o usuário
+                    // marcou Feature nova mas citou uma Story que já está lá). Procura o nível
+                    // mais PROFUNDO existente pelo nome — Story, senão Feature, senão EPIC — e
+                    // usa como âncora: assim os IDs vêm do cronograma em vez de ficarem vazios.
+                    // O que realmente não existe nasce no Aplicar (CreateStoryPath).
+                    var existingStory = FindStoryInSchedule(flat, storyName, featureName, epicName);
+                    var existingFeature = existingStory == null && !string.IsNullOrWhiteSpace(featureName)
+                        ? flat.FirstOrDefault(t => IsType(t, "Feature")
+                            && string.Equals((t.Name ?? "").Trim(), featureName.Trim(), StringComparison.OrdinalIgnoreCase)
+                            && (string.IsNullOrWhiteSpace(epicName)
+                                || string.Equals(Ancestor(t, "Epic").Trim(), epicName.Trim(), StringComparison.OrdinalIgnoreCase)))
+                        : null;
+                    var existingEpic = existingStory == null && existingFeature == null && !string.IsNullOrWhiteSpace(epicName)
+                        ? flat.FirstOrDefault(t => IsType(t, "Epic")
+                            && string.Equals((t.Name ?? "").Trim(), epicName.Trim(), StringComparison.OrdinalIgnoreCase))
+                        : null;
+                    var idNode = existingStory ?? existingFeature ?? existingEpic ?? anchorNode;
+
                     var dr = _data.Table.NewRow();
                     if (storyCol != null) dr[storyCol] = storyName ?? "";
                     if (featureCol != null) dr[featureCol] = featureName;
                     if (_epicColumn != null) dr[_epicColumn] = epicName;
-                    // IDs de hierarquia: só os níveis EXISTENTES (âncora Story/Feature/EPIC);
-                    // Story/Feature novas ficam sem ID até o Aplicar criar os nós.
-                    FillHierarchyIdsFromNode(dr, anchorNode);
+                    // IDs de EPIC/Feature/Story dos níveis EXISTENTES; o que é novo fica sem
+                    // ID até o Aplicar criar o nó no cronograma.
+                    FillHierarchyIdsFromNode(dr, idNode);
+
+                    // Task de mesmo nome JÁ no cronograma (sob a Story existente): a linha
+                    // aponta para ela (ID Task do cronograma) em vez de nascer solta e virar
+                    // uma task duplicada no Aplicar.
+                    if (existingStory != null && TaskIdCol is { } taskIdCol
+                        && FindTaskInSchedule(flat, taskName!, storyName, featureName, epicName) is { } existingTask
+                        && IsType(existingTask, "Task"))
+                    {
+                        dr[taskIdCol] = DisplayIdOf(existingTask);
+                        WinLog($"  ↳ \"{taskName}\" já existe no cronograma — linha vinculada ao ID {DisplayIdOf(existingTask)}.");
+                    }
                     dr[taskCol] = taskName;
                     if (ApprovalCol is { } apCol) dr[apCol] = "False";
                     if (RegisterDateCol is { } regCol) dr[regCol] = FormatRegisterDate(DateTime.Today);
@@ -5130,62 +5159,16 @@ namespace NXProject.Views
             "Resp", "Responsible", "Owner", "Atribuído a", "Atribuido a", "Assigned To", "AssignedTo");
 
         /// <summary>Pessoa (recurso Work) do cronograma cujo nome bate com <paramref name="name"/>.</summary>
+        // Casamento do responsável: heurística única em TaskPlanResourceMatcher (nome
+        // invertido, sem acento, sem "(Contractor)", só primeiro nome, citado no meio de
+        // uma frase). Empate não vira palpite — cai na Observação.
         private Resource? FindScheduleResource(string? name)
-        {
-            var n = name?.Trim().TrimStart('*').Trim();
-            if (string.IsNullOrEmpty(n) || _vm?.Project == null) return null;
-            return _vm.Project.Resources.FirstOrDefault(r =>
-                r.Type == ResourceType.Work
-                && (string.Equals(r.Name?.Trim(), n, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(r.DisplayName?.TrimStart('*').Trim(), n, StringComparison.OrdinalIgnoreCase)));
-        }
+            => TaskPlanResourceMatcher.Find(_vm?.Project?.Resources, name);
 
-        private static string ResourcePlanName(Resource r) =>
-            !string.IsNullOrWhiteSpace(r.Name)
-                ? r.Name.Trim()
-                : r.DisplayName?.TrimStart('*').Trim() ?? "";
+        private static string ResourcePlanName(Resource r) => TaskPlanResourceMatcher.PlanName(r);
 
         private Resource? FindScheduleResourceInText(string? text)
-        {
-            var value = text?.Trim();
-            if (string.IsNullOrEmpty(value) || _vm?.Project == null) return null;
-
-            return _vm.Project.Resources
-                .Where(r => r.Type == ResourceType.Work)
-                .SelectMany(r => new[]
-                    {
-                        r.Name?.Trim(),
-                        r.DisplayName?.TrimStart('*').Trim()
-                    }
-                    .Where(k => !string.IsNullOrWhiteSpace(k))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Select(k => (Resource: r, Key: k!)))
-                .Where(x => x.Key.Length >= 3 && ContainsResourceName(value, x.Key))
-                .OrderByDescending(x => x.Key.Length)
-                .Select(x => x.Resource)
-                .FirstOrDefault();
-        }
-
-        private static bool ContainsResourceName(string text, string name)
-        {
-            int start = 0;
-            while (start < text.Length)
-            {
-                var index = text.IndexOf(name, start, StringComparison.OrdinalIgnoreCase);
-                if (index < 0) return false;
-
-                var beforeOk = index == 0 || IsResourceNameBoundary(text[index - 1]);
-                var afterIndex = index + name.Length;
-                var afterOk = afterIndex >= text.Length || IsResourceNameBoundary(text[afterIndex]);
-                if (beforeOk && afterOk) return true;
-
-                start = index + 1;
-            }
-            return false;
-        }
-
-        private static bool IsResourceNameBoundary(char ch)
-            => !char.IsLetterOrDigit(ch) && ch != '@' && ch != '.' && ch != '_';
+            => TaskPlanResourceMatcher.Find(_vm?.Project?.Resources, text);
 
         private List<Resource> ResolveScheduleResources(string? cell)
         {

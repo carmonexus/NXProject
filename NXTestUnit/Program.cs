@@ -93,6 +93,7 @@ internal static class Program
         ("Task Plan: coluna excluida some da planilha ao salvar", TaskPlanDeletedColumnClearedOnSave),
         ("Task Plan: aplicar cria task interna no padrao do cronograma", TaskPlanApplyCreatesInternalTaskLikeSchedule),
         ("Task Plan IA: esforco aceita sufixo h e chave acentuada", TaskPlanAiResponseAcceptsHourSuffixAndAccentedKeys),
+        ("Task Plan IA: responsavel casa nome invertido/parcial e recusa ambiguo", TaskPlanResourceMatcherHandlesCitedNames),
         ("Task Plan: story iniciada NAO tem a duracao ajustada", TaskPlanStartedStoryKeepsDuration),
         ("Task Plan: log de sync atualiza ID interno para ID DevOps na planilha", TaskPlanBackfillIdsFromSyncLog),
         ("Arquivo: gravar com ID interno duplicado e BLOQUEADO com a atividade na mensagem", SaveBlocksDuplicateTaskIds),
@@ -347,6 +348,7 @@ internal static class Program
                 Console.WriteLine("AVISO: resposta truncada — itens completos aproveitados pelo reparo.");
             using var doc = System.Text.Json.JsonDocument.Parse(json);
             var n = 0;
+            var unmatched = 0;
             foreach (var item in doc.RootElement.EnumerateArray())
             {
                 var task = TaskPlanScheduleRules.GetJsonString(item, "task");
@@ -356,9 +358,23 @@ internal static class Program
                 var hours = TaskPlanScheduleRules.ParseEstimatedHours(
                     TaskPlanScheduleRules.GetJsonString(item, "esforco", "esforço")) ?? 1.0;
                 var resp = TaskPlanScheduleRules.GetJsonString(item, "responsavel", "responsável");
-                Console.WriteLine($"  {n,2}. [{story}] {task} — {hours:0.##}h{(resp != null ? $" — {resp}" : "")}");
+                // Mesmo casamento do Task Plan: sem recurso, o nome cai na Observação.
+                var matched = TaskPlanResourceMatcher.Find(project.Resources, resp);
+                var respText = resp == null ? ""
+                    : matched != null
+                        ? $" — Responsável: {TaskPlanResourceMatcher.PlanName(matched)}"
+                        : $" — SEM recurso (vai para Observação): \"{resp}\"";
+                if (matched == null && resp != null) unmatched++;
+                Console.WriteLine($"  {n,2}. [{story}] {task} — {hours:0.##}h{respText}");
             }
-            Console.WriteLine($"RESULTADO: {n} task(s) seriam incluídas na planilha.");
+            Console.WriteLine($"RESULTADO: {n} task(s) seriam incluídas na planilha"
+                + (unmatched > 0 ? $"; {unmatched} com responsável NÃO casado (Observação)." : "; responsáveis todos casados."));
+            // IDs de hierarquia: no modo Feature/Story nova só o nível EXISTENTE tem ID —
+            // Feature/Story novas nascem no cronograma no Aplicar (CreateStoryPath).
+            if (newStory)
+                Console.WriteLine(newFeature
+                    ? "IDs: só o ID do EPIC é preenchido; Feature e Story novas ficam sem ID até o Aplicar."
+                    : "IDs: só os IDs de EPIC/Feature são preenchidos; a Story nova fica sem ID até o Aplicar.");
             return 0;
         }
         catch (Exception ex)
@@ -3157,6 +3173,58 @@ internal static class Program
             throw new InvalidOperationException("Array íntegro não pode ser marcado como truncado.");
         if (TaskPlanScheduleRules.ExtractJsonArray("sem json aqui").Json != null)
             throw new InvalidOperationException("Texto sem array não pode devolver JSON.");
+    }
+
+    // Casamento do responsável citado com o recurso do cronograma (nomes reais do
+    // cadastro "Sobrenome, Nome (Contractor)"): exato, invertido, sem acento, só o
+    // primeiro nome e citado no meio de uma frase. Ambiguidade NAO vira palpite.
+    private static void TaskPlanResourceMatcherHandlesCitedNames()
+    {
+        var people = new List<Resource>
+        {
+            new() { Id = 1, Name = "Domingues, Joao Pedro Araujo", Type = ResourceType.Work },
+            new() { Id = 2, Name = "Melo, Carmo C (Contractor)", Type = ResourceType.Work },
+            new() { Id = 3, Name = "Fenoci, Mateus Rezende (Contractor)", Type = ResourceType.Work },
+            new() { Id = 4, Name = "Monteiro, Emneh Dias (Contractor)", Type = ResourceType.Work },
+            new() { Id = 5, Name = "Rodrig, Caio Siquara Nascimento (Contractor)", Type = ResourceType.Work },
+            new() { Id = 6, Name = "Oliveira, Alice De Muylder (Contractor)", Type = ResourceType.Work },
+        };
+
+        void Match(string cited, int expectedId, string why)
+        {
+            var r = TaskPlanResourceMatcher.Find(people, cited);
+            if (r == null) throw new InvalidOperationException($"\"{cited}\" deveria casar ({why}), mas nao casou.");
+            AssertEqual(expectedId, r.Id, $"\"{cited}\" deveria casar com o recurso {expectedId} ({why}).");
+        }
+
+        Match("Oliveira, Alice De Muylder (Contractor)", 6, "nome exato do cadastro");
+        Match("Oliveira, Alice De Muylder", 6, "sem o sufixo (Contractor)");
+        Match("Alice Oliveira", 6, "nome invertido, sem sobrenome do meio");
+        Match("alice de muylder oliveira", 6, "minusculas e ordem trocada");
+        Match("Alice", 6, "so o primeiro nome, unico no projeto");
+        Match("Joao Pedro", 1, "primeiro nome composto");
+        Match("João Pedro Domingues", 1, "com acento contra cadastro sem acento");
+        Match("Falar com Fenoci, Mateus Rezende (Contractor) sobre a carga", 3, "nome citado dentro da frase");
+
+        if (TaskPlanResourceMatcher.Find(people, "Fulano da Silva") != null)
+            throw new InvalidOperationException("Nome de fora do projeto nao pode casar com ninguem.");
+        if (TaskPlanResourceMatcher.Find(people, "") != null)
+            throw new InvalidOperationException("Nome vazio nao pode casar.");
+
+        // Ambiguidade: dois "Carmo" no projeto — melhor Observacao do que errar a pessoa.
+        var ambiguous = new List<Resource>(people)
+        {
+            new() { Id = 7, Name = "Souza, Carmo T (Contractor)", Type = ResourceType.Work },
+        };
+        if (TaskPlanResourceMatcher.Find(ambiguous, "Carmo") != null)
+            throw new InvalidOperationException("Primeiro nome ambiguo nao pode escolher um recurso no palpite.");
+        AssertEqual(2, TaskPlanResourceMatcher.Find(ambiguous, "Carmo Melo")?.Id ?? -1,
+            "Nome + sobrenome desempata entre dois recursos de mesmo primeiro nome.");
+
+        // Recurso material (nao-pessoa) nunca casa.
+        var material = new List<Resource> { new() { Id = 9, Name = "Licenca Power BI", Type = ResourceType.Material } };
+        if (TaskPlanResourceMatcher.Find(material, "Licenca Power BI") != null)
+            throw new InvalidOperationException("Recurso Material nao pode virar responsavel.");
     }
 
     private static void TaskPlanApplyCreatesInternalTaskLikeSchedule()
