@@ -178,6 +178,9 @@ namespace NXProject.ViewModels
         {
             NormalizeNoDevOpsType(Project.Tasks);
             NormalizeSummaryFlag(Project.Tasks);
+            // 100% com restante lançado vira HH Atual (antecipação/esforço extra) — antes
+            // do rateio de OriginalEstimatedHours, que usa CurrentHours + EstimatedHours.
+            AbsorbRemainingHoursWhenComplete(Project.Tasks);
             SyncOriginalHoursWhenZeroPercent(Project.Tasks);
             RecalculateLeafFinishesFromAssignments(Project.Tasks);
             RecalcTaskDatesFromPriority(Project.Tasks);
@@ -1359,6 +1362,30 @@ namespace NXProject.ViewModels
                 if (IsNoDevOpsType(t.TfsType) && !(t.TfsId < 0))
                     t.TfsId = _nextNoDevOpsId--;
                 NormalizeNoDevOpsType(t.Children);
+            }
+        }
+
+        /// <summary>
+        /// Atividade em 100% com HH Restante ainda lançado: o restante é ABSORVIDO pelo
+        /// HH Atual (soma) e zerado. Concluir antes do previsto (ou com esforço extra não
+        /// planejado) não pode deixar o resumo abaixo de 100% — o % de resumo vem das horas
+        /// (HH Atual / (HH Atual + Restante)), então 43,2h + 4,8h restantes davam 90%.
+        /// A DURAÇÃO não muda: HH Atual + HH Restante continua o mesmo total.
+        /// </summary>
+        private static void AbsorbRemainingHoursWhenComplete(IEnumerable<Models.ProjectTask> tasks)
+        {
+            foreach (var task in tasks)
+            {
+                if (!task.IsSummary && task.PercentComplete >= 100)
+                {
+                    var est = task.EstimatedHours ?? 0;
+                    if (est > 0)
+                    {
+                        task.CurrentHours = (task.CurrentHours ?? 0) + est;
+                        task.EstimatedHours = 0;
+                    }
+                }
+                AbsorbRemainingHoursWhenComplete(task.Children);
             }
         }
 

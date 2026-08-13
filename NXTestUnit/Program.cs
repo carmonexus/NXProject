@@ -36,6 +36,10 @@ internal static class Program
         ("Cronograma: arrasto permite mover Task para outra Story", DragDropMovesTaskToAnotherStory),
         ("Cronograma: arrasto entre pais aceita soltar sobre irmao destino", DragDropMovesHierarchyItemsToSiblingInAnotherParent),
         ("Cronograma: arrasto bloqueia troca fora da hierarquia DevOps", DragDropBlocksInvalidHierarchyMoves),
+        ("Import TFS: irmaos entram na ordem do backlog (rank), sem jogar item sem rank pro fim", ImportOrdersSiblingsByBacklogRank),
+        ("Import TFS: ordem gravada no cronograma e a ordem recebida do DevOps", ImportedOrderMatchesReceivedOrder),
+        ("Import TFS: item sem StackRank recebe rank calculado na posicao recebida", ImportFillsMissingBacklogRank),
+        ("Sync TFS: reordenacao do backlog no DevOps gera aviso no relatorio", SyncWarnsWhenBacklogOrderIsRewritten),
         ("Cronograma: Feature e Story preservam ordem do DevOps independente da prioridade", RebuildPreservesDevOpsHierarchyOrderIgnoringPriority),
         ("Cronograma: Task ordena por prioridade e desempata pela ordem do DevOps", RebuildOrdersTasksByPriorityThenDevOpsRank),
         ("Cronograma: botao marco cria Marco-Devops irmao para selecao DevOps", AddMilestoneCreatesDevOpsSiblingForDevOpsSelection),
@@ -58,6 +62,7 @@ internal static class Program
         ("Import TFS: NoDevOps preserva posicao para predecessora virtual", ImportPreservesNoDevOpsSiblingPosition),
         ("Import TFS: atividades internas DevOps sao vinculadas por nome ou preservadas", ImportMatchesOrPreservesInternalDevOpsActivities),
         ("Resumo: datas e percentual consolidam filhos", SummaryRollupUsesChildrenDatesAndHours),
+        ("Resumo: atividade 100% absorve o HH Restante (antecipacao)", CompletedTaskAbsorbsRemainingHours),
         ("Alocacao: decompoe HH da Story (restante p/ responsavel, corte se estoura)", AllocationStoryDecompositionFactors),
         ("Alocacao: resumo de tasks por recurso (Closed=Completed, senao Estimate)", TaskAllocationSummaryFromDevOps),
         ("Arquivo: resumo de tasks por recurso sobrevive salvar/abrir", TaskAllocationSummaryRoundTrips),
@@ -1214,6 +1219,138 @@ internal static class Program
         AssertEqual(story.Id, task.Parent?.Id ?? -1, "Task bloqueada deve continuar na Story original.");
         AssertEqual(feature.Id, story.Parent?.Id ?? -1, "Story bloqueada deve continuar na Feature original.");
         AssertEqual(epic.Id, feature.Parent?.Id ?? -1, "Feature bloqueada deve continuar no Epic original.");
+    }
+
+    // Guarda da ORDEM vinda do TFS: irmãos entram no cronograma na ordem do backlog
+    // (StackRank/BacklogPriority) e quem não tem rank NÃO pode ser jogado para o fim.
+    private static void ImportOrdersSiblingsByBacklogRank()
+    {
+        static string Ids(IEnumerable<int> ids) => string.Join(",", ids);
+        static void AssertOrder(string expected, string actual, string message)
+        {
+            if (!string.Equals(expected, actual, StringComparison.Ordinal))
+                throw new InvalidOperationException($"{message} Esperado: {expected}; Atual: {actual}.");
+        }
+
+        // Ordem do backlog manda, mesmo que a consulta traga embaralhado.
+        AssertOrder("30,10,20",
+            Ids(TfsImportService.OrderSiblingsByBacklogRank([(10, 2000), (20, 3000), (30, 1000)])),
+            "Irmaos devem entrar na ordem do rank do backlog do DevOps.");
+
+        // Item SEM rank no meio: fica onde estava (depois do irmao ranqueado anterior),
+        // e nao no fim do grupo — este era o defeito que tirava a hierarquia de ordem.
+        AssertOrder("10,20,30",
+            Ids(TfsImportService.OrderSiblingsByBacklogRank([(10, 1000), (20, null), (30, 2000)])),
+            "Irmao sem rank deve seguir o ranqueado anterior, nao ir para o fim.");
+
+        // Sem nenhum ranqueado antes: preserva a posicao da consulta.
+        AssertOrder("10,20,30",
+            Ids(TfsImportService.OrderSiblingsByBacklogRank([(10, null), (20, 1000), (30, 2000)])),
+            "Item sem rank antes de qualquer ranqueado deve ficar no comeco.");
+
+        // Grupo inteiro sem rank: ordem da consulta preservada (nada de cair para ID).
+        AssertOrder("30,10,20",
+            Ids(TfsImportService.OrderSiblingsByBacklogRank([(30, null), (10, null), (20, null)])),
+            "Grupo sem rank deve preservar a ordem da consulta de hierarquia.");
+
+        // Ranks iguais: empate mantem a ordem da consulta (ordenacao estavel).
+        AssertOrder("20,10",
+            Ids(TfsImportService.OrderSiblingsByBacklogRank([(20, 1000), (10, 1000)])),
+            "Rank empatado deve manter a ordem da consulta.");
+    }
+
+    // ORDEM RECEBIDA (consulta de hierarquia do DevOps) x ORDEM GRAVADA (cronograma):
+    // reproduz uma resposta do DevOps com ranks e monta a hierarquia como o import faz,
+    // conferindo cada grupo de irmãos. Caso real: item sem rank ia para o fim do grupo.
+    private static void ImportedOrderMatchesReceivedOrder()
+    {
+        // Recebido do DevOps (ordem da consulta) com o rank de cada item.
+        var recebidoFeatures = new (int Id, double? Rank)[]
+        {
+            (101, 1000000000),  // Especificacao
+            (102, null),        // Desenvolvimento — SEM rank (campo vazio no work item)
+            (103, 1000032622),  // Quantitativo
+        };
+        var nomes = new Dictionary<int, string>
+        {
+            [101] = "Especificacao", [102] = "Desenvolvimento", [103] = "Quantitativo",
+            [201] = "Ingestao", [202] = "Implementacao", [203] = "Homologacao",
+        };
+        string Gravada(IEnumerable<(int Id, double? Rank)> recebido) => string.Join(" | ",
+            TfsImportService.OrderSiblingsByBacklogRank(recebido.ToList()).Select(id => nomes[id]));
+
+        AssertOrderEquals("Especificacao | Desenvolvimento | Quantitativo", Gravada(recebidoFeatures),
+            "A ordem gravada deve ser a ordem RECEBIDA do DevOps — item sem rank nao pode ir para o fim.");
+
+        // Consulta fora de ordem: aí sim o rank manda (é a ordem do backlog).
+        var foraDeOrdem = new (int Id, double? Rank)[] { (203, 3000), (201, 1000), (202, 2000) };
+        AssertOrderEquals("Ingestao | Implementacao | Homologacao", Gravada(foraDeOrdem),
+            "Com todos ranqueados, a ordem gravada segue o rank do backlog.");
+
+        // Todos sem rank: a ordem recebida é preservada integralmente.
+        var semRank = new (int Id, double? Rank)[] { (203, null), (201, null), (202, null) };
+        AssertOrderEquals("Homologacao | Ingestao | Implementacao", Gravada(semRank),
+            "Grupo inteiro sem rank deve preservar a ordem recebida na consulta.");
+    }
+
+    // Import: item que veio do DevOps SEM StackRank tem o rank CALCULADO pela posição
+    // recebida (ordem estável na tela) e entra na lista de "precisa sincronizar".
+    private static void ImportFillsMissingBacklogRank()
+    {
+        // O EPIC ja vem ranqueado do DevOps: so a Feature do meio esta sem rank.
+        var epic = new ProjectTask { Id = 1, Name = "Epic", TfsType = "Epic", TfsId = 900, TfsStackRank = 285680480, IsSummary = true };
+        ProjectTask Feature(int id, string name, double? rank)
+        {
+            var f = new ProjectTask { Id = id, Name = name, TfsType = "Feature", TfsId = 1000 + id, TfsStackRank = rank, Parent = epic };
+            epic.Children.Add(f);
+            return f;
+        }
+        var primeira = Feature(2, "Especificacao", 1000000000);
+        var semRank  = Feature(3, "Desenvolvimento", null);   // veio sem rank do DevOps
+        var ultima   = Feature(4, "Quantitativo", 1000032622);
+
+        var raiz = new System.Collections.ObjectModel.ObservableCollection<ProjectTask> { epic };
+        var calculados = TfsImportService.FillMissingBacklogRanks(raiz);
+
+        AssertEqual(1, calculados.Count, "So o item sem rank deve ser calculado.");
+        if (calculados[0] != "Desenvolvimento")
+            throw new InvalidOperationException("O item calculado deve ser o que veio sem rank.");
+        if (semRank.TfsStackRank is not { } novo)
+            throw new InvalidOperationException("Item sem rank deve receber um rank calculado.");
+        if (!(novo > primeira.TfsStackRank!.Value && novo < ultima.TfsStackRank!.Value))
+            throw new InvalidOperationException(
+                $"O rank calculado ({novo}) deve manter a POSICAO recebida, entre {primeira.TfsStackRank} e {ultima.TfsStackRank}.");
+
+        // Rodar de novo não recalcula nada (idempotente) — nada de rank novo a sincronizar.
+        AssertEqual(0, TfsImportService.FillMissingBacklogRanks(raiz).Count,
+            "Segunda passada nao pode recalcular rank ja preenchido.");
+
+        // Grupo inteiro sem rank: escala criada do zero, preservando a ordem recebida.
+        var story = new ProjectTask { Id = 10, Name = "Story", TfsType = "Story", TfsId = 800, TfsStackRank = 500, IsSummary = true };
+        var a = new ProjectTask { Id = 11, Name = "A", TfsId = 801, Parent = story };
+        var b = new ProjectTask { Id = 12, Name = "B", TfsId = 802, Parent = story };
+        story.Children.Add(a); story.Children.Add(b);
+        TfsImportService.FillMissingBacklogRanks(new System.Collections.ObjectModel.ObservableCollection<ProjectTask> { story });
+        if (!(a.TfsStackRank < b.TfsStackRank))
+            throw new InvalidOperationException("Grupo sem nenhum rank deve receber escala crescente na ordem recebida.");
+    }
+
+    // O Sync avisa quando vai REESCREVER a posição do item no backlog do DevOps.
+    private static void SyncWarnsWhenBacklogOrderIsRewritten()
+    {
+        var report = new TfsImportService.SyncReport();
+        report.LogWarning("⚠ Ordem do backlog: 1 item(ns) terao a POSICAO reescrita no DevOps");
+        var texto = report.ToString();
+        if (!texto.Contains("Ordem do backlog", StringComparison.Ordinal))
+            throw new InvalidOperationException("O aviso de reordenacao deve aparecer no relatorio do Sync.");
+        if (report.Messages.Count == 0)
+            throw new InvalidOperationException("O aviso deve entrar na lista de mensagens (nao-sucesso) do relatorio.");
+    }
+
+    private static void AssertOrderEquals(string expected, string actual, string message)
+    {
+        if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            throw new InvalidOperationException($"{message} Esperado: {expected}; Atual: {actual}.");
     }
 
     private static void RebuildPreservesDevOpsHierarchyOrderIgnoringPriority()
@@ -2416,6 +2553,57 @@ internal static class Program
         AssertEqual(new DateTime(2026, 7, 6), summary.Start, "Resumo deve iniciar no menor inicio dos filhos.");
         AssertEqual(new DateTime(2026, 7, 9), summary.Finish, "Resumo deve terminar no maior fim exclusivo dos filhos.");
         AssertEqual(37.5, summary.PercentComplete, "Percentual do resumo deve usar HH Atual / (HH Atual + HH Restante).");
+    }
+
+    // Caso real (A2026 - Inteligência de Riscos): Story em 100% com HH Restante lançado
+    // deixava a Feature em 94% (43,2 de 48h). O restante deve ser ABSORVIDO pelo HH Atual
+    // (antecipação/esforço extra) sem mudar a duração total.
+    private static void CompletedTaskAbsorbsRemainingHours()
+    {
+        SetCurrentCalendar(new ProjectCalendar());
+        var feature = new ProjectTask
+        {
+            Id = 1, Name = "Ajuste Power BI BSC Fornecedor - Desenvolvimento",
+            TfsType = "Feature", IsSummary = true,
+            Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 10)
+        };
+        ProjectTask Story(int id, string name, double cur, double est, double pct)
+        {
+            var s = new ProjectTask
+            {
+                Id = id, Name = name, TfsType = "User Story", Parent = feature,
+                Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 10),
+                CurrentHours = cur, EstimatedHours = est, OriginalEstimatedHours = cur + est,
+                PercentComplete = pct
+            };
+            feature.Children.Add(s);
+            return s;
+        }
+        Story(2, "Implementar Ingestao", 24, 0, 100);
+        var early = Story(3, "Realizar implementacao Power BI", 43.2, 4.8, 100); // 100% com restante
+        Story(4, "Realizar Homologacao", 8, 0, 100);
+        Story(5, "Atualizar Documentacao", 8, 0, 100);
+
+        var project = new Project { Name = "Riscos", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(feature);
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+
+        // Invariante: duração TOTAL (HH Atual + HH Restante) não pode mudar com a absorção —
+        // só a repartição entre os dois campos muda.
+        var durationBefore = TaskScheduleService.GetEffectiveTotalDurationHours(early);
+        vm.RebuildFlatTasks();
+
+        AssertEqual(48, early.CurrentHours ?? -1, "HH Restante de atividade 100% deve ser somado ao HH Atual.");
+        AssertEqual(0, early.EstimatedHours ?? -1, "HH Restante deve ficar zerado apos a absorcao.");
+        AssertEqual(durationBefore, TaskScheduleService.GetEffectiveTotalDurationHours(early),
+            "A absorcao NAO pode mudar a duracao total da atividade.");
+        AssertEqual(100, feature.PercentComplete, "Feature com todas as filhas 100% deve fechar em 100%.");
+
+        // Atividade em andamento (< 100%) continua com o restante intacto.
+        var running = Story(6, "Em andamento", 5, 5, 50);
+        vm.RebuildFlatTasks();
+        AssertEqual(5, running.CurrentHours ?? -1, "Atividade abaixo de 100% mantem o HH Atual.");
+        AssertEqual(5, running.EstimatedHours ?? -1, "Atividade abaixo de 100% mantem o HH Restante.");
     }
 
     private static void VirtualPredecessorQueuesSameResourceSiblings()

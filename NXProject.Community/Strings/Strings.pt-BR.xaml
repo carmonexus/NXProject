@@ -404,7 +404,7 @@
     <sys:String x:Key="ColTip_DevOps">T·E — Tipo · Estado no DevOps (ex.: FA = Feature/Active).</sys:String>
     <sys:String x:Key="ColTip_Name">Nome da atividade (hierárquico).</sys:String>
     <sys:String x:Key="ColTip_Duration">Dur.(h) — duração em horas de esforço (HH Atual + HH Restante).</sys:String>
-    <sys:String x:Key="ColTip_Percent">% Compl. — percentual de conclusão informado da atividade.</sys:String>
+    <sys:String x:Key="ColTip_Percent">% Compl. — percentual de conclusão informado da atividade.&#10;&#10;Em Story/Feature/EPIC o % NÃO é a média das filhas: vem das HORAS (HH Atual ÷ (HH Atual + HH Restante)) de todas as atividades abaixo.&#10;&#10;Atividade marcada 100% que ainda tinha HH Restante tem esse restante somado ao HH Atual e zerado — é a antecipação da entrega (o responsável concluiu com menos horas que o planejado, ou fez um esforço extra não planejado). A duração total não muda, e o resumo deixa de ficar abaixo de 100% por causa de resto não baixado.</sys:String>
     <sys:String x:Key="ColTip_Sfp">SFP — Simple Function Point da atividade.</sys:String>
     <sys:String x:Key="ColTip_OrgH">OrgH — estimativa original de horas (baseline).</sys:String>
     <sys:String x:Key="ColTip_CurrentHours">HH Atual — horas já realizadas na atividade.</sys:String>

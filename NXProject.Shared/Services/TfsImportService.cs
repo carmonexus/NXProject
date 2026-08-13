@@ -285,6 +285,22 @@ namespace NXProject.Services
 
             NormalizeIds(project.Tasks);
 
+            // Work item sem StackRank/BacklogPriority no DevOps: o NX CALCULA o rank que
+            // falta a partir da posição em que o item veio, para a ordem ficar estável e
+            // visível corretamente. O valor calculado sobe para o TFS no próximo
+            // Export → Sincronizar (o Sync grava StackRank).
+            var ranksCalculados = FillMissingBacklogRanks(project.Tasks);
+            if (ranksCalculados.Count > 0)
+            {
+                context.Report.LogWarning($"⚠ Ordem do backlog: {ranksCalculados.Count} item(ns) vieram do DevOps SEM StackRank. "
+                    + "O NXProject calculou a ordem pela posição recebida e já mostra na ordem correta — "
+                    + "use Export → Sincronizar para gravar esse rank no TFS e fixar a ordem dos dois lados.");
+                foreach (var nome in ranksCalculados.Take(20))
+                    context.Report.LogWarning($"    • {nome}");
+                if (ranksCalculados.Count > 20)
+                    context.Report.LogWarning($"    • ... e mais {ranksCalculados.Count - 20} item(ns).");
+            }
+
             // Etapa 2: leitura separada dos links de predecessora via WIQL.
             progress?.Report("Lendo os links de predecessoras...");
             var depLinks = await LoadDependencyLinksAsync(
@@ -563,9 +579,6 @@ namespace NXProject.Services
                 }
             }
 
-            // Recalcula a ordem (StackRank) conforme a árvore do NXProject.
-            ApplyDesiredStackRanks(project.Tasks);
-
             // Top-down: pais antes dos filhos (garante criar o pai antes de criar/reparentar o filho).
             var tasks = new List<ProjectTask>();
             CollectLinkedTasks(project.Tasks, tasks);
@@ -574,6 +587,21 @@ namespace NXProject.Services
                 .ToDictionary(g => g.Key, g => g.First());
 
             var report = new SyncReport();
+
+            // Recalcula a ordem (StackRank) conforme a árvore do NXProject e AVISA quando
+            // isso vai reordenar o backlog do DevOps (a ordem do cronograma sobrescreve o TFS).
+            var rankChanges = new List<StackRankChange>();
+            ApplyDesiredStackRanks(project.Tasks, rankChanges);
+            if (rankChanges.Count > 0)
+            {
+                report.LogWarning($"⚠ Ordem do backlog: {rankChanges.Count} item(ns) terao a POSICAO reescrita no DevOps "
+                    + "para refletir a ordem do cronograma. Se a ordem no NXProject estiver errada, ela sera propagada ao TFS — "
+                    + "confira antes de continuar.");
+                foreach (var c in rankChanges)
+                    report.LogWarning($"    • \"{c.Name}\" (em \"{c.Parent}\"): rank "
+                        + $"{(c.FromRank.HasValue ? c.FromRank.Value.ToString("0") : "sem rank")} → {c.ToRank:0}");
+            }
+
             report.LogSuccess($"[config] hoursRef={hoursRef ?? "(não resolvido)"} | startRef={startRef ?? "(não resolvido)"} | finishRef={finishRef ?? "(não resolvido)"} | percAlocRef={percAlocRef ?? "(não resolvido)"} | percConclusaoRef={percConclusaoRef ?? "(não resolvido)"}");
 
             if (tasks.Count == 0)
@@ -1429,8 +1457,16 @@ namespace NXProject.Services
         /// anterior e o próximo (ou anterior + passo). Só itens com vínculo DevOps
         /// participam. Muta task.TfsStackRank (que vira o valor a sincronizar).
         /// </summary>
+        /// <summary>
+        /// Reordenação que o Sync VAI gravar no DevOps: item cujo rank muda de valor, ou
+        /// seja, cuja posição no backlog do TFS será reescrita pela ordem do cronograma.
+        /// </summary>
+        public sealed record StackRankChange(string Name, double? FromRank, double ToRank, string Parent);
+
         private static void ApplyDesiredStackRanks(
-            System.Collections.ObjectModel.ObservableCollection<ProjectTask> siblings)
+            System.Collections.ObjectModel.ObservableCollection<ProjectTask> siblings,
+            List<StackRankChange>? changes = null,
+            string parentName = "raiz")
         {
             double? prev = null;
             for (int i = 0; i < siblings.Count; i++)
@@ -1438,6 +1474,7 @@ namespace NXProject.Services
                 var child = siblings[i];
                 if (child.TfsId.HasValue)
                 {
+                    var rankBefore = child.TfsId.Value > 0 ? child.TfsStackRank : null;
                     double? cur = child.TfsId.Value > 0 ? child.TfsStackRank : null;
                     double desired;
                     if (cur.HasValue && (!prev.HasValue || cur.Value > prev.Value))
@@ -1468,9 +1505,17 @@ namespace NXProject.Services
 
                     child.TfsStackRank = desired;
                     prev = desired;
+
+                    // Rank mudou = a posição desse item NO BACKLOG DO TFS será reescrita
+                    // pela ordem do cronograma. O usuário precisa saber ANTES de exportar:
+                    // se a ordem no NX veio errada (ex.: item importado sem rank), o Sync
+                    // propaga o erro para o DevOps.
+                    if (changes != null && child.TfsId.Value > 0
+                        && (rankBefore == null || Math.Abs(rankBefore.Value - desired) > 0.0001))
+                        changes.Add(new StackRankChange(child.Name ?? "", rankBefore, desired, parentName));
                 }
 
-                ApplyDesiredStackRanks(child.Children);
+                ApplyDesiredStackRanks(child.Children, changes, child.Name ?? parentName);
             }
         }
 
@@ -2846,18 +2891,83 @@ namespace NXProject.Services
                 yield break;
 
             // Ordena irmãos pelo rank do backlog do DevOps. Alguns processos usam
-            // StackRank; outros expõem a mesma ordem como BacklogPriority. Sem rank,
-            // preserva a ordem da consulta de hierarquia em vez de cair para ID.
-            var ordered = list
-                .Select((id, index) => (id, index))
-                .OrderBy(x => items.TryGetValue(x.id, out var w) && w.StackRank.HasValue
-                    ? w.StackRank!.Value
-                    : double.MaxValue)
-                .ThenBy(x => x.index)
-                .Select(x => x.id);
+            // StackRank; outros expõem a mesma ordem como BacklogPriority (GetBacklogRank).
+            var ordered = OrderSiblingsByBacklogRank(
+                list.Select(id => (Id: id, Rank: items.TryGetValue(id, out var w) ? w.StackRank : null)).ToList());
 
             foreach (var id in ordered)
                 yield return id;
+        }
+
+        /// <summary>
+        /// Preenche o StackRank que o DevOps não trouxe, mantendo a POSIÇÃO em que o item
+        /// veio: rank = anterior + passo (ou anterior do primeiro ranqueado − passo, quando
+        /// o item está antes de todos). Sem nenhum rank no grupo, cria a escala do zero.
+        /// Devolve os nomes dos itens calculados — eles precisam de um Sincronizar para o
+        /// valor subir ao TFS. Mesma escala do <see cref="ApplyDesiredStackRanks"/> (passo 1000).
+        /// </summary>
+        public static List<string> FillMissingBacklogRanks(
+            System.Collections.ObjectModel.ObservableCollection<ProjectTask> siblings)
+        {
+            const double step = 1000.0;
+            const double baseRank = 1000000000.0;
+            var calculated = new List<string>();
+
+            void Fill(System.Collections.ObjectModel.ObservableCollection<ProjectTask> group)
+            {
+                for (int i = 0; i < group.Count; i++)
+                {
+                    var item = group[i];
+                    if (!item.TfsStackRank.HasValue)
+                    {
+                        // Anterior já ranqueado (inclusive um calculado agora) define a base.
+                        double? prev = null;
+                        for (int p = i - 1; p >= 0; p--)
+                            if (group[p].TfsStackRank.HasValue) { prev = group[p].TfsStackRank; break; }
+
+                        double? next = null;
+                        for (int n = i + 1; n < group.Count; n++)
+                            if (group[n].TfsStackRank.HasValue) { next = group[n].TfsStackRank; break; }
+
+                        item.TfsStackRank = prev.HasValue && next.HasValue && next.Value - prev.Value > 0.0
+                            ? prev.Value + (next.Value - prev.Value) / 2.0   // encaixa entre os vizinhos
+                            : prev.HasValue ? prev.Value + step              // depois do anterior
+                            : next.HasValue ? next.Value - step              // antes do primeiro ranqueado
+                            : baseRank + i * step;                           // grupo inteiro sem rank
+                        calculated.Add(item.Name ?? "");
+                    }
+                    Fill(item.Children);
+                }
+            }
+
+            Fill(siblings);
+            return calculated;
+        }
+
+        /// <summary>
+        /// Ordem dos irmãos pelo rank do backlog, preservando a posição de quem NÃO tem
+        /// rank: o item sem rank herda o rank do irmão ranqueado anterior (fica logo depois
+        /// dele) em vez de ser jogado para o fim do grupo — antes, um único item sem rank
+        /// no meio da lista descia para o final e a hierarquia saía fora da ordem do TFS.
+        /// Público para teste: é a regra que garante "a ordem do cronograma = ordem do TFS".
+        /// </summary>
+        public static IReadOnlyList<int> OrderSiblingsByBacklogRank(IReadOnlyList<(int Id, double? Rank)> siblings)
+        {
+            var keys = new List<(int Id, double Key, int Index)>(siblings.Count);
+            double? previousRank = null;
+            for (int i = 0; i < siblings.Count; i++)
+            {
+                var rank = siblings[i].Rank;
+                if (rank.HasValue) previousRank = rank.Value;
+                // Sem nenhum ranqueado antes: fica no começo (onde a consulta o trouxe).
+                keys.Add((siblings[i].Id, previousRank ?? double.MinValue, i));
+            }
+
+            return keys
+                .OrderBy(x => x.Key)
+                .ThenBy(x => x.Index) // estável: empate mantém a ordem da consulta
+                .Select(x => x.Id)
+                .ToList();
         }
 
         private static void NormalizeIds(System.Collections.ObjectModel.ObservableCollection<ProjectTask> roots)

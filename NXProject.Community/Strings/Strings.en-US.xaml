@@ -617,7 +617,7 @@
     <sys:String x:Key="ColTip_DevOps">T·E — Type · State in DevOps (e.g., FA = Feature/Active).</sys:String>
     <sys:String x:Key="ColTip_Name">Activity name (hierarchical).</sys:String>
     <sys:String x:Key="ColTip_Duration">Dur.(h) — duration in effort hours (Current HH + Remaining HH).</sys:String>
-    <sys:String x:Key="ColTip_Percent">% Compl. — reported completion percentage of the activity.</sys:String>
+    <sys:String x:Key="ColTip_Percent">% Compl. — reported completion percentage of the activity.&#10;&#10;On Story/Feature/EPIC the % is NOT the average of the children: it comes from HOURS (Current HH ÷ (Current HH + Remaining HH)) of every activity below.&#10;&#10;An activity marked 100% that still had Remaining HH has that remainder added to Current HH and zeroed — that is an early delivery (finished with fewer hours than planned, or with unplanned extra effort). The total duration does not change, and the summary no longer stays below 100% because of a leftover remainder.</sys:String>
     <sys:String x:Key="ColTip_Sfp">SFP — Simple Function Point of the activity.</sys:String>
     <sys:String x:Key="ColTip_OrgH">OrgH — original hours estimate (baseline).</sys:String>
     <sys:String x:Key="ColTip_CurrentHours">Current HH — hours already done on the activity.</sys:String>
