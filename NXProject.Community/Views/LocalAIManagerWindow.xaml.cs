@@ -1,7 +1,9 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Win32;
 using NXProject.Community.Services;
 using NXProject.Services;
@@ -25,7 +27,9 @@ namespace NXProject.Views
 
             FolderBox.Text = LocalAIResourceStore.LoadFolder();
             SetKindRadios(LocalAIResourceStore.LoadBackendKind());
-            MaxTokensBox.Text = LocalAIResourceStore.LoadMaxResponseTokens().ToString();
+            var maxTokens = LocalAIResourceStore.LoadMaxResponseTokens();
+            MaxTokensBox.Text = maxTokens.ToString();
+            SelectMaxTokensPreset(maxTokens);   // marca Min/Ideal/Máximo ou "Customizado"
             UpdateManualLinks();
 
             Loaded += (_, _) =>
@@ -126,11 +130,50 @@ namespace NXProject.Views
         }
 
         // Teto de tokens da resposta da IA Local: grava com clamp e reexibe o valor efetivo.
+        // (só editável no modo "Customizado"; nos presets o campo fica travado.)
         private void OnMaxTokensChanged(object sender, RoutedEventArgs e)
         {
             if (int.TryParse(MaxTokensBox.Text?.Trim(), out var tokens))
                 LocalAIResourceStore.SaveMaxResponseTokens(tokens);
             MaxTokensBox.Text = LocalAIResourceStore.LoadMaxResponseTokens().ToString();
+        }
+
+        // Combo Mínimo/Ideal/Máximo/Customizado: preenche o campo Token (o usuário não precisa
+        // saber o número). "Customizado" libera o campo para digitação livre.
+        private void OnMaxTokensPresetChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (MaxTokensBox == null || MaxTokensPreset.SelectedItem is not ComboBoxItem item) return;
+            var tag = item.Tag?.ToString();
+            if (string.Equals(tag, "custom", StringComparison.OrdinalIgnoreCase))
+            {
+                MaxTokensBox.IsReadOnly = false;   // campo livre de novo
+                MaxTokensBox.Focus();
+                MaxTokensBox.SelectAll();
+            }
+            else if (int.TryParse(tag, out var t))
+            {
+                MaxTokensBox.IsReadOnly = true;
+                LocalAIResourceStore.SaveMaxResponseTokens(t);
+                MaxTokensBox.Text = LocalAIResourceStore.LoadMaxResponseTokens().ToString();
+            }
+        }
+
+        // Marca no combo o preset correspondente ao valor atual; se não bater, "Customizado".
+        private void SelectMaxTokensPreset(int tokens)
+        {
+            foreach (var it in MaxTokensPreset.Items.OfType<ComboBoxItem>())
+            {
+                if (int.TryParse(it.Tag?.ToString(), out var t) && t == tokens)
+                {
+                    MaxTokensPreset.SelectedItem = it;
+                    MaxTokensBox.IsReadOnly = true;
+                    return;
+                }
+            }
+            // Não bateu com nenhum preset -> Customizado (campo livre).
+            MaxTokensPreset.SelectedItem = MaxTokensPreset.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(x => string.Equals(x.Tag?.ToString(), "custom", StringComparison.OrdinalIgnoreCase));
+            MaxTokensBox.IsReadOnly = false;
         }
 
         private void UpdateManualLinks()

@@ -41,6 +41,16 @@ namespace NXProject.Models
         public int Sprint { get; set; }                     // numero da sprint (01, 02, ...) no modo DevOps
         public string Assignee { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
+        // Âncoras do item EXISTENTE (a IA devolve inalteradas; vazio = item novo):
+        public string Id { get; set; } = string.Empty;                 // DisplayId "123:T" / "45:I"
+        public List<string> Predecessors { get; set; } = new();         // DisplayIds das predecessoras
+        public bool StartFixed { get; set; }
+        public bool FinishFixed { get; set; }
+        public System.DateTime? FixedStart { get; set; }
+        public System.DateTime? FixedFinish { get; set; }
+        public double PercentComplete { get; set; }
+        public double CurrentHours { get; set; }            // HH Atual (trabalho já feito)
+        public double OriginalEstimatedHours { get; set; }  // HH Original (planejado, não muda com o progresso)
         public List<AIScheduleNode> Children { get; set; } = new();
     }
 }

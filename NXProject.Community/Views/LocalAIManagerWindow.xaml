@@ -64,6 +64,16 @@
                     <TextBlock Text="{DynamicResource LocalAI_MaxTokensLabel}" FontSize="12"
                                Foreground="#666" Margin="22,0,0,0" VerticalAlignment="Center"
                                ToolTip="{DynamicResource LocalAI_MaxTokensTip}"/>
+                    <ComboBox x:Name="MaxTokensPreset" Width="150" Height="22" Margin="6,0,0,0"
+                              FontSize="12" VerticalContentAlignment="Center"
+                              SelectionChanged="OnMaxTokensPresetChanged"
+                              ToolTip="{DynamicResource LocalAI_MaxTokensTip}">
+                        <ComboBoxItem Content="{DynamicResource LocalAI_TokensMin}"    Tag="1024"/>
+                        <ComboBoxItem Content="{DynamicResource LocalAI_TokensIdeal}"   Tag="2048"/>
+                        <ComboBoxItem Content="{DynamicResource LocalAI_TokensMax1}"    Tag="4096"/>
+                        <ComboBoxItem Content="{DynamicResource LocalAI_TokensMax2}"    Tag="6144"/>
+                        <ComboBoxItem Content="{DynamicResource LocalAI_TokensCustom}"  Tag="custom"/>
+                    </ComboBox>
                     <TextBox x:Name="MaxTokensBox" Width="56" Height="22" Margin="6,0,0,0"
                              FontSize="12" VerticalContentAlignment="Center"
                              LostFocus="OnMaxTokensChanged"

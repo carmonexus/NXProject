@@ -20,8 +20,11 @@ namespace NXProject.Models
         OpenAI,         // OpenAI / Codex
         OpenRouter,     // OpenRouter OpenAI-compatible API
         GitHubCopilot,  // Azure OpenAI via Copilot
-        WorkIQ,         // Work IQ (OpenAI-compatible por padrao)
-        LocalLlama      // IA Local (llama.cpp/LLamaSharp, recursos na pasta do usuario)
+        AzureOpenAI,    // Azure OpenAI da empresa (chat/completions, header api-key)
+        LocalLlama,     // IA Local (llama.cpp/LLamaSharp, recursos na pasta do usuario)
+        CodexCli,       // Codex instalado na maquina (CLI via WSL, sem chave de API)
+        ClaudeCli,      // Claude Code instalado na maquina (CLI, sem chave de API)
+        Microsoft365    // Conta corporativa (Entra ID): Copilot Studio / Azure OpenAI / Graph
     }
 
     /// <summary>Como o token de acesso e obtido para o provedor.</summary>
@@ -104,12 +107,18 @@ namespace NXProject.Models
     /// </summary>
     public class AIWorkspaceSettings
     {
-        public AIProvider DefaultProvider { get; set; } = AIProvider.OpenRouter;
+        public AIProvider DefaultProvider { get; set; } = AIProvider.CodexCli;
         public ScheduleCreationMode ScheduleMode { get; set; } = ScheduleCreationMode.DevOps;
         /// <summary>No modo DevOps: se true, a hierarquia vai ate Task; se false, para em Story.</summary>
         public bool CreateTasks { get; set; }
         /// <summary>Quantidade de tarefas enviadas no contexto da analise de cronograma.</summary>
         public int AnalysisTaskLimit { get; set; } = 30;
+        /// <summary>Quantas conversas do chat guardar por cronograma (Work Item Project). 0 = infinito.</summary>
+        public int ChatHistoryLimit { get; set; } = 10;
+        /// <summary>Mensagens recentes reenviadas à IA por pergunta (janela deslizante). Teto p/ não estourar token.</summary>
+        public int ChatHistoryWindow { get; set; } = 8;
+        /// <summary>Tamanho (caracteres) que dispara o "compress" do histórico em um resumo. 0 = desligado. Teto 500000.</summary>
+        public int ChatCompressThreshold { get; set; } = 350_000;
         /// <summary>Ultimo prompt digitado pelo usuario no assistente.</summary>
         public string LastPrompt { get; set; } = string.Empty;
         public List<AIProviderProfile> Providers { get; set; } = new();
@@ -128,7 +137,7 @@ namespace NXProject.Models
 
         /// <summary>Provedores que a UI expoe em abas de configuracao.</summary>
         public static readonly AIProvider[] ConfigurableProviders =
-            { AIProvider.OpenAI, AIProvider.WorkIQ, AIProvider.OpenRouter };
+            { AIProvider.OpenAI, AIProvider.AzureOpenAI, AIProvider.OpenRouter };
 
         public AIProviderProfile GetOrCreate(AIProvider provider)
         {
@@ -161,7 +170,7 @@ namespace NXProject.Models
             AIProvider.OpenAI => "https://api.openai.com/v1/chat/completions",
             AIProvider.OpenRouter => "https://openrouter.ai/api/v1/chat/completions",
             AIProvider.GitHubCopilot => "https://api.githubcopilot.com/chat/completions",
-            AIProvider.WorkIQ => string.Empty, // definido pelo usuario (OpenAI-compatible)
+            AIProvider.AzureOpenAI => string.Empty, // URL do deployment da empresa (com api-version)
             _ => string.Empty
         };
 
@@ -171,18 +180,50 @@ namespace NXProject.Models
         {
             AIProvider.OpenRouter => 240,
             AIProvider.LocalLlama => 600,
+            AIProvider.CodexCli => 600,   // CLI local: a resposta pode levar minutos
+            AIProvider.ClaudeCli => 600,
             _ => 120
         };
 
         public static string GetDefaultModel(AIProvider provider) => provider switch
         {
-            AIProvider.Claude => "claude-sonnet-4-6",
+            AIProvider.Claude => "claude-opus-5",
             AIProvider.OpenAI => "gpt-4o",
             AIProvider.OpenRouter => "openrouter/free",
             AIProvider.GitHubCopilot => "gpt-4o",
-            AIProvider.WorkIQ => string.Empty,
+            AIProvider.AzureOpenAI => string.Empty,
             _ => string.Empty
         };
+
+        /// <summary>Provedor que roda NA MAQUINA (IA Local, Codex CLI) nao usa chave de API —
+        /// as telas nao podem exigir token nem mandar "configure a IA Geral" para eles.</summary>
+        public static bool IsLocalProvider(AIProvider provider)
+            => provider is AIProvider.LocalLlama or AIProvider.CodexCli or AIProvider.ClaudeCli;
+
+        /// <summary>A configuracao esta pronta para chamar a IA? (chave, quando o provedor exige).</summary>
+        public static bool IsConfigured(AISettings settings)
+            => settings != null
+               && settings.Provider != AIProvider.None
+               && (IsLocalProvider(settings.Provider) || !string.IsNullOrWhiteSpace(settings.ApiKey));
+
+        /// <summary>Rótulo curto do provedor ATIVO para logs e indicadores: nome + modelo/comando
+        /// quando ajuda a identificar (ex.: "Claude (claude-opus-5)", "Codex (local)").</summary>
+        public static string DescribeActive(AISettings settings)
+        {
+            if (settings == null || settings.Provider == AIProvider.None)
+                return "IA";
+            var name = GetDisplayName(settings.Provider);
+            var model = settings.Model?.Trim();
+            if (string.IsNullOrWhiteSpace(model))
+                model = GetDefaultModel(settings.Provider);
+            return settings.Provider switch
+            {
+                AIProvider.LocalLlama => name,                            // o modelo é o GGUF na pasta
+                AIProvider.CodexCli or AIProvider.ClaudeCli => name,      // "(local)" já está no nome
+                AIProvider.Microsoft365 => name,
+                _ => string.IsNullOrWhiteSpace(model) ? name : $"{name} ({model})",
+            };
+        }
 
         public static string GetDefaultLoginUrl(AIProvider provider) => provider switch
         {
@@ -197,10 +238,13 @@ namespace NXProject.Models
         {
             AIProvider.OpenAI => "OpenAI",
             AIProvider.OpenRouter => "OpenRouter",
-            AIProvider.WorkIQ => "Work IQ",
+            AIProvider.AzureOpenAI => "Azure OpenAI",
             AIProvider.LocalLlama => "IA Local (LLaMA)",
             AIProvider.Claude => "Claude",
             AIProvider.GitHubCopilot => "GitHub Copilot",
+            AIProvider.CodexCli => "Codex (local)",
+            AIProvider.ClaudeCli => "Claude Code (local)",
+            AIProvider.Microsoft365 => "Microsoft 365 (conta da empresa)",
             _ => provider.ToString()
         };
     }

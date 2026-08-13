@@ -1,0 +1,202 @@
+<Window x:Class="NXProject.Views.CommunityAIChatWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="{DynamicResource AIChat_Title}"
+        Width="760" Height="640" MinWidth="560" MinHeight="440"
+        WindowStartupLocation="CenterOwner" Background="White">
+    <Window.Resources>
+        <!-- Botão flat estilo navegador: ícone + rótulo legível, hover suave -->
+        <Style x:Key="FlatIconButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="#DBE2EC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Foreground" Value="#2A3B4D"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#EEF3FA"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#B9CCE4"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#DEE8F5"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Variante primária (Enviar): fundo de destaque -->
+        <Style x:Key="FlatIconButtonPrimary" TargetType="Button" BasedOn="{StaticResource FlatIconButton}">
+            <Setter Property="Background" Value="#2B579A"/>
+            <Setter Property="BorderBrush" Value="#2B579A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#33639F"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#254B84"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar de conversas (estilo navegador) -->
+        <Border Grid.Column="0" Background="#F4F6F9" BorderBrush="#E2E7EE" BorderThickness="0,0,1,0">
+            <DockPanel Margin="8,10,8,10">
+                <Button DockPanel.Dock="Top" x:Name="NewConvButton" Style="{StaticResource FlatIconButton}"
+                        Click="OnNewConversationClick" Margin="0,0,0,8" HorizontalContentAlignment="Left">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x2795;" FontSize="12" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource AIChat_NewConversation}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <TextBlock DockPanel.Dock="Top" Text="{DynamicResource AIChat_Conversations}"
+                           FontSize="11" FontWeight="SemiBold" Foreground="#7A8698" Margin="4,2,0,6"/>
+                <ListBox x:Name="ConvList" BorderThickness="0" Background="Transparent"
+                         DisplayMemberPath="Title" SelectionChanged="OnConversationSelected"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Área de chat -->
+        <Grid Grid.Column="1" Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabeçalho: ação + provedor ativo -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{DynamicResource AIChat_Action}" FontWeight="SemiBold"
+                       VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="ActionCombo" Grid.Column="1" Height="30"
+                      DisplayMemberPath="Label" SelectionChanged="OnActionChanged"/>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
+                <!-- Mesmo indicador "IA em execução" do cronograma: robô + barra + rótulo -->
+                <StackPanel x:Name="AiRunningBadge" Orientation="Horizontal"
+                            Visibility="Collapsed" Margin="0,0,10,0">
+                    <TextBlock Text="&#x1F916;" FontSize="14" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <ProgressBar IsIndeterminate="True" Width="46" Height="10" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="AiRunningLabel" FontSize="11" FontWeight="SemiBold"
+                               Foreground="#2B579A" VerticalAlignment="Center"/>
+                </StackPanel>
+                <TextBlock x:Name="ProviderText" VerticalAlignment="Center" Foreground="#2B579A" FontSize="12"/>
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Margin="0,6,0,8">
+            <StackPanel Orientation="Horizontal">
+                <CheckBox x:Name="ScheduleModeCheck" VerticalAlignment="Center"
+                          Content="{DynamicResource AIChat_ScheduleMode}"
+                          Checked="OnScheduleModeChanged" Unchecked="OnScheduleModeChanged"
+                          ToolTip="{DynamicResource AIChat_ScheduleModeTip}"/>
+                <Button x:Name="ApplyScheduleButton" Style="{StaticResource FlatIconButtonPrimary}"
+                        Margin="16,0,0,0" Visibility="Collapsed" Click="OnApplyScheduleClick">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x2705;" FontSize="13" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource AIChat_ApplySchedule}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <TextBlock x:Name="ActionHint" Margin="0,6,0,0"
+                       TextWrapping="Wrap" Foreground="#667" FontSize="11"/>
+        </StackPanel>
+
+        <!-- Conversa: WebView2 (renderiza HTML/imagem, seleção e cópia nativas, somente leitura) -->
+        <Border Grid.Row="2" BorderBrush="#D9E1EA" BorderThickness="1" CornerRadius="6" Background="White">
+            <DockPanel>
+                <TextBlock x:Name="ChatStatus" DockPanel.Dock="Bottom" Foreground="Gray" FontSize="11"
+                           FontStyle="Italic" Margin="8,4,8,6" TextWrapping="Wrap"/>
+                <wv2:WebView2 x:Name="ChatWebView" DefaultBackgroundColor="White"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Entrada -->
+        <Grid Grid.Row="3" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="InputBox" AcceptsReturn="True" TextWrapping="Wrap"
+                     MinHeight="56" MaxHeight="140" VerticalScrollBarVisibility="Auto"
+                     FontSize="13" PreviewKeyDown="OnInputKeyDown"/>
+            <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Bottom" Width="128">
+                <Button x:Name="SendButton" Style="{StaticResource FlatIconButtonPrimary}" Click="OnSendClick">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x27A4;" FontSize="14" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource AIChat_Send}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="StopButton" Style="{StaticResource FlatIconButton}" Margin="0,6,0,0"
+                        Click="OnStopClick" IsEnabled="False" ToolTip="{DynamicResource AIChat_StopTip}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x23F9;" FontSize="14" Margin="0,0,7,0" VerticalAlignment="Center" Foreground="#C0392B"/>
+                        <TextBlock Text="{DynamicResource AIChat_Stop}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="CopyButton" Style="{StaticResource FlatIconButton}" Margin="0,6,0,0"
+                        Click="OnCopyConversationClick" ToolTip="{DynamicResource AIChat_CopyTip}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x1F4CB;" FontSize="13" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource AIChat_Copy}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="ClearButton" Style="{StaticResource FlatIconButton}" Margin="0,6,0,0"
+                        Click="OnClearClick" ToolTip="{DynamicResource AIChat_ClearTip}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x1F5D1;" FontSize="13" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource AIChat_Clear}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+        </Grid>
+    </Grid>
+</Window>

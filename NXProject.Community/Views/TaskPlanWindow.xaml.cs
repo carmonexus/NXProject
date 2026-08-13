@@ -3648,7 +3648,7 @@ namespace NXProject.Views
             var featureCol = FindColumn("Feature", "Nome da Feature");
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
-            if (string.IsNullOrWhiteSpace(settings.ApiKey) && settings.Provider != AIProvider.LocalLlama)
+            if (!AIProviderDefaults.IsConfigured(settings))
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -3698,7 +3698,7 @@ namespace NXProject.Views
             try
             {
                 StatusText.Text = AppStrings.Get("TaskPlan_MergeAiRunning");
-                log.AppendLine($"[{DateTime.Now:HH:mm:ss}] Enviando para a IA ({rows.Count} linha(s), {sources.Count} task(s) DevOps)...");
+                log.AppendLine($"[{DateTime.Now:HH:mm:ss}] Enviando para a IA {CurrentAiLabel()} ({rows.Count} linha(s), {sources.Count} task(s) DevOps)...");
                 using var monitor = StartAiResourceMonitor(settings,
                     msg => StatusText.Text = msg);
                 raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
@@ -3812,7 +3812,19 @@ namespace NXProject.Views
         private void SetAiRunning(bool running)
         {
             AiRunningPanel.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
-            Community.Services.AiRunIndicator.Set(running);
+            var label = running ? CurrentAiLabel() : string.Empty;
+            Community.Services.AiRunIndicator.Set(running, label);
+        }
+
+        /// <summary>Nome do provedor de IA configurado como padrão (para logs e indicador).</summary>
+        private static string CurrentAiLabel()
+        {
+            try
+            {
+                var settings = AISettingsStore.LoadWorkspace("NXProject.Community").ResolveActiveSettings();
+                return AIProviderDefaults.DescribeActive(settings);
+            }
+            catch { return "IA"; }
         }
 
         // Cascata dos checkboxes "o que é novo": Feature nova implica Story nova
@@ -3859,7 +3871,7 @@ namespace NXProject.Views
 
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
-            if (!structured && string.IsNullOrWhiteSpace(settings.ApiKey) && settings.Provider != AIProvider.LocalLlama)
+            if (!structured && !AIProviderDefaults.IsConfigured(settings))
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -4035,8 +4047,7 @@ namespace NXProject.Views
 
                     if (!string.IsNullOrWhiteSpace(aiText))
                     {
-                        var aiAvailable = settings.Provider == AIProvider.LocalLlama
-                                          || !string.IsNullOrWhiteSpace(settings.ApiKey);
+                        var aiAvailable = AIProviderDefaults.IsConfigured(settings);
                         if (!aiAvailable)
                         {
                             WinLog("Seções ambíguas/parciais NÃO resolvidas (IA não configurada) — ignoradas.");
@@ -4057,7 +4068,7 @@ namespace NXProject.Views
                 else
                 {
                     StatusText.Text = AppStrings.Get("TaskPlan_AiIncludeRunning");
-                    WinLog("Enviando para a IA...");
+                    WinLog($"Enviando para a IA ({CurrentAiLabel()})...");
                     using var monitor = StartAiResourceMonitor(settings, WinLog);
                     var userMsg = newFeature
                         ? "Encontre o EPIC de cada Feature nova do TEXTO e devolva o JSON."
@@ -4369,7 +4380,7 @@ namespace NXProject.Views
 
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
-            if (string.IsNullOrWhiteSpace(settings.ApiKey) && settings.Provider != AIProvider.LocalLlama)
+            if (!AIProviderDefaults.IsConfigured(settings))
             {
                 MessageBox.Show(this, AppStrings.Get("TaskPlan_MergeNoAI"),
                     AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -4433,7 +4444,7 @@ namespace NXProject.Views
             AiFindBtn.IsEnabled = false;
             try
             {
-                WinLog("Enviando para a IA...");
+                WinLog($"Enviando para a IA ({CurrentAiLabel()})...");
                 using var monitor = StartAiResourceMonitor(settings, WinLog);
                 raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
                     settings, systemPrompt,
@@ -4721,8 +4732,7 @@ namespace NXProject.Views
                 .ToList();
             if (noVerb.Count > 0)
             {
-                var aiAvailable = settings.Provider == AIProvider.LocalLlama
-                                  || !string.IsNullOrWhiteSpace(settings.ApiKey);
+                var aiAvailable = AIProviderDefaults.IsConfigured(settings);
                 if (!aiAvailable)
                 {
                     log($"{noVerb.Count} nome(s) sem verbo no início mantidos como no texto (IA não configurada).");

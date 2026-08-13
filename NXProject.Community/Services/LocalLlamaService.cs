@@ -131,9 +131,14 @@ namespace NXProject.Community.Services
                 // produção; resposta truncada é recuperada pelo reparo de JSON no Task Plan.
                 MaxTokens = LocalAIResourceStore.LoadMaxResponseTokens(),
                 AntiPrompts = new[] { "<|im_end|>", "<|im_start|>" }.ToList(),
-                // Extração estruturada pede decodificação DETERMINÍSTICA (greedy): mesma
-                // entrada → mesma saída, e menos loops/deriva que amostragem com temperatura.
-                SamplingPipeline = new GreedySamplingPipeline()
+                // Greedy puro fazia modelos pequenos entrarem em LOOP (repetiam a mesma
+                // atividade dezenas de vezes). Usa amostragem quase determinística (temperatura
+                // baixa) COM penalidade de repetição, que corta o loop sem perder estabilidade.
+                SamplingPipeline = new DefaultSamplingPipeline
+                {
+                    Temperature = 0.4f,
+                    RepeatPenalty = 1.3f
+                }
             };
 
             // O primeiro token só sai depois do modelo "ler" todo o contexto (prompt eval) —

@@ -15,7 +15,7 @@
         <!-- Botões que trocam a visão (substituem as abas do assistente) -->
         <Style x:Key="AiTabButton" TargetType="RadioButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
             <Setter Property="Padding" Value="16,7"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Margin" Value="0,0,6,6"/>
             <Setter Property="MinWidth" Value="110"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -124,6 +124,24 @@
                                          HorizontalAlignment="Left"/>
                                 <TextBlock Text="{DynamicResource AI_AnalysisTaskLimitDesc}"
                                            TextWrapping="Wrap" Foreground="#555" FontSize="11" Margin="0,4,0,0"/>
+
+                                <TextBlock Text="{DynamicResource AI_ChatHistoryLimitLabel}" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                                <TextBox x:Name="ChatHistoryLimitBox" Margin="0,4,0,0" Height="28" Width="120"
+                                         HorizontalAlignment="Left"/>
+                                <TextBlock Text="{DynamicResource AI_ChatHistoryLimitDesc}"
+                                           TextWrapping="Wrap" Foreground="#555" FontSize="11" Margin="0,4,0,0"/>
+
+                                <TextBlock Text="{DynamicResource AI_ChatHistoryWindowLabel}" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                                <TextBox x:Name="ChatHistoryWindowBox" Margin="0,4,0,0" Height="28" Width="120"
+                                         HorizontalAlignment="Left"/>
+                                <TextBlock Text="{DynamicResource AI_ChatHistoryWindowDesc}"
+                                           TextWrapping="Wrap" Foreground="#555" FontSize="11" Margin="0,4,0,0"/>
+
+                                <TextBlock Text="{DynamicResource AI_ChatCompressLabel}" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                                <TextBox x:Name="ChatCompressBox" Margin="0,4,0,0" Height="28" Width="120"
+                                         HorizontalAlignment="Left"/>
+                                <TextBlock Text="{DynamicResource AI_ChatCompressDesc}"
+                                           TextWrapping="Wrap" Foreground="#555" FontSize="11" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -138,21 +156,36 @@
                               SelectionChanged="OnDefaultProviderChanged"
                               ToolTip="{DynamicResource AI_DefaultProvider_Desc}">
                         <ComboBoxItem Content="OpenAI" Tag="OpenAI"/>
-                        <ComboBoxItem Content="Work IQ" Tag="WorkIQ"/>
+                        <ComboBoxItem Content="Azure OpenAI" Tag="AzureOpenAI"/>
                         <ComboBoxItem Content="OpenRouter" Tag="OpenRouter"/>
                         <ComboBoxItem Content="IA Local (LLaMA)" Tag="LocalLlama"/>
+                        <ComboBoxItem Content="Claude (API Anthropic)" Tag="Claude"/>
+                        <ComboBoxItem Content="Codex (local)" Tag="CodexCli"/>
+                        <ComboBoxItem Content="Claude Code (local)" Tag="ClaudeCli"/>
+                        <ComboBoxItem Content="Microsoft 365 (conta da empresa)" Tag="Microsoft365"/>
                     </ComboBox>
+                    <Button x:Name="RestoreAllDefaultsButton" Content="{DynamicResource AI_RestoreDefaults}"
+                            Height="30" Margin="8,0,0,0" Padding="10,0" Click="OnRestoreAllDefaultsClick"
+                            ToolTip="{DynamicResource AI_RestoreAll_Desc}"/>
                 </StackPanel>
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                     <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="0" IsChecked="True"
                                  Content="{DynamicResource AI_TabAssistant}" Checked="OnTabButtonChecked"/>
                     <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="1"
                                  Content="OpenAI" Checked="OnTabButtonChecked"/>
                     <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="2"
-                                 Content="Work IQ" Checked="OnTabButtonChecked"/>
+                                 Content="Azure OpenAI" Checked="OnTabButtonChecked"/>
                     <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="3"
                                  Content="OpenRouter" Checked="OnTabButtonChecked"/>
-                </StackPanel>
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="4"
+                                 Content="{DynamicResource AI_TabClaude}" Checked="OnTabButtonChecked"/>
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="5"
+                                 Content="{DynamicResource AI_TabCodex}" Checked="OnTabButtonChecked"/>
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="6"
+                                 Content="{DynamicResource AI_TabClaudeCli}" Checked="OnTabButtonChecked"/>
+                    <RadioButton Style="{StaticResource AiTabButton}" GroupName="AiTabs" Tag="7"
+                                 Content="{DynamicResource AI_TabMicrosoft}" Checked="OnTabButtonChecked"/>
+                </WrapPanel>
                 <TabControl x:Name="MainTabControl">
                     <TabControl.ItemContainerStyle>
                         <Style TargetType="TabItem">
@@ -240,24 +273,28 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <!-- ══ Work IQ ══════════════════════════════════════ -->
-                    <TabItem Header="Work IQ">
+                    <!-- ══ Azure OpenAI ═══════════════════════════════════ -->
+                    <TabItem Header="Azure OpenAI">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <Border Margin="10" Padding="14" CornerRadius="8"
                                 BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
                             <StackPanel>
-                                <TextBlock Text="{DynamicResource AI_WorkIQConfig}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock Text="{DynamicResource AI_AzureConfig}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
                                 <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
-                                           Text="{DynamicResource AI_WorkIQNote}"/>
+                                           Text="{DynamicResource AI_AzureNote}"/>
 
                                 <TextBlock Text="{DynamicResource AI_TokenApiKey}" FontWeight="SemiBold"/>
-                                <PasswordBox x:Name="WorkIqApiKeyBox" Margin="0,6,0,10" Height="30"/>
+                                <PasswordBox x:Name="AzureApiKeyBox" Margin="0,6,0,10" Height="30"/>
                                 <TextBlock Text="{DynamicResource AI_Endpoint}" FontWeight="SemiBold"/>
-                                <TextBox x:Name="WorkIqEndpointBox" Margin="0,6,0,10" Height="30"/>
+                                <TextBox x:Name="AzureEndpointBox" Margin="0,6,0,4" Height="30"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_AzureEndpointNote}"/>
                                 <TextBlock Text="{DynamicResource AI_Model}" FontWeight="SemiBold"/>
-                                <TextBox x:Name="WorkIqModelBox" Margin="0,6,0,10" Height="30"/>
+                                <TextBox x:Name="AzureModelBox" Margin="0,6,0,4" Height="30"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_AzureModelNote}"/>
                                 <TextBlock Text="{DynamicResource AI_TimeoutSeconds}" FontWeight="SemiBold"/>
-                                <TextBox x:Name="WorkIqTimeoutBox" Margin="0,6,0,0" Height="30" Width="120" HorizontalAlignment="Left"/>
+                                <TextBox x:Name="AzureTimeoutBox" Margin="0,6,0,0" Height="30" Width="120" HorizontalAlignment="Left"/>
                             </StackPanel>
                         </Border>
                         </ScrollViewer>
@@ -285,6 +322,252 @@
                                 <TextBox x:Name="OpenRouterModelBox" Margin="0,6,0,10" Height="30"/>
                                 <TextBlock Text="{DynamicResource AI_TimeoutSeconds}" FontWeight="SemiBold"/>
                                 <TextBox x:Name="OpenRouterTimeoutBox" Margin="0,6,0,0" Height="30" Width="120" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </Border>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ══ Claude (API Cloud da Anthropic) ═══════════════ -->
+                    <TabItem Header="Claude">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Border Margin="10" Padding="14" CornerRadius="8"
+                                BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource AI_ClaudeConfig}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_ClaudeNote}"/>
+
+                                <TextBlock Text="{DynamicResource AI_TokenApiKey}" FontWeight="SemiBold"/>
+                                <PasswordBox x:Name="ClaudeApiKeyBox" Margin="0,6,0,4" Height="30"/>
+                                <TextBlock Margin="0,0,0,10" TextWrapping="Wrap" Foreground="#555">
+                                    <Run Text="{DynamicResource AI_ClaudeKeyLinkPre}"/>
+                                    <Hyperlink Click="OnClaudeApiKeyGuideClick"><Run Text="{DynamicResource AI_ClaudeKeyLink}"/></Hyperlink>
+                                    <Run Text="."/>
+                                </TextBlock>
+
+                                <TextBlock Text="{DynamicResource AI_Endpoint}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="ClaudeEndpointBox" Margin="0,6,0,10" Height="30"/>
+                                <TextBlock Text="{DynamicResource AI_Model}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="ClaudeModelBox" Margin="0,6,0,4" Height="30"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_ClaudeModelNote}"/>
+                                <TextBlock Text="{DynamicResource AI_TimeoutSeconds}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="ClaudeTimeoutBox" Margin="0,6,0,0" Height="30" Width="120" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </Border>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ══ Codex instalado na maquina (CLI local) ════════ -->
+                    <TabItem Header="Codex">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Border Margin="10" Padding="14" CornerRadius="8"
+                                BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource AI_CodexConfig}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_CodexNote}"/>
+
+                                <TextBlock Text="{DynamicResource AI_CliLocation}" FontWeight="SemiBold"/>
+                                <ComboBox x:Name="CodexLocationCombo" Width="240" HorizontalAlignment="Left"
+                                          Margin="0,6,0,4" SelectionChanged="OnCodexLocationChanged">
+                                    <ComboBoxItem Content="{DynamicResource AI_CliLocWindows}" Tag="win"/>
+                                    <ComboBoxItem Content="{DynamicResource AI_CliLocWsl}" Tag="wsl"/>
+                                </ComboBox>
+                                <TextBlock x:Name="CodexLocationStatus" TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,8"/>
+
+                                <TextBlock Text="{DynamicResource AI_CodexCommand}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="CodexCommandBox" Margin="0,6,0,4" Height="30"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_CodexCommandNote}"/>
+
+                                <!-- Como preparar a maquina: WSL + Codex CLI (copiaveis) -->
+                                <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1"
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,12">
+                                    <Expander x:Name="CodexSetupExpander" IsExpanded="False" Foreground="#5A4A1E"
+                                              Header="{DynamicResource AI_CodexSetupHead}" FontWeight="SemiBold">
+                                      <StackPanel TextBlock.FontWeight="Normal" Margin="0,6,0,0">
+                                        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#5A4A1E">
+                                            <Run Text="{DynamicResource AI_CodexStep1}"/>
+                                            <Hyperlink Click="OnWslInstallGuideClick"><Run Text="{DynamicResource AI_CodexWslLink}"/></Hyperlink>
+                                        </TextBlock>
+                                        <TextBox x:Name="CodexWslCommandBox" IsReadOnly="True" Margin="0,4,0,0" Height="46"
+                                                 FontFamily="Consolas" FontSize="12" Background="White"
+                                                 AcceptsReturn="True" TextWrapping="NoWrap"
+                                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                                 Text="wsl --install -d Ubuntu&#10;wsl --set-default Ubuntu"/>
+                                        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="#5A4A1E"
+                                                   Text="{DynamicResource AI_CodexStep1Note}"/>
+
+                                        <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#5A4A1E"
+                                                   Text="{DynamicResource AI_CodexStep2}"/>
+                                        <TextBox x:Name="CodexNodeCommandBox" IsReadOnly="True" Margin="0,4,0,0" Height="46"
+                                                 FontFamily="Consolas" FontSize="12" Background="White"
+                                                 AcceptsReturn="True" TextWrapping="NoWrap"
+                                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                                 Text="curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -&#10;sudo apt-get install -y nodejs"/>
+
+                                        <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#5A4A1E"
+                                                   Text="{DynamicResource AI_CodexStep3}"/>
+                                        <TextBox x:Name="CodexInstallCommandBox" IsReadOnly="True" Margin="0,4,0,0" Height="26"
+                                                 FontFamily="Consolas" FontSize="12" Background="White"
+                                                 Text="sudo npm install -g @openai/codex"/>
+
+                                        <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#5A4A1E"
+                                                   Text="{DynamicResource AI_CodexStep4}"/>
+                                        <TextBox x:Name="CodexLoginCommandBox" IsReadOnly="True" Margin="0,4,0,0" Height="26"
+                                                 FontFamily="Consolas" FontSize="12" Background="White"
+                                                 Text="codex login"/>
+                                        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="#5A4A1E"
+                                                   Text="{DynamicResource AI_CodexLoginTip}"/>
+                                        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="#5A4A1E">
+                                            <Hyperlink Click="OnOpenAiAccountClick"><Run Text="{DynamicResource AI_CodexLoginOpenLink}"/></Hyperlink>
+                                        </TextBlock>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                            <Button Content="{DynamicResource AI_CodexCopySetup}" Width="180" Height="26"
+                                                    Click="OnCodexCopySetupClick"/>
+                                            <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#5A4A1E">
+                                                <Hyperlink Click="OnCodexDocsClick"><Run Text="{DynamicResource AI_CodexDocsLink}"/></Hyperlink>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#5A4A1E">
+                                            <Run Text="{DynamicResource AI_CodexWinPre}"/>
+                                            <Hyperlink Click="OnCodexWindowsInstallClick"><Run Text="{DynamicResource AI_CodexWinLink}"/></Hyperlink>
+                                        </TextBlock>
+                                        <StackPanel Visibility="Collapsed">
+                                        </StackPanel>
+                                      </StackPanel>
+                                    </Expander>
+                                </Border>
+
+                                <TextBlock Text="{DynamicResource AI_TimeoutSeconds}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="CodexTimeoutBox" Margin="0,6,0,10" Height="30" Width="120" HorizontalAlignment="Left"/>
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="CodexTestButton" Content="{DynamicResource AI_CodexTest}"
+                                            Width="170" Height="30" Click="OnCodexTestClick"/>
+                                    <TextBlock x:Name="CodexTestResult" Margin="12,0,0,0" VerticalAlignment="Center"
+                                               TextWrapping="Wrap" Foreground="#555" MaxWidth="420"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ══ Claude Code instalado na maquina (CLI local) ══ -->
+                    <TabItem Header="Claude Code">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Border Margin="10" Padding="14" CornerRadius="8"
+                                BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource AI_ClaudeCliConfig}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_ClaudeCliNote}"/>
+
+                                <TextBlock Text="{DynamicResource AI_CliLocation}" FontWeight="SemiBold"/>
+                                <ComboBox x:Name="ClaudeCliLocationCombo" Width="240" HorizontalAlignment="Left"
+                                          Margin="0,6,0,4" SelectionChanged="OnClaudeCliLocationChanged">
+                                    <ComboBoxItem Content="{DynamicResource AI_CliLocWindows}" Tag="win"/>
+                                    <ComboBoxItem Content="{DynamicResource AI_CliLocWsl}" Tag="wsl"/>
+                                </ComboBox>
+                                <TextBlock x:Name="ClaudeCliLocationStatus" TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,8"/>
+
+                                <TextBlock Text="{DynamicResource AI_CodexCommand}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="ClaudeCliCommandBox" Margin="0,6,0,4" Height="30"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_ClaudeCliCommandNote}"/>
+
+                                <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1"
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,12">
+                                    <Expander x:Name="ClaudeCliSetupExpander" IsExpanded="False" Foreground="#5A4A1E"
+                                              Header="{DynamicResource AI_CodexSetupHead}" FontWeight="SemiBold">
+                                      <StackPanel TextBlock.FontWeight="Normal" Margin="0,6,0,0">
+                                        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#5A4A1E"
+                                                   Text="{DynamicResource AI_ClaudeCliStep1}"/>
+                                        <TextBox x:Name="ClaudeCliInstallCommandBox" IsReadOnly="True" Margin="0,4,0,0" Height="26"
+                                                 FontFamily="Consolas" FontSize="12" Background="White"
+                                                 Text="npm install -g @anthropic-ai/claude-code"/>
+
+                                        <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="#5A4A1E"
+                                                   Text="{DynamicResource AI_ClaudeCliStep2}"/>
+                                        <TextBox x:Name="ClaudeCliLoginCommandBox" IsReadOnly="True" Margin="0,4,0,0" Height="26"
+                                                 FontFamily="Consolas" FontSize="12" Background="White"
+                                                 Text="claude"/>
+                                        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="#5A4A1E"
+                                                   Text="{DynamicResource AI_ClaudeCliLoginTip}"/>
+                                        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Foreground="#5A4A1E">
+                                            <Hyperlink Click="OnClaudeAccountClick"><Run Text="{DynamicResource AI_ClaudeCliLoginOpenLink}"/></Hyperlink>
+                                        </TextBlock>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                            <Button Content="{DynamicResource AI_CodexCopySetup}" Width="180" Height="26"
+                                                    Click="OnClaudeCliCopySetupClick"/>
+                                            <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#5A4A1E">
+                                                <Hyperlink Click="OnClaudeCodeDocsClick"><Run Text="{DynamicResource AI_ClaudeCliDocsLink}"/></Hyperlink>
+                                            </TextBlock>
+                                        </StackPanel>
+                                      </StackPanel>
+                                    </Expander>
+                                </Border>
+
+                                <TextBlock Text="{DynamicResource AI_TimeoutSeconds}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="ClaudeCliTimeoutBox" Margin="0,6,0,10" Height="30" Width="120" HorizontalAlignment="Left"/>
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="ClaudeCliTestButton" Content="{DynamicResource AI_ClaudeCliTest}"
+                                            Width="190" Height="30" Click="OnClaudeCliTestClick"/>
+                                    <TextBlock x:Name="ClaudeCliTestResult" Margin="12,0,0,0" VerticalAlignment="Center"
+                                               TextWrapping="Wrap" Foreground="#555" MaxWidth="420"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ══ Microsoft 365 / Entra ID (conta da empresa) ═══ -->
+                    <TabItem Header="Microsoft 365">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Border Margin="10" Padding="14" CornerRadius="8"
+                                BorderBrush="#D9E1EA" BorderThickness="1" Background="#F8FAFC">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource AI_MsConfig}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_MsNote}"/>
+
+                                <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1"
+                                        CornerRadius="4" Padding="10,8" Margin="0,0,0,12">
+                                    <TextBlock Text="{DynamicResource AI_MsItRequirement}" FontSize="11"
+                                               Foreground="#5A4A1E" TextWrapping="Wrap"/>
+                                </Border>
+
+                                <TextBlock Text="{DynamicResource AI_MsTenant}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="MsTenantBox" Margin="0,6,0,10" Height="30"/>
+                                <TextBlock Text="{DynamicResource AI_MsClientId}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="MsClientIdBox" Margin="0,6,0,10" Height="30"/>
+                                <TextBlock Text="{DynamicResource AI_MsScope}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="MsScopeBox" Margin="0,6,0,4" Height="30"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_MsScopeNote}"/>
+
+                                <TextBlock Text="{DynamicResource AI_Endpoint}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="MsEndpointBox" Margin="0,6,0,4" Height="30"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,10"
+                                           Text="{DynamicResource AI_MsEndpointNote}"/>
+
+                                <TextBlock Text="{DynamicResource AI_TimeoutSeconds}" FontWeight="SemiBold"/>
+                                <TextBox x:Name="MsTimeoutBox" Margin="0,6,0,12" Height="30" Width="120" HorizontalAlignment="Left"/>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <Button x:Name="MsLoginButton" Content="{DynamicResource AI_MsLogin}"
+                                            Width="230" Height="30" Click="OnMsLoginClick"/>
+                                    <Button x:Name="MsTestButton" Content="{DynamicResource AI_MsTest}"
+                                            Width="170" Height="30" Margin="8,0,0,0" Click="OnMsTestClick"/>
+                                    <Button x:Name="MsSignOutButton" Content="{DynamicResource AI_MsSignOut}"
+                                            Width="120" Height="30" Margin="8,0,0,0" Click="OnMsSignOutClick"/>
+                                </StackPanel>
+
+                                <TextBlock x:Name="MsStatusText" TextWrapping="Wrap" Foreground="#555"/>
                             </StackPanel>
                         </Border>
                         </ScrollViewer>

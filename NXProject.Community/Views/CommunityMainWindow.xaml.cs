@@ -76,7 +76,15 @@ namespace NXProject.Views
             Services.ProjectAIAssistantService.LocalGenerator = Community.Services.LocalLlamaService.GenerateAsync;
             // Indicador de IA em execução no canto da toolbar (sinal vindo do Task Plan).
             Community.Services.AiRunIndicator.Changed += running =>
-                Dispatcher.Invoke(() => AiRunningBadge.Visibility = running ? Visibility.Visible : Visibility.Collapsed);
+                Dispatcher.Invoke(() =>
+                {
+                    AiRunningBadge.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+                    // Mostra QUAL IA está rodando (nome do provedor padrão); sem nome, texto genérico.
+                    var label = Community.Services.AiRunIndicator.ProviderLabel;
+                    AiRunningLabel.Text = running && !string.IsNullOrWhiteSpace(label)
+                        ? AppStrings.Get("Main_AiRunningNamed", label)
+                        : AppStrings.Get("Main_AiRunning");
+                });
             var v = Assembly.GetExecutingAssembly().GetName().Version;
             if (v != null)
                 Title = $"NXProject Community {v.Major}.{v.Minor}.{v.Build} build({v.Revision})";
@@ -299,6 +307,22 @@ namespace NXProject.Views
                 }
             };
             ApplyLayoutMode(expanded: false);
+        }
+
+        /// <summary>Abre a janela principal já com um cronograma carregado de arquivo
+        /// (usado pelo chat de IA para exibir o cronograma sugerido numa janela nova).</summary>
+        public CommunityMainWindow(string initialProjectPath) : this()
+        {
+            if (!string.IsNullOrWhiteSpace(initialProjectPath) && System.IO.File.Exists(initialProjectPath)
+                && DataContext is MainViewModel vm)
+            {
+                try { vm.LoadProjectFromPath(initialProjectPath); }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, "Não foi possível abrir o cronograma sugerido:\n" + ex.Message,
+                        "NXProject", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
         }
 
         private void BringMainWindowToFront()
@@ -842,6 +866,21 @@ namespace NXProject.Views
 
             dlg.Content = root;
             dlg.ShowDialog();
+        }
+
+        // Toolbar: chat de análise do cronograma com IA (conversa aberta por padrão).
+        private void OnAiChatClick(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainViewModel vm) return;
+            // Uma única janela de chat: se já está aberta, só volta o foco para ela.
+            var open = Application.Current.Windows.OfType<CommunityAIChatWindow>().FirstOrDefault();
+            if (open != null)
+            {
+                if (open.WindowState == WindowState.Minimized) open.WindowState = WindowState.Normal;
+                open.Activate();
+                return;
+            }
+            new CommunityAIChatWindow(vm) { Owner = this }.Show();
         }
 
         private void OnAiAssistantClick(object sender, RoutedEventArgs e)

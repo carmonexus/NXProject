@@ -6,6 +6,7 @@ using NXProject.Community.Services;
 using NXProject.Models;
 using NXProject.Services;
 using NXProject.ViewModels;
+using StoredConv = NXProject.Services.AiChatHistoryStore.StoredConversation;
 
 namespace NXTestUnit;
 
@@ -107,7 +108,9 @@ internal static class Program
         ("Sync TFS: ID interno duplicado bloqueia a sincronizacao", SyncBlocksDuplicateTaskIds),
         ("Sync TFS: Task so grava sob Story (pai Feature/Epic e bloqueado)", SyncBlocksTaskWithoutStoryParent),
         ("Sync TFS: Marco-Devops pode ficar fora de Story", SyncAllowsDevOpsMilestoneOutsideStory),
-        ("Sync TFS: duas Tasks de mesmo nome na Story bloqueiam a sincronizacao", SyncBlocksDuplicateTaskNamesInStory)
+        ("Sync TFS: duas Tasks de mesmo nome na Story bloqueiam a sincronizacao", SyncBlocksDuplicateTaskNamesInStory),
+        ("IA ETA: historico persiste, adapta a duracao real e escala pelos bytes", AiRunStatsPersistsAdaptsAndScales),
+        ("IA Chat: historico por cronograma respeita limite e 0=infinito", AiChatHistoryPersistsPerProjectWithLimit)
     ];
 
     private static int Main(string[] args)
@@ -3065,6 +3068,102 @@ internal static class Program
         };
         if (TfsImportService.ShouldBlockManualStoryCompletionWithoutDevOpsTasks(noDevOpsActivity, 100))
             throw new InvalidOperationException("Atividade NoDevOps nao deve exigir TKs para digitar 100%.");
+    }
+
+    // Garante que a estimativa de tempo da IA (relógio de contagem regressiva) realmente
+    // persiste em disco, ADAPTA à duração real observada e ESCALA pelo volume de bytes.
+    // Regressão do bug "sempre o mesmo tempo e nao muda".
+    private static void AiRunStatsPersistsAdaptsAndScales()
+    {
+        var storageKey = $"NXProject.Test.Stats-{Guid.NewGuid():N}";
+        var file = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            storageKey, "ai-run-stats.json");
+        try
+        {
+            const string prov = "Codex", act = "chat", sched = "Projeto X";
+
+            if (NXProject.Services.AiRunStatsStore.EstimateSeconds(storageKey, prov, act, sched, 1000) != null)
+                throw new InvalidOperationException("Sem historico deveria retornar null.");
+
+            // 1ª amostra: 40s com 1000 bytes -> estima ~40s para o mesmo tamanho.
+            NXProject.Services.AiRunStatsStore.Record(storageKey, prov, act, sched, 40, 1000);
+            if (!File.Exists(file))
+                throw new InvalidOperationException("O historico NAO foi gravado em disco.");
+            var first = NXProject.Services.AiRunStatsStore.EstimateSeconds(storageKey, prov, act, sched, 1000)
+                        ?? throw new InvalidOperationException("Historico gravado mas leitura retornou null.");
+            AssertEqual(40, first, "Primeira estimativa deve refletir a duracao gravada.", 1);
+
+            // Execucoes reais bem mais rapidas: a estimativa tem de CAIR (adaptar), nao ficar fixa.
+            for (int i = 0; i < 5; i++)
+                NXProject.Services.AiRunStatsStore.Record(storageKey, prov, act, sched, 5, 1000);
+            var adapted = NXProject.Services.AiRunStatsStore.EstimateSeconds(storageKey, prov, act, sched, 1000)
+                          ?? throw new InvalidOperationException("Leitura retornou null apos varias amostras.");
+            if (adapted >= first)
+                throw new InvalidOperationException($"A estimativa nao adaptou: continuou {adapted}s (era {first}s).");
+
+            // Escala pelo volume: o DOBRO de bytes deve estimar mais tempo que o tamanho base.
+            var baseEta = NXProject.Services.AiRunStatsStore.EstimateSeconds(storageKey, prov, act, sched, 1000)!.Value;
+            var bigEta = NXProject.Services.AiRunStatsStore.EstimateSeconds(storageKey, prov, act, sched, 2000)!.Value;
+            if (bigEta <= baseEta)
+                throw new InvalidOperationException($"Estimativa nao escalou por bytes: {bigEta}s <= {baseEta}s.");
+
+            // Provedor diferente NAO deve herdar o historico (chave por tipo de IA).
+            if (NXProject.Services.AiRunStatsStore.EstimateSeconds(storageKey, "IA Local", act, sched, 1000) != null)
+                throw new InvalidOperationException("Outro provedor nao deveria ter historico (chave por IA).");
+        }
+        finally
+        {
+            try { if (File.Exists(file)) File.Delete(file); } catch { }
+            try { var d = Path.GetDirectoryName(file); if (d != null && Directory.Exists(d) && !Directory.EnumerateFileSystemEntries(d).Any()) Directory.Delete(d); } catch { }
+        }
+    }
+
+    // Histórico do chat de IA: guarda por CRONOGRAMA (projectKey), respeita o limite N
+    // (mais recentes primeiro) e 0 = infinito. Chaves diferentes não se misturam.
+    private static void AiChatHistoryPersistsPerProjectWithLimit()
+    {
+        var storageKey = $"NXProject.Test.Chat-{Guid.NewGuid():N}";
+        var file = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            storageKey, "ai-chat-history.json");
+        try
+        {
+            StoredConv Make(string title) => new()
+            {
+                Title = title,
+                Messages = { new NXProject.Services.AiChatHistoryStore.StoredMessage { Role = "Usuário", Text = title } }
+            };
+
+            if (NXProject.Services.AiChatHistoryStore.Load(storageKey, "TFS-100").Count != 0)
+                throw new InvalidOperationException("Projeto sem historico deveria vir vazio.");
+
+            // 3 conversas com limite 2 -> guarda só as 2 primeiras (mais recentes).
+            var convs = new[] { Make("c3"), Make("c2"), Make("c1") };
+            NXProject.Services.AiChatHistoryStore.Save(storageKey, "TFS-100", convs, limit: 2);
+            var back = NXProject.Services.AiChatHistoryStore.Load(storageKey, "TFS-100");
+            if (back.Count != 2 || back[0].Title != "c3" || back[1].Title != "c2")
+                throw new InvalidOperationException($"Limite 2 falhou: {back.Count} conversas ({string.Join(",", back.Select(c => c.Title))}).");
+
+            // Limite 0 = infinito: guarda todas.
+            NXProject.Services.AiChatHistoryStore.Save(storageKey, "TFS-100", convs, limit: 0);
+            if (NXProject.Services.AiChatHistoryStore.Load(storageKey, "TFS-100").Count != 3)
+                throw new InvalidOperationException("Limite 0 deveria guardar todas as conversas.");
+
+            // Outro cronograma NAO herda o historico (chave por projeto).
+            if (NXProject.Services.AiChatHistoryStore.Load(storageKey, "NXProject").Count != 0)
+                throw new InvalidOperationException("Outro cronograma nao deveria ter historico.");
+
+            // Conversa vazia nao e guardada.
+            NXProject.Services.AiChatHistoryStore.Save(storageKey, "NXProject", new[] { new StoredConv { Title = "vazia" } }, limit: 10);
+            if (NXProject.Services.AiChatHistoryStore.Load(storageKey, "NXProject").Count != 0)
+                throw new InvalidOperationException("Conversa sem mensagens nao deveria ser gravada.");
+        }
+        finally
+        {
+            try { if (File.Exists(file)) File.Delete(file); } catch { }
+            try { var d = Path.GetDirectoryName(file); if (d != null && Directory.Exists(d) && !Directory.EnumerateFileSystemEntries(d).Any()) Directory.Delete(d); } catch { }
+        }
     }
 
     private static void AssertEqual(DateTime expected, DateTime actual, string message)

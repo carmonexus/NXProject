@@ -43,10 +43,13 @@ namespace NXProject.Services
 
         private sealed class StoredWorkspace
         {
-            public string DefaultProvider { get; set; } = "OpenRouter";
+            public string DefaultProvider { get; set; } = "CodexCli";
             public string ScheduleMode { get; set; } = "DevOps";
             public bool CreateTasks { get; set; }
             public int AnalysisTaskLimit { get; set; } = 30;
+            public int ChatHistoryLimit { get; set; } = 10;
+            public int ChatHistoryWindow { get; set; } = 8;
+            public int ChatCompressThreshold { get; set; } = 350_000;
             public string LastPrompt { get; set; } = string.Empty;
             public List<StoredProviderProfile> Providers { get; set; } = new();
             public List<StoredActionType> ActionTypes { get; set; } = new();
@@ -392,6 +395,9 @@ namespace NXProject.Services
                 ScheduleMode = workspace.ScheduleMode.ToString(),
                 CreateTasks = workspace.CreateTasks,
                 AnalysisTaskLimit = workspace.AnalysisTaskLimit <= 0 ? 30 : workspace.AnalysisTaskLimit,
+                ChatHistoryLimit = workspace.ChatHistoryLimit < 0 ? 10 : workspace.ChatHistoryLimit,
+                ChatHistoryWindow = ClampChatWindow(workspace.ChatHistoryWindow),
+                ChatCompressThreshold = ClampCompress(workspace.ChatCompressThreshold),
                 LastPrompt = workspace.LastPrompt ?? string.Empty,
                 Providers = workspace.Providers.Select(p => new StoredProviderProfile
                 {
@@ -422,10 +428,13 @@ namespace NXProject.Services
         {
             var workspace = new AIWorkspaceSettings
             {
-                DefaultProvider = ParseProvider(stored.DefaultProvider, AIProvider.OpenRouter),
+                DefaultProvider = ParseProvider(stored.DefaultProvider, AIProvider.CodexCli),
                 ScheduleMode = Enum.TryParse<ScheduleCreationMode>(stored.ScheduleMode, out var sm) ? sm : ScheduleCreationMode.DevOps,
                 CreateTasks = stored.CreateTasks,
                 AnalysisTaskLimit = stored.AnalysisTaskLimit <= 0 ? 30 : stored.AnalysisTaskLimit,
+                ChatHistoryLimit = stored.ChatHistoryLimit < 0 ? 10 : stored.ChatHistoryLimit,
+                ChatHistoryWindow = ClampChatWindow(stored.ChatHistoryWindow),
+                ChatCompressThreshold = ClampCompress(stored.ChatCompressThreshold),
                 LastPrompt = stored.LastPrompt ?? string.Empty,
                 Providers = (stored.Providers ?? new()).Select(p => new AIProviderProfile
                 {
@@ -522,6 +531,18 @@ namespace NXProject.Services
             SaveWorkspace(workspace, storageKey);
         }
 
+        // Janela de histórico do chat: 2 a 20 mensagens (teto p/ não estourar token); padrão 8.
+        public const int ChatHistoryWindowDefault = 8;
+        public const int ChatHistoryWindowMax = 20;
+        private static int ClampChatWindow(int n)
+            => n <= 0 ? ChatHistoryWindowDefault : Math.Clamp(n, 2, ChatHistoryWindowMax);
+
+        // "Compress" do histórico: 0 = desligado; senão dispara entre 20 mil e 500 mil caracteres.
+        public const int ChatCompressDefault = 350_000;
+        public const int ChatCompressMax = 500_000;
+        private static int ClampCompress(int n)
+            => n <= 0 ? 0 : Math.Clamp(n, 20_000, ChatCompressMax);
+
         private static string GetSettingsDirectory(string storageKey)
         {
             return Path.Combine(
@@ -558,6 +579,12 @@ namespace NXProject.Services
 
             return builder.ToString();
         }
+
+        /// <summary>Cifra um segredo com DPAPI do usuário atual (mesma proteção do PAT/chave de IA).</summary>
+        public static string EncryptSecret(string value) => Encrypt(value);
+
+        /// <summary>Decifra um segredo gravado por <see cref="EncryptSecret"/>.</summary>
+        public static string DecryptSecret(string encryptedValue) => Decrypt(encryptedValue);
 
         private static string Encrypt(string value)
         {

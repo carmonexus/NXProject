@@ -52,6 +52,10 @@ namespace NXProject.Models
 
         // true = task tem vínculo real com o DevOps (TfsId positivo e não pendente de criação).
         // IDs negativos são internos de atividades No DevOps.
+        /// <summary>Chave de exibição/uso: "{TfsId}:T" quando há vínculo real com o DevOps,
+        /// senão "{Id}:I" (id interno). Usada como chave da IA para preservar âncoras.</summary>
+        public string DisplayId => TfsId is > 0 ? $"{TfsId.Value}:T" : $"{Id}:I";
+
         public bool HasTfsLink => TfsId.HasValue && TfsId.Value > 0 && !IsPendingTfsCreate;
         // Id do work item PAI no DevOps (parent hierárquico) na época da importação,
         // usado para detectar reparenting e atualizar o link na sincronização.

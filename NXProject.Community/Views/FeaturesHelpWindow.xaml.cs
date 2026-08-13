@@ -885,8 +885,23 @@ namespace NXProject.Views
                      "• Decompor uma Story grande em Tasks menores.\n" +
                      "• Gerar uma lista de atividades para um tipo de entrega recorrente (ex: setup de ambiente, testes de regressão).\n" +
                      "• Revisar se a decomposição atual está cobrindo todos os aspectos do escopo."),
+                    ("Provedores de IA (aba de configuração)",
+                     "Em IA → Assistente, cada aba configura um provedor. Escolha o padrão no combo \"Provedor padrão\":\n\n" +
+                     "• OpenAI, Azure OpenAI, OpenRouter, Claude (API da Anthropic): serviços de nuvem, autenticados por chave de API — o pedido sai da máquina e é cobrado por token na conta configurada.\n" +
+                     "• Codex (local) e Claude Code (local): usam o CLI já instalado e autenticado na máquina, em modo não interativo — sem chave aqui e sem enviar nada para a nuvem pelo NXProject; o consumo vai pela sua assinatura do CLI.\n" +
+                     "• IA Local (LLaMA): roda 100% offline, com o modelo na pasta do usuário.\n" +
+                     "• Microsoft 365 (conta da empresa): login corporativo (Entra ID) pelo navegador; depende de a TI fornecer Tenant ID e Client ID de um registro de aplicativo e o endpoint do serviço (Azure OpenAI ou agente do Copilot Studio)."),
+                    ("Por que não há \"usar o Copilot 365 direto\"",
+                     "Não é possível (ao menos até 2026) plugar o Microsoft 365 Copilot — o do Teams/Word — como provedor de IA no NXProject de forma segura, e por isso não foi implementado:\n\n" +
+                     "• O Copilot 365 NÃO expõe uma API pública de \"manda o texto, recebe a resposta\" para um aplicativo de terceiros consumir. Ele é processado no serviço da Microsoft e a interação acontece dentro dos apps da Microsoft, não por um endpoint que o NX possa chamar.\n" +
+                     "• A única forma técnica de \"aproveitar a sessão do navegador\" seria roubar os cookies/token da sua conta corporativa e reenviá-los para endpoints internos não documentados. Isso NÃO foi implementado de propósito, porque:\n" +
+                     "   – O cookie de sessão é uma credencial ampla da sua identidade corporativa (não um token com escopo limitado). Guardá-lo no app amplia muito o risco em caso de vazamento.\n" +
+                     "   – Reuso de cookie fora do navegador tem a assinatura de roubo de sessão (token theft) e costuma ser tratado como incidente pelo Acesso Condicional / Defender — o bloqueio recai sobre a SUA conta.\n" +
+                     "   – São endpoints internos que a Microsoft muda sem aviso; quebraria a qualquer momento e não devolve JSON confiável para o Task Plan.\n\n" +
+                     "O caminho SEGURO e suportado, quando a empresa quer usar a IA que já paga, é: Azure OpenAI com chave de API (aba Azure OpenAI), ou um agente publicado no Copilot Studio acessado pela aba Microsoft 365 com login Entra ID. Ambos dependem de a TI habilitar e fornecer os dados — não de contornar a autenticação no NX.\n\n" +
+                     "No imediato, Codex (local) e Claude Code (local) já resolvem o uso sem custo por token e sem depender da Microsoft."),
                     ("Disponibilidade",
-                     "O Assistente IA requer conexão com internet e chave de API configurada. Na edição Community, está disponível em modo limitado. A edição Enterprise inclui integração completa com OpenAI e Claude.")
+                     "O Assistente IA (nuvem) requer conexão com internet e chave de API configurada; os provedores locais (Codex, Claude Code, IA Local) rodam na própria máquina. Na edição Community, o assistente de sugestão de cronograma está em modo limitado.")
                 },
                 "Use o Assistente IA para o primeiro brainstorm de tarefas — depois refine manualmente na grade com os detalhes do seu contexto."
             ),

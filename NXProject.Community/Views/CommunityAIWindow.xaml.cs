@@ -4,6 +4,7 @@ using System.Linq;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using NXProject.Models;
@@ -54,8 +55,12 @@ namespace NXProject.Views
                 openRouterProfile.TimeoutSeconds = AIProviderDefaults.GetDefaultTimeoutSeconds(AIProvider.OpenRouter);
 
             PopulateProviderTab(AIProvider.OpenAI, OpenAiApiKeyBox, OpenAiEndpointBox, OpenAiModelBox, OpenAiTimeoutBox);
-            PopulateProviderTab(AIProvider.WorkIQ, WorkIqApiKeyBox, WorkIqEndpointBox, WorkIqModelBox, WorkIqTimeoutBox);
+            PopulateProviderTab(AIProvider.AzureOpenAI, AzureApiKeyBox, AzureEndpointBox, AzureModelBox, AzureTimeoutBox);
             PopulateProviderTab(AIProvider.OpenRouter, OpenRouterApiKeyBox, OpenRouterEndpointBox, OpenRouterModelBox, OpenRouterTimeoutBox);
+            PopulateProviderTab(AIProvider.Claude, ClaudeApiKeyBox, ClaudeEndpointBox, ClaudeModelBox, ClaudeTimeoutBox);
+            PopulateCliTab(AIProvider.CodexCli, CodexCommandBox, CodexTimeoutBox, CodexLocationCombo, CodexLocationStatus);
+            PopulateCliTab(AIProvider.ClaudeCli, ClaudeCliCommandBox, ClaudeCliTimeoutBox, ClaudeCliLocationCombo, ClaudeCliLocationStatus);
+            PopulateMicrosoftTab();
 
             // Provedor padrao
             SelectDefaultProvider(_workspace.DefaultProvider);
@@ -64,6 +69,9 @@ namespace NXProject.Views
             // Profundidade do cronograma DevOps (Story vs Task)
             CreateTasksCheck.IsChecked = _workspace.CreateTasks;
             AnalysisTaskLimitBox.Text = (_workspace.AnalysisTaskLimit <= 0 ? 30 : _workspace.AnalysisTaskLimit).ToString();
+            ChatHistoryLimitBox.Text = (_workspace.ChatHistoryLimit < 0 ? 10 : _workspace.ChatHistoryLimit).ToString();
+            ChatHistoryWindowBox.Text = _workspace.ChatHistoryWindow.ToString();
+            ChatCompressBox.Text = _workspace.ChatCompressThreshold.ToString();
 
             // Tipos de acao com IA
             LoadActionTypes();
@@ -107,13 +115,26 @@ namespace NXProject.Views
         private void CollectWorkspace()
         {
             CollectProviderTab(AIProvider.OpenAI, OpenAiApiKeyBox, OpenAiEndpointBox, OpenAiModelBox, OpenAiTimeoutBox, AIAuthMode.ApiKey);
-            CollectProviderTab(AIProvider.WorkIQ, WorkIqApiKeyBox, WorkIqEndpointBox, WorkIqModelBox, WorkIqTimeoutBox, AIAuthMode.ApiKey);
+            CollectProviderTab(AIProvider.AzureOpenAI, AzureApiKeyBox, AzureEndpointBox, AzureModelBox, AzureTimeoutBox, AIAuthMode.ApiKey);
             CollectProviderTab(AIProvider.OpenRouter, OpenRouterApiKeyBox, OpenRouterEndpointBox, OpenRouterModelBox, OpenRouterTimeoutBox, AIAuthMode.ApiKey);
+            CollectProviderTab(AIProvider.Claude, ClaudeApiKeyBox, ClaudeEndpointBox, ClaudeModelBox, ClaudeTimeoutBox, AIAuthMode.ApiKey);
+            CollectCliTab(AIProvider.CodexCli, CodexCommandBox, CodexTimeoutBox);
+            CollectCliTab(AIProvider.ClaudeCli, ClaudeCliCommandBox, ClaudeCliTimeoutBox);
+            CollectMicrosoftTab();
 
             _workspace.DefaultProvider = GetSelectedDefaultProvider();
             _workspace.CreateTasks = CreateTasksCheck.IsChecked == true;
             _workspace.AnalysisTaskLimit =
                 int.TryParse(AnalysisTaskLimitBox.Text?.Trim(), out var lim) && lim > 0 ? lim : 30;
+            // Histórico de conversas por cronograma: 0 = infinito (não limpa); negativo -> padrão 10.
+            _workspace.ChatHistoryLimit =
+                int.TryParse(ChatHistoryLimitBox.Text?.Trim(), out var ch) && ch >= 0 ? ch : 10;
+            // Janela de continuidade (mensagens reenviadas): clampada 2..20 no store.
+            _workspace.ChatHistoryWindow =
+                int.TryParse(ChatHistoryWindowBox.Text?.Trim(), out var cw) && cw > 0 ? cw : 8;
+            // Limite do "compress" (caracteres): 0 = desligado; clampado 20mil..500mil no store.
+            _workspace.ChatCompressThreshold =
+                int.TryParse(ChatCompressBox.Text?.Trim(), out var cp) && cp >= 0 ? cp : 350_000;
 
             if (ActionTypeCombo.SelectedItem is AIActionType selectedAction)
                 _workspace.SelectedAction = selectedAction.Name;
@@ -389,6 +410,49 @@ namespace NXProject.Views
             if (_currentAction != null)
                 OnActionTypeSelectionChanged(ActionTypeCombo, null!);
             StatusTextBlock.Text = AppStrings.Get("AI_RestoreDone");
+        }
+
+        // Restaura o PADRÃO completo (ao lado da combo): provedor -> Codex (local), e prompts/ações.
+        // Para cada ação que foi ALTERADA, pergunta antes de reverter; se o usuário recusar, pula
+        // para a próxima e restaura só as que ele concordar. Ações padrão ausentes são readicionadas.
+        private void OnRestoreAllDefaultsClick(object sender, RoutedEventArgs e)
+        {
+            // 1) Provedor padrão: Codex (local).
+            SelectDefaultProvider(AIProvider.CodexCli);
+            _workspace.DefaultProvider = AIProvider.CodexCli;
+
+            // 2) Prompts/ações, com confirmação individual do que mudou.
+            int restored = 0, skipped = 0, added = 0;
+            foreach (var def in AISettingsStore.GetDefaultActions())
+            {
+                var existing = _workspace.ActionTypes.FirstOrDefault(a => a.Name == def.Name);
+                if (existing == null)
+                {
+                    _workspace.ActionTypes.Add(def);   // ação padrão que não existe mais: readiciona
+                    added++;
+                    continue;
+                }
+
+                var changed = !string.Equals(existing.Prompt, def.Prompt, StringComparison.Ordinal)
+                              || existing.CreatesTasks != def.CreatesTasks;
+                if (!changed) continue;   // igual ao padrão: nada a fazer
+
+                var r = MessageBox.Show(
+                    AppStrings.Get("AI_RestoreActionAsk", existing.Name),
+                    AppStrings.Get("AI_RestoreConfirmTitle"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (r != MessageBoxResult.Yes) { skipped++; continue; }   // recusou: próxima
+
+                existing.Prompt = def.Prompt;
+                existing.CreatesTasks = def.CreatesTasks;
+                restored++;
+            }
+
+            ActionTypeCombo.Items.Refresh();
+            if (_currentAction != null)
+                OnActionTypeSelectionChanged(ActionTypeCombo, null!);
+            AISettingsStore.SaveWorkspace(_workspace, SettingsStorageKey);
+            StatusTextBlock.Text = AppStrings.Get("AI_RestoreAllDone", restored, added, skipped);
         }
 
         // Cronograma hierarquico pendente de aplicacao.
@@ -692,6 +756,358 @@ namespace NXProject.Views
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+
+        // ── Codex instalado na maquina ───────────────────────────────────
+        // Nao tem chave nem modelo: so o COMANDO do CLI (guardado no campo
+        // Endpoint do perfil) e o timeout.
+        // Provedores de CLI local (Codex, Claude Code): nao tem chave nem modelo,
+        // so o COMANDO do CLI (guardado no campo Endpoint do perfil) e o timeout.
+        private bool _loadingCliTabs;
+
+        private void PopulateCliTab(AIProvider provider, TextBox command, TextBox timeout,
+            ComboBox location, TextBlock status)
+        {
+            var profile = _workspace.GetOrCreate(provider);
+            command.Text = string.IsNullOrWhiteSpace(profile.Endpoint)
+                ? CodexCliService.GetDefaultCommand(provider)
+                : profile.Endpoint;
+            timeout.Text = (profile.TimeoutSeconds <= 0
+                ? AIProviderDefaults.GetDefaultTimeoutSeconds(provider)
+                : profile.TimeoutSeconds).ToString();
+
+            // Combo reflete o comando salvo (Windows x WSL) sem disparar o handler.
+            _loadingCliTabs = true;
+            var wantWindows = CodexCliService.IsWindowsCommand(command.Text);
+            foreach (var item in location.Items.OfType<ComboBoxItem>())
+                if ((item.Tag as string == "win") == wantWindows) { location.SelectedItem = item; break; }
+            _loadingCliTabs = false;
+            status.Text = string.Empty;
+        }
+
+        // Escolha Windows/WSL monta o comando; no Windows, procura o executável no PATH.
+        private void OnCodexLocationChanged(object sender, SelectionChangedEventArgs e)
+            => ApplyCliLocation(AIProvider.CodexCli, CodexLocationCombo, CodexCommandBox, CodexLocationStatus);
+
+        private void OnClaudeCliLocationChanged(object sender, SelectionChangedEventArgs e)
+            => ApplyCliLocation(AIProvider.ClaudeCli, ClaudeCliLocationCombo, ClaudeCliCommandBox, ClaudeCliLocationStatus);
+
+        private void ApplyCliLocation(AIProvider provider, ComboBox location, TextBox command, TextBlock status)
+        {
+            if (_loadingCliTabs) return;
+            var windows = (location.SelectedItem as ComboBoxItem)?.Tag as string == "win";
+            command.Text = CodexCliService.BuildCommand(provider, windows);
+            if (!windows)
+            {
+                status.Foreground = System.Windows.Media.Brushes.DimGray;
+                status.Text = AppStrings.Get("AI_CliWslNote");
+                return;
+            }
+            var cli = CodexCliService.CliName(provider);
+            var path = CodexCliService.FindOnWindowsPath(cli);
+            status.Inlines.Clear();
+            if (path != null)
+            {
+                status.Foreground = System.Windows.Media.Brushes.Green;
+                status.Inlines.Add(new Run(AppStrings.Get("AI_CliFoundAt", path)));
+                return;
+            }
+            // Nao achou no PATH: mostra aviso + link para a pagina de download do CLI.
+            status.Foreground = System.Windows.Media.Brushes.DarkOrange;
+            status.Inlines.Add(new Run(AppStrings.Get("AI_CliNotOnPath", cli) + " "));
+            var url = provider == AIProvider.ClaudeCli
+                ? "https://code.claude.com/docs/en/quickstart"
+                : "https://developers.openai.com/codex/cli/";
+            var link = new Hyperlink(new Run(AppStrings.Get("AI_CliDownloadLink"))) { NavigateUri = new Uri(url) };
+            link.Click += (_, _) => OpenExternal(url);
+            status.Inlines.Add(link);
+        }
+
+        private void CollectCliTab(AIProvider provider, TextBox command, TextBox timeout)
+        {
+            var profile = _workspace.GetOrCreate(provider);
+            profile.Endpoint = command.Text?.Trim() ?? string.Empty;
+            profile.Model = string.Empty;
+            profile.ApiKey = string.Empty;
+            profile.AuthMode = AIAuthMode.ApiKey;
+            profile.TimeoutSeconds = int.TryParse(timeout.Text?.Trim(), out var t) && t > 0
+                ? t
+                : AIProviderDefaults.GetDefaultTimeoutSeconds(provider);
+        }
+
+        /// <summary>Testa o Codex local com uma pergunta minima — valida comando, PATH e login.</summary>
+        private async void OnCodexTestClick(object sender, RoutedEventArgs e)
+        {
+            var command = CodexCommandBox.Text?.Trim();
+            if (CodexCliService.LooksLikeServerScript(command))
+            {
+                CodexTestResult.Foreground = System.Windows.Media.Brushes.Firebrick;
+                CodexTestResult.Text = AppStrings.Get("AI_CodexServerScript");
+                return;
+            }
+
+            CodexTestButton.IsEnabled = false;
+            CodexTestResult.Foreground = System.Windows.Media.Brushes.DimGray;
+            CodexTestResult.Text = AppStrings.Get("AI_CodexTesting");
+            try
+            {
+                var timeout = int.TryParse(CodexTimeoutBox.Text?.Trim(), out var t) && t > 0 ? t : 120;
+                await RunCliTest(CodexCommandBox, CodexTestResult, command, Math.Min(timeout, 120));
+            }
+            finally
+            {
+                CodexTestButton.IsEnabled = true;
+            }
+        }
+
+        /// <summary>Testa um comando de CLI local; se ele nem iniciar, tenta a forma alternativa
+        /// (com/sem "wsl.exe -- ") e, se essa funcionar, ajusta o campo para ela.</summary>
+        private static async Task RunCliTest(TextBox commandBox, TextBlock result, string? command, int timeoutSeconds)
+        {
+            try
+            {
+                var answer = await CodexCliService.GenerateAsync(
+                    "Responda SEMPRE com uma unica palavra: OK", "Diga OK.", command, timeoutSeconds);
+                result.Foreground = System.Windows.Media.Brushes.Green;
+                result.Text = AppStrings.Get("AI_CodexTestOk", answer.Length > 60 ? answer[..60] + "..." : answer);
+            }
+            catch (NXProject.Services.CliStartException)
+            {
+                // Comando nao iniciou: tenta a outra forma (nativo <-> WSL).
+                var alt = CodexCliService.AlternateCommand(command);
+                if (alt == null)
+                {
+                    result.Foreground = System.Windows.Media.Brushes.Firebrick;
+                    result.Text = AppStrings.Get("AI_CliNotFound", command ?? "");
+                    return;
+                }
+                try
+                {
+                    var answer = await CodexCliService.GenerateAsync(
+                        "Responda SEMPRE com uma unica palavra: OK", "Diga OK.", alt, timeoutSeconds);
+                    commandBox.Text = alt;   // deixa salvo o comando que realmente funciona
+                    result.Foreground = System.Windows.Media.Brushes.Green;
+                    result.Text = AppStrings.Get("AI_CliAdjusted", alt,
+                        answer.Length > 40 ? answer[..40] + "..." : answer);
+                }
+                catch (Exception ex2)
+                {
+                    result.Foreground = System.Windows.Media.Brushes.Firebrick;
+                    result.Text = AppStrings.Get("AI_CliBothFailed", command ?? "", alt) + "\n" + ex2.Message;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Foreground = System.Windows.Media.Brushes.Firebrick;
+                result.Text = ex.Message;
+            }
+        }
+
+        /// <summary>Guia oficial de instalacao do WSL (a Microsoft mantem o passo a passo atualizado).</summary>
+        private void OnWslInstallGuideClick(object sender, RoutedEventArgs e)
+            => OpenExternal("https://learn.microsoft.com/windows/wsl/install");
+
+        /// <summary>Abre a conta OpenAI no navegador padrao ANTES do `codex login`: com a sessao
+        /// ja aberta, o fluxo do CLI so pede a confirmacao em vez de e-mail + senha + 2FA.</summary>
+        private void OnOpenAiAccountClick(object sender, RoutedEventArgs e)
+            => OpenExternal("https://auth.openai.com/log-in");
+
+        /// <summary>Documentacao do Codex CLI (instalacao, login e o comando exec).</summary>
+        /// <summary>Instalação nativa do Codex no Windows (npm/binário), para quem não quer WSL.</summary>
+        private void OnCodexWindowsInstallClick(object sender, RoutedEventArgs e)
+            => OpenExternal("https://developers.openai.com/codex/cli/");
+
+        private void OnCodexDocsClick(object sender, RoutedEventArgs e)
+            => OpenExternal("https://developers.openai.com/codex/cli/");
+
+        /// <summary>Copia os tres comandos da preparacao para colar no terminal.</summary>
+        private void OnCodexCopySetupClick(object sender, RoutedEventArgs e)
+        {
+            Clipboard.SetText(
+                "# 1) No PowerShell do Windows COMO ADMINISTRADOR (reinicia se pedir):" + Environment.NewLine
+                + CodexWslCommandBox.Text + Environment.NewLine + Environment.NewLine
+                + "# 2) Dentro do WSL (Ubuntu) - instalar o Node.js 22 (o npm vem junto):" + Environment.NewLine
+                + CodexNodeCommandBox.Text + Environment.NewLine + Environment.NewLine
+                + "# 3) Ainda no WSL - instalar o Codex CLI:" + Environment.NewLine
+                + CodexInstallCommandBox.Text + Environment.NewLine + Environment.NewLine
+                + "# 4) Ainda no WSL, autentique o Codex:" + Environment.NewLine
+                + CodexLoginCommandBox.Text + Environment.NewLine);
+            CodexTestResult.Foreground = System.Windows.Media.Brushes.DimGray;
+            CodexTestResult.Text = AppStrings.Get("AI_CodexSetupCopied");
+        }
+
+        private static void OpenExternal(string url)
+            => Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+
+        /// <summary>Testa o Claude Code local com uma pergunta minima.</summary>
+        private async void OnClaudeCliTestClick(object sender, RoutedEventArgs e)
+        {
+            ClaudeCliTestButton.IsEnabled = false;
+            ClaudeCliTestResult.Foreground = System.Windows.Media.Brushes.DimGray;
+            ClaudeCliTestResult.Text = AppStrings.Get("AI_ClaudeCliTesting");
+            try
+            {
+                var timeout = int.TryParse(ClaudeCliTimeoutBox.Text?.Trim(), out var t) && t > 0 ? t : 120;
+                await RunCliTest(ClaudeCliCommandBox, ClaudeCliTestResult, ClaudeCliCommandBox.Text?.Trim(), Math.Min(timeout, 120));
+            }
+            finally
+            {
+                ClaudeCliTestButton.IsEnabled = true;
+            }
+        }
+
+        /// <summary>Conta Anthropic no navegador: com a sessao aberta, o login do CLI so pede confirmacao.</summary>
+        private void OnClaudeAccountClick(object sender, RoutedEventArgs e)
+            => OpenExternal("https://claude.ai/login");
+
+        private void OnClaudeCodeDocsClick(object sender, RoutedEventArgs e)
+            => OpenExternal("https://code.claude.com/docs/");
+
+        private void OnClaudeCliCopySetupClick(object sender, RoutedEventArgs e)
+        {
+            Clipboard.SetText(
+                "# 1) Instalar o Claude Code (precisa do Node.js 18+):" + Environment.NewLine
+                + ClaudeCliInstallCommandBox.Text + Environment.NewLine + Environment.NewLine
+                + "# 2) Autenticar (abre o navegador; saia com /exit depois de logar):" + Environment.NewLine
+                + ClaudeCliLoginCommandBox.Text + Environment.NewLine);
+            ClaudeCliTestResult.Foreground = System.Windows.Media.Brushes.DimGray;
+            ClaudeCliTestResult.Text = AppStrings.Get("AI_CodexSetupCopied");
+        }
+
+        // ── Microsoft 365 / Entra ID ─────────────────────────────────────
+        // Login pelo NAVEGADOR (codigo de dispositivo): a senha e digitada so na
+        // pagina da Microsoft. O NX guarda o token cifrado (DPAPI) e o renova pelo
+        // refresh token. Tenant/Client ID vem do registro de aplicativo da empresa.
+        // O perfil guarda Tenant no Model e Client ID + escopo no LoginUrl
+        // ("clientId|scope"), reaproveitando os campos existentes do provedor.
+        private void PopulateMicrosoftTab()
+        {
+            var profile = _workspace.GetOrCreate(AIProvider.Microsoft365);
+            MsTenantBox.Text = profile.Model;
+            var parts = (profile.LoginUrl ?? string.Empty).Split('|');
+            MsClientIdBox.Text = parts.Length > 0 ? parts[0] : string.Empty;
+            MsScopeBox.Text = parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1])
+                ? parts[1]
+                : "openid profile offline_access";
+            MsEndpointBox.Text = profile.Endpoint;
+            MsTimeoutBox.Text = (profile.TimeoutSeconds <= 0 ? DefaultTimeoutSeconds : profile.TimeoutSeconds).ToString();
+            ShowMicrosoftSession();
+        }
+
+        private void CollectMicrosoftTab()
+        {
+            var profile = _workspace.GetOrCreate(AIProvider.Microsoft365);
+            profile.Model = MsTenantBox.Text?.Trim() ?? string.Empty;
+            profile.LoginUrl = (MsClientIdBox.Text?.Trim() ?? string.Empty) + "|" + (MsScopeBox.Text?.Trim() ?? string.Empty);
+            profile.Endpoint = MsEndpointBox.Text?.Trim() ?? string.Empty;
+            profile.AuthMode = AIAuthMode.BrowserLogin;
+            profile.ApiKey = string.Empty;
+            profile.TimeoutSeconds = int.TryParse(MsTimeoutBox.Text?.Trim(), out var t) && t > 0 ? t : DefaultTimeoutSeconds;
+        }
+
+        private void ShowMicrosoftSession()
+        {
+            var session = EntraAuthService.GetCurrentSession();
+            if (session == null)
+            {
+                MsStatusText.Foreground = System.Windows.Media.Brushes.DimGray;
+                MsStatusText.Text = AppStrings.Get("AI_MsNotConnected");
+                return;
+            }
+            var (account, expires) = session.Value;
+            var local = expires.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+            MsStatusText.Foreground = expires > DateTime.UtcNow
+                ? System.Windows.Media.Brushes.Green
+                : System.Windows.Media.Brushes.DarkOrange;
+            MsStatusText.Text = AppStrings.Get("AI_MsConnected", account, local);
+        }
+
+        private async void OnMsLoginClick(object sender, RoutedEventArgs e)
+        {
+            MsLoginButton.IsEnabled = false;
+            try
+            {
+                var tenant = MsTenantBox.Text?.Trim() ?? string.Empty;
+                var clientId = MsClientIdBox.Text?.Trim() ?? string.Empty;
+                var scope = MsScopeBox.Text?.Trim() ?? string.Empty;
+
+                var prompt = await EntraAuthService.StartLoginAsync(tenant, clientId, scope);
+                MsStatusText.Foreground = System.Windows.Media.Brushes.DimGray;
+                MsStatusText.Text = AppStrings.Get("AI_MsLoginPending", prompt.UserCode, prompt.VerificationUri);
+                Clipboard.SetText(prompt.UserCode);   // o codigo ja vai colado para a pagina
+
+                var token = await EntraAuthService.CompleteLoginAsync(prompt, tenant, clientId, scope);
+                MsStatusText.Foreground = System.Windows.Media.Brushes.Green;
+                MsStatusText.Text = AppStrings.Get("AI_MsConnected",
+                    token.Account, token.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+            }
+            catch (Exception ex)
+            {
+                MsStatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                MsStatusText.Text = ex.Message;
+            }
+            finally
+            {
+                MsLoginButton.IsEnabled = true;
+            }
+        }
+
+        /// <summary>Testa a conexao: renova/valida o token e, com endpoint informado, chama o servico.</summary>
+        private async void OnMsTestClick(object sender, RoutedEventArgs e)
+        {
+            MsTestButton.IsEnabled = false;
+            MsStatusText.Foreground = System.Windows.Media.Brushes.DimGray;
+            MsStatusText.Text = AppStrings.Get("AI_MsTesting");
+            try
+            {
+                var token = await EntraAuthService.GetValidTokenAsync();
+                var endpoint = MsEndpointBox.Text?.Trim();
+                if (string.IsNullOrWhiteSpace(endpoint))
+                {
+                    MsStatusText.Foreground = System.Windows.Media.Brushes.Green;
+                    MsStatusText.Text = AppStrings.Get("AI_MsTokenOk",
+                        token.Account, token.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+                    return;
+                }
+
+                using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.AccessToken);
+                using var response = await http.GetAsync(endpoint);
+                var body = await response.Content.ReadAsStringAsync();
+
+                MsStatusText.Foreground = response.IsSuccessStatusCode
+                    ? System.Windows.Media.Brushes.Green
+                    : System.Windows.Media.Brushes.Firebrick;
+                MsStatusText.Text = AppStrings.Get("AI_MsTestResult",
+                    (int)response.StatusCode, response.ReasonPhrase ?? "",
+                    body.Length > 200 ? body[..200] + "..." : body);
+            }
+            catch (Exception ex)
+            {
+                MsStatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+                MsStatusText.Text = ex.Message;
+            }
+            finally
+            {
+                MsTestButton.IsEnabled = true;
+            }
+        }
+
+        private void OnMsSignOutClick(object sender, RoutedEventArgs e)
+        {
+            EntraAuthService.SignOut();
+            ShowMicrosoftSession();
+        }
+
+        private void OnClaudeApiKeyGuideClick(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://platform.claude.com/settings/keys",
+                UseShellExecute = true
+            });
+        }
 
         private void OnOpenRouterApiKeyGuideClick(object sender, RoutedEventArgs e)
         {

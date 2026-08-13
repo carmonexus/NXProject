@@ -74,6 +74,12 @@
                         <TextBlock Text="Nexus XData Tecnologia Ltda"
                                    Margin="0,2,0,10"/>
 
+                        <TextBlock Text="{DynamicResource About_GitHubHeader}"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Margin="0,2,0,10">
+                            <Hyperlink Click="OnNxStoreClick">https://github.com/nexusxdata/NXProject</Hyperlink>
+                        </TextBlock>
+
                         <TextBlock Text="{DynamicResource About_LicenseHeader}"
                                    FontWeight="SemiBold"/>
                         <TextBlock Text="{DynamicResource About_LicenseText}"

@@ -657,6 +657,31 @@ namespace NXProject.ViewModels
         /// laranja) e para as quais existe uma sprint cujo intervalo contém o
         /// fim da tarefa. Não altera nada — apenas propõe.
         /// </summary>
+        /// <summary>
+        /// Mesmo algoritmo do botão "Corrigir Sprints" (bandeirinha): resolve a sprint REAL
+        /// (janela nome+período do DevOps) para uma data de referência. 1º a sprint cuja janela
+        /// contém a data (menor janela em empate); 2º a última que começa em/antes da data;
+        /// 3º a primeira. Retorna null se o projeto não tem sprints reais.
+        /// </summary>
+        public Sprint? ResolveSprintByDate(DateTime reference)
+        {
+            var refDate = reference.Date;
+            if (Project.Sprints.Count == 0) return null;
+
+            var target = Project.Sprints
+                .Where(s => s.Start.Date <= refDate && refDate <= s.End.Date)
+                .OrderBy(s => (s.End - s.Start).Duration())
+                .FirstOrDefault();
+
+            target ??= Project.Sprints
+                .Where(s => s.Start.Date <= refDate)
+                .OrderByDescending(s => s.Start.Date)
+                .FirstOrDefault()
+                ?? Project.Sprints.OrderBy(s => s.Start.Date).FirstOrDefault();
+
+            return target;
+        }
+
         public System.Collections.Generic.List<SprintPeriodFix> GetOutOfPeriodSprintFixes()
         {
             var fixes = new System.Collections.Generic.List<SprintPeriodFix>();
@@ -677,26 +702,7 @@ namespace NXProject.ViewModels
                     vm.Model.Start, vm.Model.Finish, vm.Model.PercentComplete).Date;
 
 
-                // 1º) Sprint cujo período contém a referência → remove o destaque.
-                // Em empate, a de menor janela.
-                var target = Project.Sprints
-                    .Where(s => s.Start.Date <= reference && reference <= s.End.Date)
-                    .OrderBy(s => (s.End - s.Start).Duration())
-                    .FirstOrDefault();
-
-                // 2º) Referência fora de qualquer janela: última sprint que começa
-                // em/antes da referência (mais próxima e ANTES). Continua destacada.
-                if (target == null)
-                {
-                    target = Project.Sprints
-                        .Where(s => s.Start.Date <= reference)
-                        .OrderByDescending(s => s.Start.Date)
-                        .FirstOrDefault()
-                        ?? Project.Sprints
-                            .OrderBy(s => s.Start.Date)
-                            .FirstOrDefault();
-                }
-
+                var target = ResolveSprintByDate(reference);
                 if (target == null) continue;
                 if (string.Equals(target.Path, vm.Model.TfsIterationPath, StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -992,35 +998,38 @@ namespace NXProject.ViewModels
             };
             if (dlg.ShowDialog() == true)
             {
-                try
-                {
-                    var project = XmlProjectService.Load(dlg.FileName);
-
-                    // Calendário: usa o embutido no cronograma (se houver) ou volta ao Geral da máquina.
-                    if (project.Calendar != null)
-                        ProjectCalendarService.SetCurrent(project.Calendar);
-                    else
-                        ProjectCalendarService.Load(_sprintSettingsStorageKey);
-
-                    foreach (var root in project.Tasks)
-                        root.RecalcSummary();
-                    SyncOriginalHoursWhenZeroPercent(project.Tasks);
-                    Project = project;
-                    ApplyProjectSprintSettingsToViewModel(project);
-                    RecalcIdCounters();
-                    RebuildFlatTasks();
-                    ApplyVirtualPredecessorsToAll();
-                    RecalculateProjectPercent();
-                    var opts = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
-                    if (opts.AutoLoadBaseline && project.BaselineActive)
-                        BaselineService.Load(dlg.FileName, FlatTasks.Select(t => t.Model));
-                    StatusMessage = $"Projeto aberto: {dlg.FileName}";
-                }
+                try { LoadProjectFromPath(dlg.FileName); }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Erro ao abrir projeto:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
+        }
+
+        /// <summary>Carrega um cronograma de um arquivo no VM atual (mesmo fluxo do Abrir).
+        /// Público para o chat de IA abrir o cronograma sugerido numa janela nova.</summary>
+        public void LoadProjectFromPath(string fileName)
+        {
+            var project = XmlProjectService.Load(fileName);
+
+            if (project.Calendar != null)
+                ProjectCalendarService.SetCurrent(project.Calendar);
+            else
+                ProjectCalendarService.Load(_sprintSettingsStorageKey);
+
+            foreach (var root in project.Tasks)
+                root.RecalcSummary();
+            SyncOriginalHoursWhenZeroPercent(project.Tasks);
+            Project = project;
+            ApplyProjectSprintSettingsToViewModel(project);
+            RecalcIdCounters();
+            RebuildFlatTasks();
+            ApplyVirtualPredecessorsToAll();
+            RecalculateProjectPercent();
+            var opts = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
+            if (opts.AutoLoadBaseline && project.BaselineActive)
+                BaselineService.Load(fileName, FlatTasks.Select(t => t.Model));
+            StatusMessage = $"Projeto aberto: {fileName}";
         }
 
         [RelayCommand]
