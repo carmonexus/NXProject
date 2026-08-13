@@ -2076,6 +2076,7 @@
     <sys:String x:Key="Cfg_TaskPrioMin">Prioridade mínima</sys:String>
     <sys:String x:Key="Cfg_TaskPrioMax">Prioridade máxima</sys:String>
     <sys:String x:Key="Menu_Ai_LocalManage">Gerenciar IA Local...</sys:String>
+    <sys:String x:Key="Menu_Ai_Chat">Chat de IA (análise do cronograma)...</sys:String>
     <sys:String x:Key="Menu_Help_InstallLocalAi">Instalar IA Local (LLaMA)...</sys:String>
     <sys:String x:Key="LocalAI_Title">IA Local (LLaMA)</sys:String>
     <sys:String x:Key="LocalAI_Subtitle">Roda a IA na sua máquina, sem nuvem: os recursos (biblioteca nativa + modelo GGUF, ~2 GB) ficam em uma pasta escolhida por você — nada é instalado no sistema. Se a rede da empresa bloquear o download, use a instalação manual abaixo e depois clique em Validar instalação.</sys:String>

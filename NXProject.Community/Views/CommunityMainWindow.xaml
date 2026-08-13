@@ -105,6 +105,7 @@
             <MenuItem Header="{DynamicResource Menu_Ai}">
                 <MenuItem Header="{DynamicResource Menu_Ai_Assistant}" Click="OnAiAssistantClick"/>
                 <MenuItem Header="{DynamicResource Menu_Ai_LocalManage}" Click="OnLocalAiManageClick"/>
+                <MenuItem Header="{DynamicResource Menu_Ai_Chat}" Click="OnAiChatClick"/>
             </MenuItem>
             <MenuItem Header="{DynamicResource Menu_Help}">
                 <MenuItem Header="{DynamicResource Menu_Help_Features}" Click="OnFeaturesHelpClick"/>

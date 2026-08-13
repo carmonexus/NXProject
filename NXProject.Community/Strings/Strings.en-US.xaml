@@ -2078,6 +2078,7 @@
     <sys:String x:Key="Cfg_TaskPrioMin">Minimum priority</sys:String>
     <sys:String x:Key="Cfg_TaskPrioMax">Maximum priority</sys:String>
     <sys:String x:Key="Menu_Ai_LocalManage">Manage Local AI...</sys:String>
+    <sys:String x:Key="Menu_Ai_Chat">AI Chat (schedule analysis)...</sys:String>
     <sys:String x:Key="Menu_Help_InstallLocalAi">Install Local AI (LLaMA)...</sys:String>
     <sys:String x:Key="LocalAI_Title">Local AI (LLaMA)</sys:String>
     <sys:String x:Key="LocalAI_Subtitle">Runs the AI on your machine, no cloud: the resources (native library + GGUF model, ~2 GB) live in a folder you choose — nothing is installed on the system. If the corporate network blocks the download, use the manual installation below and then click Validate installation.</sys:String>
