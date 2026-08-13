@@ -40,6 +40,7 @@ internal static class Program
         ("Import TFS: ordem gravada no cronograma e a ordem recebida do DevOps", ImportedOrderMatchesReceivedOrder),
         ("Import TFS: item sem StackRank recebe rank calculado na posicao recebida", ImportFillsMissingBacklogRank),
         ("Sync TFS: reordenacao do backlog no DevOps gera aviso no relatorio", SyncWarnsWhenBacklogOrderIsRewritten),
+        ("Sync TFS: ordem grava em StackRank (Agile) ou BacklogPriority (Scrum)", SyncWritesRankOnTheProcessField),
         ("Cronograma: Feature e Story preservam ordem do DevOps independente da prioridade", RebuildPreservesDevOpsHierarchyOrderIgnoringPriority),
         ("Cronograma: Task ordena por prioridade e desempata pela ordem do DevOps", RebuildOrdersTasksByPriorityThenDevOpsRank),
         ("Cronograma: botao marco cria Marco-Devops irmao para selecao DevOps", AddMilestoneCreatesDevOpsSiblingForDevOpsSelection),
@@ -1333,6 +1334,37 @@ internal static class Program
         TfsImportService.FillMissingBacklogRanks(new System.Collections.ObjectModel.ObservableCollection<ProjectTask> { story });
         if (!(a.TfsStackRank < b.TfsStackRank))
             throw new InvalidOperationException("Grupo sem nenhum rank deve receber escala crescente na ordem recebida.");
+    }
+
+    // A ordem tem que ser gravada no campo que o PROCESSO usa: Agile/CMMI = StackRank,
+    // Scrum = BacklogPriority. Gravar campo inexistente faz o PATCH falhar.
+    private static void SyncWritesRankOnTheProcessField()
+    {
+        static System.Text.Json.JsonElement Fields(string json) =>
+            System.Text.Json.JsonDocument.Parse(json).RootElement;
+
+        var agile = TfsImportService.BacklogRankFieldsToWrite(
+            Fields("""{"Microsoft.VSTS.Common.StackRank": 1000, "System.Title": "x"}"""));
+        AssertOrderEquals("Microsoft.VSTS.Common.StackRank", string.Join(",", agile),
+            "Work item com StackRank deve gravar em StackRank.");
+
+        var scrum = TfsImportService.BacklogRankFieldsToWrite(
+            Fields("""{"Microsoft.VSTS.Common.BacklogPriority": 1000, "System.Title": "x"}"""));
+        AssertOrderEquals("Microsoft.VSTS.Common.BacklogPriority", string.Join(",", scrum),
+            "Work item so com BacklogPriority (Scrum) deve gravar em BacklogPriority.");
+
+        var ambos = TfsImportService.BacklogRankFieldsToWrite(
+            Fields("""{"Microsoft.VSTS.Common.StackRank": 1, "Microsoft.VSTS.Common.BacklogPriority": 2}"""));
+        AssertOrderEquals("Microsoft.VSTS.Common.StackRank,Microsoft.VSTS.Common.BacklogPriority",
+            string.Join(",", ambos), "Com os dois campos, a ordem vai para ambos.");
+
+        var nenhum = TfsImportService.BacklogRankFieldsToWrite(Fields("""{"System.Title": "x"}"""));
+        AssertOrderEquals("Microsoft.VSTS.Common.StackRank", string.Join(",", nenhum),
+            "Sem nenhum campo de ordem, usa StackRank como padrao.");
+
+        var criacao = TfsImportService.BacklogRankFieldsToWrite(null);
+        AssertOrderEquals("Microsoft.VSTS.Common.StackRank", string.Join(",", criacao),
+            "Na criacao (sem campos para inspecionar) usa StackRank.");
     }
 
     // O Sync avisa quando vai REESCREVER a posição do item no backlog do DevOps.

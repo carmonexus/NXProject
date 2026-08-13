@@ -982,7 +982,10 @@ namespace NXProject.Services
                             var currentRank = GetBacklogRank(wi.Fields);
                             if (currentRank == null || Math.Abs(currentRank.Value - task.TfsStackRank.Value) > 0.0001)
                             {
-                                ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.StackRank", task.TfsStackRank.Value));
+                                // Agile/CMMI ordenam por StackRank; Scrum, por BacklogPriority —
+                                // grava nos campos que o work item tem, senao a ordem nao muda no board.
+                                foreach (var campo in BacklogRankFieldsToWrite(wi.Fields))
+                                    ops.Add(PatchAdd($"/fields/{campo}", task.TfsStackRank.Value));
                                 changes.Add("ordem");
                             }
                         }
@@ -2144,7 +2147,10 @@ namespace NXProject.Services
                     ops.Add(PatchAdd("/fields/System.State", task.TfsState.Trim()));
 
                 if (task.TfsStackRank.HasValue)
-                    ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.StackRank", task.TfsStackRank.Value));
+                    // Criacao: ainda nao ha campos do work item para inspecionar — StackRank
+                    // (o Sync seguinte ajusta pelo campo real do processo, se for Scrum).
+                    foreach (var campo in BacklogRankFieldsToWrite(null))
+                        ops.Add(PatchAdd($"/fields/{campo}", task.TfsStackRank.Value));
 
                 var desiredHours = GetSyncHours(task);
                 if (hoursRef != null && desiredHours.HasValue && hoursRef != originalHoursRef)
@@ -5624,9 +5630,29 @@ namespace NXProject.Services
             };
         }
 
+        private const string StackRankField = "Microsoft.VSTS.Common.StackRank";
+        private const string BacklogPriorityField = "Microsoft.VSTS.Common.BacklogPriority";
+
         private static double? GetBacklogRank(JsonElement fields) =>
-            GetDoubleField(fields, "Microsoft.VSTS.Common.StackRank")
-            ?? GetDoubleField(fields, "Microsoft.VSTS.Common.BacklogPriority");
+            GetDoubleField(fields, StackRankField)
+            ?? GetDoubleField(fields, BacklogPriorityField);
+
+        /// <summary>
+        /// Campos de ordem do backlog a gravar: Agile/CMMI ordenam por StackRank; Scrum, por
+        /// BacklogPriority. Grava nos campos que o work item REALMENTE tem (gravar campo
+        /// inexistente no processo faz o PATCH falhar); sem nenhum dos dois — ou na criação,
+        /// quando ainda não há campos —, usa StackRank.
+        /// </summary>
+        public static IReadOnlyList<string> BacklogRankFieldsToWrite(JsonElement? fields)
+        {
+            if (fields is not { } f || f.ValueKind != JsonValueKind.Object)
+                return new[] { StackRankField };
+
+            var campos = new List<string>(2);
+            if (f.TryGetProperty(StackRankField, out _)) campos.Add(StackRankField);
+            if (f.TryGetProperty(BacklogPriorityField, out _)) campos.Add(BacklogPriorityField);
+            return campos.Count > 0 ? campos : new[] { StackRankField };
+        }
 
         private static string GetIdentityName(JsonElement fields, string refName)
         {
