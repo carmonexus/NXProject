@@ -29,6 +29,8 @@ namespace NXProject.Services
             public string EncryptedApiKey { get; set; } = string.Empty;
             public string Endpoint { get; set; } = string.Empty;
             public string Model { get; set; } = string.Empty;
+            public string CliWindowsCommand { get; set; } = string.Empty;
+            public string CliWslCommand { get; set; } = string.Empty;
             public string LoginUrl { get; set; } = string.Empty;
             public int SessionExpirationHours { get; set; } = 24;
             public int TimeoutSeconds { get; set; } = 120;
@@ -406,6 +408,8 @@ namespace NXProject.Services
                     EncryptedApiKey = Encrypt(SanitizeSecret(p.ApiKey)),
                     Endpoint = p.Endpoint?.Trim() ?? string.Empty,
                     Model = p.Model?.Trim() ?? string.Empty,
+                    CliWindowsCommand = p.CliWindowsCommand?.Trim() ?? string.Empty,
+                    CliWslCommand = p.CliWslCommand?.Trim() ?? string.Empty,
                     LoginUrl = p.LoginUrl?.Trim() ?? string.Empty,
                     SessionExpirationHours = p.SessionExpirationHours <= 0 ? 24 : p.SessionExpirationHours,
                     TimeoutSeconds = p.TimeoutSeconds <= 0 ? 120 : p.TimeoutSeconds
@@ -443,6 +447,8 @@ namespace NXProject.Services
                     ApiKey = Decrypt(p.EncryptedApiKey),
                     Endpoint = p.Endpoint ?? string.Empty,
                     Model = p.Model ?? string.Empty,
+                    CliWindowsCommand = p.CliWindowsCommand ?? string.Empty,
+                    CliWslCommand = p.CliWslCommand ?? string.Empty,
                     LoginUrl = p.LoginUrl ?? string.Empty,
                     SessionExpirationHours = p.SessionExpirationHours <= 0 ? 24 : p.SessionExpirationHours,
                     TimeoutSeconds = p.TimeoutSeconds <= 0 ? 120 : p.TimeoutSeconds

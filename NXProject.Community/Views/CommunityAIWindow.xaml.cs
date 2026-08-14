@@ -796,7 +796,11 @@ namespace NXProject.Views
         {
             if (_loadingCliTabs) return;
             var windows = (location.SelectedItem as ComboBoxItem)?.Tag as string == "win";
-            command.Text = CodexCliService.BuildCommand(provider, windows);
+            // Restaura o comando guardado para ESTE local (Windows/WSL) em vez de recriar o
+            // padrão e apagar o que já funcionava. Só usa o padrão na 1ª vez.
+            var prof = _workspace.GetOrCreate(provider);
+            var saved = windows ? prof.CliWindowsCommand : prof.CliWslCommand;
+            command.Text = !string.IsNullOrWhiteSpace(saved) ? saved : CodexCliService.BuildCommand(provider, windows);
             if (!windows)
             {
                 status.Foreground = System.Windows.Media.Brushes.DimGray;
@@ -827,6 +831,11 @@ namespace NXProject.Views
         {
             var profile = _workspace.GetOrCreate(provider);
             profile.Endpoint = command.Text?.Trim() ?? string.Empty;
+            // Guarda tambem SEPARADAMENTE por local (Windows/WSL): a combo so aponta o ativo.
+            if (CodexCliService.IsWindowsCommand(profile.Endpoint))
+                profile.CliWindowsCommand = profile.Endpoint;
+            else
+                profile.CliWslCommand = profile.Endpoint;
             profile.Model = string.Empty;
             profile.ApiKey = string.Empty;
             profile.AuthMode = AIAuthMode.ApiKey;

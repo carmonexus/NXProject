@@ -28,6 +28,10 @@ namespace NXProject.Views
         private const string StorageKey = "NXProject.Community";
         private AIWorkspaceSettings? _aiWs;
         private bool _loadingCli;
+        // Lembra o comando por (provedor, Windows/WSL) para a troca da combo NÃO apagar o
+        // comando que funciona (ex.: o do WSL) ao alternar de local.
+        private readonly System.Collections.Generic.Dictionary<string, string> _cliMem = new();
+        private static string MemKey(AIProvider p, bool win) => $"{p}|{(win ? "win" : "wsl")}";
 
         public LocalAIManagerWindow(bool autoInstall = false)
         {
@@ -113,11 +117,22 @@ namespace NXProject.Views
         {
             var profile = _aiWs!.GetOrCreate(provider);
             _loadingCli = true;
-            command.Text = string.IsNullOrWhiteSpace(profile.Endpoint)
+
+            // Ativo = Endpoint (o que está valendo). Windows e WSL guardados SEPARADAMENTE;
+            // se ainda não houver os campos separados, migra do ativo/gera o padrão.
+            var active = string.IsNullOrWhiteSpace(profile.Endpoint)
                 ? CodexCliService.GetDefaultCommand(provider) : profile.Endpoint;
-            var wantWindows = CodexCliService.IsWindowsCommand(command.Text);
+            var activeWin = CodexCliService.IsWindowsCommand(active);
+            var winCmd = !string.IsNullOrWhiteSpace(profile.CliWindowsCommand) ? profile.CliWindowsCommand
+                         : (activeWin ? active : CodexCliService.BuildCommand(provider, true));
+            var wslCmd = !string.IsNullOrWhiteSpace(profile.CliWslCommand) ? profile.CliWslCommand
+                         : (!activeWin ? active : CodexCliService.BuildCommand(provider, false));
+            _cliMem[MemKey(provider, true)] = winCmd;
+            _cliMem[MemKey(provider, false)] = wslCmd;
+
+            command.Text = active;
             foreach (var item in location.Items.OfType<ComboBoxItem>())
-                if ((item.Tag as string == "win") == wantWindows) { location.SelectedItem = item; break; }
+                if ((item.Tag as string == "win") == activeWin) { location.SelectedItem = item; break; }
             _loadingCli = false;
             status.Text = string.Empty;
         }
@@ -131,7 +146,11 @@ namespace NXProject.Views
         {
             if (_loadingCli) return;
             var windows = (location.SelectedItem as ComboBoxItem)?.Tag as string == "win";
-            command.Text = CodexCliService.BuildCommand(provider, windows); // dispara auto-save via TextChanged
+            // Restaura o comando que já funcionava para ESTE local (se houver) em vez de
+            // regenerar o padrão e apagar o que o usuário tinha. Só usa o padrão na 1ª vez.
+            command.Text = _cliMem.TryGetValue(MemKey(provider, windows), out var saved) && !string.IsNullOrWhiteSpace(saved)
+                ? saved
+                : CodexCliService.BuildCommand(provider, windows); // dispara auto-save via TextChanged
             if (!windows)
             {
                 status.Foreground = Brushes.DimGray;
@@ -158,15 +177,20 @@ namespace NXProject.Views
         }
 
         private void OnCodexCommandChanged(object sender, TextChangedEventArgs e)
-            => SaveCli(AIProvider.CodexCli, CodexCommandBox);
+            => SaveCli(AIProvider.CodexCli, CodexCommandBox, CodexLocationCombo);
         private void OnClaudeCommandChanged(object sender, TextChangedEventArgs e)
-            => SaveCli(AIProvider.ClaudeCli, ClaudeCommandBox);
+            => SaveCli(AIProvider.ClaudeCli, ClaudeCommandBox, ClaudeLocationCombo);
 
-        private void SaveCli(AIProvider provider, TextBox command)
+        private void SaveCli(AIProvider provider, TextBox command, ComboBox location)
         {
             if (_loadingCli || _aiWs == null) return;
+            // Guarda o comando SEPARADAMENTE por local (Windows/WSL) e marca o ativo (Endpoint).
+            var win = (location.SelectedItem as ComboBoxItem)?.Tag as string == "win";
+            var txt = command.Text?.Trim() ?? string.Empty;
+            _cliMem[MemKey(provider, win)] = txt;
             var profile = _aiWs.GetOrCreate(provider);
-            profile.Endpoint = command.Text?.Trim() ?? string.Empty;
+            if (win) profile.CliWindowsCommand = txt; else profile.CliWslCommand = txt;
+            profile.Endpoint = txt;   // ativo = o que a combo aponta
             profile.Model = string.Empty;
             profile.ApiKey = string.Empty;
             profile.AuthMode = AIAuthMode.ApiKey;

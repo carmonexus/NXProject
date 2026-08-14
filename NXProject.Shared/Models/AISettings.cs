@@ -79,6 +79,10 @@ namespace NXProject.Models
         public string ApiKey { get; set; } = string.Empty;
         public string Endpoint { get; set; } = string.Empty;
         public string Model { get; set; } = string.Empty;
+        /// <summary>Para CLI local (Codex/Claude Code): comando guardado SEPARADAMENTE por local.
+        /// A combo Windows/WSL só escolhe qual está valendo (vira o Endpoint ativo).</summary>
+        public string CliWindowsCommand { get; set; } = string.Empty;
+        public string CliWslCommand { get; set; } = string.Empty;
         /// <summary>URL do site para login no navegador (distinta do endpoint da API).</summary>
         public string LoginUrl { get; set; } = string.Empty;
         /// <summary>Horas ate a sessao do navegador expirar e exigir novo login.</summary>
