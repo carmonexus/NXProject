@@ -169,9 +169,30 @@
                     <Button x:Name="CodexOpenFolderBtn" Content="{DynamicResource LocalAI_CliOpenFolder}" Width="130" Height="30"
                             Margin="8,0,0,0" Click="OnOpenCliFolderClick"/>
                 </StackPanel>
+
+                <!-- Configuração (igual ao Assistente): Windows/WSL + comando + testar. Auto-salva. -->
+                <TextBlock Text="{DynamicResource LocalAI_CliConfigHead}" FontWeight="SemiBold" FontSize="12"
+                           Foreground="#2B579A" Margin="0,14,0,4"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{DynamicResource LocalAI_CliLocation}" VerticalAlignment="Center" FontSize="12"/>
+                    <ComboBox x:Name="CodexLocationCombo" Width="150" Height="26" Margin="8,0,0,0"
+                              SelectionChanged="OnCodexLocationChanged">
+                        <ComboBoxItem Content="Windows" Tag="win"/>
+                        <ComboBoxItem Content="WSL (Linux)" Tag="wsl"/>
+                    </ComboBox>
+                </StackPanel>
+                <TextBox x:Name="CodexCommandBox" Height="26" Margin="0,6,0,0" Padding="6,3"
+                         FontFamily="Consolas" TextChanged="OnCodexCommandChanged"/>
+                <TextBlock x:Name="CodexLocationStatus" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button x:Name="CodexTestButton" Content="{DynamicResource LocalAI_CliTest}" Width="150" Height="28"
+                            Click="OnCodexTestClick"/>
+                </StackPanel>
+                <TextBlock x:Name="CodexTestResult" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
                 <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1" CornerRadius="4"
                         Padding="8,6" Margin="0,12,0,0">
-                    <TextBlock Text="{DynamicResource LocalAI_CliNote}" FontSize="11" Foreground="#5A4A1E" TextWrapping="Wrap"/>
+                    <TextBlock Text="{DynamicResource LocalAI_CliNote2}" FontSize="11" Foreground="#5A4A1E" TextWrapping="Wrap"/>
                 </Border>
             </StackPanel>
         </TabItem>
@@ -188,9 +209,30 @@
                     <Button x:Name="ClaudeOpenFolderBtn" Content="{DynamicResource LocalAI_CliOpenFolder}" Width="130" Height="30"
                             Margin="8,0,0,0" Click="OnOpenCliFolderClick"/>
                 </StackPanel>
+
+                <!-- Configuração (igual ao Assistente): Windows/WSL + comando + testar. Auto-salva. -->
+                <TextBlock Text="{DynamicResource LocalAI_CliConfigHead}" FontWeight="SemiBold" FontSize="12"
+                           Foreground="#2B579A" Margin="0,14,0,4"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{DynamicResource LocalAI_CliLocation}" VerticalAlignment="Center" FontSize="12"/>
+                    <ComboBox x:Name="ClaudeLocationCombo" Width="150" Height="26" Margin="8,0,0,0"
+                              SelectionChanged="OnClaudeLocationChanged">
+                        <ComboBoxItem Content="Windows" Tag="win"/>
+                        <ComboBoxItem Content="WSL (Linux)" Tag="wsl"/>
+                    </ComboBox>
+                </StackPanel>
+                <TextBox x:Name="ClaudeCommandBox" Height="26" Margin="0,6,0,0" Padding="6,3"
+                         FontFamily="Consolas" TextChanged="OnClaudeCommandChanged"/>
+                <TextBlock x:Name="ClaudeLocationStatus" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button x:Name="ClaudeTestButton" Content="{DynamicResource LocalAI_CliTest}" Width="150" Height="28"
+                            Click="OnClaudeTestClick"/>
+                </StackPanel>
+                <TextBlock x:Name="ClaudeTestResult" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
                 <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1" CornerRadius="4"
                         Padding="8,6" Margin="0,12,0,0">
-                    <TextBlock Text="{DynamicResource LocalAI_CliNote}" FontSize="11" Foreground="#5A4A1E" TextWrapping="Wrap"/>
+                    <TextBlock Text="{DynamicResource LocalAI_CliNote2}" FontSize="11" Foreground="#5A4A1E" TextWrapping="Wrap"/>
                 </Border>
             </StackPanel>
         </TabItem>

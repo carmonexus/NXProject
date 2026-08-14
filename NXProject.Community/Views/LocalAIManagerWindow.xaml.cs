@@ -1,10 +1,14 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 using Microsoft.Win32;
+using NXProject.Models;
 using NXProject.Community.Services;
 using NXProject.Services;
 
@@ -19,6 +23,11 @@ namespace NXProject.Views
     {
         private CancellationTokenSource? _cts;
         private readonly bool _autoInstall;
+
+        // Config dos CLIs (Codex/Claude) reaproveitada do Assistente, com auto-save.
+        private const string StorageKey = "NXProject.Community";
+        private AIWorkspaceSettings? _aiWs;
+        private bool _loadingCli;
 
         public LocalAIManagerWindow(bool autoInstall = false)
         {
@@ -36,6 +45,7 @@ namespace NXProject.Views
             {
                 RefreshStatus(validateLoad: false);
                 RefreshCliStatus();
+                PopulateCliConfigs();
                 if (_autoInstall) OnDownloadClick(this, new RoutedEventArgs());
             };
             // Fechar durante um download cancela o download primeiro; o segundo clique fecha.
@@ -86,11 +96,148 @@ namespace NXProject.Views
             try
             {
                 System.IO.Directory.CreateDirectory(NXProject.Services.AiCliInstaller.BinDir);
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
-                    NXProject.Services.AiCliInstaller.BinDir) { UseShellExecute = true });
+                Process.Start(new ProcessStartInfo(NXProject.Services.AiCliInstaller.BinDir) { UseShellExecute = true });
             }
             catch { /* abrir pasta é conveniência */ }
         }
+
+        // ── Config Windows/WSL + testar conexão (mesmo do Assistente; auto-salva) ──
+        private void PopulateCliConfigs()
+        {
+            _aiWs = AISettingsStore.LoadWorkspace(StorageKey);
+            PopulateCli(AIProvider.CodexCli, CodexCommandBox, CodexLocationCombo, CodexLocationStatus);
+            PopulateCli(AIProvider.ClaudeCli, ClaudeCommandBox, ClaudeLocationCombo, ClaudeLocationStatus);
+        }
+
+        private void PopulateCli(AIProvider provider, TextBox command, ComboBox location, TextBlock status)
+        {
+            var profile = _aiWs!.GetOrCreate(provider);
+            _loadingCli = true;
+            command.Text = string.IsNullOrWhiteSpace(profile.Endpoint)
+                ? CodexCliService.GetDefaultCommand(provider) : profile.Endpoint;
+            var wantWindows = CodexCliService.IsWindowsCommand(command.Text);
+            foreach (var item in location.Items.OfType<ComboBoxItem>())
+                if ((item.Tag as string == "win") == wantWindows) { location.SelectedItem = item; break; }
+            _loadingCli = false;
+            status.Text = string.Empty;
+        }
+
+        private void OnCodexLocationChanged(object sender, SelectionChangedEventArgs e)
+            => ApplyCliLocation(AIProvider.CodexCli, CodexLocationCombo, CodexCommandBox, CodexLocationStatus);
+        private void OnClaudeLocationChanged(object sender, SelectionChangedEventArgs e)
+            => ApplyCliLocation(AIProvider.ClaudeCli, ClaudeLocationCombo, ClaudeCommandBox, ClaudeLocationStatus);
+
+        private void ApplyCliLocation(AIProvider provider, ComboBox location, TextBox command, TextBlock status)
+        {
+            if (_loadingCli) return;
+            var windows = (location.SelectedItem as ComboBoxItem)?.Tag as string == "win";
+            command.Text = CodexCliService.BuildCommand(provider, windows); // dispara auto-save via TextChanged
+            if (!windows)
+            {
+                status.Foreground = Brushes.DimGray;
+                status.Text = AppStrings.Get("AI_CliWslNote");
+                return;
+            }
+            var cli = CodexCliService.CliName(provider);
+            var path = CodexCliService.FindOnWindowsPath(cli);
+            status.Inlines.Clear();
+            if (path != null)
+            {
+                status.Foreground = Brushes.Green;
+                status.Inlines.Add(new Run(AppStrings.Get("AI_CliFoundAt", path)));
+                return;
+            }
+            status.Foreground = Brushes.DarkOrange;
+            status.Inlines.Add(new Run(AppStrings.Get("AI_CliNotOnPath", cli) + " "));
+            var url = provider == AIProvider.ClaudeCli
+                ? "https://code.claude.com/docs/en/quickstart"
+                : "https://developers.openai.com/codex/cli/";
+            var link = new Hyperlink(new Run(AppStrings.Get("AI_CliDownloadLink"))) { NavigateUri = new Uri(url) };
+            link.Click += (_, _) => OpenExternal(url);
+            status.Inlines.Add(link);
+        }
+
+        private void OnCodexCommandChanged(object sender, TextChangedEventArgs e)
+            => SaveCli(AIProvider.CodexCli, CodexCommandBox);
+        private void OnClaudeCommandChanged(object sender, TextChangedEventArgs e)
+            => SaveCli(AIProvider.ClaudeCli, ClaudeCommandBox);
+
+        private void SaveCli(AIProvider provider, TextBox command)
+        {
+            if (_loadingCli || _aiWs == null) return;
+            var profile = _aiWs.GetOrCreate(provider);
+            profile.Endpoint = command.Text?.Trim() ?? string.Empty;
+            profile.Model = string.Empty;
+            profile.ApiKey = string.Empty;
+            profile.AuthMode = AIAuthMode.ApiKey;
+            if (profile.TimeoutSeconds <= 0)
+                profile.TimeoutSeconds = AIProviderDefaults.GetDefaultTimeoutSeconds(provider);
+            AISettingsStore.SaveWorkspace(_aiWs, StorageKey);
+        }
+
+        private async void OnCodexTestClick(object sender, RoutedEventArgs e)
+            => await CliTest(CodexCommandBox, CodexTestButton, CodexTestResult);
+        private async void OnClaudeTestClick(object sender, RoutedEventArgs e)
+            => await CliTest(ClaudeCommandBox, ClaudeTestButton, ClaudeTestResult);
+
+        private async Task CliTest(TextBox commandBox, Button btn, TextBlock result)
+        {
+            var command = commandBox.Text?.Trim();
+            if (CodexCliService.LooksLikeServerScript(command))
+            {
+                result.Foreground = Brushes.Firebrick;
+                result.Text = AppStrings.Get("AI_CodexServerScript");
+                return;
+            }
+            btn.IsEnabled = false;
+            result.Foreground = Brushes.DimGray;
+            result.Text = AppStrings.Get("AI_CodexTesting");
+            try { await RunCliTest(commandBox, result, command, 120); }
+            finally { btn.IsEnabled = true; }
+        }
+
+        // Testa um comando de CLI local; se nem iniciar, tenta a forma alternativa (nativo <-> WSL).
+        private static async Task RunCliTest(TextBox commandBox, TextBlock result, string? command, int timeoutSeconds)
+        {
+            try
+            {
+                var answer = await CodexCliService.GenerateAsync(
+                    "Responda SEMPRE com uma unica palavra: OK", "Diga OK.", command, timeoutSeconds);
+                result.Foreground = Brushes.Green;
+                result.Text = AppStrings.Get("AI_CodexTestOk", answer.Length > 60 ? answer[..60] + "..." : answer);
+            }
+            catch (NXProject.Services.CliStartException)
+            {
+                var alt = CodexCliService.AlternateCommand(command);
+                if (alt == null)
+                {
+                    result.Foreground = Brushes.Firebrick;
+                    result.Text = AppStrings.Get("AI_CliNotFound", command ?? "");
+                    return;
+                }
+                try
+                {
+                    var answer = await CodexCliService.GenerateAsync(
+                        "Responda SEMPRE com uma unica palavra: OK", "Diga OK.", alt, timeoutSeconds);
+                    commandBox.Text = alt;   // salva o comando que realmente funciona (auto-save)
+                    result.Foreground = Brushes.Green;
+                    result.Text = AppStrings.Get("AI_CliAdjusted", alt, answer.Length > 40 ? answer[..40] + "..." : answer);
+                }
+                catch (Exception ex2)
+                {
+                    result.Foreground = Brushes.Firebrick;
+                    result.Text = AppStrings.Get("AI_CliBothFailed", command ?? "", alt) + "\n" + ex2.Message;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Foreground = Brushes.Firebrick;
+                result.Text = ex.Message;
+            }
+        }
+
+        private static void OpenExternal(string url)
+            => Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
 
         // ── Processamento (CPU/GPU) ──────────────────────────────────────────
         private bool _updatingKindRadios;

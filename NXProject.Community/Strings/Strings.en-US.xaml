@@ -2144,6 +2144,10 @@
     <sys:String x:Key="LocalAI_CliNotInstalled">Not installed (by NX).</sys:String>
     <sys:String x:Key="LocalAI_CliFail">Failed: {0}</sys:String>
     <sys:String x:Key="LocalAI_CliNote">Usage config (default provider, Windows/WSL path, test connection) lives in the AI Assistant. Here you only install/update the binary.</sys:String>
+    <sys:String x:Key="LocalAI_CliNote2">The default AI provider is still chosen in the AI Assistant. Here you install/update the binary and configure Windows/WSL, command and test the connection (saved automatically).</sys:String>
+    <sys:String x:Key="LocalAI_CliConfigHead">Configuration</sys:String>
+    <sys:String x:Key="LocalAI_CliLocation">CLI location:</sys:String>
+    <sys:String x:Key="LocalAI_CliTest">Test connection</sys:String>
     <sys:String x:Key="LocalAI_MaxTokensTip">Cap of TOKENS the Local AI can generate per response (~3/4 of a word per token). A response hitting the cap comes truncated (NX recovers the complete items, but the tail is lost). Higher = fits longer lists, but takes longer if the model rambles. Default 2048; range 256 to 6144 (the model's total context is 8192, shared between prompt and response).</sys:String>
     <sys:String x:Key="LocalAI_DocsLabel">Documentation (LLamaSharp):</sys:String>
     <sys:String x:Key="AI_ProviderSaved">Default provider saved: {0}.</sys:String>
