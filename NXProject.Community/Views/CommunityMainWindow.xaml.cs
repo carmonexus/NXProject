@@ -895,13 +895,9 @@ namespace NXProject.Views
             aiWindow.ShowDialog();
         }
 
-        // IA → Gerenciar IA Local: pasta dos recursos, status e validação.
+        // IA → Gerenciar IA Local: pasta dos recursos, status, download (botão Baixar) e validação.
         private void OnLocalAiManageClick(object sender, RoutedEventArgs e)
             => new LocalAIManagerWindow { Owner = this }.ShowDialog();
-
-        // Ajuda → Instalar IA Local (LLaMA): abre a mesma janela já disparando o download.
-        private void OnInstallLocalAiClick(object sender, RoutedEventArgs e)
-            => new LocalAIManagerWindow(autoInstall: true) { Owner = this }.ShowDialog();
 
         private void OnOpenSelectedTaskInDevOpsClick(object sender, RoutedEventArgs e)
         {

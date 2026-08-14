@@ -114,7 +114,6 @@
                 <MenuItem Header="{DynamicResource Menu_Help_AzureDevOps}" Click="OnAzureDevOpsBacklogHelpClick"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Menu_Help_Store}" Click="OnCheckUpdateClick"/>
-                <MenuItem Header="{DynamicResource Menu_Help_InstallLocalAi}" Click="OnInstallLocalAiClick"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Menu_Help_License}" Click="OnLicenseClick"/>
                 <MenuItem Header="{DynamicResource Menu_Help_About}" Click="OnAboutClick"/>
