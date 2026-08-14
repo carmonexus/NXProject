@@ -127,6 +127,17 @@ namespace NXProject.Views
                          : (activeWin ? active : CodexCliService.BuildCommand(provider, true));
             var wslCmd = !string.IsNullOrWhiteSpace(profile.CliWslCommand) ? profile.CliWslCommand
                          : (!activeWin ? active : CodexCliService.BuildCommand(provider, false));
+
+            // Migra o comando WSL antigo (sem "bash -lic") para o novo padrão e persiste.
+            var upgraded = CodexCliService.UpgradeWslDefault(provider, wslCmd);
+            if (!string.Equals(upgraded, wslCmd, StringComparison.Ordinal))
+            {
+                wslCmd = upgraded;
+                profile.CliWslCommand = wslCmd;
+                if (!activeWin) { active = wslCmd; profile.Endpoint = active; }
+                AISettingsStore.SaveWorkspace(_aiWs, StorageKey);
+            }
+
             _cliMem[MemKey(provider, true)] = winCmd;
             _cliMem[MemKey(provider, false)] = wslCmd;
 

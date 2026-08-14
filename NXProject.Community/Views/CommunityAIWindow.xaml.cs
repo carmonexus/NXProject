@@ -769,6 +769,9 @@ namespace NXProject.Views
             ComboBox location, TextBlock status)
         {
             var profile = _workspace.GetOrCreate(provider);
+            // Migra comando WSL antigo (sem "bash -lic") para o novo padrão com shell de login.
+            profile.CliWslCommand = CodexCliService.UpgradeWslDefault(provider, profile.CliWslCommand);
+            profile.Endpoint = CodexCliService.UpgradeWslDefault(provider, profile.Endpoint);
             command.Text = string.IsNullOrWhiteSpace(profile.Endpoint)
                 ? CodexCliService.GetDefaultCommand(provider)
                 : profile.Endpoint;

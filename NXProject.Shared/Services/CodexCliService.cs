@@ -25,7 +25,7 @@ namespace NXProject.Services
     public static class CodexCliService
     {
         /// <summary>Comando padrão: Codex dentro do WSL (o `.sh` do app-server usa o mesmo PATH).</summary>
-        public const string DefaultCommand = "wsl.exe -- codex exec --skip-git-repo-check -";
+        public const string DefaultCommand = "wsl.exe -- bash -lic \"codex exec --skip-git-repo-check -\"";
 
         /// <summary>Comando padrão do Claude Code local: modo NÃO interativo (-p) lendo o prompt
         /// do stdin. O CLI roda nativo no Windows; no WSL, prefixe com "wsl.exe -- ".</summary>
@@ -48,7 +48,21 @@ namespace NXProject.Services
         {
             var name = CliName(provider);
             var tail = CliTail(provider);
-            return windows ? $"cmd /c {name} {tail}" : $"wsl.exe -- {name} {tail}";
+            // No WSL usa "bash -lic" (login + interativo): carrega ~/.profile e ~/.bashrc, onde o
+            // nvm/npm coloca o PATH do CLI. Sem isso, um "wsl.exe -- codex" nao acha o codex do
+            // Linux (instalado via nvm) e acaba pegando o do Windows via /mnt/c -> "node: not found".
+            return windows ? $"cmd /c {name} {tail}" : $"wsl.exe -- bash -lic \"{name} {tail}\"";
+        }
+
+        /// <summary>Se o comando for o PADRÃO ANTIGO do WSL (sem "bash -lic", que não carregava o
+        /// PATH do nvm), atualiza para o novo padrão com shell de login. Caso contrário, mantém
+        /// (respeita comando customizado do usuário).</summary>
+        public static string UpgradeWslDefault(AIProvider provider, string? command)
+        {
+            var cmd = (command ?? string.Empty).Trim();
+            var oldDefault = $"wsl.exe -- {CliName(provider)} {CliTail(provider)}".Trim();
+            return string.Equals(cmd, oldDefault, StringComparison.OrdinalIgnoreCase)
+                ? BuildCommand(provider, windows: false) : cmd;
         }
 
         /// <summary>O comando roda no Windows (nativo) e não no WSL?</summary>
@@ -161,21 +175,32 @@ namespace NXProject.Services
         {
             var cmd = (command ?? string.Empty).Trim();
             if (cmd.Length == 0) return null;
-            const string wslPrefix = "wsl.exe -- ";
+            const string wslPrefix = "wsl.exe -- bash -lic \"";
             if (cmd.StartsWith("wsl.exe", StringComparison.OrdinalIgnoreCase))
             {
-                // WSL -> nativo no Windows: "wsl.exe -- codex exec -" vira "cmd /c codex exec -"
+                // WSL -> nativo no Windows: extrai o comando do CLI (tira "wsl.exe --" e o
+                // wrapper "bash -lic \"...\"") e roda nativo: "cmd /c codex exec -".
                 var idx = cmd.IndexOf("--", StringComparison.Ordinal);
-                var inner = idx >= 0 ? cmd[(idx + 2)..].Trim() : cmd;
+                var inner = StripBashLogin(idx >= 0 ? cmd[(idx + 2)..].Trim() : cmd);
                 return inner.Length > 0 ? "cmd /c " + inner : null;
             }
             if (cmd.StartsWith("cmd /c", StringComparison.OrdinalIgnoreCase))
             {
-                // Nativo -> WSL: "cmd /c codex exec -" vira "wsl.exe -- codex exec -"
+                // Nativo -> WSL: embrulha no shell de login para carregar o PATH do nvm/npm.
                 var inner = cmd[6..].Trim();
-                return inner.Length > 0 ? wslPrefix + inner : null;
+                return inner.Length > 0 ? wslPrefix + inner + "\"" : null;
             }
-            return wslPrefix + cmd; // fallback
+            return wslPrefix + StripBashLogin(cmd) + "\""; // fallback
+
+            // Extrai X de: bash -lic "X" / bash -lc "X" / bash -ilc "X" (ou devolve o proprio texto).
+            static string StripBashLogin(string s)
+            {
+                s = s.Trim();
+                if (!s.StartsWith("bash ", StringComparison.OrdinalIgnoreCase)) return s;
+                var q1 = s.IndexOf('"');
+                var q2 = s.LastIndexOf('"');
+                return (q1 >= 0 && q2 > q1) ? s[(q1 + 1)..q2].Trim() : s;
+            }
         }
 
         /// <summary>Separa "exe args..." respeitando o executável entre aspas (caminho com espaço).</summary>
