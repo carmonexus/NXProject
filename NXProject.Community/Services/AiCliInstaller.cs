@@ -18,8 +18,12 @@ namespace NXProject.Services;
 public static class AiCliInstaller
 {
     // Codex: release mais recente no GitHub (asset nativo Windows x64).
+    // O nome do asset já mudou no passado; por isso escolhemos de forma tolerante
+    // (o .exe cru é o ideal — nem precisa extrair).
     private const string CodexLatestApi = "https://api.github.com/repos/openai/codex/releases/latest";
-    private const string CodexWinAsset = "codex-x86_64-pc-windows-msvc.zip";
+    private const string CodexWinExe = "codex-x86_64-pc-windows-msvc.exe";        // baixa direto
+    private const string CodexWinExeZip = "codex-x86_64-pc-windows-msvc.exe.zip"; // fallback (extrai)
+    private const string CodexWinZipOld = "codex-x86_64-pc-windows-msvc.zip";     // fallback antigo
 
     // Claude Code: endpoint oficial da Anthropic (mesmo do instalador nativo).
     private const string ClaudeLatestUrl = "https://downloads.claude.ai/claude-code-releases/latest";
@@ -55,36 +59,62 @@ public static class AiCliInstaller
         using var doc = JsonDocument.Parse(json);
         var tag = doc.RootElement.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
 
-        string? url = null;
+        // Mapa nome->url de todos os assets, para escolher de forma tolerante.
+        var byName = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (doc.RootElement.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
             foreach (var a in assets.EnumerateArray())
-                if (string.Equals(a.GetProperty("name").GetString(), CodexWinAsset, StringComparison.OrdinalIgnoreCase))
-                {
-                    url = a.GetProperty("browser_download_url").GetString();
-                    break;
-                }
+            {
+                var n = a.GetProperty("name").GetString();
+                var u = a.GetProperty("browser_download_url").GetString();
+                if (!string.IsNullOrWhiteSpace(n) && !string.IsNullOrWhiteSpace(u)) byName[n!] = u!;
+            }
 
-        if (string.IsNullOrWhiteSpace(url))
-            throw new InvalidOperationException($"Asset '{CodexWinAsset}' não encontrado no release {tag} do Codex.");
+        var destExe = Path.Combine(BinDir, "codex.exe");
 
-        status?.Report($"Codex {tag}: baixando...");
-        var tmpZip = Path.Combine(Path.GetTempPath(), $"codex-{Guid.NewGuid():N}.zip");
-        await DownloadAsync(client, url!, tmpZip);
+        // Seleção POR PADRÃO (não por nome fixo), para sobreviver a mudanças futuras de
+        // nome/extensão. O CLI x64 é sempre "codex-x86_64-pc-windows-msvc.<ext>" — os
+        // sub-executáveis têm palavra extra (codex-app-server-..., codex-command-runner-...),
+        // então a âncora "^codex-x86_64-pc-windows-msvc." isola só o CLI.
+        var cli = byName.Keys
+            .Where(n => System.Text.RegularExpressions.Regex.IsMatch(
+                n, @"^codex-x86_64-pc-windows-msvc\.", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            .ToList();
+        var exeUrl = cli.Where(n => n.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        .Select(n => byName[n]).FirstOrDefault();
+        var zipUrl = cli.Where(n => n.EndsWith(".exe.zip", StringComparison.OrdinalIgnoreCase)
+                                 || n.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                        .Select(n => byName[n]).FirstOrDefault();
 
-        status?.Report("Codex: instalando...");
-        var tmpDir = Path.Combine(Path.GetTempPath(), $"codex-x-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tmpDir);
-        try
+        // 1º) .exe cru (ideal): baixa direto, sem extrair.
+        if (!string.IsNullOrWhiteSpace(exeUrl))
         {
-            ZipFile.ExtractToDirectory(tmpZip, tmpDir, overwriteFiles: true);
-            var exe = Directory.GetFiles(tmpDir, "*.exe", SearchOption.AllDirectories).FirstOrDefault()
-                      ?? throw new InvalidOperationException("O zip do Codex não continha um .exe.");
-            File.Copy(exe, Path.Combine(BinDir, "codex.exe"), overwrite: true);
+            status?.Report($"Codex {tag}: baixando...");
+            await DownloadAsync(client, exeUrl!, destExe);
+            ValidateExe(destExe, "Codex");
         }
-        finally
+        // 2º) fallback: um zip do CLI x64 (.exe.zip ou .zip) -> extrai o exe.
+        else if (!string.IsNullOrWhiteSpace(zipUrl))
         {
-            TryDelete(tmpZip);
-            TryDeleteDir(tmpDir);
+            status?.Report($"Codex {tag}: baixando...");
+            var tmpZip = Path.Combine(Path.GetTempPath(), $"codex-{Guid.NewGuid():N}.zip");
+            var tmpDir = Path.Combine(Path.GetTempPath(), $"codex-x-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tmpDir);
+            try
+            {
+                await DownloadAsync(client, zipUrl!, tmpZip);
+                status?.Report("Codex: instalando...");
+                ZipFile.ExtractToDirectory(tmpZip, tmpDir, overwriteFiles: true);
+                var exe = Directory.GetFiles(tmpDir, "*.exe", SearchOption.AllDirectories).FirstOrDefault()
+                          ?? throw new InvalidOperationException("O zip do Codex não continha um .exe.");
+                File.Copy(exe, destExe, overwrite: true);
+            }
+            finally { TryDelete(tmpZip); TryDeleteDir(tmpDir); }
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"Não encontrei o binário Windows x64 do Codex no release {tag} " +
+                $"(procurei '{CodexWinExe}' e '{CodexWinExeZip}').");
         }
 
         EnsureBinOnUserPath();
@@ -105,6 +135,7 @@ public static class AiCliInstaller
         status?.Report($"Claude Code {version}: baixando...");
         var dest = Path.Combine(BinDir, "claude.exe");
         await DownloadAsync(client, ClaudeBinaryUrl(version), dest);
+        ValidateExe(dest, "Claude Code");
 
         EnsureBinOnUserPath();
         status?.Report($"Claude Code {version} instalado.");
@@ -130,6 +161,27 @@ public static class AiCliInstaller
         await using var src = await resp.Content.ReadAsStreamAsync();
         await using var file = File.Create(destPath);
         await src.CopyToAsync(file);
+    }
+
+    // Confere que o baixado é mesmo um executável Windows (assinatura "MZ" + tamanho
+    // plausível). Se o endpoint/asset mudar e devolver HTML/404/vazio, falha claro em
+    // vez de deixar um "codex.exe"/"claude.exe" quebrado no PATH.
+    private static void ValidateExe(string path, string cli)
+    {
+        var fi = new FileInfo(path);
+        var ok = fi.Exists && fi.Length > 100_000;
+        if (ok)
+        {
+            using var fs = File.OpenRead(path);
+            ok = fs.ReadByte() == 'M' && fs.ReadByte() == 'Z';
+        }
+        if (!ok)
+        {
+            TryDelete(path);
+            throw new InvalidOperationException(
+                $"O download do {cli} não é um executável válido (o formato de distribuição pode ter mudado). " +
+                "Tente novamente mais tarde ou instale manualmente.");
+        }
     }
 
     private static void TryDelete(string path) { try { if (File.Exists(path)) File.Delete(path); } catch { } }
