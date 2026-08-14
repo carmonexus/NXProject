@@ -91,6 +91,36 @@ public partial class MainWindow : Window
         await RunInstallAsync();
     }
 
+    // Passo 3: instala Codex/Claude Code (Windows) baixando o binário nativo MAIS NOVO.
+    private async void OnStep3Click(object sender, RoutedEventArgs e)
+    {
+        if (CodexCheck.IsChecked != true && ClaudeCheck.IsChecked != true)
+        {
+            Step3StatusText.Text = App.Str("Setup_Step3PickOne");
+            return;
+        }
+
+        Step3Button.IsEnabled = false;
+        var status = new Progress<string>(s => Step3StatusText.Text = s);
+        try
+        {
+            if (CodexCheck.IsChecked == true)
+                await AiCliInstaller.InstallCodexAsync(status);
+            if (ClaudeCheck.IsChecked == true)
+                await AiCliInstaller.InstallClaudeCodeAsync(status);
+
+            Step3StatusText.Text = App.Str("Setup_Step3Done", AiCliInstaller.BinDir);
+        }
+        catch (Exception ex)
+        {
+            Step3StatusText.Text = App.Str("Setup_Step3Fail", ex.Message);
+        }
+        finally
+        {
+            Step3Button.IsEnabled = true;
+        }
+    }
+
     private async void OnRetryClick(object sender, RoutedEventArgs e)
     {
         ErrorText.Visibility = Visibility.Collapsed;
