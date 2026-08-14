@@ -105,11 +105,11 @@ public partial class MainWindow : Window
         try
         {
             if (CodexCheck.IsChecked == true)
-                await AiCliInstaller.InstallCodexAsync(status);
+                await NXProject.Services.AiCliInstaller.InstallCodexAsync(status);
             if (ClaudeCheck.IsChecked == true)
-                await AiCliInstaller.InstallClaudeCodeAsync(status);
+                await NXProject.Services.AiCliInstaller.InstallClaudeCodeAsync(status);
 
-            Step3StatusText.Text = App.Str("Setup_Step3Done", AiCliInstaller.BinDir);
+            Step3StatusText.Text = App.Str("Setup_Step3Done", NXProject.Services.AiCliInstaller.BinDir);
         }
         catch (Exception ex)
         {

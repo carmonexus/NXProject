@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace NXProject.Setup;
+namespace NXProject.Services;
 
 /// <summary>
 /// Instala os CLIs de IA (Codex e Claude Code) para WINDOWS baixando SEMPRE o binário
@@ -28,6 +28,13 @@ public static class AiCliInstaller
 
     public static string BinDir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NXProject", "bin");
+
+    /// <summary>Caminho do codex.exe instalado pelo NX (BinDir), ou null se não houver.</summary>
+    public static string? CodexPath => FileIfExists(Path.Combine(BinDir, "codex.exe"));
+    /// <summary>Caminho do claude.exe instalado pelo NX (BinDir), ou null se não houver.</summary>
+    public static string? ClaudePath => FileIfExists(Path.Combine(BinDir, "claude.exe"));
+
+    private static string? FileIfExists(string p) => File.Exists(p) ? p : null;
 
     private static HttpClient NewClient()
     {

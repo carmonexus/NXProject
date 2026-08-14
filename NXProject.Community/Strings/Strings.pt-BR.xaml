@@ -2132,6 +2132,16 @@
     <sys:String x:Key="LocalAI_TokensMax1">Máximo 1 (respostas longas)</sys:String>
     <sys:String x:Key="LocalAI_TokensMax2">Máximo 2 (respostas muito longas)</sys:String>
     <sys:String x:Key="LocalAI_TokensCustom">Customizado…</sys:String>
+    <sys:String x:Key="LocalAI_TabLlama">LLaMA</sys:String>
+    <sys:String x:Key="LocalAI_TabCodex">Codex (local)</sys:String>
+    <sys:String x:Key="LocalAI_TabClaude">Claude Code (local)</sys:String>
+    <sys:String x:Key="LocalAI_CliDesc">Instala/atualiza o CLI baixando SEMPRE o binário nativo mais novo (sem Node.js, sem scripts), em %LOCALAPPDATA%\NXProject\bin, e adiciona ao PATH do usuário. No WSL a instalação continua manual.</sys:String>
+    <sys:String x:Key="LocalAI_CliInstall">Instalar / atualizar (mais novo)</sys:String>
+    <sys:String x:Key="LocalAI_CliOpenFolder">Abrir pasta</sys:String>
+    <sys:String x:Key="LocalAI_CliInstalledAt">Instalado: {0}</sys:String>
+    <sys:String x:Key="LocalAI_CliNotInstalled">Não instalado (pelo NX).</sys:String>
+    <sys:String x:Key="LocalAI_CliFail">Falha: {0}</sys:String>
+    <sys:String x:Key="LocalAI_CliNote">A configuração de uso (provedor padrão, caminho Windows/WSL, testar conexão) fica no Assistente de IA. Aqui é só instalar/atualizar o binário.</sys:String>
     <sys:String x:Key="LocalAI_MaxTokensTip">Teto de TOKENS que a IA Local pode gerar por resposta (~3/4 de palavra por token). Resposta que bate no teto vem truncada (o NX recupera os itens completos, mas o final se perde). Maior = comporta listas maiores, porém demora mais se o modelo se perder. Padrão 2048; faixa 256 a 6144 (o contexto total do modelo é 8192, dividido entre pergunta e resposta).</sys:String>
     <sys:String x:Key="LocalAI_DocsLabel">Documentação (LLamaSharp):</sys:String>
     <sys:String x:Key="AI_ProviderSaved">Provedor padrão salvo: {0}.</sys:String>

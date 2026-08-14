@@ -20,6 +20,9 @@
     <Compile Include="..\NXProject.Community\Services\UpdateService.cs">
       <Link>Services\UpdateService.cs</Link>
     </Compile>
+    <Compile Include="..\NXProject.Community\Services\AiCliInstaller.cs">
+      <Link>Services\AiCliInstaller.cs</Link>
+    </Compile>
   </ItemGroup>
 
 </Project>

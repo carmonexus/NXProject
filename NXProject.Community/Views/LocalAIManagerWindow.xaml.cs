@@ -35,6 +35,7 @@ namespace NXProject.Views
             Loaded += (_, _) =>
             {
                 RefreshStatus(validateLoad: false);
+                RefreshCliStatus();
                 if (_autoInstall) OnDownloadClick(this, new RoutedEventArgs());
             };
             // Fechar durante um download cancela o download primeiro; o segundo clique fecha.
@@ -47,6 +48,48 @@ namespace NXProject.Views
                     Log(AppStrings.Get("LocalAI_CancelFirst"));
                 }
             };
+        }
+
+        // ── Abas Codex / Claude Code (CLIs de IA para Windows) ───────────────
+        // Instalam SEMPRE o binário nativo mais novo (mesma lógica do Setup), em
+        // %LOCALAPPDATA%\NXProject\bin, e adicionam ao PATH do usuário.
+        private void RefreshCliStatus()
+        {
+            CodexStatusText.Text = NXProject.Services.AiCliInstaller.CodexPath is { } cp
+                ? AppStrings.Get("LocalAI_CliInstalledAt", cp)
+                : AppStrings.Get("LocalAI_CliNotInstalled");
+            ClaudeStatusText.Text = NXProject.Services.AiCliInstaller.ClaudePath is { } clp
+                ? AppStrings.Get("LocalAI_CliInstalledAt", clp)
+                : AppStrings.Get("LocalAI_CliNotInstalled");
+        }
+
+        private async void OnInstallCodexClick(object sender, RoutedEventArgs e)
+        {
+            CodexInstallBtn.IsEnabled = false;
+            var status = new System.Progress<string>(s => CodexStatusText.Text = s);
+            try { await NXProject.Services.AiCliInstaller.InstallCodexAsync(status); }
+            catch (System.Exception ex) { CodexStatusText.Text = AppStrings.Get("LocalAI_CliFail", ex.Message); }
+            finally { CodexInstallBtn.IsEnabled = true; RefreshCliStatus(); }
+        }
+
+        private async void OnInstallClaudeClick(object sender, RoutedEventArgs e)
+        {
+            ClaudeInstallBtn.IsEnabled = false;
+            var status = new System.Progress<string>(s => ClaudeStatusText.Text = s);
+            try { await NXProject.Services.AiCliInstaller.InstallClaudeCodeAsync(status); }
+            catch (System.Exception ex) { ClaudeStatusText.Text = AppStrings.Get("LocalAI_CliFail", ex.Message); }
+            finally { ClaudeInstallBtn.IsEnabled = true; RefreshCliStatus(); }
+        }
+
+        private void OnOpenCliFolderClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(NXProject.Services.AiCliInstaller.BinDir);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    NXProject.Services.AiCliInstaller.BinDir) { UseShellExecute = true });
+            }
+            catch { /* abrir pasta é conveniência */ }
         }
 
         // ── Processamento (CPU/GPU) ──────────────────────────────────────────

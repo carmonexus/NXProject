@@ -11,8 +11,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -20,10 +18,21 @@
         <TextBlock Grid.Row="0" Text="{DynamicResource LocalAI_Title}"
                    FontSize="17" FontWeight="SemiBold" Foreground="#2B579A"/>
         <TextBlock Grid.Row="1" Text="{DynamicResource LocalAI_Subtitle}"
-                   FontSize="11" Foreground="#667" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                   FontSize="11" Foreground="#667" TextWrapping="Wrap" Margin="0,4,0,10"/>
+
+      <TabControl Grid.Row="2">
+        <!-- ══ Aba LLaMA ══ -->
+        <TabItem Header="{DynamicResource LocalAI_TabLlama}">
+         <Grid Margin="0,10,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
         <!-- Pasta dos recursos -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -37,7 +46,7 @@
         </Grid>
 
         <!-- Status da instalação -->
-        <Border Grid.Row="3" Background="#F5F7FA" BorderBrush="#D0D7E0" BorderThickness="1"
+        <Border Grid.Row="1" Background="#F5F7FA" BorderBrush="#D0D7E0" BorderThickness="1"
                 CornerRadius="4" Padding="10,8" Margin="0,10,0,0">
             <StackPanel>
                 <!-- Processamento (backend nativo): CPU ou GPU — muda só o pacote de DLLs
@@ -108,7 +117,7 @@
         </Border>
 
         <!-- Log / instalação manual -->
-        <Grid Grid.Row="4" Margin="0,10,0,0">
+        <Grid Grid.Row="2" Margin="0,10,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -129,7 +138,7 @@
         </Grid>
 
         <!-- Ações -->
-        <Grid Grid.Row="5" Margin="0,12,0,0">
+        <Grid Grid.Row="3" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -142,10 +151,55 @@
                 <Button x:Name="DownloadBtn" Content="{DynamicResource LocalAI_Download}" Width="150" Height="30"
                         Margin="0,0,8,0" Click="OnDownloadClick"/>
                 <Button x:Name="ValidateBtn" Content="{DynamicResource LocalAI_Validate}" Width="140" Height="30"
-                        Margin="0,0,8,0" Click="OnValidateClick"/>
-                <Button x:Name="CloseBtn" Content="{DynamicResource TaskPlan_Close}" Width="90" Height="30"
-                        Click="OnCloseClick"/>
+                        Click="OnValidateClick"/>
             </StackPanel>
         </Grid>
+         </Grid>
+        </TabItem>
+
+        <!-- ══ Aba Codex (local) ══ -->
+        <TabItem Header="{DynamicResource LocalAI_TabCodex}">
+            <StackPanel Margin="12">
+                <TextBlock Text="{DynamicResource LocalAI_CliDesc}" FontSize="12" Foreground="#555"
+                           TextWrapping="Wrap" Margin="0,4,0,10"/>
+                <TextBlock x:Name="CodexStatusText" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="CodexInstallBtn" Content="{DynamicResource LocalAI_CliInstall}" Width="220" Height="30"
+                            Click="OnInstallCodexClick"/>
+                    <Button x:Name="CodexOpenFolderBtn" Content="{DynamicResource LocalAI_CliOpenFolder}" Width="130" Height="30"
+                            Margin="8,0,0,0" Click="OnOpenCliFolderClick"/>
+                </StackPanel>
+                <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1" CornerRadius="4"
+                        Padding="8,6" Margin="0,12,0,0">
+                    <TextBlock Text="{DynamicResource LocalAI_CliNote}" FontSize="11" Foreground="#5A4A1E" TextWrapping="Wrap"/>
+                </Border>
+            </StackPanel>
+        </TabItem>
+
+        <!-- ══ Aba Claude Code (local) ══ -->
+        <TabItem Header="{DynamicResource LocalAI_TabClaude}">
+            <StackPanel Margin="12">
+                <TextBlock Text="{DynamicResource LocalAI_CliDesc}" FontSize="12" Foreground="#555"
+                           TextWrapping="Wrap" Margin="0,4,0,10"/>
+                <TextBlock x:Name="ClaudeStatusText" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="ClaudeInstallBtn" Content="{DynamicResource LocalAI_CliInstall}" Width="220" Height="30"
+                            Click="OnInstallClaudeClick"/>
+                    <Button x:Name="ClaudeOpenFolderBtn" Content="{DynamicResource LocalAI_CliOpenFolder}" Width="130" Height="30"
+                            Margin="8,0,0,0" Click="OnOpenCliFolderClick"/>
+                </StackPanel>
+                <Border Background="#FFF7E8" BorderBrush="#E8D39A" BorderThickness="1" CornerRadius="4"
+                        Padding="8,6" Margin="0,12,0,0">
+                    <TextBlock Text="{DynamicResource LocalAI_CliNote}" FontSize="11" Foreground="#5A4A1E" TextWrapping="Wrap"/>
+                </Border>
+            </StackPanel>
+        </TabItem>
+      </TabControl>
+
+        <!-- Fechar (global) -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="CloseBtn" Content="{DynamicResource TaskPlan_Close}" Width="90" Height="30"
+                    Click="OnCloseClick"/>
+        </StackPanel>
     </Grid>
 </Window>

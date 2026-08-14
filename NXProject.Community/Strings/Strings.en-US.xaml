@@ -2134,6 +2134,16 @@
     <sys:String x:Key="LocalAI_TokensMax1">Maximum 1 (long answers)</sys:String>
     <sys:String x:Key="LocalAI_TokensMax2">Maximum 2 (very long answers)</sys:String>
     <sys:String x:Key="LocalAI_TokensCustom">Custom…</sys:String>
+    <sys:String x:Key="LocalAI_TabLlama">LLaMA</sys:String>
+    <sys:String x:Key="LocalAI_TabCodex">Codex (local)</sys:String>
+    <sys:String x:Key="LocalAI_TabClaude">Claude Code (local)</sys:String>
+    <sys:String x:Key="LocalAI_CliDesc">Installs/updates the CLI by downloading the LATEST native binary (no Node.js, no scripts) into %LOCALAPPDATA%\NXProject\bin, and adds it to the user PATH. On WSL the install stays manual.</sys:String>
+    <sys:String x:Key="LocalAI_CliInstall">Install / update (latest)</sys:String>
+    <sys:String x:Key="LocalAI_CliOpenFolder">Open folder</sys:String>
+    <sys:String x:Key="LocalAI_CliInstalledAt">Installed: {0}</sys:String>
+    <sys:String x:Key="LocalAI_CliNotInstalled">Not installed (by NX).</sys:String>
+    <sys:String x:Key="LocalAI_CliFail">Failed: {0}</sys:String>
+    <sys:String x:Key="LocalAI_CliNote">Usage config (default provider, Windows/WSL path, test connection) lives in the AI Assistant. Here you only install/update the binary.</sys:String>
     <sys:String x:Key="LocalAI_MaxTokensTip">Cap of TOKENS the Local AI can generate per response (~3/4 of a word per token). A response hitting the cap comes truncated (NX recovers the complete items, but the tail is lost). Higher = fits longer lists, but takes longer if the model rambles. Default 2048; range 256 to 6144 (the model's total context is 8192, shared between prompt and response).</sys:String>
     <sys:String x:Key="LocalAI_DocsLabel">Documentation (LLamaSharp):</sys:String>
     <sys:String x:Key="AI_ProviderSaved">Default provider saved: {0}.</sys:String>
