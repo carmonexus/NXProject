@@ -2242,6 +2242,7 @@
     <sys:String x:Key="AIChat_Running">⏳ Executando ({0})...</sys:String>
     <sys:String x:Key="AIChat_Eta">~{0} restante</sys:String>
     <sys:String x:Key="AIChat_NewConversation">Nova conversa</sys:String>
+    <sys:String x:Key="AIChat_RenameConversation">Renomear conversa</sys:String>
     <sys:String x:Key="AIChat_Conversations">CONVERSAS</sys:String>
     <sys:String x:Key="AIChat_UntitledConversation">Nova conversa</sys:String>
     <sys:String x:Key="AIChat_ClearTip">Limpa a conversa atual</sys:String>
@@ -2254,6 +2255,8 @@
     <sys:String x:Key="AIChat_CopyMessage">Copiar esta mensagem</sys:String>
     <sys:String x:Key="AIChat_CopiedConversation">Conversa copiada ({0} mensagens).</sys:String>
     <sys:String x:Key="AIChat_CopyEmpty">Não há conversa para copiar ainda.</sys:String>
+    <sys:String x:Key="AIChat_BacklogOnly">Considerar somente EPIC Backlog</sys:String>
+    <sys:String x:Key="AIChat_BacklogOnlyTip">Envia à IA apenas os EPICs do tipo Backlog (ignora os de Delivery). Ao gerar cronograma, as sugestões ficam sob um EPIC de Backlog.</sys:String>
     <sys:String x:Key="AIChat_MissingStories">Atenção: {0} Story(s) do cronograma NÃO voltaram na proposta da IA. Confira se algo se perdeu:</sys:String>
     <sys:String x:Key="AIChat_MissingStoriesNote">⚠ {0} Story(s) ficaram de fora da proposta — verifique.</sys:String>
     <sys:String x:Key="AIChat_EtaOver">+{0} além do previsto</sys:String>

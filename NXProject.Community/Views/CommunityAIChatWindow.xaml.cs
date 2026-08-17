@@ -95,7 +95,7 @@ namespace NXProject.Views
 
             Loaded += async (_, _) =>
             {
-                _projectContext = _viewModel.BuildFullScheduleContext();
+                RebuildContext();
                 await InitChatWebAsync();
                 if (_conv.History.Count == 0) AddSystemNote(AppStrings.Get("AIChat_Welcome"));
                 RenderConversation();
@@ -140,6 +140,12 @@ namespace NXProject.Views
                 ApplyScheduleButton.Visibility = Visibility.Collapsed;
             UpdateHint();
         }
+
+        // Considerar somente os EPICs de Backlog: refaz o contexto filtrado (ou completo).
+        private void OnBacklogOnlyChanged(object sender, RoutedEventArgs e) => RebuildContext();
+
+        private void RebuildContext()
+            => _projectContext = _viewModel.BuildFullScheduleContext(BacklogOnlyCheck?.IsChecked == true);
 
         private void UpdateHint()
         {
@@ -247,7 +253,11 @@ namespace NXProject.Views
                         + "SOMENTE itens NOVOS (que não existem no contexto) devem vir com \"id\" vazio. "
                         + "Nunca invente id: se não existe no contexto, é novo. "
                         + "No campo \"summary\" descreva O QUE MUDOU vs. o cronograma atual (itens novos, removidos, "
-                        + "renomeados, mudanças de HH/responsável/estrutura); se for do zero, diga isso.";
+                        + "renomeados, mudanças de HH/responsável/estrutura); se for do zero, diga isso."
+                        + (BacklogOnlyCheck.IsChecked == true
+                            ? " ESCOPO: trabalhe SOMENTE no EPIC de Backlog. Todas as sugestões devem ficar sob um "
+                              + "EPIC de Backlog; se ainda não existir nenhum no contexto, crie um EPIC no topo para o backlog."
+                            : "");
                     var raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
                         settings, schedPrompt, BuildConversation(question), _projectContext, _cts.Token);
                     _lastSchedule = ProjectAIAssistantService.ParseScheduleResponse(raw ?? string.Empty);
@@ -422,7 +432,7 @@ namespace NXProject.Views
             ConvList.Items.Refresh();
             _lastSchedule = null;
             ApplyScheduleButton.Visibility = Visibility.Collapsed;
-            _projectContext = _viewModel.BuildFullScheduleContext(); // recarrega o cronograma atual
+            RebuildContext(); // recarrega o cronograma atual (respeitando o filtro de backlog)
             AddSystemNote(AppStrings.Get("AIChat_Cleared"));
             RenderConversation();
             SaveHistory();   // conversa esvaziada sai do histórico gravado
@@ -532,6 +542,43 @@ namespace NXProject.Views
             if (t.Length > 40) t = t[..40].TrimEnd() + "…";
             _conv.Title = string.IsNullOrWhiteSpace(t) ? AppStrings.Get("AIChat_UntitledConversation") : t;
             ConvList.Items.Refresh();
+        }
+
+        // Renomear a conversa selecionada (duplo-clique ou menu de contexto).
+        private void OnConversationRename(object sender, RoutedEventArgs e)
+        {
+            if (ConvList.SelectedItem is not Conversation c) return;
+            var novo = PromptText(AppStrings.Get("AIChat_RenameConversation"), c.Title);
+            if (novo == null) return;   // cancelou
+            novo = novo.Trim();
+            if (novo.Length == 0) return;
+            if (novo.Length > 60) novo = novo[..60];
+            c.Title = novo;
+            ConvList.Items.Refresh();
+            SaveHistory();
+        }
+
+        // Mini-diálogo modal de texto (não há um pronto no projeto). Retorna null se cancelar.
+        private string? PromptText(string title, string initial)
+        {
+            var box = new TextBox { Text = initial ?? string.Empty, MinWidth = 320, Margin = new Thickness(0, 0, 0, 12) };
+            box.SelectAll();
+            var ok = new Button { Content = "OK", Width = 80, Height = 28, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+            var cancel = new Button { Content = AppStrings.Get("TaskPlan_Close"), Width = 80, Height = 28, IsCancel = true };
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            buttons.Children.Add(ok); buttons.Children.Add(cancel);
+            var panel = new StackPanel { Margin = new Thickness(16) };
+            panel.Children.Add(box); panel.Children.Add(buttons);
+            var dlg = new Window
+            {
+                Title = title, Content = panel, Owner = this, SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner, ResizeMode = ResizeMode.NoResize,
+                Background = Brushes.White, ShowInTaskbar = false,
+            };
+            string? result = null;
+            ok.Click += (_, _) => { result = box.Text; dlg.DialogResult = true; };
+            dlg.Loaded += (_, _) => box.Focus();
+            return dlg.ShowDialog() == true ? result : null;
         }
 
         // ── UI da conversa (WebView2: HTML/imagem, seleção/cópia, somente leitura) ──
@@ -774,6 +821,12 @@ namespace NXProject.Views
                 MapSource(src.Tasks);
 
                 var created = newVm.ApplyAiSchedule(_lastSchedule.Roots, untilTask: true, markPendingTfs: false, sourceByKey);
+
+                // Filtro "somente EPIC Backlog": marca os EPICs raiz criados como BACKLOG.
+                if (BacklogOnlyCheck.IsChecked == true)
+                    foreach (var root in newVm.Project.Tasks)
+                        if (string.Equals(root.TfsType, "Epic", StringComparison.OrdinalIgnoreCase))
+                            root.EpicType = NXProject.Models.EpicTypes.Backlog;
 
                 // Alerta: Stories que existiam no cronograma e NÃO voltaram na proposta da IA
                 // (some algo importante) — lista os nomes para o usuário conferir se perdeu.

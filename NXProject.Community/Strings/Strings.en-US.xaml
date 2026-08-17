@@ -2244,6 +2244,7 @@
     <sys:String x:Key="AIChat_Running">⏳ Running ({0})...</sys:String>
     <sys:String x:Key="AIChat_Eta">~{0} left</sys:String>
     <sys:String x:Key="AIChat_NewConversation">New conversation</sys:String>
+    <sys:String x:Key="AIChat_RenameConversation">Rename conversation</sys:String>
     <sys:String x:Key="AIChat_Conversations">CONVERSATIONS</sys:String>
     <sys:String x:Key="AIChat_UntitledConversation">New conversation</sys:String>
     <sys:String x:Key="AIChat_ClearTip">Clears the current conversation</sys:String>
@@ -2256,6 +2257,8 @@
     <sys:String x:Key="AIChat_CopyMessage">Copy this message</sys:String>
     <sys:String x:Key="AIChat_CopiedConversation">Conversation copied ({0} messages).</sys:String>
     <sys:String x:Key="AIChat_CopyEmpty">No conversation to copy yet.</sys:String>
+    <sys:String x:Key="AIChat_BacklogOnly">Consider only Backlog EPIC</sys:String>
+    <sys:String x:Key="AIChat_BacklogOnlyTip">Sends only Backlog-type EPICs to the AI (ignores Delivery ones). When generating a schedule, suggestions go under a Backlog EPIC.</sys:String>
     <sys:String x:Key="AIChat_MissingStories">Warning: {0} schedule Story(ies) did NOT come back in the AI proposal. Check whether something was lost:</sys:String>
     <sys:String x:Key="AIChat_MissingStoriesNote">⚠ {0} Story(ies) left out of the proposal — please review.</sys:String>
     <sys:String x:Key="AIChat_EtaOver">+{0} over estimate</sys:String>

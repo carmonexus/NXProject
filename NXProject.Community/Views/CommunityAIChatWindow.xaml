@@ -94,7 +94,14 @@
                            FontSize="11" FontWeight="SemiBold" Foreground="#7A8698" Margin="4,2,0,6"/>
                 <ListBox x:Name="ConvList" BorderThickness="0" Background="Transparent"
                          DisplayMemberPath="Title" SelectionChanged="OnConversationSelected"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                         MouseDoubleClick="OnConversationRename"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="{DynamicResource AIChat_RenameConversation}" Click="OnConversationRename"/>
+                        </ContextMenu>
+                    </ListBox.ContextMenu>
+                </ListBox>
             </DockPanel>
         </Border>
 
@@ -137,6 +144,10 @@
                           Content="{DynamicResource AIChat_ScheduleMode}"
                           Checked="OnScheduleModeChanged" Unchecked="OnScheduleModeChanged"
                           ToolTip="{DynamicResource AIChat_ScheduleModeTip}"/>
+                <CheckBox x:Name="BacklogOnlyCheck" VerticalAlignment="Center" Margin="16,0,0,0"
+                          Content="{DynamicResource AIChat_BacklogOnly}"
+                          Checked="OnBacklogOnlyChanged" Unchecked="OnBacklogOnlyChanged"
+                          ToolTip="{DynamicResource AIChat_BacklogOnlyTip}"/>
                 <Button x:Name="ApplyScheduleButton" Style="{StaticResource FlatIconButtonPrimary}"
                         Margin="16,0,0,0" Visibility="Collapsed" Click="OnApplyScheduleClick">
                     <StackPanel Orientation="Horizontal">
