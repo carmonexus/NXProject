@@ -26,7 +26,7 @@ Tarefas atuais: {(existingTasks.Count == 0 ? "Nenhuma tarefa cadastrada" : strin
         /// <summary>Contexto COMPLETO do cronograma para análise/geração com IA: a árvore inteira
         /// (EPIC → Feature → Story → Task) até a folha, com HH, %, datas e responsáveis por item,
         /// mais a lista de recursos com disponibilidade. Diferente do contexto curto, não trunca.</summary>
-        public string BuildFullScheduleContext(bool onlyBacklogEpics = false)
+        public string BuildFullScheduleContext(bool onlyBacklogEpics = false, bool onlyUnfinished = false)
         {
             var sb = new System.Text.StringBuilder();
             sb.AppendLine($"PROJETO: {Project.Name}");
@@ -56,18 +56,32 @@ Tarefas atuais: {(existingTasks.Count == 0 ? "Nenhuma tarefa cadastrada" : strin
             else
                 sb.AppendLine("CRONOGRAMA COMPLETO (indentado por nível; cada item traz sua CHAVE id=...):");
 
+            if (onlyUnfinished)
+                sb.AppendLine("(filtro: somente atividades com % < 100; as concluídas foram omitidas)");
+
             var byId = AllTasks().Where(x => x != null).GroupBy(x => x.Id).ToDictionary(g => g.Key, g => g.First());
             foreach (var root in roots)
-                AppendScheduleNode(sb, root, 0, byId);
+                AppendScheduleNode(sb, root, 0, byId, onlyUnfinished);
             return sb.ToString();
         }
 
         private static string CleanResourceName(string? name)
             => (name ?? string.Empty).TrimStart('*').Trim();
 
-        private static void AppendScheduleNode(System.Text.StringBuilder sb, ProjectTask t, int level,
-            System.Collections.Generic.Dictionary<int, ProjectTask> byId)
+        // Existe alguma folha ainda NÃO concluída (% < 100) nesta subárvore?
+        private static bool HasUnfinishedLeaf(ProjectTask t)
         {
+            if (t.Children.Count == 0) return t.PercentComplete < 100;
+            foreach (var c in t.Children)
+                if (HasUnfinishedLeaf(c)) return true;
+            return false;
+        }
+
+        private static void AppendScheduleNode(System.Text.StringBuilder sb, ProjectTask t, int level,
+            System.Collections.Generic.Dictionary<int, ProjectTask> byId, bool onlyUnfinished = false)
+        {
+            // Filtro "somente <100%": omite a subárvore inteiramente concluída.
+            if (onlyUnfinished && !HasUnfinishedLeaf(t)) return;
             var indent = new string(' ', level * 2);
             var type = string.IsNullOrWhiteSpace(t.TfsType) ? (t.IsSummary ? "Summary" : "Task") : t.TfsType!.Trim();
             var isLeaf = t.Children.Count == 0;
@@ -113,7 +127,7 @@ Tarefas atuais: {(existingTasks.Count == 0 ? "Nenhuma tarefa cadastrada" : strin
             sb.AppendLine();
 
             foreach (var c in t.Children)
-                AppendScheduleNode(sb, c, level + 1, byId);
+                AppendScheduleNode(sb, c, level + 1, byId, onlyUnfinished);
         }
 
         public string BuildAiScheduleAnalysisContext(int taskLimit = 30)

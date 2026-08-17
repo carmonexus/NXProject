@@ -145,7 +145,8 @@ namespace NXProject.Views
         private void OnBacklogOnlyChanged(object sender, RoutedEventArgs e) => RebuildContext();
 
         private void RebuildContext()
-            => _projectContext = _viewModel.BuildFullScheduleContext(BacklogOnlyCheck?.IsChecked == true);
+            => _projectContext = _viewModel.BuildFullScheduleContext(
+                BacklogOnlyCheck?.IsChecked == true, UnfinishedOnlyCheck?.IsChecked == true);
 
         private void UpdateHint()
         {
@@ -266,8 +267,15 @@ namespace NXProject.Views
                     var warns = _lastSchedule.Warnings.Count > 0
                         ? "\n\n⚠ " + string.Join("\n⚠ ", _lastSchedule.Warnings)
                         : "";
+                    // Quando não veio cronograma, mostra também O QUE A IA RETORNOU (texto cru),
+                    // pra não deixar só a mensagem genérica.
+                    var rawShown = (raw ?? string.Empty).Trim();
+                    if (rawShown.Length > 4000) rawShown = rawShown[..4000] + " […]";
                     var display = _lastSchedule.Roots.Count == 0
                         ? AppStrings.Get("AIChat_ScheduleEmpty") + warns
+                          + (rawShown.Length > 0
+                             ? "\n\n" + AppStrings.Get("AIChat_RawReturned") + "\n" + rawShown
+                             : "")
                         : (string.IsNullOrWhiteSpace(_lastSchedule.Summary) ? "" : _lastSchedule.Summary + "\n\n")
                           + BuildOutline(_lastSchedule.Roots, 0)
                           + "\n" + AppStrings.Get("AIChat_ScheduleReady", leaves) + warns;
@@ -586,6 +594,15 @@ namespace NXProject.Views
         {
             try { await ChatWebView.EnsureCoreWebView2Async(); }
             catch { /* segue com pendência; render tenta de novo quando pronto */ }
+            // Botão "copiar" de cada mensagem: a página posta o texto e o host copia.
+            if (ChatWebView?.CoreWebView2 != null)
+                ChatWebView.CoreWebView2.WebMessageReceived += (_, e) =>
+                {
+                    string? txt = null;
+                    try { txt = e.TryGetWebMessageAsString(); } catch { }
+                    if (!string.IsNullOrEmpty(txt) && TrySetClipboard(txt))
+                        AddSystemNote(AppStrings.Get("AIChat_MsgCopied"));
+                };
             _chatWebReady = true;
             if (!string.IsNullOrEmpty(_pendingChatHtml))
             {
@@ -616,25 +633,39 @@ namespace NXProject.Views
  .b table{border-collapse:collapse}.b td,.b th{border:1px solid #ccc;padding:3px 6px}
  .b pre{white-space:pre-wrap;margin:0}.think{color:#8a94a2;font-style:italic}
  .meta{font-size:10.5px;color:#8a94a2;margin:1px 2px 0}.row.me .meta{text-align:right}
+ .cp{cursor:pointer;border:none;background:none;color:#5a86c0;font-size:10.5px;padding:0 2px}
+ .cp:hover{text-decoration:underline}
 </style></head><body>");
+            var texts = new System.Collections.Generic.List<string>();
+            var idx = 0;
             foreach (var m in _history)
             {
                 var mine = string.Equals(m.Role, "Usuário", StringComparison.OrdinalIgnoreCase);
                 var asHtml = !mine && LooksLikeHtml(m.Text);
+                texts.Add(m.Text ?? string.Empty);
                 sb.Append("<div class='row ").Append(mine ? "me" : "ai").Append("'>");
                 sb.Append("<div style='display:flex;flex-direction:column'>");
                 sb.Append("<div class='b ").Append(asHtml ? "" : "plain").Append("'>")
                   .Append(asHtml ? m.Text : System.Net.WebUtility.HtmlEncode(m.Text))
                   .Append("</div>");
+                // Rodapé: data/hora + tempo + botão "copiar" (pergunta ou resposta).
+                sb.Append("<div class='meta'>");
                 var meta = FormatMeta(m);
-                if (meta.Length > 0) sb.Append("<div class='meta'>").Append(meta).Append("</div>");
+                if (meta.Length > 0) sb.Append(meta).Append("   ");
+                sb.Append("<button class='cp' onclick='cp(").Append(idx).Append(")'>")
+                  .Append(System.Net.WebUtility.HtmlEncode(AppStrings.Get("AIChat_CopyMsgShort")))
+                  .Append("</button></div>");
                 sb.Append("</div></div>");
+                idx++;
             }
             if (_thinking)
                 sb.Append("<div class='row ai'><div class='b plain think'>")
                   .Append(System.Net.WebUtility.HtmlEncode(AppStrings.Get("AIChat_Thinking")))
                   .Append("</div></div>");
-            sb.Append("<div id='end'></div><script>document.getElementById('end').scrollIntoView();</script></body></html>");
+            var json = System.Text.Json.JsonSerializer.Serialize(texts);
+            sb.Append("<div id='end'></div><script>const T=").Append(json)
+              .Append(";function cp(i){try{window.chrome.webview.postMessage(T[i]);}catch(e){}}")
+              .Append("document.getElementById('end').scrollIntoView();</script></body></html>");
             return sb.ToString();
         }
 

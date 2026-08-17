@@ -148,6 +148,10 @@
                           Content="{DynamicResource AIChat_BacklogOnly}"
                           Checked="OnBacklogOnlyChanged" Unchecked="OnBacklogOnlyChanged"
                           ToolTip="{DynamicResource AIChat_BacklogOnlyTip}"/>
+                <CheckBox x:Name="UnfinishedOnlyCheck" VerticalAlignment="Center" Margin="16,0,0,0"
+                          Content="{DynamicResource AIChat_UnfinishedOnly}"
+                          Checked="OnBacklogOnlyChanged" Unchecked="OnBacklogOnlyChanged"
+                          ToolTip="{DynamicResource AIChat_UnfinishedOnlyTip}"/>
                 <Button x:Name="ApplyScheduleButton" Style="{StaticResource FlatIconButtonPrimary}"
                         Margin="16,0,0,0" Visibility="Collapsed" Click="OnApplyScheduleClick">
                     <StackPanel Orientation="Horizontal">
