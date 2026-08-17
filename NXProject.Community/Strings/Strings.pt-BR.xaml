@@ -1654,6 +1654,7 @@
     <sys:String x:Key="About_VersioningHeader">Como funciona o versionamento</sys:String>
     <sys:String x:Key="About_VersioningFormat">O formato usado e versao.release.bugs.</sys:String>
     <sys:String x:Key="About_VersioningExample">Exemplo: 1.0.0 = versao principal 1, release 0 e correcao de bugs 0.</sys:String>
+    <sys:String x:Key="Banner_File">Arquivo: {0}</sys:String>
     <sys:String x:Key="About_Company">Empresa</sys:String>
     <sys:String x:Key="About_GitHubHeader">Projeto no GitHub</sys:String>
     <sys:String x:Key="About_LicenseHeader">Licenca (Open Core)</sys:String>

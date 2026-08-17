@@ -64,9 +64,12 @@ namespace NXProject.Views
         // Título da janela = base + nome do arquivo aberto/salvo (só o nome; o path fica no ToolTip? não — só nome).
         private void UpdateWindowTitle()
         {
-            var file = (DataContext as MainViewModel)?.Project?.FilePath;
+            var p = (DataContext as MainViewModel)?.Project;
+            var file = p?.FilePath;
             var name = string.IsNullOrWhiteSpace(file) ? null : System.IO.Path.GetFileName(file);
             Title = string.IsNullOrEmpty(name) ? _baseTitle : $"{_baseTitle} — {name}";
+            // Reflete o nome do arquivo também no banner (owner + arquivo), que fica visível no app.
+            if (p != null) UpdateDevOpsProjectBanner(p.DevOpsProjectName, p.DevOpsRootWorkItemId, p.DevOpsProjectOwner);
         }
 
         public CommunityMainWindow()
@@ -2251,7 +2254,17 @@ namespace NXProject.Views
 
         private void UpdateDevOpsProjectBanner(string? name, int id, string? owner = null)
         {
-            DevOpsOwnerLabel.Text = string.IsNullOrWhiteSpace(owner) ? string.Empty : AppStrings.Get("Banner_Owner", owner);
+            // Owner + NOME DO ARQUIVO (a barra de título do Windows às vezes não é vista;
+            // aqui no banner fica sempre visível ao lado do título).
+            var ownerText = string.IsNullOrWhiteSpace(owner) ? string.Empty : AppStrings.Get("Banner_Owner", owner);
+            var file = (DataContext as MainViewModel)?.Project?.FilePath;
+            var fileName = string.IsNullOrWhiteSpace(file) ? null : System.IO.Path.GetFileName(file);
+            if (!string.IsNullOrWhiteSpace(fileName))
+            {
+                var fileText = AppStrings.Get("Banner_File", fileName);
+                ownerText = ownerText.Length == 0 ? fileText : ownerText + "   •   " + fileText;
+            }
+            DevOpsOwnerLabel.Text = ownerText;
 
             if (!string.IsNullOrWhiteSpace(name))
             {
