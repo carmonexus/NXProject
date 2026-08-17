@@ -819,6 +819,18 @@ namespace NXProject.Views
                 dst.DevOpsTeamProject = src.DevOpsTeamProject;
                 dst.PepElement = src.PepElement;
                 dst.PepProjectName = src.PepProjectName;
+
+                // Origem em branco (sem DevOps/owner)? Não há o que copiar — deixa o usuário
+                // informar nome do projeto e owner para gravar no XML novo (cancelar = deixa vazio).
+                if (string.IsNullOrWhiteSpace(dst.DevOpsProjectOwner)
+                    && string.IsNullOrWhiteSpace(dst.DevOpsProjectName))
+                {
+                    var curName = string.IsNullOrWhiteSpace(dst.Name) || dst.Name == "Novo Projeto" ? "" : dst.Name;
+                    var nm = PromptText(AppStrings.Get("AIChat_AskProjectName"), curName);
+                    if (!string.IsNullOrWhiteSpace(nm)) dst.Name = nm.Trim();
+                    var ow = PromptText(AppStrings.Get("AIChat_AskOwner"), string.Empty);
+                    if (!string.IsNullOrWhiteSpace(ow)) dst.DevOpsProjectOwner = ow.Trim();
+                }
                 // Calendário: copia só se o cronograma tiver o SEU PRÓPRIO (embutido). Se estiver
                 // usando o calendário GERAL/ativo (Calendar == null), não copia — o novo também usa
                 // o geral. Clone profundo para não compartilhar o mesmo objeto com o original.

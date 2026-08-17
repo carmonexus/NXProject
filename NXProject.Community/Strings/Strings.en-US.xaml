@@ -2246,6 +2246,8 @@
     <sys:String x:Key="AIChat_Eta">~{0} left</sys:String>
     <sys:String x:Key="AIChat_NewConversation">New conversation</sys:String>
     <sys:String x:Key="AIChat_RenameConversation">Rename conversation</sys:String>
+    <sys:String x:Key="AIChat_AskProjectName">Project name (Work Item Project) for the new schedule:</sys:String>
+    <sys:String x:Key="AIChat_AskOwner">Project owner (optional):</sys:String>
     <sys:String x:Key="AIChat_Conversations">CONVERSATIONS</sys:String>
     <sys:String x:Key="AIChat_UntitledConversation">New conversation</sys:String>
     <sys:String x:Key="AIChat_ClearTip">Clears the current conversation</sys:String>
