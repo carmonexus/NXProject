@@ -2257,12 +2257,16 @@ namespace NXProject.Views
             // Owner + NOME DO ARQUIVO (a barra de título do Windows às vezes não é vista;
             // aqui no banner fica sempre visível ao lado do título).
             var ownerText = string.IsNullOrWhiteSpace(owner) ? string.Empty : AppStrings.Get("Banner_Owner", owner);
+            // Fonte de dados: TFS/DevOps quando o projeto vem do DevOps (tem nome/id de projeto);
+            // senão, o nome do arquivo local. A barra de título do Windows às vezes não é vista.
+            var isDevOps = !string.IsNullOrWhiteSpace(name) || id > 0;
             var file = (DataContext as MainViewModel)?.Project?.FilePath;
             var fileName = string.IsNullOrWhiteSpace(file) ? null : System.IO.Path.GetFileName(file);
-            if (!string.IsNullOrWhiteSpace(fileName))
+            var source = isDevOps ? "TFS/DevOps" : fileName;
+            if (!string.IsNullOrWhiteSpace(source))
             {
-                var fileText = AppStrings.Get("Banner_File", fileName);
-                ownerText = ownerText.Length == 0 ? fileText : ownerText + "   •   " + fileText;
+                var srcText = AppStrings.Get("Banner_Source", source);
+                ownerText = ownerText.Length == 0 ? srcText : ownerText + "   •   " + srcText;
             }
             DevOpsOwnerLabel.Text = ownerText;
 

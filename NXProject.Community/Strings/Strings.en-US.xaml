@@ -833,7 +833,7 @@
     <sys:String x:Key="Banner_EpicHours">| {0:0.#} HH (Epics)</sys:String>
     <sys:String x:Key="Banner_Percent">| {0:0.#}% complete</sys:String>
     <sys:String x:Key="Banner_Owner">| Owner: {0}</sys:String>
-    <sys:String x:Key="Banner_File">File: {0}</sys:String>
+    <sys:String x:Key="Banner_Source">Data source: {0}</sys:String>
 
     <!-- Import from Azure DevOps -->
     <sys:String x:Key="Imp_Title">Import from Azure DevOps</sys:String>
