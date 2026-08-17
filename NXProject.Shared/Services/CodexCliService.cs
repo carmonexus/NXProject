@@ -147,6 +147,7 @@ namespace NXProject.Services
                 throw new InvalidOperationException(
                     $"Codex local não encontrado ({cmd}). Verifique se o Codex CLI está instalado e no PATH "
                     + "(no WSL, se o comando usar wsl.exe) — ou ajuste o comando na tela do Assistente de IA.\n\n"
+                    + "Se você acabou de instalar o CLI pelo NX, FECHE e ABRA o NXProject novamente.\n\n"
                     + ex.Message, ex);
             }
 
@@ -182,8 +183,17 @@ namespace NXProject.Services
             var stdout = await stdoutTask;
             var stderr = await stderrTask;
             if (process.ExitCode != 0)
-                throw new InvalidOperationException(
-                    $"Codex local terminou com erro (código {process.ExitCode}).\n{stderr}\n{stdout}".Trim());
+            {
+                var msg = $"Codex local terminou com erro (código {process.ExitCode}).\n{stderr}\n{stdout}".Trim();
+                // "não reconhecido"/"not found"/127: quase sempre é o PATH do CLI recém-instalado
+                // que o NX aberto ainda não enxerga — reabrir resolve.
+                var low = (stderr + " " + stdout).ToLowerInvariant();
+                if (process.ExitCode == 127 || low.Contains("não é reconhecido") || low.Contains("nao e reconhecido")
+                    || low.Contains("not recognized") || low.Contains("not found") || low.Contains("command not found"))
+                    msg += "\n\nDica: se você acabou de instalar o CLI pelo NX, FECHE e ABRA o NXProject novamente "
+                         + "(a atualização do PATH só vale para o app aberto depois).";
+                throw new InvalidOperationException(msg);
+            }
 
             var answer = stdout.Trim();
             if (answer.Length == 0)
