@@ -2146,6 +2146,8 @@
     <sys:String x:Key="LocalAI_CliConfigHead">Configuração</sys:String>
     <sys:String x:Key="LocalAI_CliLocation">Local do CLI:</sys:String>
     <sys:String x:Key="LocalAI_CliTest">Testar conexão</sys:String>
+    <sys:String x:Key="LocalAI_CliAuth">Autenticar (navegador)</sys:String>
+    <sys:String x:Key="LocalAI_CliAuthOpened">Abri um terminal para o login. Conclua a autenticação no navegador e depois clique em "Testar conexão".</sys:String>
     <sys:String x:Key="LocalAI_MaxTokensTip">Teto de TOKENS que a IA Local pode gerar por resposta (~3/4 de palavra por token). Resposta que bate no teto vem truncada (o NX recupera os itens completos, mas o final se perde). Maior = comporta listas maiores, porém demora mais se o modelo se perder. Padrão 2048; faixa 256 a 6144 (o contexto total do modelo é 8192, dividido entre pergunta e resposta).</sys:String>
     <sys:String x:Key="LocalAI_DocsLabel">Documentação (LLamaSharp):</sys:String>
     <sys:String x:Key="AI_ProviderSaved">Provedor padrão salvo: {0}.</sys:String>

@@ -187,6 +187,8 @@
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <Button x:Name="CodexTestButton" Content="{DynamicResource LocalAI_CliTest}" Width="150" Height="28"
                             Click="OnCodexTestClick"/>
+                    <Button x:Name="CodexAuthButton" Content="{DynamicResource LocalAI_CliAuth}" Width="200" Height="28"
+                            Margin="8,0,0,0" Click="OnCodexAuthClick"/>
                 </StackPanel>
                 <TextBlock x:Name="CodexTestResult" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
 
@@ -227,6 +229,8 @@
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <Button x:Name="ClaudeTestButton" Content="{DynamicResource LocalAI_CliTest}" Width="150" Height="28"
                             Click="OnClaudeTestClick"/>
+                    <Button x:Name="ClaudeAuthButton" Content="{DynamicResource LocalAI_CliAuth}" Width="200" Height="28"
+                            Margin="8,0,0,0" Click="OnClaudeAuthClick"/>
                 </StackPanel>
                 <TextBlock x:Name="ClaudeTestResult" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
 

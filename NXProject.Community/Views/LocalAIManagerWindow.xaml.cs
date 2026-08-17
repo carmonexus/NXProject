@@ -215,6 +215,42 @@ namespace NXProject.Views
         private async void OnClaudeTestClick(object sender, RoutedEventArgs e)
             => await CliTest(ClaudeCommandBox, ClaudeTestButton, ClaudeTestResult);
 
+        // Abre um terminal rodando o LOGIN do CLI (fluxo de autenticação no navegador).
+        // Usa o mesmo local (Windows/WSL) do comando configurado e injeta a pasta do NX no PATH.
+        private void OnCodexAuthClick(object sender, RoutedEventArgs e)
+            => LaunchCliLogin(AIProvider.CodexCli, CodexCommandBox, CodexTestResult);
+        private void OnClaudeAuthClick(object sender, RoutedEventArgs e)
+            => LaunchCliLogin(AIProvider.ClaudeCli, ClaudeCommandBox, ClaudeTestResult);
+
+        private void LaunchCliLogin(AIProvider provider, TextBox command, TextBlock result)
+        {
+            var windows = CodexCliService.IsWindowsCommand(command.Text);
+            var cli = CodexCliService.CliName(provider);
+            // Codex tem "codex login"; o Claude Code autentica ao rodar "claude" (faz /login no 1º uso).
+            var inner = provider == AIProvider.CodexCli ? $"{cli} login" : cli;
+            var full = windows ? inner : $"wsl.exe -- bash -lic \"{inner}\"";
+            try
+            {
+                var psi = new ProcessStartInfo("cmd.exe", "/k " + full)
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = false,
+                };
+                var nxBin = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NXProject", "bin");
+                var cur = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+                psi.Environment["PATH"] = System.IO.Directory.Exists(nxBin) ? nxBin + ";" + cur : cur;
+                Process.Start(psi);
+                result.Foreground = Brushes.DimGray;
+                result.Text = AppStrings.Get("LocalAI_CliAuthOpened");
+            }
+            catch (Exception ex)
+            {
+                result.Foreground = Brushes.Firebrick;
+                result.Text = ex.Message;
+            }
+        }
+
         private async Task CliTest(TextBox commandBox, Button btn, TextBlock result)
         {
             var command = commandBox.Text?.Trim();

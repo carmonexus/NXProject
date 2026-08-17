@@ -2148,6 +2148,8 @@
     <sys:String x:Key="LocalAI_CliConfigHead">Configuration</sys:String>
     <sys:String x:Key="LocalAI_CliLocation">CLI location:</sys:String>
     <sys:String x:Key="LocalAI_CliTest">Test connection</sys:String>
+    <sys:String x:Key="LocalAI_CliAuth">Authenticate (browser)</sys:String>
+    <sys:String x:Key="LocalAI_CliAuthOpened">Opened a terminal for login. Finish the authentication in the browser, then click "Test connection".</sys:String>
     <sys:String x:Key="LocalAI_MaxTokensTip">Cap of TOKENS the Local AI can generate per response (~3/4 of a word per token). A response hitting the cap comes truncated (NX recovers the complete items, but the tail is lost). Higher = fits longer lists, but takes longer if the model rambles. Default 2048; range 256 to 6144 (the model's total context is 8192, shared between prompt and response).</sys:String>
     <sys:String x:Key="LocalAI_DocsLabel">Documentation (LLamaSharp):</sys:String>
     <sys:String x:Key="AI_ProviderSaved">Default provider saved: {0}.</sys:String>
