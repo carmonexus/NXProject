@@ -82,7 +82,18 @@ namespace NXProject.Services
                 using var p = Process.Start(psi);
                 var line = p?.StandardOutput.ReadLine();
                 p?.WaitForExit(3000);
-                return string.IsNullOrWhiteSpace(line) ? null : line.Trim();
+                if (!string.IsNullOrWhiteSpace(line)) return line.Trim();
+            }
+            catch { /* segue para o fallback do NX bin */ }
+
+            // Fallback: o binário instalado pelo próprio NX (ainda não visível no PATH do
+            // processo atual porque o NX foi aberto antes da atualização do PATH).
+            try
+            {
+                var nx = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "NXProject", "bin", cli.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? cli : cli + ".exe");
+                return System.IO.File.Exists(nx) ? nx : null;
             }
             catch { return null; }
         }
@@ -112,6 +123,18 @@ namespace NXProject.Services
                 // quebram com "input is not valid UTF-8".
                 StandardInputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
             };
+
+            // O NX instala o codex.exe/claude.exe em %LOCALAPPDATA%\NXProject\bin e adiciona ao
+            // PATH do USUÁRIO — mas o NX já aberto não vê esse PATH novo (só processos abertos
+            // depois). Injeta essa pasta no PATH do processo do CLI para funcionar SEM reiniciar.
+            var nxBin = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NXProject", "bin");
+            if (System.IO.Directory.Exists(nxBin))
+            {
+                var curPath = psi.Environment.TryGetValue("PATH", out var pv) && !string.IsNullOrEmpty(pv)
+                    ? pv : Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+                psi.Environment["PATH"] = curPath.Length == 0 ? nxBin : nxBin + ";" + curPath;
+            }
 
             using var process = new Process { StartInfo = psi };
             try
