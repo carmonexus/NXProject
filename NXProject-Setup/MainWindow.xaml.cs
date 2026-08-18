@@ -25,18 +25,66 @@ public partial class MainWindow : Window
         Loaded += (_, _) => { RefreshStep1State(); RefreshInstallStatus(); };
     }
 
-    // Mostra um ✓ ao lado do que já está instalado (Codex/Claude via exe; LLaMA via modelo GGUF).
+    // Mostra um ✓ ao lado do que já está instalado. Codex/Claude: procura no WINDOWS (exe) e
+    // também no WSL — para não induzir o usuário a instalar no Windows o que já roda no WSL.
+    // LLaMA: modelo GGUF na pasta de recursos.
+    private enum InstallWhere { None, Windows, Wsl }
+
     private void RefreshInstallStatus()
     {
-        SetStatus(CodexStatus, NXProject.Services.AiCliInstaller.CodexPath != null);
-        SetStatus(ClaudeStatus, NXProject.Services.AiCliInstaller.ClaudePath != null);
+        var codexWin = NXProject.Services.AiCliInstaller.CodexPath != null;
+        var claudeWin = NXProject.Services.AiCliInstaller.ClaudePath != null;
+        SetCliStatus(CodexStatus, codexWin ? InstallWhere.Windows : InstallWhere.None);
+        SetCliStatus(ClaudeStatus, claudeWin ? InstallWhere.Windows : InstallWhere.None);
         SetStatus(LlamaStatus, IsLlamaInstalled());
+
+        // Se não achou no Windows, testa o WSL (assíncrono, não trava a tela).
+        if (!codexWin) _ = UpdateWslStatusAsync("codex", CodexStatus);
+        if (!claudeWin) _ = UpdateWslStatusAsync("claude", ClaudeStatus);
+    }
+
+    private static void SetCliStatus(System.Windows.Controls.TextBlock tb, InstallWhere where)
+    {
+        tb.Text = where switch
+        {
+            InstallWhere.Windows => App.Str("Setup_InstalledWin"),
+            InstallWhere.Wsl => App.Str("Setup_InstalledWsl"),
+            _ => App.Str("Setup_NotInstalled"),
+        };
+        tb.Foreground = where == InstallWhere.None
+            ? System.Windows.Media.Brushes.Gray : System.Windows.Media.Brushes.Green;
     }
 
     private static void SetStatus(System.Windows.Controls.TextBlock tb, bool ok)
     {
         tb.Text = ok ? App.Str("Setup_Installed") : App.Str("Setup_NotInstalled");
         tb.Foreground = ok ? System.Windows.Media.Brushes.Green : System.Windows.Media.Brushes.Gray;
+    }
+
+    private async Task UpdateWslStatusAsync(string cli, System.Windows.Controls.TextBlock tb)
+    {
+        var found = await Task.Run(() => IsCliInWsl(cli));
+        if (found) SetCliStatus(tb, InstallWhere.Wsl);
+    }
+
+    // Procura o CLI dentro do WSL (shell de login carrega o PATH do nvm/npm).
+    private static bool IsCliInWsl(string cli)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("wsl.exe",
+                $"-- bash -lic \"command -v {cli} >/dev/null 2>&1 && echo FOUND\"")
+            {
+                RedirectStandardOutput = true, RedirectStandardError = true,
+                UseShellExecute = false, CreateNoWindow = true,
+            };
+            using var p = Process.Start(psi);
+            if (p == null) return false;
+            var outp = p.StandardOutput.ReadToEnd();
+            p.WaitForExit(8000);
+            return outp.Contains("FOUND", StringComparison.Ordinal);
+        }
+        catch { return false; }
     }
 
     // IA Local instalada? Checagem leve (sem LLamaSharp): lê a pasta de recursos no local-ai.json

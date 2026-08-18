@@ -9,8 +9,8 @@
     <sys:String x:Key="Setup_Step2Status">Downloads the latest version and installs it for your user.</sys:String>
     <sys:String x:Key="Setup_Step2Button">Install NXProject</sys:String>
     <sys:String x:Key="Setup_Retry">Try again</sys:String>
-    <sys:String x:Key="Setup_Step3Title">Step 3 (optional): AI CLIs for Windows</sys:String>
-    <sys:String x:Key="Setup_Step3Desc">Installs Codex and/or Claude Code (latest native binary) to use as local AI in NXProject. No Node.js, no scripts. On WSL the install stays manual.</sys:String>
+    <sys:String x:Key="Setup_Step3Title">Step 3 (optional): install AI — Windows only</sys:String>
+    <sys:String x:Key="Setup_Step3Desc">Installs Codex, Claude Code and/or Local AI (LLaMA) — installing here is Windows ONLY. If you already use Codex/Claude on WSL, the item shows as installed (WSL) and you don't need to install on Windows. On WSL the install stays manual.</sys:String>
     <sys:String x:Key="Setup_Step3Codex">Codex (OpenAI) (1) — approx. 285 MB</sys:String>
     <sys:String x:Key="Setup_Step3Claude">Claude Code (Anthropic) (3) — approx. 309 MB</sys:String>
     <sys:String x:Key="Setup_Step3Llama">Local AI (LLaMA — Meta) (2) — approx. 2 GB</sys:String>
@@ -19,6 +19,8 @@
     <sys:String x:Key="Setup_Step3ClaudeNote">(3) Claude Code is PAID — requires an Anthropic account/subscription. Robust and widely used tool.</sys:String>
     <sys:String x:Key="Setup_OpenFolder">open folder</sys:String>
     <sys:String x:Key="Setup_Installed">✓ already installed</sys:String>
+    <sys:String x:Key="Setup_InstalledWin">✓ already installed (Windows)</sys:String>
+    <sys:String x:Key="Setup_InstalledWsl">✓ already installed (WSL) — no need to install on Windows</sys:String>
     <sys:String x:Key="Setup_NotInstalled">not installed</sys:String>
     <sys:String x:Key="Setup_PathApp">Installs NXProject at: {0}</sys:String>
     <sys:String x:Key="Setup_PathCli">CLIs (Codex/Claude) at: {0}</sys:String>
