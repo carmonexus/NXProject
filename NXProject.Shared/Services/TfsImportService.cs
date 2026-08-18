@@ -235,6 +235,9 @@ namespace NXProject.Services
             };
             if (sprintDuration.HasValue)
                 project.SprintDurationDays = sprintDuration.Value;
+            // Processo do DevOps (Agile/Scrum/CMMI/Basic): define o campo de ordem do backlog
+            // e é exibido no banner e na config do portfólio.
+            project.DevOpsProcess = await LoadProcessNameAsync(orgBase, options.TeamProject, authHeader, cancellationToken);
             var resourcesByKey = new Dictionary<string, Resource>(StringComparer.OrdinalIgnoreCase);
             AddResourceIfAssigned(project, resourcesByKey, rootItem, options.HoursPerDay);
 
@@ -713,7 +716,8 @@ namespace NXProject.Services
                     extraFields: options.ExtraCreateFields,
                     classificationFields: classFields,
                     percConcRef: createPercConc,
-                    approvedRef: approvedRef);
+                    approvedRef: approvedRef,
+                    process: project.DevOpsProcess);
                 var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
                 task.TfsId = newId;
                 task.TfsParentId = desiredParent;
@@ -837,7 +841,7 @@ namespace NXProject.Services
                         }
                         else
                         {
-                            var createOps = BuildCreateOps(task, desiredParent, orgBase, createHoursRef, createStartRef, createFinishRef, tasksById, options.SyncPredecessorLinks, createPercAloc, originalHoursRef, remainingHoursRef, realizedHoursRef, options.ExtraCreateFields, classFields, createPercConc, approvedRef);
+                            var createOps = BuildCreateOps(task, desiredParent, orgBase, createHoursRef, createStartRef, createFinishRef, tasksById, options.SyncPredecessorLinks, createPercAloc, originalHoursRef, remainingHoursRef, realizedHoursRef, options.ExtraCreateFields, classFields, createPercConc, approvedRef, project.DevOpsProcess);
                             var newId = await CreateWorkItemAsync(orgBase, auth, options.TeamProject, createType, createOps, cancellationToken);
                             task.TfsId = newId;
                             task.TfsParentId = desiredParent;
@@ -982,7 +986,7 @@ namespace NXProject.Services
                             {
                                 // Agile/CMMI ordenam por StackRank; Scrum, por BacklogPriority —
                                 // grava nos campos que o work item tem, senao a ordem nao muda no board.
-                                foreach (var campo in BacklogRankFieldsToWrite(wi.Fields))
+                                foreach (var campo in BacklogRankFieldsToWrite(wi.Fields, project.DevOpsProcess))
                                     ops.Add(PatchAdd($"/fields/{campo}", task.TfsStackRank.Value));
                                 changes.Add("ordem");
                             }
@@ -2089,7 +2093,8 @@ namespace NXProject.Services
             IEnumerable<ExtraWorkItemField>? extraFields = null,
             IReadOnlyList<ClassificationFieldDef>? classificationFields = null,
             string? percConcRef = null,
-            string? approvedRef = null)
+            string? approvedRef = null,
+            string? process = null)
         {
             bool isTaskCreate        = IsTaskType(task.TfsType);
             bool isEpicOrFeatureCreate = IsEpicOrFeatureType(task.TfsType);
@@ -2145,9 +2150,9 @@ namespace NXProject.Services
                     ops.Add(PatchAdd("/fields/System.State", task.TfsState.Trim()));
 
                 if (task.TfsStackRank.HasValue)
-                    // Criacao: ainda nao ha campos do work item para inspecionar — StackRank
-                    // (o Sync seguinte ajusta pelo campo real do processo, se for Scrum).
-                    foreach (var campo in BacklogRankFieldsToWrite(null))
+                    // Criacao: ainda nao ha campos do work item para inspecionar — usa o campo
+                    // do processo (Scrum = BacklogPriority; Agile/CMMI/Basic = StackRank).
+                    foreach (var campo in BacklogRankFieldsToWrite(null, process))
                         ops.Add(PatchAdd($"/fields/{campo}", task.TfsStackRank.Value));
 
                 var desiredHours = GetSyncHours(task);
@@ -3262,6 +3267,43 @@ namespace NXProject.Services
         /// (System.IterationPath, ex.: "Projeto\\Pasta\\Sprint"), inicio e fim. A
         /// numeracao sequencial (1..N) e atribuida depois, na ordem cronologica.
         /// </summary>
+        /// <summary>Lê o processo do Team Project (Agile/Scrum/CMMI/Basic) a partir das opções
+        /// de conexão. Devolve null se indisponível. Usado pelo Discovery do Portfólio.</summary>
+        public static async Task<string?> GetProcessAsync(
+            TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            if (options == null || string.IsNullOrWhiteSpace(options.OrganizationUrl)
+                || string.IsNullOrWhiteSpace(options.TeamProject)
+                || string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+                return null;
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue("Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+            return await LoadProcessNameAsync(orgBase, options.TeamProject, auth, ct);
+        }
+
+        /// <summary>Lê o processo do Team Project (Agile, Scrum, CMMI, Basic) via API de
+        /// projetos: capabilities.processTemplate.templateName. Devolve null se indisponível.</summary>
+        private static async Task<string?> LoadProcessNameAsync(
+            string orgBase, string project, AuthenticationHeaderValue auth, CancellationToken ct)
+        {
+            var url = $"{orgBase}/_apis/projects/{Uri.EscapeDataString(project)}?includeCapabilities=true&{ApiVersion}";
+            try
+            {
+                using var doc = await GetJsonAsync(url, auth, ct);
+                if (doc.RootElement.TryGetProperty("capabilities", out var caps)
+                    && caps.TryGetProperty("processTemplate", out var pt)
+                    && pt.TryGetProperty("templateName", out var name)
+                    && name.ValueKind == JsonValueKind.String)
+                {
+                    var n = name.GetString();
+                    return string.IsNullOrWhiteSpace(n) ? null : n!.Trim();
+                }
+            }
+            catch { /* sem acesso a capabilities: segue sem o processo */ }
+            return null;
+        }
+
         private static async Task<List<Sprint>> LoadIterationsAsync(
             string orgBase, string project, AuthenticationHeaderValue auth, CancellationToken ct)
         {
@@ -5641,16 +5683,27 @@ namespace NXProject.Services
         /// inexistente no processo faz o PATCH falhar); sem nenhum dos dois — ou na criação,
         /// quando ainda não há campos —, usa StackRank.
         /// </summary>
-        public static IReadOnlyList<string> BacklogRankFieldsToWrite(JsonElement? fields)
+        public static IReadOnlyList<string> BacklogRankFieldsToWrite(JsonElement? fields, string? process = null)
         {
+            // Fallback quando o work item não traz NENHUM dos dois campos (item sem rank ainda):
+            // Scrum ordena por BacklogPriority; Agile/CMMI/Basic, por StackRank.
+            var fallback = IsScrumProcess(process)
+                ? new[] { BacklogPriorityField }
+                : new[] { StackRankField };
+
             if (fields is not { } f || f.ValueKind != JsonValueKind.Object)
-                return new[] { StackRankField };
+                return fallback;
 
             var campos = new List<string>(2);
             if (f.TryGetProperty(StackRankField, out _)) campos.Add(StackRankField);
             if (f.TryGetProperty(BacklogPriorityField, out _)) campos.Add(BacklogPriorityField);
-            return campos.Count > 0 ? campos : new[] { StackRankField };
+            return campos.Count > 0 ? campos : fallback;
         }
+
+        /// <summary>Processo Scrum? (ordena o backlog por BacklogPriority, não StackRank.)</summary>
+        public static bool IsScrumProcess(string? process)
+            => !string.IsNullOrWhiteSpace(process)
+               && process.Trim().IndexOf("scrum", StringComparison.OrdinalIgnoreCase) >= 0;
 
         private static string GetIdentityName(JsonElement fields, string refName)
         {

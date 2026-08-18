@@ -572,6 +572,9 @@
     <sys:String x:Key="PortEdit_Name">Nome do Projeto</sys:String>
     <sys:String x:Key="PortEdit_Id">ID DevOps (Work Item Raiz)</sys:String>
     <sys:String x:Key="PortEdit_Type">Tipo</sys:String>
+    <sys:String x:Key="PortEdit_Process">Processo (DevOps)</sys:String>
+    <sys:String x:Key="PortEdit_ProcessTip">Processo do Team Project no Azure DevOps (Agile, Scrum, CMMI ou Basic). Lido automaticamente na importação/descoberta — define o campo de ordem do backlog (Agile/CMMI = StackRank; Scrum = BacklogPriority).</sys:String>
+    <sys:String x:Key="PortEdit_ProcessUnknown">(desconhecido — importe/descubra do DevOps)</sys:String>
     <sys:String x:Key="PortEdit_CostCenter">Centro de Custo</sys:String>
     <sys:String x:Key="PortEdit_Ok">OK</sys:String>
     <sys:String x:Key="PortEdit_Cancel">Cancelar</sys:String>
@@ -1655,6 +1658,7 @@
     <sys:String x:Key="About_VersioningFormat">O formato usado e versao.release.bugs.</sys:String>
     <sys:String x:Key="About_VersioningExample">Exemplo: 1.0.0 = versao principal 1, release 0 e correcao de bugs 0.</sys:String>
     <sys:String x:Key="Banner_Source">Fonte de dados: {0}</sys:String>
+    <sys:String x:Key="Banner_Process">Processo: {0}</sys:String>
     <sys:String x:Key="About_Company">Empresa</sys:String>
     <sys:String x:Key="About_GitHubHeader">Projeto no GitHub</sys:String>
     <sys:String x:Key="About_LicenseHeader">Licenca (Open Core)</sys:String>

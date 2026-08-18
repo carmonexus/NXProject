@@ -13,6 +13,9 @@ namespace NXProject.Views
         private readonly ObservableCollection<DiscoveryItem> _items = [];
         private readonly ICollectionView _itemsView;
         public List<DevOpsProject> SelectedProjects { get; private set; } = [];
+        // Processo do Team Project (Agile/Scrum/CMMI/Basic) — mesmo para todos os itens
+        // deste projeto; lido uma vez e gravado em cada DevOpsProject selecionado.
+        private string _process = "";
 
         public DevOpsDiscoveryWindow(TfsConnectionOptions options, IEnumerable<DevOpsProject> existing)
         {
@@ -62,6 +65,7 @@ namespace NXProject.Views
             try
             {
                 var found = await TfsImportService.FetchRootWorkItemsAsync(options);
+                _process = await TfsImportService.GetProcessAsync(options) ?? "";
                 LoadingPanel.Visibility = Visibility.Collapsed;
 
                 if (found.Count == 0)
@@ -108,7 +112,7 @@ namespace NXProject.Views
         {
             SelectedProjects = _items
                 .Where(i => i.IsSelected)
-                .Select(i => new DevOpsProject { Name = i.Title, RootWorkItemId = i.Id, Owner = i.Owner })
+                .Select(i => new DevOpsProject { Name = i.Title, RootWorkItemId = i.Id, Owner = i.Owner, Process = _process })
                 .ToList();
 
             if (SelectedProjects.Count == 0)

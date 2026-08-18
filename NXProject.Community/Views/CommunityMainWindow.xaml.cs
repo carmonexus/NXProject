@@ -2287,6 +2287,10 @@ namespace NXProject.Views
                 var srcText = AppStrings.Get("Banner_Source", source);
                 ownerText = ownerText.Length == 0 ? srcText : ownerText + "   •   " + srcText;
             }
+            // Processo do DevOps (Agile/Scrum/CMMI/Basic), lido na importação.
+            var process = (DataContext as MainViewModel)?.Project?.DevOpsProcess;
+            if (isDevOps && !string.IsNullOrWhiteSpace(process))
+                ownerText += "   •   " + AppStrings.Get("Banner_Process", process);
             DevOpsOwnerLabel.Text = ownerText;
 
             if (!string.IsNullOrWhiteSpace(name))

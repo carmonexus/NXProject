@@ -8,13 +8,18 @@ namespace NXProject.Views
     {
         public DevOpsProject? Result { get; private set; }
 
+        private readonly string _process;
+
         public DevOpsProjectEditWindow(string name = "", int id = 0,
                                        bool isOpex = true, string costCenter = "",
-                                       string costCenterSource = "")
+                                       string costCenterSource = "", string process = "")
         {
             InitializeComponent();
             NameBox.Text = name;
             IdBox.Text   = id > 0 ? id.ToString() : "";
+            _process = process ?? "";
+            ProcessBox.Text = string.IsNullOrWhiteSpace(_process)
+                ? AppStrings.Get("PortEdit_ProcessUnknown") : _process;
 
             TypeBox.Items.Add("OPEX");
             TypeBox.Items.Add("CAPEX");
@@ -53,7 +58,8 @@ namespace NXProject.Views
                 RootWorkItemId   = id,
                 IsOpex           = src != "CAPEX",
                 CostCenter       = CcBox.Text?.Trim() ?? "",
-                CostCenterSource = src
+                CostCenterSource = src,
+                Process          = _process   // read-only nesta tela; preserva o lido do DevOps
             };
             DialogResult = true;
             Close();

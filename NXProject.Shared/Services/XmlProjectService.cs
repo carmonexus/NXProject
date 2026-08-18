@@ -77,6 +77,7 @@ namespace NXProject.Services
                     new XElement(EXT + "PepProjectName", project.PepProjectName ?? ""),
                     new XElement(EXT + "DevOpsOrganizationUrl", project.DevOpsOrganizationUrl ?? ""),
                     new XElement(EXT + "DevOpsTeamProject", project.DevOpsTeamProject ?? ""),
+                    new XElement(EXT + "DevOpsProcess", project.DevOpsProcess ?? ""),
                     new XElement(EXT + "PlanSheetPath", project.PlanSheetPath ?? ""),
                     new XElement(EXT + "UseHierarchyColors", project.UseHierarchyColors),
                     new XElement(EXT + "BaselineActive", project.BaselineActive),
@@ -368,6 +369,8 @@ namespace NXProject.Services
                     ? null : root.Element(EXT + "DevOpsOrganizationUrl")!.Value,
                 DevOpsTeamProject = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsTeamProject")?.Value)
                     ? null : root.Element(EXT + "DevOpsTeamProject")!.Value,
+                DevOpsProcess = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsProcess")?.Value)
+                    ? null : root.Element(EXT + "DevOpsProcess")!.Value,
                 PlanSheetPath = string.IsNullOrWhiteSpace(root.Element(EXT + "PlanSheetPath")?.Value)
                     ? null : root.Element(EXT + "PlanSheetPath")!.Value,
                 UseHierarchyColors    = bool.TryParse(root.Element(EXT + "UseHierarchyColors")?.Value, out var uhc) && uhc,

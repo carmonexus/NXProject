@@ -206,11 +206,17 @@ O NXProject lê e grava campos customizados em **Stories, Features e Epics** do 
 | `Data_Fim` | `Custom.DataFim` *(exemplo)* | Data/Hora | `Data_Fim` | Story, Feature, Epic | Data de fim planejada |
 | `Perc_Alocacao` | `Custom.PercAlocacao` *(exemplo)* | Decimal/Float (1–100, até 2 casas) | `Perc_Alocacao` | Story | % do dia da pessoa dedicado a esta Story |
 | `Perc_Conclusao` | `Custom.PercConclusao` *(exemplo)* | Inteiro (0–100) | `Perc_Conclusao` | Story | % de conclusão (lido no import, gravado no sync) |
+| `EPIC_TYPE` | `Custom.EPIC_TYPE` *(exemplo)* | Texto (lista: `DELIVERY` / `BACKLOG`) | `EPIC_TYPE` | Epic | Classifica o Epic: **Delivery** (soma horas no total do projeto) ou **Backlog** (não soma). Habilitado por padrão. |
+| `Tipo_Centro_Custo` | `Custom.Tipo_Centro_Custo` *(exemplo)* | Texto (`OPEX` / `CAPEX`) | `Tipo_Centro_Custo` | Epic | Tipo do centro de custo — usado no **Portfólio de Projetos** (OPEX/CAPEX) |
 | `Sync_version` | `Custom.Syncversion` *(exemplo)* | Inteiro | `Sync_version` | Story, Feature, Epic | Contador de versão de concorrência (gerenciado automaticamente) |
 | `Sync_Name` | `Custom.SyncName` *(exemplo)* | Texto *(texto simples, não Identity)* | `Sync_Name` | Story, Feature, Epic | Quem realizou a última sincronização (gerenciado automaticamente) |
 
+> **Campos de HH opcionais (avançado).** Além do `HH Estimado`, o NXProject reconhece campos separados de horas quando existem, para preservar o planejado em itens 100% concluídos: `HH Original` (`HH_Original_float`), `HH Restante` (`HH_Restante_float`) e `HH Atual` (`HH_Atual_float`) — em Story, Feature e Epic. Se não existirem, o NXProject deriva os valores do `HH Estimado`/estado.
+
 > Os nomes de referência acima são exemplos — o Azure DevOps os gera automaticamente a partir do nome de exibição e do prefixo da sua organização.  
-> Se os seus campos tiverem nomes diferentes, ajuste-os no NXProject em **Configuração Integração Azure DevOps → Campos avançados**, onde todos os nomes são configuráveis: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, Sync_version e Sync_Name.
+> Se os seus campos tiverem nomes diferentes, ajuste-os no NXProject em **Configuração Integração Azure DevOps → Campos avançados**, onde todos os nomes são configuráveis: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, EPIC_TYPE, Tipo_Centro_Custo, Sync_version e Sync_Name.
+
+> **Ordem do backlog (StackRank / BacklogPriority):** o NXProject grava a ordem do backlog no campo padrão do processo — `Microsoft.VSTS.Common.StackRank` em **Agile/CMMI/Basic** e `Microsoft.VSTS.Common.BacklogPriority` em **Scrum**. Esses campos já existem no processo (não precisam ser criados). O processo do Team Project é lido automaticamente na importação/descoberta e exibido no banner e no editor do Portfólio.
 
 > **Dica:** crie os campos uma vez no nível do processo e adicione-os a Story, Feature e Epic — todos os tipos compartilham a mesma definição de campo.
 
@@ -223,9 +229,12 @@ A **Task** usa apenas campos **padrão** do Azure DevOps, que já existem no tip
 | HH Estimado | `Microsoft.VSTS.Scheduling.OriginalEstimate` | Esforço estimado da Task |
 | HH Atual | `Microsoft.VSTS.Scheduling.CompletedWork` | Trabalho concluído |
 | Prioridade | `Microsoft.VSTS.Common.Priority` | O DevOps aceita 1–4 |
+| Ordem do backlog | `Microsoft.VSTS.Common.StackRank` / `BacklogPriority` | Campo padrão do processo (não precisa criar) |
 | Responsável / Estado / Categoria | `System.AssignedTo` / `System.State` / `Microsoft.VSTS.Common.Activity` | — |
 
-> Datas, `Perc_Alocacao` e `Sync_version`/`Sync_Name` **não** se aplicam à Task — o planejamento (datas e duração) é derivado da Story pai.
+> **Campo `Approved` (opcional, só na Task).** Se o seu processo tiver um campo booleano `Approved` (`Custom.Approved`) na Task, o NXProject lê e grava a aprovação da Task. Habilitado por padrão; se a Task não tiver o campo, é ignorado. Configurável em **Campos avançados**.
+
+> Datas, `Perc_Alocacao`, `EPIC_TYPE`, `Tipo_Centro_Custo` e `Sync_version`/`Sync_Name` **não** se aplicam à Task — o planejamento (datas e duração) é derivado da Story pai.
 
 #### Controle de concorrência (`Sync_version` / `Sync_Name`)
 

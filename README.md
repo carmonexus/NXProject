@@ -206,11 +206,17 @@ NXProject reads and writes custom fields on **Stories, Features and Epics** in A
 | `Data_Fim` | `Custom.DataFim` *(example)* | Date/Time | `Data_Fim` | Story, Feature, Epic | Planned finish date |
 | `Perc_Alocacao` | `Custom.PercAlocacao` *(example)* | Decimal/Float (1–100, up to 2 decimals) | `Perc_Alocacao` | Story | % of person's day dedicated to this Story |
 | `Perc_Conclusao` | `Custom.PercConclusao` *(example)* | Integer (0–100) | `Perc_Conclusao` | Story | % completion (read on import, written on sync) |
+| `EPIC_TYPE` | `Custom.EPIC_TYPE` *(example)* | Text (list: `DELIVERY` / `BACKLOG`) | `EPIC_TYPE` | Epic | Classifies the Epic: **Delivery** (adds hours to the project total) or **Backlog** (does not). Enabled by default. |
+| `Tipo_Centro_Custo` | `Custom.Tipo_Centro_Custo` *(example)* | Text (`OPEX` / `CAPEX`) | `Tipo_Centro_Custo` | Epic | Cost-center type — used by the **Projects Portfolio** (OPEX/CAPEX) |
 | `Sync_version` | `Custom.Syncversion` *(example)* | Integer | `Sync_version` | Story, Feature, Epic | Concurrency version counter (auto-managed) |
 | `Sync_Name` | `Custom.SyncName` *(example)* | Text *(plain text, not Identity)* | `Sync_Name` | Story, Feature, Epic | Who last synced (auto-managed) |
 
+> **Optional HH fields (advanced).** Besides `HH Estimado`, NXProject recognizes separate hour fields when they exist, to preserve the plan on 100%-complete items: `HH Original` (`HH_Original_float`), `HH Restante` (`HH_Restante_float`) and `HH Atual` (`HH_Atual_float`) — on Story, Feature and Epic. If absent, NXProject derives the values from `HH Estimado`/state.
+
 > The reference names above are examples — Azure DevOps generates them automatically from the display name and your organization prefix.  
-> If your fields have different display names, set them in NXProject under **Configure Azure DevOps → Advanced fields**, where all field names are configurable: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, Sync_version and Sync_Name.
+> If your fields have different display names, set them in NXProject under **Configure Azure DevOps → Advanced fields**, where all field names are configurable: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, EPIC_TYPE, Tipo_Centro_Custo, Sync_version and Sync_Name.
+
+> **Backlog order (StackRank / BacklogPriority):** NXProject writes the backlog order to the process's standard field — `Microsoft.VSTS.Common.StackRank` on **Agile/CMMI/Basic** and `Microsoft.VSTS.Common.BacklogPriority` on **Scrum**. These fields already exist in the process (no need to create them). The Team Project process is read automatically on import/discovery and shown in the banner and the Portfolio editor.
 
 > **Tip:** create the fields once at the process level and then add them to Story, Feature and Epic work item types — they share the same field definition across types.
 
@@ -223,9 +229,12 @@ The **Task** uses only **standard** Azure DevOps fields, which already exist on 
 | Estimated HH | `Microsoft.VSTS.Scheduling.OriginalEstimate` | Task estimated effort |
 | Current HH | `Microsoft.VSTS.Scheduling.CompletedWork` | Completed work |
 | Priority | `Microsoft.VSTS.Common.Priority` | DevOps accepts 1–4 |
+| Backlog order | `Microsoft.VSTS.Common.StackRank` / `BacklogPriority` | Process's standard field (no need to create) |
 | Assigned To / State / Activity | `System.AssignedTo` / `System.State` / `Microsoft.VSTS.Common.Activity` | — |
 
-> Dates, `Perc_Alocacao` and `Sync_version`/`Sync_Name` do **not** apply to Tasks — planning (dates and duration) is derived from the parent Story.
+> **`Approved` field (optional, Task only).** If your process has a boolean `Approved` field (`Custom.Approved`) on the Task, NXProject reads and writes the Task approval. Enabled by default; ignored if the Task lacks the field. Configurable under **Advanced fields**.
+
+> Dates, `Perc_Alocacao`, `EPIC_TYPE`, `Tipo_Centro_Custo` and `Sync_version`/`Sync_Name` do **not** apply to Tasks — planning (dates and duration) is derived from the parent Story.
 
 #### Concurrency control (`Sync_version` / `Sync_Name`)
 

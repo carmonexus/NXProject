@@ -60,6 +60,11 @@ namespace NXProject.Models
         public string? DevOpsOrganizationUrl { get; set; }
         public string? DevOpsTeamProject { get; set; }
 
+        // Processo do Team Project no DevOps (Agile, Scrum, CMMI, Basic), lido da API na
+        // importação. Determina o campo de ordem do backlog (Agile/CMMI = StackRank; Scrum =
+        // BacklogPriority) e é exibido no banner e na configuração do portfólio.
+        public string? DevOpsProcess { get; set; }
+
         // Planilha de Plan Task associada a este cronograma (último .xlsx usado). O log de
         // atualização de IDs pós-sincronização fica na pasta desse arquivo.
         public string? PlanSheetPath { get; set; }

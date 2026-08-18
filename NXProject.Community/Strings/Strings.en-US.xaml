@@ -794,6 +794,9 @@
     <sys:String x:Key="PortEdit_Name">Project Name</sys:String>
     <sys:String x:Key="PortEdit_Id">DevOps ID (Root Work Item)</sys:String>
     <sys:String x:Key="PortEdit_Type">Type</sys:String>
+    <sys:String x:Key="PortEdit_Process">Process (DevOps)</sys:String>
+    <sys:String x:Key="PortEdit_ProcessTip">Team Project process in Azure DevOps (Agile, Scrum, CMMI or Basic). Read automatically on import/discovery — it defines the backlog order field (Agile/CMMI = StackRank; Scrum = BacklogPriority).</sys:String>
+    <sys:String x:Key="PortEdit_ProcessUnknown">(unknown — import/discover from DevOps)</sys:String>
     <sys:String x:Key="PortEdit_CostCenter">Cost Center</sys:String>
     <sys:String x:Key="PortEdit_Ok">OK</sys:String>
     <sys:String x:Key="PortEdit_Cancel">Cancel</sys:String>
@@ -834,6 +837,7 @@
     <sys:String x:Key="Banner_Percent">| {0:0.#}% complete</sys:String>
     <sys:String x:Key="Banner_Owner">| Owner: {0}</sys:String>
     <sys:String x:Key="Banner_Source">Data source: {0}</sys:String>
+    <sys:String x:Key="Banner_Process">Process: {0}</sys:String>
 
     <!-- Import from Azure DevOps -->
     <sys:String x:Key="Imp_Title">Import from Azure DevOps</sys:String>

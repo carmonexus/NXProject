@@ -12,6 +12,10 @@ namespace NXProject.Models
         // String vazia/null = derivado de IsOpex para compatibilidade.
         public string CostCenterSource { get; set; } = "";
 
+        // Processo do Team Project no DevOps (Agile, Scrum, CMMI, Basic). Informativo,
+        // vindo do Discovery/import. Vazio = desconhecido (entrada manual sem leitura).
+        public string Process { get; set; } = "";
+
         // Nome com o owner anexado, para exibição em listas/combos.
         [System.Text.Json.Serialization.JsonIgnore]
         public string DisplayName =>
