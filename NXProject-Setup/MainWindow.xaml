@@ -28,6 +28,10 @@
                 <TextBlock Text="{DynamicResource Setup_Step2Title}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
                 <TextBlock x:Name="Step2StatusText" Text="{DynamicResource Setup_Step2Status}"
                            FontSize="12" Foreground="#555" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <TextBlock FontSize="10.5" Foreground="#999" TextWrapping="Wrap" Margin="0,0,0,10">
+                    <Run x:Name="AppPathRun"/>
+                    <Hyperlink Click="OnOpenAppFolder"><Run Text="{DynamicResource Setup_OpenFolder}"/></Hyperlink>
+                </TextBlock>
                 <Button x:Name="Step2Button" Content="{DynamicResource Setup_Step2Button}" Width="220" Height="30"
                         HorizontalAlignment="Left" Margin="0,0,0,10" Click="OnStep2Click"/>
                 <ProgressBar x:Name="InstallProgress" Height="18" Minimum="0" Maximum="100" Value="0"/>
@@ -40,13 +44,28 @@
                 <TextBlock Text="{DynamicResource Setup_Step3Title}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4"/>
                 <TextBlock Text="{DynamicResource Setup_Step3Desc}" FontSize="11" Foreground="#777"
                            TextWrapping="Wrap" Margin="0,0,0,8"/>
-                <CheckBox x:Name="CodexCheck" Content="{DynamicResource Setup_Step3Codex}" Margin="0,0,0,4"/>
-                <CheckBox x:Name="ClaudeCheck" Content="{DynamicResource Setup_Step3Claude}" Margin="0,0,0,4"/>
-                <TextBlock Text="{DynamicResource Setup_Step3CodexNote}" FontSize="10.5" Foreground="#888"
-                           TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <CheckBox x:Name="CodexCheck" Content="{DynamicResource Setup_Step3Codex}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="CodexStatus" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <CheckBox x:Name="ClaudeCheck" Content="{DynamicResource Setup_Step3Claude}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ClaudeStatus" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <CheckBox x:Name="LlamaCheck" Content="{DynamicResource Setup_Step3Llama}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="LlamaStatus" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="11"/>
+                </StackPanel>
+                <TextBlock Text="{DynamicResource Setup_Step3CodexNote}" FontSize="10.5" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,2"/>
+                <TextBlock Text="{DynamicResource Setup_Step3ClaudeNote}" FontSize="10.5" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,2"/>
+                <TextBlock Text="{DynamicResource Setup_Step3LlamaNote}" FontSize="10.5" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,8"/>
                 <Button x:Name="Step3Button" Content="{DynamicResource Setup_Step3Button}" Width="220" Height="30"
                         HorizontalAlignment="Left" Click="OnStep3Click"/>
                 <TextBlock x:Name="Step3StatusText" FontSize="11" Foreground="#555" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                <TextBlock FontSize="10.5" Foreground="#999" TextWrapping="Wrap" Margin="0,6,0,0">
+                    <Run x:Name="CliPathRun"/>
+                    <Hyperlink Click="OnOpenCliFolder"><Run Text="{DynamicResource Setup_OpenFolder}"/></Hyperlink>
+                </TextBlock>
             </StackPanel>
         </Border>
 

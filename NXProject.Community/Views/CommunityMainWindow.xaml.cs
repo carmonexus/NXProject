@@ -3648,6 +3648,16 @@ namespace NXProject.Views
             var opts = Services.TfsConnectionStore.Load("NXProject.Community");
             BaselineAutoLoadItem.IsChecked = opts.AutoLoadBaseline;
 
+            // Setup pediu para baixar a IA Local (LLaMA)? Abre o Gerenciar IA Local já baixando
+            // (usa a pasta configurada nessa tela — mantém o path consistente). Após a licença.
+            if (NXProject.CommunityApp.ConsumeInstallLlama())
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (_licenseAccepted || HasAcceptedLicense())
+                        try { new LocalAIManagerWindow(autoInstall: true) { Owner = this }.ShowDialog(); }
+                        catch { /* download é opcional; não quebra a abertura */ }
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
             if (_licenseAccepted)
                 return;
 

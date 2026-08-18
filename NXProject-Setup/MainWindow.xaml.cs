@@ -19,8 +19,60 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += (_, _) => RefreshStep1State();
+        // Mostra os caminhos de instalação (app e CLIs) com atalho para conferir.
+        AppPathRun.Text = App.Str("Setup_PathApp", _installDir) + "  ";
+        CliPathRun.Text = App.Str("Setup_PathCli", NXProject.Services.AiCliInstaller.BinDir) + "  ";
+        Loaded += (_, _) => { RefreshStep1State(); RefreshInstallStatus(); };
     }
+
+    // Mostra um ✓ ao lado do que já está instalado (Codex/Claude via exe; LLaMA via modelo GGUF).
+    private void RefreshInstallStatus()
+    {
+        SetStatus(CodexStatus, NXProject.Services.AiCliInstaller.CodexPath != null);
+        SetStatus(ClaudeStatus, NXProject.Services.AiCliInstaller.ClaudePath != null);
+        SetStatus(LlamaStatus, IsLlamaInstalled());
+    }
+
+    private static void SetStatus(System.Windows.Controls.TextBlock tb, bool ok)
+    {
+        tb.Text = ok ? App.Str("Setup_Installed") : App.Str("Setup_NotInstalled");
+        tb.Foreground = ok ? System.Windows.Media.Brushes.Green : System.Windows.Media.Brushes.Gray;
+    }
+
+    // IA Local instalada? Checagem leve (sem LLamaSharp): lê a pasta de recursos no local-ai.json
+    // e verifica se o modelo GGUF está lá.
+    private const string LlamaModelFileName = "Qwen2.5-3B-Instruct-Q4_K_M.gguf";
+    private static bool IsLlamaInstalled()
+    {
+        try
+        {
+            var cfg = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "NXProject.Community", "local-ai.json");
+            if (!File.Exists(cfg)) return false;
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(cfg));
+            if (!doc.RootElement.TryGetProperty("ResourcesFolder", out var f)) return false;
+            var folder = f.GetString();
+            if (string.IsNullOrWhiteSpace(folder)) return false;
+            return File.Exists(Path.Combine(folder, LlamaModelFileName))
+                   || Directory.Exists(folder) && Directory.GetFiles(folder, "*.gguf").Length > 0;
+        }
+        catch { return false; }
+    }
+
+    private static void OpenFolder(string path)
+    {
+        try
+        {
+            Directory.CreateDirectory(path);
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch { /* abrir pasta é conveniência */ }
+    }
+
+    private void OnOpenAppFolder(object sender, System.Windows.RoutedEventArgs e) => OpenFolder(_installDir);
+    private void OnOpenCliFolder(object sender, System.Windows.RoutedEventArgs e)
+        => OpenFolder(NXProject.Services.AiCliInstaller.BinDir);
 
     private void OnHyperlinkRequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
     {
@@ -94,7 +146,7 @@ public partial class MainWindow : Window
     // Passo 3: instala Codex/Claude Code (Windows) baixando o binário nativo MAIS NOVO.
     private async void OnStep3Click(object sender, RoutedEventArgs e)
     {
-        if (CodexCheck.IsChecked != true && ClaudeCheck.IsChecked != true)
+        if (CodexCheck.IsChecked != true && ClaudeCheck.IsChecked != true && LlamaCheck.IsChecked != true)
         {
             Step3StatusText.Text = App.Str("Setup_Step3PickOne");
             return;
@@ -109,7 +161,14 @@ public partial class MainWindow : Window
             if (ClaudeCheck.IsChecked == true)
                 await NXProject.Services.AiCliInstaller.InstallClaudeCodeAsync(status);
 
-            Step3StatusText.Text = App.Str("Setup_Step3Done", NXProject.Services.AiCliInstaller.BinDir);
+            // LLaMA (~2 GB) não é baixado aqui: o download roda dentro do NXProject (na tela
+            // Gerenciar IA Local, que define a pasta). Aciona ao abrir o app (Passo 2).
+            var msg = (CodexCheck.IsChecked == true || ClaudeCheck.IsChecked == true)
+                ? App.Str("Setup_Step3Done", NXProject.Services.AiCliInstaller.BinDir)
+                : string.Empty;
+            if (LlamaCheck.IsChecked == true)
+                msg = (msg.Length > 0 ? msg + "\n" : "") + App.Str("Setup_Step3LlamaQueued");
+            Step3StatusText.Text = msg;
         }
         catch (Exception ex)
         {
@@ -118,6 +177,7 @@ public partial class MainWindow : Window
         finally
         {
             Step3Button.IsEnabled = true;
+            RefreshInstallStatus();   // atualiza o ✓ após instalar
         }
     }
 
@@ -180,7 +240,9 @@ public partial class MainWindow : Window
             InstallProgress.Value = 100;
 
             Step2StatusText.Text = App.Str("Setup_Done");
-            var started = TryStart(exePath);
+            // Se o usuário marcou LLaMA no Passo 3, abre o app já disparando o download da IA Local
+            // (na tela Gerenciar IA Local, que usa a pasta configurada lá).
+            var started = TryStart(exePath, LlamaCheck.IsChecked == true ? "--install-llama" : null);
             if (!started)
             {
                 ShowError(App.Str("Setup_InstalledCantOpen",
@@ -201,15 +263,17 @@ public partial class MainWindow : Window
         }
     }
 
-    private static bool TryStart(string exePath)
+    private static bool TryStart(string exePath, string? args = null)
     {
         try
         {
-            using var proc = Process.Start(new ProcessStartInfo(exePath)
+            var psi = new ProcessStartInfo(exePath)
             {
                 WorkingDirectory = Path.GetDirectoryName(exePath) ?? "",
                 UseShellExecute = true
-            });
+            };
+            if (!string.IsNullOrWhiteSpace(args)) psi.Arguments = args;
+            using var proc = Process.Start(psi);
             return proc != null;
         }
         catch

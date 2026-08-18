@@ -46,9 +46,25 @@ namespace NXProject
             return false;
         }
 
+        /// <summary>Setup pediu para já baixar a IA Local (LLaMA) ao abrir? (arg --install-llama)</summary>
+        public static bool InstallLlamaOnStart { get; private set; }
+
+        /// <summary>Lê e ZERA o pedido de instalar a IA Local (executa uma única vez).</summary>
+        public static bool ConsumeInstallLlama()
+        {
+            var v = InstallLlamaOnStart;
+            InstallLlamaOnStart = false;
+            return v;
+        }
+
         protected override void OnStartup(System.Windows.StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            if (e.Args != null)
+                foreach (var a in e.Args)
+                    if (string.Equals(a?.Trim(), "--install-llama", StringComparison.OrdinalIgnoreCase))
+                        InstallLlamaOnStart = true;
 
             // Captura exceções não tratadas para exibir mensagem em vez de fechar silenciosamente
             DispatcherUnhandledException += (_, args) =>
