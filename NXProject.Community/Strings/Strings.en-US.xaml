@@ -780,6 +780,7 @@
     <sys:String x:Key="Port_NoConnectionMsg">Configure the Azure DevOps connection before using Discovery.&#10;(Settings menu → DevOps / TFS Connection)</sys:String>
     <sys:String x:Key="Port_NoConnectionTitle">Connection not configured</sys:String>
     <sys:String x:Key="Port_AddedMsg">{0} project(s) added to the portfolio.</sys:String>
+    <sys:String x:Key="Port_AddedUpdatedMsg">{0} project(s) added and {1} updated (process/owner) in the portfolio.</sys:String>
     <sys:String x:Key="Port_AlreadyInMsg">The selected items are already in the portfolio.</sys:String>
     <sys:String x:Key="Port_DiscoveryTitle">Discovery</sys:String>
     <sys:String x:Key="Port_SelectToDelete">Select a project to delete.</sys:String>

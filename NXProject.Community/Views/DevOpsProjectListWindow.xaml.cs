@@ -152,17 +152,31 @@ namespace NXProject.Views
             var dlg = new DevOpsDiscoveryWindow(options, _projects) { Owner = this };
             if (dlg.ShowDialog() != true) return;
 
-            int added = 0;
+            int added = 0, updated = 0;
             DevOpsProject? lastAdded = null;
             foreach (var p in dlg.SelectedProjects)
             {
-                if (_projects.Any(x => x.RootWorkItemId == p.RootWorkItemId)) continue;
+                var existing = _projects.FirstOrDefault(x => x.RootWorkItemId == p.RootWorkItemId);
+                if (existing != null)
+                {
+                    // Já existe: atualiza os dados vindos do DevOps (processo, owner e nome)
+                    // sem mexer no que é configurado localmente (Tipo/OPEX-CAPEX, Centro de Custo).
+                    var changed = false;
+                    if (!string.IsNullOrWhiteSpace(p.Process) && existing.Process != p.Process)
+                    { existing.Process = p.Process; changed = true; }
+                    if (!string.IsNullOrWhiteSpace(p.Owner) && existing.Owner != p.Owner)
+                    { existing.Owner = p.Owner; changed = true; }
+                    if (!string.IsNullOrWhiteSpace(p.Name) && existing.Name != p.Name)
+                    { existing.Name = p.Name; changed = true; }
+                    if (changed) updated++;
+                    continue;
+                }
                 _projects.Add(p);
                 lastAdded = p;
                 added++;
             }
 
-            if (added > 0)
+            if (added > 0 || updated > 0)
             {
                 // Deixa o projeto recém-adicionado selecionado na grid (para pré-selecionar na importação).
                 if (lastAdded != null)
@@ -170,8 +184,10 @@ namespace NXProject.Views
                     ProjectsGrid.SelectedItem = lastAdded;
                     ProjectsGrid.ScrollIntoView(lastAdded);
                 }
+                ProjectsGrid.Items.Refresh();   // reflete os campos atualizados (ex.: processo)
                 SaveIfPathSet();
-                MessageBox.Show(AppStrings.Get("Port_AddedMsg", added), AppStrings.Get("Port_DiscoveryTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(AppStrings.Get("Port_AddedUpdatedMsg", added, updated),
+                    AppStrings.Get("Port_DiscoveryTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {
