@@ -22,6 +22,9 @@
     <sys:String x:Key="Setup_InstalledWin">✓ já instalado (Windows)</sys:String>
     <sys:String x:Key="Setup_InstalledWsl">✓ já instalado (WSL) — não precisa instalar no Windows</sys:String>
     <sys:String x:Key="Setup_NotInstalled">não instalado</sys:String>
+    <sys:String x:Key="Setup_Checking">Verificando instalação…</sys:String>
+    <sys:String x:Key="Setup_Step2Installed">✓ NXProject já está instalado. Clique para verificar/atualizar para a versão mais recente.</sys:String>
+    <sys:String x:Key="Setup_Step2ButtonUpdate">Verificar atualização</sys:String>
     <sys:String x:Key="Setup_PathApp">Instala o NXProject em: {0}</sys:String>
     <sys:String x:Key="Setup_PathCli">CLIs (Codex/Claude) em: {0}</sys:String>
     <sys:String x:Key="Setup_Step3LlamaQueued">IA Local (LLaMA) será baixada ao abrir o NXProject (Passo 2) — a pasta é a do Gerenciar IA Local.</sys:String>

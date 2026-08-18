@@ -22,7 +22,24 @@ public partial class MainWindow : Window
         // Mostra os caminhos de instalação (app e CLIs) com atalho para conferir.
         AppPathRun.Text = App.Str("Setup_PathApp", _installDir) + "  ";
         CliPathRun.Text = App.Str("Setup_PathCli", NXProject.Services.AiCliInstaller.BinDir) + "  ";
-        Loaded += (_, _) => { RefreshStep1State(); RefreshInstallStatus(); };
+        Loaded += (_, _) => { RefreshStep1State(); RefreshStep2State(); RefreshInstallStatus(); };
+    }
+
+    // O NXProject não precisa ser reinstalado sempre: se o exe já está na pasta do usuário,
+    // mostra "já instalado" e o botão vira "Verificar atualização" (baixa só se houver versão nova).
+    private void RefreshStep2State()
+    {
+        var exePath = Path.Combine(_installDir, "NXProject.Community.exe");
+        if (File.Exists(exePath))
+        {
+            Step2StatusText.Text = App.Str("Setup_Step2Installed");
+            Step2Button.Content = App.Str("Setup_Step2ButtonUpdate");
+        }
+        else
+        {
+            Step2StatusText.Text = App.Str("Setup_Step2Status");
+            Step2Button.Content = App.Str("Setup_Step2Button");
+        }
     }
 
     // Mostra um ✓ ao lado do que já está instalado. Codex/Claude: procura no WINDOWS (exe) e
@@ -38,9 +55,15 @@ public partial class MainWindow : Window
         SetCliStatus(ClaudeStatus, claudeWin ? InstallWhere.Windows : InstallWhere.None);
         SetStatus(LlamaStatus, IsLlamaInstalled());
 
-        // Se não achou no Windows, testa o WSL (assíncrono, não trava a tela).
-        if (!codexWin) _ = UpdateWslStatusAsync("codex", CodexStatus);
-        if (!claudeWin) _ = UpdateWslStatusAsync("claude", ClaudeStatus);
+        // Se não achou no Windows, testa o WSL (assíncrono; mostra "verificando" na hora).
+        if (!codexWin) { SetChecking(CodexStatus); _ = UpdateWslStatusAsync("codex", CodexStatus); }
+        if (!claudeWin) { SetChecking(ClaudeStatus); _ = UpdateWslStatusAsync("claude", ClaudeStatus); }
+    }
+
+    private static void SetChecking(System.Windows.Controls.TextBlock tb)
+    {
+        tb.Text = App.Str("Setup_Checking");
+        tb.Foreground = System.Windows.Media.Brushes.Gray;
     }
 
     private static void SetCliStatus(System.Windows.Controls.TextBlock tb, InstallWhere where)
@@ -64,7 +87,7 @@ public partial class MainWindow : Window
     private async Task UpdateWslStatusAsync(string cli, System.Windows.Controls.TextBlock tb)
     {
         var found = await Task.Run(() => IsCliInWsl(cli));
-        if (found) SetCliStatus(tb, InstallWhere.Wsl);
+        SetCliStatus(tb, found ? InstallWhere.Wsl : InstallWhere.None);
     }
 
     // Procura o CLI dentro do WSL (shell de login carrega o PATH do nvm/npm).
