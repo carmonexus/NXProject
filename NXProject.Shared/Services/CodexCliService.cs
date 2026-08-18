@@ -156,11 +156,24 @@ namespace NXProject.Services
             var prompt = string.IsNullOrWhiteSpace(systemPrompt)
                 ? userPrompt
                 : systemPrompt.Trim() + "\n\n" + userPrompt;
-            await process.StandardInput.WriteAsync(prompt.AsMemory(), cancellationToken);
-            process.StandardInput.Close();
+            // Escreve o prompt no stdin. Se o usuário PARAR a IA (ou o processo sair cedo), o
+            // pipe fecha e o WriteAsync lança IOException "O pipe foi finalizado" — que não é um
+            // erro real: se foi cancelamento, propaga como cancelamento; senão, segue para ler a
+            // saída que o processo já tenha produzido.
+            try
+            {
+                await process.StandardInput.WriteAsync(prompt.AsMemory(), cancellationToken);
+                process.StandardInput.Close();
+            }
+            catch (OperationCanceledException) { TryKill(process); throw; }
+            catch (System.IO.IOException)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // pipe fechado sem cancelamento: o processo saiu cedo — segue e lê o stdout/stderr.
+            }
 
-            var stdoutTask = process.StandardOutput.ReadToEndAsync();
-            var stderrTask = process.StandardError.ReadToEndAsync();
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds <= 0 ? 600 : timeoutSeconds));
@@ -180,8 +193,18 @@ namespace NXProject.Services
                 throw;
             }
 
-            var stdout = await stdoutTask;
-            var stderr = await stderrTask;
+            string stdout, stderr;
+            try
+            {
+                stdout = await stdoutTask;
+                stderr = await stderrTask;
+            }
+            catch (Exception) when (cancellationToken.IsCancellationRequested)
+            {
+                // Leitura interrompida pelo Parar IA: trata como cancelamento (sem "pipe finalizado").
+                TryKill(process);
+                throw new OperationCanceledException(cancellationToken);
+            }
             if (process.ExitCode != 0)
             {
                 var msg = $"Codex local terminou com erro (código {process.ExitCode}).\n{stderr}\n{stdout}".Trim();
