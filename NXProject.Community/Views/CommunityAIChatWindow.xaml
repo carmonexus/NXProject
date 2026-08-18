@@ -152,13 +152,6 @@
                           Content="{DynamicResource AIChat_UnfinishedOnly}"
                           Checked="OnDeliveryOnlyChanged" Unchecked="OnDeliveryOnlyChanged"
                           ToolTip="{DynamicResource AIChat_UnfinishedOnlyTip}"/>
-                <Button x:Name="ApplyScheduleButton" Style="{StaticResource FlatIconButtonPrimary}"
-                        Margin="16,0,0,0" Visibility="Collapsed" Click="OnApplyScheduleClick">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#x2705;" FontSize="13" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource AIChat_ApplySchedule}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
             </StackPanel>
             <TextBlock x:Name="ActionHint" Margin="0,6,0,0"
                        TextWrapping="Wrap" Foreground="#667" FontSize="11"/>
@@ -169,6 +162,17 @@
             <DockPanel>
                 <TextBlock x:Name="ChatStatus" DockPanel.Dock="Bottom" Foreground="Gray" FontSize="11"
                            FontStyle="Italic" Margin="8,4,8,6" TextWrapping="Wrap"/>
+                <!-- Botão "Aplicar como cronograma novo": aparece logo abaixo do resultado da conversa. -->
+                <Border DockPanel.Dock="Bottom" x:Name="ApplyScheduleBar" Visibility="Collapsed"
+                        BorderBrush="#EEF1F5" BorderThickness="0,1,0,0" Background="#FAFBFD" Padding="8,8">
+                    <Button x:Name="ApplyScheduleButton" Style="{StaticResource FlatIconButtonPrimary}"
+                            HorizontalAlignment="Center" Click="OnApplyScheduleClick">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#x2705;" FontSize="13" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{DynamicResource AIChat_ApplySchedule}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Border>
                 <wv2:WebView2 x:Name="ChatWebView" DefaultBackgroundColor="White"/>
             </DockPanel>
         </Border>

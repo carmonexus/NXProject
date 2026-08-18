@@ -137,7 +137,7 @@ namespace NXProject.Views
             // Ao ligar/desligar o modo cronograma, o combo de ação fica irrelevante.
             ActionCombo.IsEnabled = ScheduleModeCheck.IsChecked != true;
             if (ScheduleModeCheck.IsChecked != true)
-                ApplyScheduleButton.Visibility = Visibility.Collapsed;
+                ApplyScheduleBar.Visibility = Visibility.Collapsed;
             UpdateHint();
         }
 
@@ -279,7 +279,7 @@ namespace NXProject.Views
                         : (string.IsNullOrWhiteSpace(_lastSchedule.Summary) ? "" : _lastSchedule.Summary + "\n\n")
                           + BuildOutline(_lastSchedule.Roots, 0)
                           + "\n" + AppStrings.Get("AIChat_ScheduleReady", leaves) + warns;
-                    ApplyScheduleButton.Visibility = _lastSchedule.Roots.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                    ApplyScheduleBar.Visibility = _lastSchedule.Roots.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
                     AddAiMessage(display);
                 }
                 else
@@ -439,7 +439,7 @@ namespace NXProject.Views
             _conv.SummarizedFrom = 0;
             ConvList.Items.Refresh();
             _lastSchedule = null;
-            ApplyScheduleButton.Visibility = Visibility.Collapsed;
+            ApplyScheduleBar.Visibility = Visibility.Collapsed;
             RebuildContext(); // recarrega o cronograma atual (respeitando o filtro de backlog)
             AddSystemNote(AppStrings.Get("AIChat_Cleared"));
             RenderConversation();
@@ -515,7 +515,7 @@ namespace NXProject.Views
             if (empty == null) _conversations.Insert(0, _conv);
             ConvList.SelectedItem = _conv;
             _lastSchedule = null;
-            ApplyScheduleButton.Visibility = Visibility.Collapsed;
+            ApplyScheduleBar.Visibility = Visibility.Collapsed;
             AddSystemNote(welcome ? AppStrings.Get("AIChat_Welcome") : string.Empty);
             RenderConversation();
             InputBox.Focus();
@@ -536,7 +536,7 @@ namespace NXProject.Views
         private void RenderHistory()
         {
             _lastSchedule = null;
-            ApplyScheduleButton.Visibility = Visibility.Collapsed;
+            ApplyScheduleBar.Visibility = Visibility.Collapsed;
             AddSystemNote(_history.Count == 0 ? AppStrings.Get("AIChat_Welcome") : string.Empty);
             RenderConversation();
         }
@@ -965,7 +965,7 @@ namespace NXProject.Views
                 // Abre o cronograma sugerido numa janela nova (o aberto não é tocado).
                 new CommunityMainWindow(dlg.FileName).Show();
                 AddSystemNote(AppStrings.Get("AIChat_ScheduleApplied", created, dlg.FileName));
-                ApplyScheduleButton.Visibility = Visibility.Collapsed;
+                ApplyScheduleBar.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
