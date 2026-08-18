@@ -7,8 +7,15 @@
         ResizeMode="NoResize"
         Background="White">
     <StackPanel Margin="24,18,24,18">
-        <TextBlock Text="Nexus Xdata Install"
-                   FontSize="18" FontWeight="SemiBold" Foreground="#2B579A" Margin="0,0,0,2"/>
+        <Grid Margin="0,0,0,2">
+            <TextBlock Text="Nexus Xdata Install"
+                       FontSize="18" FontWeight="SemiBold" Foreground="#2B579A" VerticalAlignment="Center"/>
+            <Button x:Name="CloseButton" Content="✕" ToolTip="{DynamicResource Setup_Close}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Width="28" Height="28" FontSize="13" Padding="0"
+                    Background="Transparent" BorderThickness="0" Foreground="#777"
+                    Cursor="Hand" Click="OnCloseClick"/>
+        </Grid>
         <TextBlock Text="{DynamicResource Setup_Subtitle}" FontSize="12" Foreground="#777" Margin="0,0,0,12"/>
 
         <!-- Passo 2: Instalar NXProject (principal, fica em cima) -->

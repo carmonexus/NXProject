@@ -141,6 +141,8 @@ public partial class MainWindow : Window
         catch { /* abrir pasta é conveniência */ }
     }
 
+    private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
     private void OnOpenAppFolder(object sender, System.Windows.RoutedEventArgs e) => OpenFolder(_installDir);
     private void OnOpenCliFolder(object sender, System.Windows.RoutedEventArgs e)
         => OpenFolder(NXProject.Services.AiCliInstaller.BinDir);
