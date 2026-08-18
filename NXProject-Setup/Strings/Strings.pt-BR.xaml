@@ -11,7 +11,8 @@
     <sys:String x:Key="Setup_Retry">Tentar novamente</sys:String>
     <sys:String x:Key="Setup_Step3Title">Passo 3 (opcional): CLIs de IA para Windows</sys:String>
     <sys:String x:Key="Setup_Step3Desc">Instala o Codex e/ou o Claude Code (binário nativo mais recente) para usar como IA local no NXProject. Sem Node.js e sem scripts. No WSL a instalação continua manual.</sys:String>
-    <sys:String x:Key="Setup_Step3Codex">Codex (OpenAI)</sys:String>
+    <sys:String x:Key="Setup_Step3Codex">Codex (OpenAI) (1)</sys:String>
+    <sys:String x:Key="Setup_Step3CodexNote">(1) Possui acesso gratuito limitado, sem prazo definido no momento deste setup.</sys:String>
     <sys:String x:Key="Setup_Step3Claude">Claude Code (Anthropic)</sys:String>
     <sys:String x:Key="Setup_Step3Button">Instalar CLIs marcados</sys:String>
     <sys:String x:Key="Setup_Step3PickOne">Marque pelo menos um CLI (Codex ou Claude Code).</sys:String>
