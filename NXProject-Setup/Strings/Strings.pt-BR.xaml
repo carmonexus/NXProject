@@ -3,9 +3,9 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <sys:String x:Key="Setup_Subtitle">Instalador do NXProject</sys:String>
-    <sys:String x:Key="Setup_Step1Title">Passo 1 — .NET 10 Desktop Runtime</sys:String>
+    <sys:String x:Key="Setup_Step1Title">Passo 1 — .NET 10 Desktop Runtime (aprox. 58 MB)</sys:String>
     <sys:String x:Key="Setup_Step1Button">Baixar e instalar .NET 10</sys:String>
-    <sys:String x:Key="Setup_Step2Title">Passo 2 — Instalar NXProject</sys:String>
+    <sys:String x:Key="Setup_Step2Title">Passo 2 — Instalar NXProject (aprox. 2 MB)</sys:String>
     <sys:String x:Key="Setup_Step2Status">Baixa a versão mais recente e instala no seu usuário.</sys:String>
     <sys:String x:Key="Setup_Step2Button">Instalar NXProject</sys:String>
     <sys:String x:Key="Setup_Retry">Tentar novamente</sys:String>
