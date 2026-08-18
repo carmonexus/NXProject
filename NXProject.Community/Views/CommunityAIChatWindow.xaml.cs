@@ -141,12 +141,12 @@ namespace NXProject.Views
             UpdateHint();
         }
 
-        // Considerar somente os EPICs de Backlog: refaz o contexto filtrado (ou completo).
-        private void OnBacklogOnlyChanged(object sender, RoutedEventArgs e) => RebuildContext();
+        // Considerar somente os EPICs de Delivery: refaz o contexto filtrado (ou completo).
+        private void OnDeliveryOnlyChanged(object sender, RoutedEventArgs e) => RebuildContext();
 
         private void RebuildContext()
             => _projectContext = _viewModel.BuildFullScheduleContext(
-                BacklogOnlyCheck?.IsChecked == true, UnfinishedOnlyCheck?.IsChecked == true);
+                DeliveryOnlyCheck?.IsChecked == true, UnfinishedOnlyCheck?.IsChecked == true);
 
         private void UpdateHint()
         {
@@ -255,9 +255,9 @@ namespace NXProject.Views
                         + "Nunca invente id: se não existe no contexto, é novo. "
                         + "No campo \"summary\" descreva O QUE MUDOU vs. o cronograma atual (itens novos, removidos, "
                         + "renomeados, mudanças de HH/responsável/estrutura); se for do zero, diga isso."
-                        + (BacklogOnlyCheck.IsChecked == true
-                            ? " ESCOPO: trabalhe SOMENTE no EPIC de Backlog. Todas as sugestões devem ficar sob um "
-                              + "EPIC de Backlog; se ainda não existir nenhum no contexto, crie um EPIC no topo para o backlog."
+                        + (DeliveryOnlyCheck.IsChecked == true
+                            ? " ESCOPO: trabalhe SOMENTE no EPIC de Delivery. Todas as sugestões devem ficar sob um "
+                              + "EPIC de Delivery; se ainda não existir nenhum no contexto, crie um EPIC no topo para a entrega."
                             : "");
                     var raw = await ProjectAIAssistantService.GenerateFreeTextAsync(
                         settings, schedPrompt, BuildConversation(question), _projectContext, _cts.Token);
@@ -865,11 +865,11 @@ namespace NXProject.Views
 
                 var created = newVm.ApplyAiSchedule(_lastSchedule.Roots, untilTask: true, markPendingTfs: false, sourceByKey);
 
-                // Filtro "somente EPIC Backlog": marca os EPICs raiz criados como BACKLOG.
-                if (BacklogOnlyCheck.IsChecked == true)
+                // Filtro "somente EPIC Delivery": marca os EPICs raiz criados como DELIVERY.
+                if (DeliveryOnlyCheck.IsChecked == true)
                     foreach (var root in newVm.Project.Tasks)
                         if (string.Equals(root.TfsType, "Epic", StringComparison.OrdinalIgnoreCase))
-                            root.EpicType = NXProject.Models.EpicTypes.Backlog;
+                            root.EpicType = NXProject.Models.EpicTypes.Delivery;
 
                 // Alerta: Stories que existiam no cronograma e NÃO voltaram na proposta da IA
                 // (some algo importante) — lista os nomes para o usuário conferir se perdeu.

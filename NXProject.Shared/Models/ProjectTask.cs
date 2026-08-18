@@ -304,6 +304,9 @@ namespace NXProject.Models
 
         public static bool IsBacklog(string? epicType)
             => string.Equals(epicType?.Trim(), Backlog, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>EPIC de entrega (Delivery) — é o padrão: tudo que NÃO for Backlog.</summary>
+        public static bool IsDelivery(string? epicType) => !IsBacklog(epicType);
     }
 
     public class TaskAllocationSummary

@@ -2260,13 +2260,13 @@
     <sys:String x:Key="AIChat_CopyMessage">Copy this message</sys:String>
     <sys:String x:Key="AIChat_CopiedConversation">Conversation copied ({0} messages).</sys:String>
     <sys:String x:Key="AIChat_CopyEmpty">No conversation to copy yet.</sys:String>
-    <sys:String x:Key="AIChat_BacklogOnly">Consider only Backlog EPIC</sys:String>
-    <sys:String x:Key="AIChat_UnfinishedOnly">Only activities &lt;100%</sys:String>
+    <sys:String x:Key="AIChat_DeliveryOnly">Only Delivery EPIC</sys:String>
+    <sys:String x:Key="AIChat_UnfinishedOnly">Only &lt;100%</sys:String>
     <sys:String x:Key="AIChat_UnfinishedOnlyTip">Does not send already-completed activities (% = 100) to the AI. Fully completed subtrees are omitted from the context.</sys:String>
     <sys:String x:Key="AIChat_RawReturned">The AI did not return a schedule. Here is what it replied:</sys:String>
     <sys:String x:Key="AIChat_CopyMsgShort">copy</sys:String>
     <sys:String x:Key="AIChat_MsgCopied">Message copied.</sys:String>
-    <sys:String x:Key="AIChat_BacklogOnlyTip">Sends only Backlog-type EPICs to the AI (ignores Delivery ones). When generating a schedule, suggestions go under a Backlog EPIC.</sys:String>
+    <sys:String x:Key="AIChat_DeliveryOnlyTip">Sends only Delivery-type EPICs to the AI (ignores Backlog ones). When generating a schedule, suggestions go under a Delivery EPIC.</sys:String>
     <sys:String x:Key="AIChat_MissingStories">Warning: {0} schedule Story(ies) did NOT come back in the AI proposal. Check whether something was lost:</sys:String>
     <sys:String x:Key="AIChat_MissingStoriesNote">⚠ {0} Story(ies) left out of the proposal — please review.</sys:String>
     <sys:String x:Key="AIChat_EtaOver">+{0} over estimate</sys:String>

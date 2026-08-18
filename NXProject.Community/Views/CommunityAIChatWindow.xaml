@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="{DynamicResource AIChat_Title}"
-        Width="760" Height="640" MinWidth="560" MinHeight="440"
+        Width="900" Height="640" MinWidth="560" MinHeight="440"
         WindowStartupLocation="CenterOwner" Background="White">
     <Window.Resources>
         <!-- Botão flat estilo navegador: ícone + rótulo legível, hover suave -->
@@ -144,13 +144,13 @@
                           Content="{DynamicResource AIChat_ScheduleMode}"
                           Checked="OnScheduleModeChanged" Unchecked="OnScheduleModeChanged"
                           ToolTip="{DynamicResource AIChat_ScheduleModeTip}"/>
-                <CheckBox x:Name="BacklogOnlyCheck" VerticalAlignment="Center" Margin="16,0,0,0"
-                          Content="{DynamicResource AIChat_BacklogOnly}"
-                          Checked="OnBacklogOnlyChanged" Unchecked="OnBacklogOnlyChanged"
-                          ToolTip="{DynamicResource AIChat_BacklogOnlyTip}"/>
+                <CheckBox x:Name="DeliveryOnlyCheck" VerticalAlignment="Center" Margin="16,0,0,0"
+                          Content="{DynamicResource AIChat_DeliveryOnly}"
+                          Checked="OnDeliveryOnlyChanged" Unchecked="OnDeliveryOnlyChanged"
+                          ToolTip="{DynamicResource AIChat_DeliveryOnlyTip}"/>
                 <CheckBox x:Name="UnfinishedOnlyCheck" VerticalAlignment="Center" Margin="16,0,0,0"
                           Content="{DynamicResource AIChat_UnfinishedOnly}"
-                          Checked="OnBacklogOnlyChanged" Unchecked="OnBacklogOnlyChanged"
+                          Checked="OnDeliveryOnlyChanged" Unchecked="OnDeliveryOnlyChanged"
                           ToolTip="{DynamicResource AIChat_UnfinishedOnlyTip}"/>
                 <Button x:Name="ApplyScheduleButton" Style="{StaticResource FlatIconButtonPrimary}"
                         Margin="16,0,0,0" Visibility="Collapsed" Click="OnApplyScheduleClick">

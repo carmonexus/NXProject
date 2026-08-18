@@ -26,7 +26,7 @@ Tarefas atuais: {(existingTasks.Count == 0 ? "Nenhuma tarefa cadastrada" : strin
         /// <summary>Contexto COMPLETO do cronograma para análise/geração com IA: a árvore inteira
         /// (EPIC → Feature → Story → Task) até a folha, com HH, %, datas e responsáveis por item,
         /// mais a lista de recursos com disponibilidade. Diferente do contexto curto, não trunca.</summary>
-        public string BuildFullScheduleContext(bool onlyBacklogEpics = false, bool onlyUnfinished = false)
+        public string BuildFullScheduleContext(bool onlyDeliveryEpics = false, bool onlyUnfinished = false)
         {
             var sb = new System.Text.StringBuilder();
             sb.AppendLine($"PROJETO: {Project.Name}");
@@ -44,15 +44,15 @@ Tarefas atuais: {(existingTasks.Count == 0 ? "Nenhuma tarefa cadastrada" : strin
             sb.AppendLine("RECURSOS: " + (people.Count == 0 ? "nenhum cadastrado" : string.Join(" | ", people)));
             sb.AppendLine();
 
-            // Filtro opcional: só os EPICs do tipo BACKLOG (o resto do cronograma é ignorado).
-            var roots = onlyBacklogEpics
-                ? Project.Tasks.Where(t => EpicTypes.IsBacklog(t.EpicType)).ToList()
+            // Filtro opcional: só os EPICs do tipo DELIVERY (o resto do cronograma é ignorado).
+            var roots = onlyDeliveryEpics
+                ? Project.Tasks.Where(t => EpicTypes.IsDelivery(t.EpicType)).ToList()
                 : Project.Tasks.ToList();
 
-            if (onlyBacklogEpics)
+            if (onlyDeliveryEpics)
                 sb.AppendLine(roots.Count == 0
-                    ? "CRONOGRAMA (somente EPIC de Backlog): nenhum EPIC de Backlog existe ainda."
-                    : "CRONOGRAMA (somente EPIC de Backlog; cada item traz sua CHAVE id=...):");
+                    ? "CRONOGRAMA (somente EPIC de Delivery): nenhum EPIC de Delivery existe ainda."
+                    : "CRONOGRAMA (somente EPIC de Delivery; cada item traz sua CHAVE id=...):");
             else
                 sb.AppendLine("CRONOGRAMA COMPLETO (indentado por nível; cada item traz sua CHAVE id=...):");
 
