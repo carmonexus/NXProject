@@ -49,6 +49,12 @@ Tarefas atuais: {(existingTasks.Count == 0 ? "Nenhuma tarefa cadastrada" : strin
                 ? Project.Tasks.Where(t => EpicTypes.IsDelivery(t.EpicType)).ToList()
                 : Project.Tasks.ToList();
 
+            // Filtro "EPIC < 100%": corta o EPIC INTEIRO (raiz e filhos) só quando o próprio
+            // EPIC está 100% concluído. Não poda atividade por atividade — se o EPIC não está
+            // 100%, leva a subárvore completa (senão a IA fica sem contexto e dá problema).
+            if (onlyUnfinished)
+                roots = roots.Where(t => t.PercentComplete < 100).ToList();
+
             if (onlyDeliveryEpics)
                 sb.AppendLine(roots.Count == 0
                     ? "CRONOGRAMA (somente EPIC de Delivery): nenhum EPIC de Delivery existe ainda."
@@ -57,11 +63,11 @@ Tarefas atuais: {(existingTasks.Count == 0 ? "Nenhuma tarefa cadastrada" : strin
                 sb.AppendLine("CRONOGRAMA COMPLETO (indentado por nível; cada item traz sua CHAVE id=...):");
 
             if (onlyUnfinished)
-                sb.AppendLine("(filtro: somente atividades com % < 100; as concluídas foram omitidas)");
+                sb.AppendLine("(filtro: somente EPICs com % < 100; EPICs 100% concluídos foram omitidos inteiros)");
 
             var byId = AllTasks().Where(x => x != null).GroupBy(x => x.Id).ToDictionary(g => g.Key, g => g.First());
             foreach (var root in roots)
-                AppendScheduleNode(sb, root, 0, byId, onlyUnfinished);
+                AppendScheduleNode(sb, root, 0, byId, onlyUnfinished: false);
             return sb.ToString();
         }
 

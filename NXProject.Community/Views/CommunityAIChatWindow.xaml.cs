@@ -871,6 +871,59 @@ namespace NXProject.Views
                         if (string.Equals(root.TfsType, "Epic", StringComparison.OrdinalIgnoreCase))
                             root.EpicType = NXProject.Models.EpicTypes.Delivery;
 
+                // Preserva os EPICs de BACKLOG do cronograma original. Com o filtro "somente
+                // Delivery" eles não são enviados à IA, então a proposta não os traz — mas o
+                // cronograma novo deve mantê-los. Clona-os (round-trip) e anexa ao novo projeto,
+                // reatribuindo o Id interno para não colidir com os itens gerados pela IA.
+                var srcBacklogDisplayIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (DeliveryOnlyCheck.IsChecked == true)
+                {
+                    // DisplayIds do backlog na ORIGEM (para não acusar "Story perdida" mais abaixo).
+                    void CollectSrc(ProjectTask t)
+                    {
+                        srcBacklogDisplayIds.Add(t.DisplayId);
+                        foreach (var c in t.Children) CollectSrc(c);
+                    }
+                    foreach (var b in src.Tasks.Where(t => EpicTypes.IsBacklog(t.EpicType)))
+                        CollectSrc(b);
+
+                    var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"nx-src-{Guid.NewGuid():N}.xml");
+                    try
+                    {
+                        XmlProjectService.Save(src, tmp);
+                        var clone = XmlProjectService.Load(tmp);
+                        var backlogRoots = clone.Tasks
+                            .Where(t => EpicTypes.IsBacklog(t.EpicType)).ToList();
+
+                        // Id interno antigo -> novo (contínuo ao _nextId do novo projeto).
+                        var idMap = new Dictionary<int, int>();
+                        void AssignIds(ProjectTask t)
+                        {
+                            idMap[t.Id] = newVm.NextId();
+                            foreach (var c in t.Children) AssignIds(c);
+                        }
+                        foreach (var r in backlogRoots) AssignIds(r);
+
+                        void Remap(ProjectTask t, ProjectTask? parent)
+                        {
+                            t.Id = idMap[t.Id];
+                            t.Parent = parent;
+                            // predecessoras internas: mantém só as que apontam para o próprio backlog.
+                            var preds = t.PredecessorIds.Where(idMap.ContainsKey)
+                                .Select(id => idMap[id]).ToList();
+                            t.PredecessorIds.Clear();
+                            foreach (var p in preds) t.PredecessorIds.Add(p);
+                            foreach (var c in t.Children) Remap(c, t);
+                        }
+                        foreach (var r in backlogRoots)
+                        {
+                            Remap(r, null);
+                            newVm.Project.Tasks.Add(r);
+                        }
+                    }
+                    finally { try { System.IO.File.Delete(tmp); } catch { /* temp */ } }
+                }
+
                 // Alerta: Stories que existiam no cronograma e NÃO voltaram na proposta da IA
                 // (some algo importante) — lista os nomes para o usuário conferir se perdeu.
                 var proposedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -886,6 +939,8 @@ namespace NXProject.Views
                 var missingStories = sourceByKey.Values
                     .Where(t => string.Equals(t.TfsType, "Story", StringComparison.OrdinalIgnoreCase))
                     .Where(t => !proposedIds.Contains(t.DisplayId))
+                    // Stories de EPIC de Backlog são preservadas (não vão à IA): não são "perdas".
+                    .Where(t => !srcBacklogDisplayIds.Contains(t.DisplayId))
                     .Select(t => t.Name)
                     .ToList();
                 if (created == 0)

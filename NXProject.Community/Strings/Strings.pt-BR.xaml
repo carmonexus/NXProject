@@ -2259,8 +2259,8 @@
     <sys:String x:Key="AIChat_CopiedConversation">Conversa copiada ({0} mensagens).</sys:String>
     <sys:String x:Key="AIChat_CopyEmpty">Não há conversa para copiar ainda.</sys:String>
     <sys:String x:Key="AIChat_DeliveryOnly">Somente EPIC Delivery</sys:String>
-    <sys:String x:Key="AIChat_UnfinishedOnly">Só &lt;100%</sys:String>
-    <sys:String x:Key="AIChat_UnfinishedOnlyTip">Não envia à IA as atividades já concluídas (% = 100). Subárvores 100% concluídas são omitidas do contexto.</sys:String>
+    <sys:String x:Key="AIChat_UnfinishedOnly">EPIC &lt;100%</sys:String>
+    <sys:String x:Key="AIChat_UnfinishedOnlyTip">Omite o EPIC inteiro (e seus filhos) apenas quando o próprio EPIC está 100% concluído. EPICs em andamento vão completos para a IA — não filtra atividade por atividade.</sys:String>
     <sys:String x:Key="AIChat_RawReturned">A IA não devolveu um cronograma. Veja o que ela respondeu:</sys:String>
     <sys:String x:Key="AIChat_CopyMsgShort">copiar</sys:String>
     <sys:String x:Key="AIChat_MsgCopied">Mensagem copiada.</sys:String>

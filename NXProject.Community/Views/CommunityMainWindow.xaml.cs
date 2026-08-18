@@ -2262,7 +2262,12 @@ namespace NXProject.Views
             var isDevOps = !string.IsNullOrWhiteSpace(name) || id > 0;
             var file = (DataContext as MainViewModel)?.Project?.FilePath;
             var fileName = string.IsNullOrWhiteSpace(file) ? null : System.IO.Path.GetFileName(file);
-            var source = isDevOps ? "TFS/DevOps" : fileName;
+            // TFS/DevOps sem arquivo (aberto direto do DevOps) => "TFS/DevOps".
+            // TFS/DevOps já gravado em arquivo => "TFS <Nome do Arquivo>".
+            // Arquivo local puro => só o nome do arquivo.
+            var source = isDevOps
+                ? (string.IsNullOrWhiteSpace(fileName) ? "TFS/DevOps" : $"TFS {fileName}")
+                : fileName;
             if (!string.IsNullOrWhiteSpace(source))
             {
                 var srcText = AppStrings.Get("Banner_Source", source);
