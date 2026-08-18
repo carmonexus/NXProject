@@ -4,6 +4,8 @@
 
     <sys:String x:Key="Setup_Subtitle">NXProject Installer</sys:String>
     <sys:String x:Key="Setup_Close">Close</sys:String>
+    <sys:String x:Key="Setup_OpenApp">Open NXProject</sys:String>
+    <sys:String x:Key="Setup_InstalledOpenWhenReady">✓ NXProject installed. Do Step 3 (AI) if you like, then click "Open NXProject" when ready.</sys:String>
     <sys:String x:Key="Setup_Step1Title">Step 1 — .NET 10 Desktop Runtime (approx. 58 MB)</sys:String>
     <sys:String x:Key="Setup_Step1Button">Download and install .NET 10</sys:String>
     <sys:String x:Key="Setup_Step2Title">Step 2 — Install NXProject (approx. 2 MB)</sys:String>

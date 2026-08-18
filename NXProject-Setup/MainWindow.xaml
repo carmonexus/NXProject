@@ -10,9 +10,14 @@
         <Grid Margin="0,0,0,2">
             <TextBlock Text="Nexus Xdata Install"
                        FontSize="18" FontWeight="SemiBold" Foreground="#2B579A" VerticalAlignment="Center"/>
-            <Button x:Name="CloseButton" Content="{DynamicResource Setup_Close}"
-                    HorizontalAlignment="Right" VerticalAlignment="Center"
-                    Height="28" Padding="16,0" Cursor="Hand" Click="OnCloseClick"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button x:Name="OpenAppButton" Content="{DynamicResource Setup_OpenApp}"
+                        Height="28" Padding="16,0" Margin="0,0,8,0" Cursor="Hand"
+                        Visibility="Collapsed" Click="OnOpenAppClick"
+                        Background="#2B579A" Foreground="White" BorderThickness="0"/>
+                <Button x:Name="CloseButton" Content="{DynamicResource Setup_Close}"
+                        Height="28" Padding="16,0" Cursor="Hand" Click="OnCloseClick"/>
+            </StackPanel>
         </Grid>
         <TextBlock Text="{DynamicResource Setup_Subtitle}" FontSize="12" Foreground="#777" Margin="0,0,0,12"/>
 

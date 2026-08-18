@@ -34,12 +34,28 @@ public partial class MainWindow : Window
         {
             Step2StatusText.Text = App.Str("Setup_Step2Installed");
             Step2Button.Content = App.Str("Setup_Step2ButtonUpdate");
+            OpenAppButton.Visibility = Visibility.Visible;   // já instalado: permite abrir
         }
         else
         {
             Step2StatusText.Text = App.Str("Setup_Step2Status");
             Step2Button.Content = App.Str("Setup_Step2Button");
+            OpenAppButton.Visibility = Visibility.Collapsed;
         }
+    }
+
+    // Abre o NXProject sem fechar o Setup (para o usuário ainda poder usar o Passo 3).
+    private void OnOpenAppClick(object sender, RoutedEventArgs e)
+    {
+        var exePath = Path.Combine(_installDir, "NXProject.Community.exe");
+        if (!File.Exists(exePath)) return;
+        // Se o usuário marcou LLaMA no Passo 3, o app já dispara o download da IA Local ao abrir.
+        var started = TryStart(exePath, LlamaCheck.IsChecked == true ? "--install-llama" : null);
+        if (started)
+            Close();   // abriu o app: pode fechar o Setup
+        else
+            ShowError(App.Str("Setup_InstalledCantOpen",
+                NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl, _installDir));
     }
 
     // Mostra um ✓ ao lado do que já está instalado. Codex/Claude: procura no WINDOWS (exe) e
@@ -312,19 +328,11 @@ public partial class MainWindow : Window
             CreateDesktopShortcut(exePath);
             InstallProgress.Value = 100;
 
-            Step2StatusText.Text = App.Str("Setup_Done");
-            // Se o usuário marcou LLaMA no Passo 3, abre o app já disparando o download da IA Local
-            // (na tela Gerenciar IA Local, que usa a pasta configurada lá).
-            var started = TryStart(exePath, LlamaCheck.IsChecked == true ? "--install-llama" : null);
-            if (!started)
-            {
-                ShowError(App.Str("Setup_InstalledCantOpen",
-                    NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl, _installDir));
-                return;
-            }
-
-            await Task.Delay(800);
-            Close();
+            // NÃO abre o app nem fecha o Setup: o usuário ainda pode usar o Passo 3 (instalar IA).
+            // Mostra o botão "Abrir NXProject" ao lado de Fechar (o app abre quando ele quiser).
+            Step2StatusText.Text = App.Str("Setup_InstalledOpenWhenReady");
+            Step2Button.Content = App.Str("Setup_Step2ButtonUpdate");
+            OpenAppButton.Visibility = Visibility.Visible;
         }
         catch (Exception ex)
         {
