@@ -292,13 +292,11 @@ namespace NXProject.Services
             var ranksCalculados = FillMissingBacklogRanks(project.Tasks);
             if (ranksCalculados.Count > 0)
             {
-                context.Report.LogWarning($"⚠ Ordem do backlog: {ranksCalculados.Count} item(ns) vieram do DevOps SEM StackRank. "
-                    + "O NXProject calculou a ordem pela posição recebida e já mostra na ordem correta — "
-                    + "use Export → Sincronizar para gravar esse rank no TFS e fixar a ordem dos dois lados.");
-                foreach (var nome in ranksCalculados.Take(20))
-                    context.Report.LogWarning($"    • {nome}");
-                if (ranksCalculados.Count > 20)
-                    context.Report.LogWarning($"    • ... e mais {ranksCalculados.Count - 20} item(ns).");
+                // Informativo (não é falha nem aviso): o NX já mostra na ordem correta. Uma
+                // linha só — antes listava cada item e inflava a contagem de "Avisos/Erros".
+                context.Report.LogInfo($"Ordem do backlog: {ranksCalculados.Count} item(ns) vieram do DevOps sem StackRank. "
+                    + "O NXProject calculou a ordem pela posição recebida e já mostra na ordem correta; "
+                    + "use Export → Sincronizar para gravar esse rank no TFS.");
             }
 
             // Etapa 2: leitura separada dos links de predecessora via WIQL.

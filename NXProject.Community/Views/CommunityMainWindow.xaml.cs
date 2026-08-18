@@ -328,10 +328,24 @@ namespace NXProject.Views
             }
         }
 
+        // Marca quando a janela já foi fechada, para não tentar Show()/Activate() num callback
+        // atrasado (BeginInvoke) que rode depois do fechamento — isso lançava
+        // "Não será possível definir Visibility nem chamar Show ... depois que uma Janela for fechada".
+        private bool _isClosed;
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _isClosed = true;
+            base.OnClosed(e);
+        }
+
         private void BringMainWindowToFront()
         {
             Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
             {
+                // A janela pode ter sido fechada antes deste callback ocioso rodar.
+                if (_isClosed || !IsLoaded) return;
+
                 if (WindowState == WindowState.Minimized)
                     WindowState = WindowState.Normal;
 
