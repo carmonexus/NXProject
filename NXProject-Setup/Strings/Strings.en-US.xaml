@@ -10,7 +10,7 @@
     <sys:String x:Key="Setup_Step2Button">Install NXProject</sys:String>
     <sys:String x:Key="Setup_Retry">Try again</sys:String>
     <sys:String x:Key="Setup_Step3Title">Step 3 (optional): install AI — Windows only</sys:String>
-    <sys:String x:Key="Setup_Step3Desc">Installs Codex, Claude Code and/or Local AI (LLaMA) — installing here is Windows ONLY. If you already use Codex/Claude on WSL, the item shows as installed (WSL) and you don't need to install on Windows. On WSL the install stays manual.</sys:String>
+    <sys:String x:Key="Setup_Step3Desc">Windows-ONLY install. If you already use it on WSL, the item shows as installed (WSL) and doesn't need reinstalling.</sys:String>
     <sys:String x:Key="Setup_Step3Codex">Codex (OpenAI) (1) — approx. 285 MB</sys:String>
     <sys:String x:Key="Setup_Step3Claude">Claude Code (Anthropic) (3) — approx. 309 MB</sys:String>
     <sys:String x:Key="Setup_Step3Llama">Local AI (LLaMA — Meta) (2) — approx. 2 GB</sys:String>
