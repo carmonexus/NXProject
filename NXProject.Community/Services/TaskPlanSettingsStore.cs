@@ -113,6 +113,10 @@ namespace NXProject.Community.Services
         public string Feature { get; set; } = string.Empty;
         /// <summary>Checkbox "Tarefas em Aberto".</summary>
         public bool OpenTasksOnly { get; set; }
+        /// <summary>Checkbox "Somente Task Closed".</summary>
+        public bool ClosedTasksOnly { get; set; }
+        /// <summary>Checkbox "Task sem HH/DT" (sem completed nem remaining).</summary>
+        public bool NoHh { get; set; }
     }
 
     public static class TaskPlanSettingsStore

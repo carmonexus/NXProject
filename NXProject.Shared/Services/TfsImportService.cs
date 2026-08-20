@@ -3726,6 +3726,28 @@ namespace NXProject.Services
         /// <summary>
         /// Busca todas as Tasks filhas de um work item pai no DevOps.
         /// </summary>
+        /// <summary>Títulos (System.Title) de work items por ID — usado pelo Refresh do Task Plan
+        /// para atualizar os nomes de EPIC/Feature/Story a partir do TFS.</summary>
+        public static async Task<Dictionary<int, string>> FetchWorkItemTitlesAsync(
+            TfsConnectionOptions options, IEnumerable<int> ids, CancellationToken ct = default)
+        {
+            var result = new Dictionary<int, string>();
+            var idList = (ids ?? Enumerable.Empty<int>()).Where(i => i > 0).Distinct().ToList();
+            if (idList.Count == 0 || options == null
+                || string.IsNullOrWhiteSpace(options.OrganizationUrl)
+                || string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+                return result;
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue("Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+            var items = await LoadWorkItemsAsync(orgBase, auth, idList,
+                new List<string> { "System.Id", "System.Title" }, ct, expandRelations: false);
+            foreach (var kv in items)
+                if (!string.IsNullOrWhiteSpace(kv.Value.Title))
+                    result[kv.Key] = kv.Value.Title;
+            return result;
+        }
+
         public static async Task<List<DevOpsTaskInfo>?> FetchChildTasksFromDevOpsAsync(
             TfsConnectionOptions options, int parentTfsId, CancellationToken ct = default)
         {

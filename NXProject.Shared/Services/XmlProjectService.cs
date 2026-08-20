@@ -78,6 +78,8 @@ namespace NXProject.Services
                     new XElement(EXT + "DevOpsOrganizationUrl", project.DevOpsOrganizationUrl ?? ""),
                     new XElement(EXT + "DevOpsTeamProject", project.DevOpsTeamProject ?? ""),
                     new XElement(EXT + "DevOpsProcess", project.DevOpsProcess ?? ""),
+                    new XElement(EXT + "StorySupervisionPercent", project.StorySupervisionPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                    new XElement(EXT + "ReadOnly", project.ReadOnly),
                     new XElement(EXT + "PlanSheetPath", project.PlanSheetPath ?? ""),
                     new XElement(EXT + "UseHierarchyColors", project.UseHierarchyColors),
                     new XElement(EXT + "BaselineActive", project.BaselineActive),
@@ -371,6 +373,9 @@ namespace NXProject.Services
                     ? null : root.Element(EXT + "DevOpsTeamProject")!.Value,
                 DevOpsProcess = string.IsNullOrWhiteSpace(root.Element(EXT + "DevOpsProcess")?.Value)
                     ? null : root.Element(EXT + "DevOpsProcess")!.Value,
+                StorySupervisionPercent = ParseDouble(root.Element(EXT + "StorySupervisionPercent")?.Value) is { } sp && sp > 0
+                    ? sp : 20,
+                ReadOnly = string.Equals(root.Element(EXT + "ReadOnly")?.Value?.Trim(), "true", StringComparison.OrdinalIgnoreCase),
                 PlanSheetPath = string.IsNullOrWhiteSpace(root.Element(EXT + "PlanSheetPath")?.Value)
                     ? null : root.Element(EXT + "PlanSheetPath")!.Value,
                 UseHierarchyColors    = bool.TryParse(root.Element(EXT + "UseHierarchyColors")?.Value, out var uhc) && uhc,

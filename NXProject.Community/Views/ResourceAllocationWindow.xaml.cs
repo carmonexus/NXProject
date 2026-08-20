@@ -30,7 +30,27 @@ namespace NXProject.Views
             AvailableResources = _vm.Project.Resources;
             SelectedDetails.CollectionChanged += (_, _) => OnPropertyChanged(nameof(SelectedDetails));
             DataContext = this;
+            StorySupervisionBox.Text = _vm.Project.StorySupervisionPercent.ToString("0.##");
             BuildMatrix();
+        }
+
+        // % de Supervisão de Story (usado no rateio de HH da Story no Task Plan). 0–100.
+        private void OnStorySupervisionChanged(object sender, RoutedEventArgs e)
+        {
+            var txt = (StorySupervisionBox.Text ?? "").Trim().Replace('%', ' ').Trim();
+            if (double.TryParse(txt, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.CurrentCulture, out var v)
+                || double.TryParse(txt, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out v))
+            {
+                v = System.Math.Clamp(v, 0, 100);
+                if (System.Math.Abs(v - _vm.Project.StorySupervisionPercent) > 0.0001)
+                {
+                    _vm.Project.StorySupervisionPercent = v;
+                    _vm.Project.IsDirty = true;
+                }
+            }
+            StorySupervisionBox.Text = _vm.Project.StorySupervisionPercent.ToString("0.##");
         }
 
         // Motor de cálculo compartilhado com a tela Pessoas (mesma base de horas e capacidade).

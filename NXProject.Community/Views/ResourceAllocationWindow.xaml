@@ -28,6 +28,14 @@
             <StackPanel DockPanel.Dock="Right"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right">
+                <TextBlock Text="{DynamicResource RAlloc_StorySupervision}"
+                           VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"
+                           ToolTip="{DynamicResource RAlloc_StorySupervisionTip}"/>
+                <TextBox x:Name="StorySupervisionBox" Width="52" VerticalAlignment="Center"
+                         Margin="0,0,2,0" FontSize="12" TextAlignment="Right"
+                         ToolTip="{DynamicResource RAlloc_StorySupervisionTip}"
+                         LostFocus="OnStorySupervisionChanged"/>
+                <TextBlock Text="%" VerticalAlignment="Center" Margin="0,0,16,0" FontSize="12"/>
                 <CheckBox x:Name="IncludeZeroPctBox"
                           Content="{DynamicResource RAlloc_IncludeZeroPct}"
                           ToolTip="{DynamicResource RAlloc_IncludeZeroPctTip}"

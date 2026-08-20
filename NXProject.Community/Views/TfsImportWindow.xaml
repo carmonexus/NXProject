@@ -115,6 +115,14 @@
                                Text="{DynamicResource Imp_ScheduleRules}"/>
                 </Border>
 
+                <!-- Somente leitura: bloqueia Export/Sincronizar do cronograma no DevOps. -->
+                <CheckBox x:Name="ReadOnlyBox" Margin="0,0,0,4" IsChecked="True"
+                          Content="{DynamicResource Imp_ReadOnly}"
+                          ToolTip="{DynamicResource Imp_ReadOnlyTip}"/>
+                <TextBlock x:Name="ReadOnlyHint" FontSize="10.5" Foreground="#888"
+                           TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"
+                           Text="{DynamicResource Imp_ReadOnlyFromPortfolio}"/>
+
                 <!-- Progresso do import: barra + etapa atual -->
                 <StackPanel x:Name="ImportProgressPanel" Margin="0,12,0,0" Visibility="Collapsed">
                     <ProgressBar x:Name="ImportProgressBar" Height="14" IsIndeterminate="True"/>

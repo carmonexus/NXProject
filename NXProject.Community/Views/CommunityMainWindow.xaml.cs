@@ -1798,6 +1798,15 @@ namespace NXProject.Views
             if (DataContext is not MainViewModel vm)
                 return;
 
+            // Cronograma "somente leitura": Export/Sincronizar bloqueado (libere na config do
+            // Projeto no Portfólio). Edição local e Task Plan continuam livres.
+            if (vm.Project.ReadOnly)
+            {
+                MessageBox.Show(this, AppStrings.Get("Main_ReadOnlyBlocked"),
+                    AppStrings.Get("Tfs_ActionSync"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             var options = Services.TfsConnectionStore.Load("NXProject.Community");
 
             // Alvo da sincronização = organização + Team Project do cronograma ABERTO
@@ -2291,6 +2300,9 @@ namespace NXProject.Views
             var process = (DataContext as MainViewModel)?.Project?.DevOpsProcess;
             if (isDevOps && !string.IsNullOrWhiteSpace(process))
                 ownerText += "   •   " + AppStrings.Get("Banner_Process", process);
+            // Somente leitura: Export/Sincronizar bloqueado.
+            if ((DataContext as MainViewModel)?.Project?.ReadOnly == true)
+                ownerText += "   •   " + AppStrings.Get("Banner_ReadOnly");
             DevOpsOwnerLabel.Text = ownerText;
 
             if (!string.IsNullOrWhiteSpace(name))

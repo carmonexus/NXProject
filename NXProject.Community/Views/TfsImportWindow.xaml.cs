@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -34,6 +35,41 @@ namespace NXProject.Views
                 RootIdBox.Text = _savedOptions.RootWorkItemId.ToString(CultureInfo.InvariantCulture);
         }
 
+        // Resolve o "Somente leitura" do cronograma importado: Portfólio manda (se já definido);
+        // senão o checkbox decide e o valor é gravado no Portfólio para as próximas importações.
+        private void ApplyReadOnlyFromPortfolioOrCheckbox(Project project)
+        {
+            var rootId = project.DevOpsRootWorkItemId;
+            var entry = rootId > 0 ? _devOpsProjects.FirstOrDefault(p => p.RootWorkItemId == rootId) : null;
+
+            if (entry?.ReadOnly is { } defined)
+            {
+                project.ReadOnly = defined;   // Portfólio manda
+                return;
+            }
+
+            var value = ReadOnlyBox?.IsChecked == true;
+            project.ReadOnly = value;
+
+            // Grava no Portfólio (se houver arquivo de Portfólio configurado).
+            if (rootId > 0 && !string.IsNullOrWhiteSpace(_devOpsProjectListPath))
+            {
+                if (entry == null)
+                {
+                    entry = new DevOpsProject
+                    {
+                        Name = string.IsNullOrWhiteSpace(project.DevOpsProjectName) ? project.Name : project.DevOpsProjectName!,
+                        RootWorkItemId = rootId,
+                        Owner = project.DevOpsProjectOwner ?? "",
+                        Process = project.DevOpsProcess ?? ""
+                    };
+                    _devOpsProjects.Add(entry);
+                }
+                entry.ReadOnly = value;
+                try { DevOpsProjectListService.Save(_devOpsProjects, _devOpsProjectListPath); } catch { /* portfólio é conveniência */ }
+            }
+        }
+
         private void LoadProjectList(string path, int selectId = 0)
         {
             _devOpsProjectListPath = path;
@@ -57,12 +93,33 @@ namespace NXProject.Views
 
             if (DevOpsProjectCombo.SelectedItem == null && selectId > 0)
                 RootIdBox.Text = selectId.ToString(CultureInfo.InvariantCulture);
+            SyncReadOnlyBox();
         }
 
         private void OnProjectComboChanged(object sender, SelectionChangedEventArgs e)
         {
             if (DevOpsProjectCombo.SelectedItem is DevOpsProject selected)
                 RootIdBox.Text = selected.RootWorkItemId.ToString(CultureInfo.InvariantCulture);
+            SyncReadOnlyBox();
+        }
+
+        // Reflete no checkbox o "Somente leitura" do Portfólio: se já definido, mostra e trava
+        // (controlado no Portfólio); se nulo, deixa editável (padrão = marcado).
+        private void SyncReadOnlyBox()
+        {
+            if (ReadOnlyBox == null) return;
+            var selected = DevOpsProjectCombo.SelectedItem as DevOpsProject;
+            if (selected?.ReadOnly is { } defined)
+            {
+                ReadOnlyBox.IsChecked = defined;
+                ReadOnlyBox.IsEnabled = false;
+                if (ReadOnlyHint != null) ReadOnlyHint.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                ReadOnlyBox.IsEnabled = true;
+                if (ReadOnlyHint != null) ReadOnlyHint.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void OnManageListClick(object sender, RoutedEventArgs e)
@@ -145,6 +202,10 @@ namespace NXProject.Views
                 {
                     project.DevOpsRootWorkItemId = rootId;
                 }
+
+                // Somente leitura: se o Portfólio JÁ define (não-nulo), usa o dele; senão usa o
+                // checkbox e GRAVA no Portfólio (cria/atualiza a entrada deste projeto).
+                ApplyReadOnlyFromPortfolioOrCheckbox(project);
 
                 TfsConnectionStore.Save(options, !string.IsNullOrEmpty(options.PersonalAccessToken), _storageKey);
 

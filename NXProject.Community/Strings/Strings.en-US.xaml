@@ -381,6 +381,9 @@
     <sys:String x:Key="TaskPlan_SelNeedsStoryId">The selected row has no DevOps Story ID (nnn:T) — required to locate the Task. Run Load Task/Merge to fill the IDs.</sys:String>
     <sys:String x:Key="TaskPlan_SelSaving">Saving Task #{0} to DevOps...</sys:String>
     <sys:String x:Key="TaskPlan_SelSaved">Task #{0} saved to DevOps.</sys:String>
+    <sys:String x:Key="TaskPlan_SelSavedMany">{0} Task(s) saved to DevOps.</sys:String>
+    <sys:String x:Key="TaskPlan_SelSavedPartial">Saved {0} of {1} Task(s) — some failed.</sys:String>
+    <sys:String x:Key="TaskPlan_SelSaveErrors">Some Tasks were not saved to DevOps:&#10;• {0}</sys:String>
     <sys:String x:Key="TaskPlan_SelReading">Reading Task #{0} from DevOps...</sys:String>
     <sys:String x:Key="TaskPlan_SelRead">Task #{0} refreshed with DevOps data.</sys:String>
     <sys:String x:Key="TaskPlan_SelNotFound">Task #{0} not found in DevOps (it may have been deleted or moved to another Story).</sys:String>
@@ -396,6 +399,15 @@
     <sys:String x:Key="TaskPlan_EnableAITip">When checked, Merge uses AI and asks you to confirm the from/to mapping before applying. When unchecked, it uses only deterministic merge.</sys:String>
     <sys:String x:Key="TaskPlan_OpenTasksOnly">Open Tasks</sys:String>
     <sys:String x:Key="TaskPlan_OpenTasksOnlyTip">When checked, shows only rows whose Status is not Closed.</sys:String>
+    <sys:String x:Key="TaskPlan_ClosedTasksOnly">Closed tasks only</sys:String>
+    <sys:String x:Key="TaskPlan_ClosedTasksOnlyTip">When checked, shows only rows whose Status = Closed (completed tasks).</sys:String>
+    <sys:String x:Key="TaskPlan_NoHh">Tasks without HH</sys:String>
+    <sys:String x:Key="TaskPlan_NoHhTip">When checked, shows only Tasks with no HH in the schedule — no done HH (HH Feito) and no remaining HH (HH Previsto), regardless of state (open or closed).</sys:String>
+    <sys:String x:Key="TaskPlan_RateStoryHh">Split Story HH</sys:String>
+    <sys:String x:Key="TaskPlan_RateStoryHhTip">Distributes the Story HH among Tasks without HH Feito. No HH and open: goes to HH Previsto; no HH and closed: goes to HH Feito. If the Task already has HH Previsto: splits into HH Feito, capped at 30% of Previsto. If the Story owner has their own Task, distributes 100%; otherwise reserves the "Story supervision %" (Resource Allocation) and distributes the rest.</sys:String>
+    <sys:String x:Key="TaskPlan_RateStoryHhDone">Split done: {0} Task(s) received HH.</sys:String>
+    <sys:String x:Key="TaskPlan_RateStepStory">Splitting {0}/{1}: {2}</sys:String>
+    <sys:String x:Key="TaskPlan_RateStoryHhNone">No Task eligible for splitting (all already have HH, or the Story has no HH).</sys:String>
     <sys:String x:Key="TaskPlan_RememberFilterNoFile">Save the plan to a file before saving the filter — the view is tied to the .xlsx path.</sys:String>
     <sys:String x:Key="TaskPlan_FilterRemembered">Filter saved for this spreadsheet.</sys:String>
     <sys:String x:Key="TaskPlan_ActiveFilters">Active filters: {0}</sys:String>
@@ -427,6 +439,7 @@
     <sys:String x:Key="TaskPlan_InsertRowBelow">Insert row below</sys:String>
     <sys:String x:Key="TaskPlan_Undo">Undo</sys:String>
     <sys:String x:Key="TaskPlan_Undone">Change undone ({0} left in history).</sys:String>
+    <sys:String x:Key="TaskPlan_SelectAll">Select all rows</sys:String>
     <sys:String x:Key="TaskPlan_Copy">Copy</sys:String>
     <sys:String x:Key="TaskPlan_Paste">Paste</sys:String>
     <sys:String x:Key="TaskPlan_CellColor">Cell color</sys:String>
@@ -798,6 +811,8 @@
     <sys:String x:Key="PortEdit_Process">Process (DevOps)</sys:String>
     <sys:String x:Key="PortEdit_ProcessTip">Team Project process in Azure DevOps (Agile, Scrum, CMMI or Basic). Read automatically on import/discovery — it defines the backlog order field (Agile/CMMI = StackRank; Scrum = BacklogPriority).</sys:String>
     <sys:String x:Key="PortEdit_ProcessUnknown">(unknown — import/discover from DevOps)</sys:String>
+    <sys:String x:Key="PortEdit_ReadOnly">Read-only (blocks Export/Sync to DevOps)</sys:String>
+    <sys:String x:Key="PortEdit_ReadOnlyTip">When checked, the schedule imported from this project cannot Export/Sync to DevOps. Local editing and Task Plan stay free. Applies from the next import.</sys:String>
     <sys:String x:Key="PortEdit_CostCenter">Cost Center</sys:String>
     <sys:String x:Key="PortEdit_Ok">OK</sys:String>
     <sys:String x:Key="PortEdit_Cancel">Cancel</sys:String>
@@ -839,6 +854,8 @@
     <sys:String x:Key="Banner_Owner">| Owner: {0}</sys:String>
     <sys:String x:Key="Banner_Source">Data source: {0}</sys:String>
     <sys:String x:Key="Banner_Process">Process: {0}</sys:String>
+    <sys:String x:Key="Banner_ReadOnly">🔒 Read-only</sys:String>
+    <sys:String x:Key="Main_ReadOnlyBlocked">This schedule is READ-ONLY — Export/Sync to DevOps is blocked. To unlock, edit the project in the Portfolio config (toggle "Read-only") and re-import. Local editing and Task Plan stay free.</sys:String>
 
     <!-- Import from Azure DevOps -->
     <sys:String x:Key="Imp_Title">Import from Azure DevOps</sys:String>
@@ -857,6 +874,9 @@
     <sys:String x:Key="Imp_Calendar">📅 Calendar...</sys:String>
     <sys:String x:Key="Imp_CalendarTip">Configure hours per day, holidays and working days used in deadline calculation</sys:String>
     <sys:String x:Key="Imp_CalendarWindowTitle">Working calendar</sys:String>
+    <sys:String x:Key="Imp_ReadOnly">Read-only (blocks Export/Sync to DevOps)</sys:String>
+    <sys:String x:Key="Imp_ReadOnlyTip">Check when importing just to view: the schedule won't be able to Export/Sync to DevOps. Local editing and Task Plan stay free. Unlocking is done in the Project config in the Portfolio.</sys:String>
+    <sys:String x:Key="Imp_ReadOnlyFromPortfolio">Set in the Project config in the Portfolio (to change it, edit the project in the Portfolio).</sys:String>
     <sys:String x:Key="Imp_ScheduleRules">💡 Schedule rules: each Story's effort (Estimated HH) is converted into working days. If Data_Inicio is set in DevOps, the bar starts there; Data_Fim, if set, is used directly. Stories without dates are chained from the project start date.</sys:String>
     <sys:String x:Key="Imp_ConfigDevOps">⚙ Configure DevOps</sys:String>
     <sys:String x:Key="Imp_ConfigDevOpsTip">Opens the Azure DevOps integration configuration</sys:String>
@@ -929,6 +949,8 @@
     <sys:String x:Key="RAlloc_Title">Allocation by Sprint</sys:String>
     <sys:String x:Key="RAlloc_Header">Allocation by Sprint</sys:String>
     <sys:String x:Key="RAlloc_Subtitle">Click the hours to see the activities and change the resource.</sys:String>
+    <sys:String x:Key="RAlloc_StorySupervision">Story supervision %</sys:String>
+    <sys:String x:Key="RAlloc_StorySupervisionTip">When splitting a Story's HH (Task Plan), if the Story owner has no Task of their own, this % is reserved for supervision/tracking and the rest is distributed among the Tasks without HH.</sys:String>
     <sys:String x:Key="RAlloc_IncludeZeroPct">Include planned (Story % 0 / Task New)</sys:String>
     <sys:String x:Key="RAlloc_IncludeZeroPctTip">Also considers Stories with completion % = 0 and tasks/summaries in the New state — useful to see the planned sprint distribution.</sys:String>
     <sys:String x:Key="RAlloc_Add">Add</sys:String>
@@ -2047,6 +2069,27 @@
     <sys:String x:Key="TaskPlan_MissingEpicSkipOption">Skip these EPICs and apply the rest</sys:String>
     <sys:String x:Key="TaskPlan_MissingEpicSkipHint">Rows of the listed EPICs are left out; the other Tasks are applied normally.</sys:String>
     <sys:String x:Key="TaskPlan_CreateNeedsTask">Enter the Task name in the row before saving to TFS.</sys:String>
+    <sys:String x:Key="TaskPlan_SaveNeedName">Enter the Task name before saving to TFS (empty name is not allowed). For a duplicated name, adjust it and save.</sys:String>
+    <sys:String x:Key="TaskPlan_CapAddTfs">ADD TFS</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptTitle">Load Tasks from TFS — choose the options:</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptResource">Filter by resource (assignee):</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptAllResources">All resources</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptAllTeam">Whole team (no resource filter)</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptIncludeClosed">Include new Closed Tasks</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptStatus">Status (check one or more):</sys:String>
+    <sys:String x:Key="TaskPlan_AutoCloseStory">Close Story when all Tasks Closed</sys:String>
+    <sys:String x:Key="TaskPlan_AutoCloseStoryTip">When saving a Task as Closed to TFS, checks in TFS whether ALL the Story's Tasks are Closed; if so, closes the Story in DevOps and reflects the "Status Story" in the sheet.</sys:String>
+    <sys:String x:Key="TaskPlan_CapRefreshTfs">Refresh TFS</sys:String>
+    <sys:String x:Key="TaskPlan_RefreshTfsTip">Refreshes the SELECTED rows from TFS: Task changes (name, HH, status, %, assignee) and the EPIC/Feature/Story names. Does not reload the sheet or create rows.</sys:String>
+    <sys:String x:Key="TaskPlan_RefreshNeedSel">Select the rows you want to refresh from TFS.</sys:String>
+    <sys:String x:Key="TaskPlan_RefreshError">Could not refresh from TFS: {0}</sys:String>
+    <sys:String x:Key="TaskPlan_RefreshDone">TFS refresh done: {0} Task(s) updated.</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsTip">Adds the selected internal (type I, no TFS link) activities to DevOps, under the existing Story. Enabled only when ALL selected rows are type I.</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsOnlyInternal">Select only type I activities (no TFS link). Rows already linked (:T) cannot be added again.</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsInvalid">These activities cannot be added (the Story must exist in TFS and the name cannot be empty):&#10;• {0}</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsConfirm">Add {0} type I activity(ies) to DevOps under the existing Story?</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsNameExists">Cannot add: the Story already has a Task with the same name in TFS (or the name is repeated in the selection). Adjust the name and try again:&#10;• {0}</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsCheckError">Could not check the Story's Tasks in TFS before adding: {0}</sys:String>
     <sys:String x:Key="TaskPlan_CreateNeedsStory">The row needs a Story that already exists in DevOps (ID Story column with :T). EPIC, Feature and Story are created in DevOps; the sheet only creates Tasks.</sys:String>
     <sys:String x:Key="TaskPlan_CreatingTask">Creating Task "{0}" in DevOps...</sys:String>
     <sys:String x:Key="TaskPlan_CreatedTask">Task {0} created in DevOps: "{1}".</sys:String>
@@ -2060,7 +2103,8 @@
     <sys:String x:Key="TaskPlan_BadEpicHint">✗ Red: this EPIC does not exist in the open schedule.&#10;Fix the name (Ctrl+click opens the search) or open the right schedule.</sys:String>
     <sys:String x:Key="TaskPlan_BadFeatureHint">✗ Red: this Feature does not exist in the open schedule under the given EPIC.&#10;A Feature with the same name under another EPIC does not count. Ctrl+click opens the search; if it is new, it is created in the schedule when you click Apply.</sys:String>
     <sys:String x:Key="TaskPlan_BadStoryHint">✗ Red: this Story does not exist in the open schedule under the given Feature/EPIC.&#10;A Story with the same name under another Feature does not count. Ctrl+click opens the search; if it is new, it is created in the schedule when you click Apply.</sys:String>
-    <sys:String x:Key="TaskPlan_BadTaskHint">✗ Red: this Task is not valid. Possible reasons:&#10;• the row's Story does not exist in the schedule (the Task has no parent);&#10;• the same Story + Task is already in ANOTHER row (duplicated);&#10;• the Task does not exist in the schedule and has no ID yet.&#10;Ctrl+click opens the search; a new Task is created in the schedule on Apply.</sys:String>
+    <sys:String x:Key="TaskPlan_BadTaskHint">✗ Red: this Task is not valid (reference is TFS). Possible reasons:&#10;• the Task has no DevOps link (no :T ID) and does not exist in the schedule;&#10;• the same Story + Task is already in ANOTHER row (duplicated).&#10;Ctrl+click opens the search; a new Task is created in DevOps/schedule on Apply.</sys:String>
+    <sys:String x:Key="TaskPlan_FoundHint">✓ Validated: exists in the open schedule (and, for a Task, has a DevOps link — :T ID).</sys:String>
     <sys:String x:Key="TaskPlan_BadResourceHint">✗ Red: this assignee is not a resource of the open schedule.&#10;Ctrl+click lists the project people. With several names in the cell, ALL must exist.</sys:String>
     <sys:String x:Key="TaskPlan_BadGenericHint">✗ Red: the value does not exist in the open schedule.</sys:String>
     <sys:String x:Key="TaskPlan_AiNewTask">New task</sys:String>

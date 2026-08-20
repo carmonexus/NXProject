@@ -16,6 +16,11 @@ namespace NXProject.Models
         // vindo do Discovery/import. Vazio = desconhecido (entrada manual sem leitura).
         public string Process { get; set; } = "";
 
+        // Somente leitura: quando true, o cronograma importado deste projeto NÃO pode fazer
+        // Export/Sincronizar no DevOps (edição local e Task Plan continuam livres). null =
+        // ainda não definido → o import pergunta e grava aqui. Liberação só por esta config.
+        public bool? ReadOnly { get; set; }
+
         // Nome com o owner anexado, para exibição em listas/combos.
         [System.Text.Json.Serialization.JsonIgnore]
         public string DisplayName =>

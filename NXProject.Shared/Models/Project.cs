@@ -65,6 +65,16 @@ namespace NXProject.Models
         // BacklogPriority) e é exibido no banner e na configuração do portfólio.
         public string? DevOpsProcess { get; set; }
 
+        // Somente leitura: cronograma importado de um projeto DevOps marcado como "somente
+        // leitura" no Portfólio. Bloqueia o Export/Sincronizar no DevOps (edição local e Task
+        // Plan continuam livres). Liberação só na configuração do Projeto no Portfólio.
+        public bool ReadOnly { get; set; }
+
+        // % de Supervisão de Story: no rateio de HH da Story (Task Plan), quando o Owner da
+        // Story NÃO tem Task própria, reserva este % para acompanhamento e distribui o restante
+        // entre as Tasks sem HH. Configurável na tela de Alocação de Recursos. Padrão 20%.
+        public double StorySupervisionPercent { get; set; } = 20;
+
         // Planilha de Plan Task associada a este cronograma (último .xlsx usado). O log de
         // atualização de IDs pós-sincronização fica na pasta desse arquivo.
         public string? PlanSheetPath { get; set; }

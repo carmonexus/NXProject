@@ -101,6 +101,15 @@
                                    HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnRefreshTfsClick"
+                        Background="#0097A7" ToolTip="{DynamicResource TaskPlan_RefreshTfsTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x1F504;" FontSize="15" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapRefreshTfs}" FontSize="9" Foreground="White"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Button Width="64" Height="46" Margin="0,0,4,2" Click="OnOpenSelectedTfsClick"
                         Background="#455A64" ToolTip="{DynamicResource TaskPlan_OpenSelTfsTip}">
                     <StackPanel VerticalAlignment="Center">
@@ -124,6 +133,16 @@
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="&#x2B06;" FontSize="14" Foreground="White" HorizontalAlignment="Center"/>
                         <TextBlock Text="{DynamicResource TaskPlan_CapSaveSelTfs}" FontSize="9" Foreground="White"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="AddTfsButton" Width="60" Height="46" Margin="0,0,4,2" Click="OnAddToTfsClick"
+                        IsEnabled="False"
+                        Background="#00838F" ToolTip="{DynamicResource TaskPlan_AddTfsTip}">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="&#x2795;" FontSize="13" Foreground="White" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{DynamicResource TaskPlan_CapAddTfs}" FontSize="9" Foreground="White"
                                    TextWrapping="Wrap" TextAlignment="Center"
                                    HorizontalAlignment="Center" Margin="0,2,0,0"/>
                     </StackPanel>
@@ -200,6 +219,12 @@
                           Checked="OnEnableAiChanged"
                           Unchecked="OnEnableAiChanged"
                           ToolTip="{DynamicResource TaskPlan_EnableAITip}"/>
+                <CheckBox x:Name="AutoCloseStoryCheck"
+                          Content="{DynamicResource TaskPlan_AutoCloseStory}"
+                          IsChecked="False"
+                          VerticalAlignment="Center"
+                          Margin="8,0,4,2"
+                          ToolTip="{DynamicResource TaskPlan_AutoCloseStoryTip}"/>
                 <CheckBox x:Name="OpenTasksOnlyCheckBox"
                           Content="{DynamicResource TaskPlan_OpenTasksOnly}"
                           IsChecked="False"
@@ -208,6 +233,29 @@
                           Checked="OnOpenTasksOnlyChanged"
                           Unchecked="OnOpenTasksOnlyChanged"
                           ToolTip="{DynamicResource TaskPlan_OpenTasksOnlyTip}"/>
+                <CheckBox x:Name="ClosedTasksOnlyCheckBox"
+                          Content="{DynamicResource TaskPlan_ClosedTasksOnly}"
+                          IsChecked="False"
+                          VerticalAlignment="Center"
+                          Margin="8,0,4,2"
+                          Checked="OnClosedTasksOnlyChanged"
+                          Unchecked="OnClosedTasksOnlyChanged"
+                          ToolTip="{DynamicResource TaskPlan_ClosedTasksOnlyTip}"/>
+                <CheckBox x:Name="NoHhCheckBox"
+                          Content="{DynamicResource TaskPlan_NoHh}"
+                          IsChecked="False"
+                          VerticalAlignment="Center"
+                          Margin="8,0,4,2"
+                          Checked="OnNoHhChanged"
+                          Unchecked="OnNoHhChanged"
+                          ToolTip="{DynamicResource TaskPlan_NoHhTip}"/>
+                <Button x:Name="RateStoryHhButton"
+                        Content="{DynamicResource TaskPlan_RateStoryHh}"
+                        Visibility="Collapsed"
+                        VerticalAlignment="Center"
+                        Margin="4,0,4,2" Padding="10,2"
+                        Click="OnRateStoryHhClick"
+                        ToolTip="{DynamicResource TaskPlan_RateStoryHhTip}"/>
                 <CheckBox x:Name="AiOnlyCheckBox"
                           Content="{DynamicResource TaskPlan_AiOnly}"
                           IsChecked="False"
@@ -323,6 +371,7 @@
                 <ContextMenu>
                     <MenuItem Header="{DynamicResource TaskPlan_Undo}" InputGestureText="Ctrl+Z" Click="OnUndoClick"/>
                     <Separator/>
+                    <MenuItem Header="{DynamicResource TaskPlan_SelectAll}" InputGestureText="Ctrl+A" Click="OnSelectAllRowsClick"/>
                     <MenuItem Header="{DynamicResource TaskPlan_Copy}" InputGestureText="Ctrl+C" Click="OnCopyClick"/>
                     <MenuItem Header="{DynamicResource TaskPlan_Paste}" InputGestureText="Ctrl+V" Click="OnPasteClick"/>
                     <MenuItem Header="{DynamicResource TaskPlan_FillDown}" InputGestureText="Ctrl+D" Click="OnFillDownClick"/>

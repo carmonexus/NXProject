@@ -152,6 +152,9 @@
     <sys:String x:Key="TaskPlan_SelNeedsStoryId">A linha selecionada não tem ID Story do DevOps (nnn:T) — necessário para localizar a Task. Rode o Load Task/Merge para preencher os IDs.</sys:String>
     <sys:String x:Key="TaskPlan_SelSaving">Gravando a Task #{0} no DevOps...</sys:String>
     <sys:String x:Key="TaskPlan_SelSaved">Task #{0} gravada no DevOps.</sys:String>
+    <sys:String x:Key="TaskPlan_SelSavedMany">{0} Task(s) gravada(s) no DevOps.</sys:String>
+    <sys:String x:Key="TaskPlan_SelSavedPartial">Gravadas {0} de {1} Task(s) — algumas falharam.</sys:String>
+    <sys:String x:Key="TaskPlan_SelSaveErrors">Algumas Tasks não foram gravadas no DevOps:&#10;• {0}</sys:String>
     <sys:String x:Key="TaskPlan_SelReading">Lendo a Task #{0} do DevOps...</sys:String>
     <sys:String x:Key="TaskPlan_SelRead">Task #{0} atualizada com os dados do DevOps.</sys:String>
     <sys:String x:Key="TaskPlan_SelNotFound">Task #{0} não encontrada no DevOps (pode ter sido excluída ou movida de Story).</sys:String>
@@ -167,6 +170,15 @@
     <sys:String x:Key="TaskPlan_EnableAITip">Quando marcado, o Merge usa IA e pede confirmação do de/para antes de aplicar. Desmarcado, usa apenas o merge determinístico.</sys:String>
     <sys:String x:Key="TaskPlan_OpenTasksOnly">Tarefas em Aberto</sys:String>
     <sys:String x:Key="TaskPlan_OpenTasksOnlyTip">Quando marcado, mostra somente linhas com Status diferente de Closed.</sys:String>
+    <sys:String x:Key="TaskPlan_ClosedTasksOnly">Somente Task Closed</sys:String>
+    <sys:String x:Key="TaskPlan_ClosedTasksOnlyTip">Quando marcado, mostra somente linhas com Status = Closed (tarefas concluídas).</sys:String>
+    <sys:String x:Key="TaskPlan_NoHh">Task sem HH/DT</sys:String>
+    <sys:String x:Key="TaskPlan_NoHhTip">Quando marcado, mostra somente Tasks sem HH no cronograma — sem HH Feito (concluído) e sem HH Previsto (restante), independentemente do estado (abertas ou encerradas).</sys:String>
+    <sys:String x:Key="TaskPlan_RateStoryHh">Ratear HH Story</sys:String>
+    <sys:String x:Key="TaskPlan_RateStoryHhTip">Distribui o HH da Story entre as Tasks sem HH Feito. Sem HH e em aberto: vai para HH Previsto; sem HH e encerrada: vai para HH Feito. Se a Task já tem HH Previsto: rateia no HH Feito, no máximo 30% do Previsto. Se o Owner da Story tem Task própria, distribui 100%; senão reserva o "% Supervisão de Story" (Alocação de Recursos) e distribui o restante.</sys:String>
+    <sys:String x:Key="TaskPlan_RateStoryHhDone">Rateio concluído: {0} Task(s) receberam HH.</sys:String>
+    <sys:String x:Key="TaskPlan_RateStepStory">Rateando {0}/{1}: {2}</sys:String>
+    <sys:String x:Key="TaskPlan_RateStoryHhNone">Nenhuma Task elegível para rateio (todas já têm HH, ou a Story está sem HH).</sys:String>
     <sys:String x:Key="TaskPlan_RememberFilterNoFile">Salve a planilha em um arquivo antes de salvar o filtro — a visão é associada ao caminho do .xlsx.</sys:String>
     <sys:String x:Key="TaskPlan_FilterRemembered">Filtro salvo para esta planilha.</sys:String>
     <sys:String x:Key="TaskPlan_ActiveFilters">Filtros ativos: {0}</sys:String>
@@ -198,6 +210,7 @@
     <sys:String x:Key="TaskPlan_InsertRowBelow">Inserir linha abaixo</sys:String>
     <sys:String x:Key="TaskPlan_Undo">Desfazer</sys:String>
     <sys:String x:Key="TaskPlan_Undone">Alteração desfeita ({0} restante(s) no histórico).</sys:String>
+    <sys:String x:Key="TaskPlan_SelectAll">Selecionar todas as linhas</sys:String>
     <sys:String x:Key="TaskPlan_Copy">Copiar</sys:String>
     <sys:String x:Key="TaskPlan_Paste">Colar</sys:String>
     <sys:String x:Key="TaskPlan_CellColor">Cor da célula</sys:String>
@@ -576,6 +589,8 @@
     <sys:String x:Key="PortEdit_Process">Processo (DevOps)</sys:String>
     <sys:String x:Key="PortEdit_ProcessTip">Processo do Team Project no Azure DevOps (Agile, Scrum, CMMI ou Basic). Lido automaticamente na importação/descoberta — define o campo de ordem do backlog (Agile/CMMI = StackRank; Scrum = BacklogPriority).</sys:String>
     <sys:String x:Key="PortEdit_ProcessUnknown">(desconhecido — importe/descubra do DevOps)</sys:String>
+    <sys:String x:Key="PortEdit_ReadOnly">Somente leitura (bloqueia Export/Sincronizar no DevOps)</sys:String>
+    <sys:String x:Key="PortEdit_ReadOnlyTip">Quando marcado, o cronograma importado deste projeto não pode Exportar/Sincronizar no DevOps. Edição local e Task Plan continuam livres. Vale a partir da próxima importação.</sys:String>
     <sys:String x:Key="PortEdit_CostCenter">Centro de Custo</sys:String>
     <sys:String x:Key="PortEdit_Ok">OK</sys:String>
     <sys:String x:Key="PortEdit_Cancel">Cancelar</sys:String>
@@ -633,6 +648,9 @@
     <sys:String x:Key="Imp_Calendar">📅 Calendário...</sys:String>
     <sys:String x:Key="Imp_CalendarTip">Configurar horas por dia, feriados e dias úteis usados no cálculo de prazos</sys:String>
     <sys:String x:Key="Imp_CalendarWindowTitle">Calendário de trabalho</sys:String>
+    <sys:String x:Key="Imp_ReadOnly">Somente leitura (bloqueia Export/Sincronizar no DevOps)</sys:String>
+    <sys:String x:Key="Imp_ReadOnlyTip">Marque quando importar só para consultar: o cronograma não poderá Exportar/Sincronizar no DevOps. Edição local e Task Plan continuam livres. A liberação é feita na configuração do Projeto no Portfólio.</sys:String>
+    <sys:String x:Key="Imp_ReadOnlyFromPortfolio">Definido na configuração do Projeto no Portfólio (para mudar, edite o projeto no Portfólio).</sys:String>
     <sys:String x:Key="Imp_ScheduleRules">💡 Regras de cronograma: o esforço (HH Estimado) de cada Story é convertido em dias úteis. Se Data_Inicio estiver preenchida no DevOps, a barra começa nela; Data_Fim, se preenchida, é usada diretamente. Stories sem datas são encadeadas a partir da data de início do projeto.</sys:String>
     <sys:String x:Key="Imp_ConfigDevOps">⚙ Configurar DevOps</sys:String>
     <sys:String x:Key="Imp_ConfigDevOpsTip">Abre a configuração da integração com Azure DevOps</sys:String>
@@ -705,6 +723,8 @@
     <sys:String x:Key="RAlloc_Title">Alocação por Sprint</sys:String>
     <sys:String x:Key="RAlloc_Header">Alocação por Sprint</sys:String>
     <sys:String x:Key="RAlloc_Subtitle">Clique nas horas para ver as atividades e trocar o recurso.</sys:String>
+    <sys:String x:Key="RAlloc_StorySupervision">% Supervisão de Story</sys:String>
+    <sys:String x:Key="RAlloc_StorySupervisionTip">No rateio de HH da Story (Task Plan), quando o Owner da Story NÃO tem Task própria, este % é reservado para acompanhamento/supervisão e o restante é distribuído entre as Tasks sem HH.</sys:String>
     <sys:String x:Key="RAlloc_IncludeZeroPct">Incluir planejado (Story % 0 / Task New)</sys:String>
     <sys:String x:Key="RAlloc_IncludeZeroPctTip">Considera também Stories com % de conclusão = 0 e tasks/resumos no estado New — útil para ver a distribuição da sprint planejada.</sys:String>
     <sys:String x:Key="RAlloc_Add">Incluir</sys:String>
@@ -1660,6 +1680,8 @@
     <sys:String x:Key="About_VersioningExample">Exemplo: 1.0.0 = versao principal 1, release 0 e correcao de bugs 0.</sys:String>
     <sys:String x:Key="Banner_Source">Fonte de dados: {0}</sys:String>
     <sys:String x:Key="Banner_Process">Processo: {0}</sys:String>
+    <sys:String x:Key="Banner_ReadOnly">🔒 Somente leitura</sys:String>
+    <sys:String x:Key="Main_ReadOnlyBlocked">Este cronograma está em SOMENTE LEITURA — o Export/Sincronizar no DevOps está bloqueado. Para liberar, edite o projeto na configuração do Portfólio (marque/desmarque "Somente leitura") e reimporte. Edição local e Task Plan continuam livres.</sys:String>
     <sys:String x:Key="About_Company">Empresa</sys:String>
     <sys:String x:Key="About_GitHubHeader">Projeto no GitHub</sys:String>
     <sys:String x:Key="About_LicenseHeader">Licenca (Open Core)</sys:String>
@@ -2045,6 +2067,27 @@
     <sys:String x:Key="TaskPlan_MissingEpicSkipOption">Desconsiderar esses EPICs e aplicar o restante</sys:String>
     <sys:String x:Key="TaskPlan_MissingEpicSkipHint">As linhas dos EPICs listados ficam de fora; as demais Tasks são aplicadas normalmente.</sys:String>
     <sys:String x:Key="TaskPlan_CreateNeedsTask">Informe o nome da Task na linha antes de gravar no TFS.</sys:String>
+    <sys:String x:Key="TaskPlan_SaveNeedName">Informe o nome da Task antes de gravar no TFS (não é permitido nome vazio). Em caso de nome duplicado, ajuste o nome e grave.</sys:String>
+    <sys:String x:Key="TaskPlan_CapAddTfs">ADD TFS</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptTitle">Carregar Tasks do TFS — escolha as opções:</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptResource">Filtrar por recurso (responsável):</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptAllResources">Todos os recursos</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptAllTeam">Todo o time (não filtra por recurso)</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptIncludeClosed">Incluir Tasks Closed novas</sys:String>
+    <sys:String x:Key="TaskPlan_LoadOptStatus">Status (marque um ou mais):</sys:String>
+    <sys:String x:Key="TaskPlan_AutoCloseStory">Encerrar Story se todas Tasks Closed</sys:String>
+    <sys:String x:Key="TaskPlan_AutoCloseStoryTip">Ao Gravar no TFS uma Task como Closed, verifica no TFS se TODAS as Tasks da Story ficaram Closed; em caso positivo, encerra a Story no DevOps e reflete o "Status Story" na planilha.</sys:String>
+    <sys:String x:Key="TaskPlan_CapRefreshTfs">Refresh TFS</sys:String>
+    <sys:String x:Key="TaskPlan_RefreshTfsTip">Atualiza do TFS as linhas SELECIONADAS: mudanças das Tasks (nome, HH, status, %, responsável) e os nomes de EPIC/Feature/Story. Não recarrega a planilha nem cria linhas.</sys:String>
+    <sys:String x:Key="TaskPlan_RefreshNeedSel">Selecione as linhas que deseja atualizar do TFS.</sys:String>
+    <sys:String x:Key="TaskPlan_RefreshError">Não foi possível atualizar do TFS: {0}</sys:String>
+    <sys:String x:Key="TaskPlan_RefreshDone">Atualização do TFS concluída: {0} Task(s) atualizada(s).</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsTip">Inclui no DevOps as atividades tipo I (sem vínculo TFS) selecionadas, sob a Story existente. Habilita só quando TODAS as linhas selecionadas são tipo I.</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsOnlyInternal">Selecione apenas atividades tipo I (sem vínculo TFS). Linhas já vinculadas (:T) não podem ser incluídas de novo.</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsInvalid">Não é possível incluir estas atividades (a Story precisa existir no TFS e o nome não pode estar vazio):&#10;• {0}</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsConfirm">Incluir {0} atividade(s) tipo I no DevOps sob a Story existente?</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsNameExists">Não é possível incluir: a Story já tem no TFS uma Task com o mesmo nome (ou o nome está repetido na seleção). Ajuste o nome e tente de novo:&#10;• {0}</sys:String>
+    <sys:String x:Key="TaskPlan_AddTfsCheckError">Não foi possível verificar as Tasks da Story no TFS antes de incluir: {0}</sys:String>
     <sys:String x:Key="TaskPlan_CreateNeedsStory">A linha precisa de uma Story ja existente no DevOps (coluna ID Story com :T). EPIC, Feature e Story sao criados no DevOps; a planilha so cria Task.</sys:String>
     <sys:String x:Key="TaskPlan_CreatingTask">Criando a Task "{0}" no DevOps...</sys:String>
     <sys:String x:Key="TaskPlan_CreatedTask">Task {0} criada no DevOps: "{1}".</sys:String>
@@ -2058,7 +2101,8 @@
     <sys:String x:Key="TaskPlan_BadEpicHint">✗ Vermelho: este EPIC não existe no cronograma aberto.&#10;Corrija o nome (Ctrl+clique abre a busca) ou abra o cronograma certo.</sys:String>
     <sys:String x:Key="TaskPlan_BadFeatureHint">✗ Vermelho: esta Feature não existe no cronograma aberto sob o EPIC informado.&#10;Feature de mesmo nome em outro EPIC não vale. Ctrl+clique abre a busca; se for nova, ela nasce no cronograma quando você usar o Aplicar.</sys:String>
     <sys:String x:Key="TaskPlan_BadStoryHint">✗ Vermelho: esta Story não existe no cronograma aberto sob a Feature/EPIC informados.&#10;Story de mesmo nome em outra Feature não vale. Ctrl+clique abre a busca; se for nova, ela nasce no cronograma quando você usar o Aplicar.</sys:String>
-    <sys:String x:Key="TaskPlan_BadTaskHint">✗ Vermelho: esta Task não está válida. Motivos possíveis:&#10;• a Story da linha não existe no cronograma (a Task não tem onde viver);&#10;• a mesma Story + Task já está em OUTRA linha da planilha (duplicada);&#10;• a Task não existe no cronograma e ainda não tem ID.&#10;Ctrl+clique abre a busca; Task nova nasce no cronograma no Aplicar.</sys:String>
+    <sys:String x:Key="TaskPlan_BadTaskHint">✗ Vermelho: esta Task não está válida (referência é o TFS). Motivos possíveis:&#10;• a Task não tem vínculo com o DevOps (sem ID :T) e não existe no cronograma;&#10;• a mesma Story + Task já está em OUTRA linha da planilha (duplicada).&#10;Ctrl+clique abre a busca; Task nova nasce no DevOps/cronograma no Aplicar.</sys:String>
+    <sys:String x:Key="TaskPlan_FoundHint">✓ Validado: existe no cronograma aberto (e, para Task, tem vínculo com o DevOps — ID :T).</sys:String>
     <sys:String x:Key="TaskPlan_BadResourceHint">✗ Vermelho: este responsável não é um recurso do cronograma aberto.&#10;Ctrl+clique lista as pessoas do projeto. Vários nomes na célula precisam TODOS existir.</sys:String>
     <sys:String x:Key="TaskPlan_BadGenericHint">✗ Vermelho: o valor preenchido não existe no cronograma aberto.</sys:String>
     <sys:String x:Key="TaskPlan_AiNewTask">Task nova</sys:String>
