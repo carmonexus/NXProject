@@ -9,11 +9,13 @@ namespace NXProject.Views
         public DevOpsProject? Result { get; private set; }
 
         private readonly string _process;
+        private readonly bool? _readOnly;
+        private readonly string _admGroup;
 
         public DevOpsProjectEditWindow(string name = "", int id = 0,
                                        bool isOpex = true, string costCenter = "",
                                        string costCenterSource = "", string process = "",
-                                       bool? readOnly = null)
+                                       bool? readOnly = null, string admGroup = "")
         {
             InitializeComponent();
             NameBox.Text = name;
@@ -21,7 +23,10 @@ namespace NXProject.Views
             _process = process ?? "";
             ProcessBox.Text = string.IsNullOrWhiteSpace(_process)
                 ? AppStrings.Get("PortEdit_ProcessUnknown") : _process;
-            ReadOnlyBox.IsChecked = readOnly == true;
+            _readOnly = readOnly;
+            _admGroup = admGroup ?? "";
+            AdmGroupBox.Text = string.IsNullOrWhiteSpace(_admGroup)
+                ? AppStrings.Get("PortEdit_AdmGroupNone") : _admGroup;
 
             TypeBox.Items.Add("OPEX");
             TypeBox.Items.Add("CAPEX");
@@ -61,8 +66,9 @@ namespace NXProject.Views
                 IsOpex           = src != "CAPEX",
                 CostCenter       = CcBox.Text?.Trim() ?? "",
                 CostCenterSource = src,
-                Process          = _process,  // read-only nesta tela; preserva o lido do DevOps
-                ReadOnly         = ReadOnlyBox.IsChecked == true
+                Process          = _process,   // read-only nesta tela; preserva o lido do DevOps
+                ReadOnly         = _readOnly,   // preservado (compat.); não editável nesta tela
+                AdmGroupName     = _admGroup    // read-only; vem do campo Adm_NX na importação
             };
             DialogResult = true;
             Close();

@@ -392,6 +392,8 @@
     <sys:String x:Key="TaskPlan_OpenSelTfsTip">Opens the selected row's Task in the browser using its DevOps ID (nnn:T), to edit it directly in Azure DevOps.</sys:String>
     <sys:String x:Key="TaskPlan_SelDescRich">Task #{0} saved — the description was preserved (formatted content in DevOps).</sys:String>
     <sys:String x:Key="TaskPlan_SelDescRichMsg">The Task's other fields were saved, but the DESCRIPTION was not.&#x0a;&#x0a;In DevOps it has formatted content (image, table, list or link) and the sheet only knows plain text — rewriting it would erase that content.&#x0a;&#x0a;To change the description, use one of these:&#x0a;• Open in DevOps — edit the description directly in Azure DevOps (toolbar button).&#x0a;• Apply to the schedule and sync — edit via the Activity Description window, which preserves the HTML.</sys:String>
+    <sys:String x:Key="TaskPlan_SaveIdentitySkipped">#{0}: assignee "{1}" is no longer a valid DevOps identity (resource left) — other fields saved.</sys:String>
+    <sys:String x:Key="TaskPlan_SaveIdentityMsg">Some Tasks were saved, but the assignee was NOT updated because it is no longer a valid DevOps identity (resource left). Everything else (hours, sprint, state, title) was saved normally:&#x0a;&#x0a;• {0}</sys:String>
     <sys:String x:Key="TaskPlan_SaveFilterTip">Saves the current view (column, color, EPIC/Feature filters and Open Tasks) in this spreadsheet's local settings. On reopen, the spreadsheet returns to this view. Does not change the file.</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadAll">Load</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadTask">Load Task</sys:String>
@@ -507,6 +509,7 @@
     <sys:String x:Key="Menu_View_Calendar">_Calendar...</sys:String>
     <sys:String x:Key="Menu_View_Resources">_Resource Allocation...</sys:String>
     <sys:String x:Key="Menu_View_DevOpsList">Project _Portfolio...</sys:String>
+    <sys:String x:Key="Menu_View_DevOpsConfig">Configure _DevOps...</sys:String>
     <sys:String x:Key="Menu_View_HealthCheck">_Project Progress and S-Curve...</sys:String>
     <sys:String x:Key="Menu_View_StoryStatusChart">_Story Status Chart...</sys:String>
     <sys:String x:Key="Menu_View_AllocationMap">Project _Allocation Map...</sys:String>
@@ -813,6 +816,10 @@
     <sys:String x:Key="PortEdit_ProcessUnknown">(unknown — import/discover from DevOps)</sys:String>
     <sys:String x:Key="PortEdit_ReadOnly">Read-only (blocks Export/Sync to DevOps)</sys:String>
     <sys:String x:Key="PortEdit_ReadOnlyTip">When checked, the schedule imported from this project cannot Export/Sync to DevOps. Local editing and Task Plan stay free. Applies from the next import.</sys:String>
+    <sys:String x:Key="PortEdit_AdmGroup">Group allowed to sync (Adm_NX)</sys:String>
+    <sys:String x:Key="PortEdit_AdmGroupNone">(open to everyone)</sys:String>
+    <sys:String x:Key="PortEdit_AdmGroupTip">NX admin group (Adm_NX field on the Project work item). Only members of this DevOps group can Export/Sync. Read from DevOps at import — not editable here.</sys:String>
+    <sys:String x:Key="PortEdit_AdmGroupHint">Set in the Adm_NX field on the Project work item in DevOps. To change who can sync, adjust that group in DevOps and re-import.</sys:String>
     <sys:String x:Key="PortEdit_CostCenter">Cost Center</sys:String>
     <sys:String x:Key="PortEdit_Ok">OK</sys:String>
     <sys:String x:Key="PortEdit_Cancel">Cancel</sys:String>
@@ -856,6 +863,8 @@
     <sys:String x:Key="Banner_Process">Process: {0}</sys:String>
     <sys:String x:Key="Banner_ReadOnly">🔒 Read-only</sys:String>
     <sys:String x:Key="Main_ReadOnlyBlocked">This schedule is READ-ONLY — Export/Sync to DevOps is blocked. To unlock, edit the project in the Portfolio config (toggle "Read-only") and re-import. Local editing and Task Plan stay free.</sys:String>
+    <sys:String x:Key="Banner_AdmGroup">🔒 Sync: group {0}</sys:String>
+    <sys:String x:Key="Main_AdmGroupBlocked">Only members of the NX admin group "{0}" can sync to DevOps. Your user is not in that group. Ask to be added to the group (or adjust the Adm_NX field on the Project work item) and re-import. Local editing and Task Plan stay free.</sys:String>
 
     <!-- Import from Azure DevOps -->
     <sys:String x:Key="Imp_Title">Import from Azure DevOps</sys:String>
@@ -877,6 +886,8 @@
     <sys:String x:Key="Imp_ReadOnly">Read-only (blocks Export/Sync to DevOps)</sys:String>
     <sys:String x:Key="Imp_ReadOnlyTip">Check when importing just to view: the schedule won't be able to Export/Sync to DevOps. Local editing and Task Plan stay free. Unlocking is done in the Project config in the Portfolio.</sys:String>
     <sys:String x:Key="Imp_ReadOnlyFromPortfolio">Set in the Project config in the Portfolio (to change it, edit the project in the Portfolio).</sys:String>
+    <sys:String x:Key="Imp_AdmGroupInfo">🔒 Who can sync is set by the NX admin group (Adm_NX field on the Project work item), read from DevOps at import. Empty field = open to everyone.</sys:String>
+    <sys:String x:Key="Imp_AdmGroupSelected">🔒 Sync: members of group "{0}" (Adm_NX field, read from DevOps at import).</sys:String>
     <sys:String x:Key="Imp_ScheduleRules">💡 Schedule rules: each Story's effort (Estimated HH) is converted into working days. If Data_Inicio is set in DevOps, the bar starts there; Data_Fim, if set, is used directly. Stories without dates are chained from the project start date.</sys:String>
     <sys:String x:Key="Imp_ConfigDevOps">⚙ Configure DevOps</sys:String>
     <sys:String x:Key="Imp_ConfigDevOpsTip">Opens the Azure DevOps integration configuration</sys:String>
@@ -1281,6 +1292,8 @@
     <sys:String x:Key="ImpRes_Warn">⚠ Warning</sys:String>
     <sys:String x:Key="ImpRes_Error">✖ Error</sys:String>
     <sys:String x:Key="ImpRes_CopyLog">Copy log</sys:String>
+    <sys:String x:Key="ImpRes_ShowDetails">Details »</sys:String>
+    <sys:String x:Key="ImpRes_HideDetails">« Hide</sys:String>
     <sys:String x:Key="ImpRes_Close">Close</sys:String>
     <sys:String x:Key="ImpRes_LogInfo">[INFO] </sys:String>
     <sys:String x:Key="ImpRes_LogWarn">[WARN] </sys:String>
@@ -2017,6 +2030,9 @@
     <sys:String x:Key="Cfg_ApprovedFieldEnable">Read the Task approval field from DevOps</sys:String>
     <sys:String x:Key="Cfg_ApprovedField">Approval field (Task)</sys:String>
     <sys:String x:Key="Cfg_ApprovedFieldTip">When enabled, Task Plan Load Task / Merge fills the "Approved" column with this work item field (e.g. Aprovado or Custom.Aprovado). When off, every Task existing in DevOps comes in as "Yes".</sys:String>
+    <sys:String x:Key="Cfg_AdmGroupEnable">Read the NX admin group (who can sync)</sys:String>
+    <sys:String x:Key="Cfg_AdmGroupField">Group field (Project work item)</sys:String>
+    <sys:String x:Key="Cfg_AdmGroupTip">When enabled, import reads this field from the Project work item (e.g. Adm_NX). Its value is the name of a DevOps group; only members of that group can trigger Export/Sync. Empty or missing field = open to everyone.</sys:String>
     <sys:String x:Key="TLR_ColApproved">Approved</sys:String>
     <sys:String x:Key="PMap_TabTimeSheet">Time sheet</sys:String>
     <sys:String x:Key="PMap_TsResource">Resource:</sys:String>

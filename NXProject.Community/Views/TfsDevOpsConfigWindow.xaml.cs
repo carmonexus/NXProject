@@ -64,6 +64,9 @@ namespace NXProject.Views
             ApprovedFieldEnabledBox.IsChecked = saved.ApprovedFieldEnabled;
             ApprovedFieldBox.Text = string.IsNullOrWhiteSpace(saved.ApprovedFieldName) ? "Approved" : saved.ApprovedFieldName;
             ApprovedFieldBox.IsEnabled = saved.ApprovedFieldEnabled;
+            AdmGroupFieldEnabledBox.IsChecked = saved.AdmGroupFieldEnabled;
+            AdmGroupFieldBox.Text = string.IsNullOrWhiteSpace(saved.AdmGroupFieldName) ? "Adm_NX" : saved.AdmGroupFieldName;
+            AdmGroupFieldBox.IsEnabled = saved.AdmGroupFieldEnabled;
             TaskPriorityRangeEnabledBox.IsChecked = saved.TaskPriorityRangeEnabled;
             TaskPriorityMinBox.Text = saved.TaskPriorityMin.ToString(CultureInfo.InvariantCulture);
             TaskPriorityMaxBox.Text = saved.TaskPriorityMax.ToString(CultureInfo.InvariantCulture);
@@ -149,6 +152,12 @@ namespace NXProject.Views
         {
             if (ApprovedFieldBox == null) return;
             ApprovedFieldBox.IsEnabled = ApprovedFieldEnabledBox.IsChecked == true;
+        }
+
+        private void OnAdmGroupFieldEnabledChanged(object sender, RoutedEventArgs e)
+        {
+            if (AdmGroupFieldBox == null) return;
+            AdmGroupFieldBox.IsEnabled = AdmGroupFieldEnabledBox.IsChecked == true;
         }
 
         private void OnTaskPriorityRangeEnabledChanged(object sender, RoutedEventArgs e)
@@ -269,6 +278,8 @@ namespace NXProject.Views
             EpicTypeFieldName = string.IsNullOrWhiteSpace(EpicTypeFieldBox.Text) ? "EPIC_TYPE" : EpicTypeFieldBox.Text.Trim(),
             ApprovedFieldEnabled = ApprovedFieldEnabledBox.IsChecked == true,
             ApprovedFieldName = string.IsNullOrWhiteSpace(ApprovedFieldBox.Text) ? "Approved" : ApprovedFieldBox.Text.Trim(),
+            AdmGroupFieldEnabled = AdmGroupFieldEnabledBox.IsChecked == true,
+            AdmGroupFieldName = string.IsNullOrWhiteSpace(AdmGroupFieldBox.Text) ? "Adm_NX" : AdmGroupFieldBox.Text.Trim(),
             TaskPriorityRangeEnabled = TaskPriorityRangeEnabledBox.IsChecked == true,
             TaskPriorityMin = int.TryParse(TaskPriorityMinBox.Text?.Trim(), out var prioMin) && prioMin >= 1 ? prioMin : 1,
             TaskPriorityMax = int.TryParse(TaskPriorityMaxBox.Text?.Trim(), out var prioMax) && prioMax >= 1 ? prioMax : 4,

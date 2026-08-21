@@ -21,6 +21,10 @@ namespace NXProject.Models
         // ainda não definido → o import pergunta e grava aqui. Liberação só por esta config.
         public bool? ReadOnly { get; set; }
 
+        // Grupo administrador do NX (campo Adm_NX do work item Project): informativo, vindo do
+        // import. Seus membros são os únicos que podem sincronizar. Vazio = liberado para todos.
+        public string AdmGroupName { get; set; } = "";
+
         // Nome com o owner anexado, para exibição em listas/combos.
         [System.Text.Json.Serialization.JsonIgnore]
         public string DisplayName =>

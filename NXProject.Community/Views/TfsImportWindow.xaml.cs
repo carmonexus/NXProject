@@ -35,23 +35,17 @@ namespace NXProject.Views
                 RootIdBox.Text = _savedOptions.RootWorkItemId.ToString(CultureInfo.InvariantCulture);
         }
 
-        // Resolve o "Somente leitura" do cronograma importado: Portfólio manda (se já definido);
-        // senão o checkbox decide e o valor é gravado no Portfólio para as próximas importações.
+        // Autorização de sincronização: agora vem do grupo administrador do NX (campo Adm_NX do
+        // work item Project), lido do TFS na importação. Persiste o nome do grupo no Portfólio para
+        // exibição; ainda respeita um "somente leitura" antigo já gravado no Portfólio (compat.).
         private void ApplyReadOnlyFromPortfolioOrCheckbox(Project project)
         {
             var rootId = project.DevOpsRootWorkItemId;
             var entry = rootId > 0 ? _devOpsProjects.FirstOrDefault(p => p.RootWorkItemId == rootId) : null;
 
             if (entry?.ReadOnly is { } defined)
-            {
-                project.ReadOnly = defined;   // Portfólio manda
-                return;
-            }
+                project.ReadOnly = defined;   // compat.: Portfólio antigo com "somente leitura"
 
-            var value = ReadOnlyBox?.IsChecked == true;
-            project.ReadOnly = value;
-
-            // Grava no Portfólio (se houver arquivo de Portfólio configurado).
             if (rootId > 0 && !string.IsNullOrWhiteSpace(_devOpsProjectListPath))
             {
                 if (entry == null)
@@ -65,7 +59,10 @@ namespace NXProject.Views
                     };
                     _devOpsProjects.Add(entry);
                 }
-                entry.ReadOnly = value;
+                // Se o work item trouxe o grupo Adm_NX preenchido, atualiza o cadastro do
+                // Portfólio (inclusive projetos criados à mão com o grupo ainda vazio/nulo).
+                if (!string.IsNullOrWhiteSpace(project.AdmGroupName))
+                    entry.AdmGroupName = project.AdmGroupName!;
                 try { DevOpsProjectListService.Save(_devOpsProjects, _devOpsProjectListPath); } catch { /* portfólio é conveniência */ }
             }
         }
@@ -103,23 +100,14 @@ namespace NXProject.Views
             SyncReadOnlyBox();
         }
 
-        // Reflete no checkbox o "Somente leitura" do Portfólio: se já definido, mostra e trava
-        // (controlado no Portfólio); se nulo, deixa editável (padrão = marcado).
+        // Mostra o grupo administrador do NX do projeto selecionado no Portfólio (informativo).
         private void SyncReadOnlyBox()
         {
-            if (ReadOnlyBox == null) return;
+            if (AdmGroupHint == null) return;
             var selected = DevOpsProjectCombo.SelectedItem as DevOpsProject;
-            if (selected?.ReadOnly is { } defined)
-            {
-                ReadOnlyBox.IsChecked = defined;
-                ReadOnlyBox.IsEnabled = false;
-                if (ReadOnlyHint != null) ReadOnlyHint.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                ReadOnlyBox.IsEnabled = true;
-                if (ReadOnlyHint != null) ReadOnlyHint.Visibility = Visibility.Collapsed;
-            }
+            AdmGroupHint.Text = !string.IsNullOrWhiteSpace(selected?.AdmGroupName)
+                ? AppStrings.Get("Imp_AdmGroupSelected", selected!.AdmGroupName)
+                : AppStrings.Get("Imp_AdmGroupInfo");
         }
 
         private void OnManageListClick(object sender, RoutedEventArgs e)

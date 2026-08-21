@@ -214,6 +214,28 @@
                         </StackPanel>
                     </Grid>
 
+                    <!-- Grupo administrador do NX (opcional): membros do grupo podem sincronizar -->
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Bottom">
+                            <CheckBox x:Name="AdmGroupFieldEnabledBox"
+                                      Content="{DynamicResource Cfg_AdmGroupEnable}"
+                                      ToolTip="{DynamicResource Cfg_AdmGroupTip}"
+                                      FontSize="11" Margin="0,0,0,6"
+                                      Checked="OnAdmGroupFieldEnabledChanged"
+                                      Unchecked="OnAdmGroupFieldEnabledChanged"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="{DynamicResource Cfg_AdmGroupField}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                            <TextBox x:Name="AdmGroupFieldBox" Height="26" Padding="6,3" IsEnabled="False"
+                                     ToolTip="{DynamicResource Cfg_AdmGroupTip}"/>
+                        </StackPanel>
+                    </Grid>
+
                     <!-- Faixa personalizada de prioridade da Task (padrão DevOps: 1–4) -->
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>

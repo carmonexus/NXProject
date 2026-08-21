@@ -807,6 +807,22 @@ namespace NXProject.Views
                      "• Itens em vermelho ficam destacados até a próxima reimportação. O log de sincronização indica quais itens tiveram conflito.\n" +
                      "• Clicar no item em vermelho na coluna de estado abre a janela de vínculo DevOps, que exibe um aviso de conflito com o botão ↓ Reimportar.\n\n" +
                      "Os campos Sync_version e Sync_Name devem estar presentes em todos os tipos de work item que você sincroniza: Story, Feature e Epic."),
+                    ("Grupo administrador do NX (Adm_NX) — quem pode sincronizar",
+                     "Você pode restringir QUEM pode Exportar/Sincronizar de cada projeto usando um grupo do Azure DevOps:\n\n" +
+                     "• No tipo raiz 'Project', crie um campo do tipo Identidade chamado 'Adm_NX' e aponte-o para um grupo/Team do DevOps.\n" +
+                     "• Só os MEMBROS desse grupo poderão Exportar/Sincronizar no DevOps a partir do cronograma importado. Edição local e Task Plan continuam livres para todos.\n" +
+                     "• O grupo e seus membros são exibidos no banner (🔒) e no editor do Portfólio de Projetos. A validação de quem pode sincronizar é feita AO VIVO no momento do Sincronizar: o NXProject relê o campo 'Adm_NX' direto do work item Project no DevOps e compara com o usuário autenticado (dono do PAT) — não depende do checkbox nem do que ficou salvo no arquivo .nxp. Assim, desligar a opção depois de importar NÃO desliga a trava.\n" +
+                     "• Campo vazio ou ausente no work item Project = liberado para todos. Este recurso substitui o antigo 'Somente leitura' do Portfólio.\n" +
+                     "• O nome do campo é configurável (padrão 'Adm_NX') em Exibir → Configurar DevOps → Campos avançados; pode ser desligado ali também.\n\n" +
+                     "IMPORTANTE: depois de criar o campo 'Adm_NX' no template do processo, é preciso ABRIR CADA work item 'Project', selecionar o grupo e SALVAR (Save). Enquanto o valor não for gravado no item, o campo fica vazio na API — mesmo que apareça no formulário — e o NXProject lê como 'liberado para todos'."),
+                    ("Bloqueio à prova de burla (Area Path Security no DevOps)",
+                     "O 'Adm_NX' do NXProject é uma trava do lado do aplicativo — avisa e impede a sincronização pelo NX, mas quem tem um PAT com escrita e quer burlar pode desligar a config, renomear o campo ou chamar a API do DevOps direto. Para IMPEDIR de verdade a gravação, a regra tem que morar no próprio Azure DevOps, via permissão de escrita por Area Path:\n\n" +
+                     "• Configurações do Projeto → Boards → Configuração do projeto → aba Áreas.\n" +
+                     "• Passe o mouse no nó da Área → menu '⋯' → Segurança.\n" +
+                     "• Dê 'Edit work items in this node' = Allow ao grupo administrador e = Deny aos demais.\n" +
+                     "• Atenção: no DevOps o Deny vence o Allow, e as permissões são herdadas pelos nós filhos.\n\n" +
+                     "Assim, mesmo que alguém burle o NXProject, o DevOps recusa a gravação (o PAT não tem permissão).\n\n" +
+                     "Limitação: a segurança é por Area Path, não por tipo de work item. Se TODOS os itens do projeto (inclusive o próprio 'Project') estão na MESMA área, o Deny bloquearia a edição de tudo naquela área, não só do 'Project'. Para usar esse bloqueio de forma seletiva, seria preciso separar os itens em Areas diferentes (uma Area por projeto/escopo) e aplicar a segurança por Area. Quando isso não é viável, o gate do 'Adm_NX' no NXProject funciona como controle prático (avisa/impede no app), ciente de que não é à prova de burla."),
                     ("Como criar os campos no Azure DevOps",
                      "Acesse: Configurações da Organização → Boards → Processo → selecione seu processo → abra o tipo de work item (Story, Feature ou Epic).\n\n" +
                      "1. Clique em Novo campo.\n" +
@@ -1658,6 +1674,22 @@ namespace NXProject.Views
                      "• Red items remain highlighted until you re-import the project. The sync log shows which items had conflicts.\n" +
                      "• Clicking a red item in the state column opens the DevOps link window, which shows a conflict warning with a ↓ Re-import button.\n\n" +
                      "Sync_version and Sync_Name must be present on all work item types you sync: Story, Feature and Epic."),
+                    ("NX admin group (Adm_NX) — who can sync",
+                     "You can restrict WHO can Export/Sync each project using an Azure DevOps group:\n\n" +
+                     "• On the root 'Project' type, create an Identity field named 'Adm_NX' and point it to a DevOps group/Team.\n" +
+                     "• Only the MEMBERS of that group can Export/Sync to DevOps from the imported schedule. Local editing and Task Plan stay free for everyone.\n" +
+                     "• The group and its members are shown in the banner (🔒) and in the Project Portfolio editor. Who may sync is validated LIVE at Sync time: NXProject re-reads the 'Adm_NX' field straight from the Project work item in DevOps and compares it to the authenticated user (the PAT owner) — it does not rely on the checkbox or on what was cached in the .nxp file. So turning the option off after import does NOT turn the gate off.\n" +
+                     "• Empty or missing field on the Project work item = open to everyone. This replaces the old Portfolio 'Read-only' flag.\n" +
+                     "• The field name is configurable (default 'Adm_NX') under View → Configure DevOps → Advanced fields; it can also be turned off there.\n\n" +
+                     "IMPORTANT: after creating the 'Adm_NX' field in the process template, you must OPEN EACH 'Project' work item, pick the group and SAVE. Until the value is persisted on the item, the field is empty in the API — even if it shows in the form — and NXProject reads it as 'open to everyone'."),
+                    ("Tamper-proof blocking (Area Path Security in DevOps)",
+                     "The NXProject 'Adm_NX' gate is an app-side guard — it warns and blocks syncing through NXProject, but anyone with a write PAT who wants to bypass it can turn off the config, rename the field, or call the DevOps API directly. To REALLY prevent writes, the rule must live in Azure DevOps itself, via write permission per Area Path:\n\n" +
+                     "• Project Settings → Boards → Project configuration → Areas tab.\n" +
+                     "• Hover an Area node → '⋯' menu → Security.\n" +
+                     "• Set 'Edit work items in this node' = Allow for the admin group and = Deny for everyone else.\n" +
+                     "• Note: in DevOps Deny beats Allow, and permissions are inherited by child nodes.\n\n" +
+                     "This way, even if someone bypasses NXProject, DevOps rejects the write (the PAT lacks permission).\n\n" +
+                     "Limitation: security is by Area Path, not by work item type. If ALL project items (including the 'Project' itself) live in the SAME area, the Deny would block editing everything in that area, not just the 'Project'. To use this selectively you would split items into different Areas (one Area per project/scope) and apply security per Area. When that is not feasible, the NXProject 'Adm_NX' gate acts as a practical control (warns/blocks in the app), knowing it is not tamper-proof."),
                     ("How to create the fields in Azure DevOps",
                      "Go to: Organization Settings → Boards → Process → select your process → open the work item type (Story, Feature or Epic).\n\n" +
                      "1. Click New field.\n" +

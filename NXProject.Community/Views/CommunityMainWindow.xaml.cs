@@ -1842,6 +1842,22 @@ namespace NXProject.Views
                 return;
             }
 
+            // Grupo administrador do NX (campo Adm_NX): validação AO VIVO — relê o grupo direto do
+            // work item Project no DevOps (não depende do checkbox nem do cache do .nxp). Campo
+            // vazio/ausente = liberado; falha técnica (rede/escopo) = fail-open.
+            try
+            {
+                var (allowed, groupName) = await Services.TfsImportService.CanCurrentUserSyncLiveAsync(
+                    options, vm.Project.DevOpsRootWorkItemId, options.AdmGroupFieldName);
+                if (!allowed)
+                {
+                    MessageBox.Show(this, AppStrings.Get("Main_AdmGroupBlocked", groupName),
+                        AppStrings.Get("Tfs_ActionSync"), MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+            }
+            catch { /* falha técnica ao validar o grupo → não bloqueia */ }
+
             // Confirmação mostra o PROJETO (work item raiz) + Team Project e organização.
             var rootName = string.IsNullOrWhiteSpace(vm.Project.DevOpsProjectName)
                 ? AppStrings.Get("Sync_NoRootProject")
@@ -2214,6 +2230,11 @@ namespace NXProject.Views
             }, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
+        private void OnDevOpsConfigClick(object sender, RoutedEventArgs e)
+        {
+            new TfsDevOpsConfigWindow("NXProject.Community") { Owner = this }.ShowDialog();
+        }
+
         private void OnDevOpsProjectListClick(object sender, RoutedEventArgs e)
         {
             var saved = Services.TfsConnectionStore.Load("NXProject.Community");
@@ -2303,6 +2324,10 @@ namespace NXProject.Views
             // Somente leitura: Export/Sincronizar bloqueado.
             if ((DataContext as MainViewModel)?.Project?.ReadOnly == true)
                 ownerText += "   •   " + AppStrings.Get("Banner_ReadOnly");
+            // Grupo administrador do NX (Adm_NX): só os membros podem sincronizar.
+            var admGroup = (DataContext as MainViewModel)?.Project?.AdmGroupName;
+            if (isDevOps && !string.IsNullOrWhiteSpace(admGroup))
+                ownerText += "   •   " + AppStrings.Get("Banner_AdmGroup", admGroup);
             DevOpsOwnerLabel.Text = ownerText;
 
             if (!string.IsNullOrWhiteSpace(name))

@@ -80,6 +80,9 @@ namespace NXProject.Services
                     new XElement(EXT + "DevOpsProcess", project.DevOpsProcess ?? ""),
                     new XElement(EXT + "StorySupervisionPercent", project.StorySupervisionPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                     new XElement(EXT + "ReadOnly", project.ReadOnly),
+                    new XElement(EXT + "AdmGroupName", project.AdmGroupName ?? ""),
+                    new XElement(EXT + "AdmGroupMembers",
+                        project.AdmGroupMembers.Select(m => new XElement(EXT + "Member", m ?? ""))),
                     new XElement(EXT + "PlanSheetPath", project.PlanSheetPath ?? ""),
                     new XElement(EXT + "UseHierarchyColors", project.UseHierarchyColors),
                     new XElement(EXT + "BaselineActive", project.BaselineActive),
@@ -376,6 +379,10 @@ namespace NXProject.Services
                 StorySupervisionPercent = ParseDouble(root.Element(EXT + "StorySupervisionPercent")?.Value) is { } sp && sp > 0
                     ? sp : 20,
                 ReadOnly = string.Equals(root.Element(EXT + "ReadOnly")?.Value?.Trim(), "true", StringComparison.OrdinalIgnoreCase),
+                AdmGroupName = string.IsNullOrWhiteSpace(root.Element(EXT + "AdmGroupName")?.Value)
+                    ? null : root.Element(EXT + "AdmGroupName")!.Value,
+                AdmGroupMembers = root.Element(EXT + "AdmGroupMembers")?.Elements(EXT + "Member")
+                    .Select(m => m.Value).Where(v => !string.IsNullOrWhiteSpace(v)).ToList() ?? new(),
                 PlanSheetPath = string.IsNullOrWhiteSpace(root.Element(EXT + "PlanSheetPath")?.Value)
                     ? null : root.Element(EXT + "PlanSheetPath")!.Value,
                 UseHierarchyColors    = bool.TryParse(root.Element(EXT + "UseHierarchyColors")?.Value, out var uhc) && uhc,

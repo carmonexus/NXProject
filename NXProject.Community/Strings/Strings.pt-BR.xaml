@@ -163,6 +163,8 @@
     <sys:String x:Key="TaskPlan_OpenSelTfsTip">Abre no navegador a Task da linha selecionada, usando o ID do DevOps (nnn:T), para editar direto no Azure DevOps.</sys:String>
     <sys:String x:Key="TaskPlan_SelDescRich">Task #{0} gravada — a descrição foi preservada (conteúdo formatado no DevOps).</sys:String>
     <sys:String x:Key="TaskPlan_SelDescRichMsg">Os demais campos da Task foram gravados, mas a DESCRIÇÃO não.&#x0a;&#x0a;No DevOps ela tem conteúdo formatado (imagem, tabela, lista ou link) e a planilha só conhece o texto puro — regravar apagaria esse conteúdo.&#x0a;&#x0a;Para alterar a descrição, use uma destas opções:&#x0a;• Abrir no DevOps — edite a descrição direto no Azure DevOps (botão na barra).&#x0a;• Aplicar no cronograma e sincronizar — edite pela janela Descrição da Atividade, que preserva o HTML.</sys:String>
+    <sys:String x:Key="TaskPlan_SaveIdentitySkipped">#{0}: o responsável "{1}" não é mais uma identidade válida no DevOps (recurso desligado) — demais campos gravados.</sys:String>
+    <sys:String x:Key="TaskPlan_SaveIdentityMsg">Algumas Tasks foram gravadas, mas o responsável NÃO foi atualizado porque não é mais uma identidade válida no DevOps (recurso desligado). O restante (HH, sprint, estado, título) foi gravado normalmente:&#x0a;&#x0a;• {0}</sys:String>
     <sys:String x:Key="TaskPlan_SaveFilterTip">Grava a visão atual (filtros de coluna, cor, EPIC/Feature e Tarefas em Aberto) na configuração local desta planilha. Ao reabrir, a planilha volta com essa visão. Não altera o arquivo.</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadAll">Carregar</sys:String>
     <sys:String x:Key="TaskPlan_CapLoadTask">Load Task</sys:String>
@@ -278,6 +280,7 @@
     <sys:String x:Key="Menu_View_Calendar">_Calendario...</sys:String>
     <sys:String x:Key="Menu_View_Resources">_Alocacao de Recursos...</sys:String>
     <sys:String x:Key="Menu_View_DevOpsList">_Portfólio de Projetos...</sys:String>
+    <sys:String x:Key="Menu_View_DevOpsConfig">_Configurar DevOps...</sys:String>
     <sys:String x:Key="Menu_View_HealthCheck">_Progresso do Projeto e Curva S...</sys:String>
     <sys:String x:Key="Menu_View_StoryStatusChart">_Status de Stories e Incidentes...</sys:String>
     <sys:String x:Key="Menu_View_AllocationMap">_Mapa de Alocação para Projetos...</sys:String>
@@ -591,6 +594,10 @@
     <sys:String x:Key="PortEdit_ProcessUnknown">(desconhecido — importe/descubra do DevOps)</sys:String>
     <sys:String x:Key="PortEdit_ReadOnly">Somente leitura (bloqueia Export/Sincronizar no DevOps)</sys:String>
     <sys:String x:Key="PortEdit_ReadOnlyTip">Quando marcado, o cronograma importado deste projeto não pode Exportar/Sincronizar no DevOps. Edição local e Task Plan continuam livres. Vale a partir da próxima importação.</sys:String>
+    <sys:String x:Key="PortEdit_AdmGroup">Grupo que pode sincronizar (Adm_NX)</sys:String>
+    <sys:String x:Key="PortEdit_AdmGroupNone">(liberado para todos)</sys:String>
+    <sys:String x:Key="PortEdit_AdmGroupTip">Grupo administrador do NX (campo Adm_NX do work item Project). Só os membros deste grupo do DevOps podem Exportar/Sincronizar. Lido do DevOps na importação — não é editável aqui.</sys:String>
+    <sys:String x:Key="PortEdit_AdmGroupHint">Definido no campo Adm_NX do work item Project no DevOps. Para mudar quem sincroniza, ajuste esse grupo no DevOps e reimporte.</sys:String>
     <sys:String x:Key="PortEdit_CostCenter">Centro de Custo</sys:String>
     <sys:String x:Key="PortEdit_Ok">OK</sys:String>
     <sys:String x:Key="PortEdit_Cancel">Cancelar</sys:String>
@@ -651,6 +658,8 @@
     <sys:String x:Key="Imp_ReadOnly">Somente leitura (bloqueia Export/Sincronizar no DevOps)</sys:String>
     <sys:String x:Key="Imp_ReadOnlyTip">Marque quando importar só para consultar: o cronograma não poderá Exportar/Sincronizar no DevOps. Edição local e Task Plan continuam livres. A liberação é feita na configuração do Projeto no Portfólio.</sys:String>
     <sys:String x:Key="Imp_ReadOnlyFromPortfolio">Definido na configuração do Projeto no Portfólio (para mudar, edite o projeto no Portfólio).</sys:String>
+    <sys:String x:Key="Imp_AdmGroupInfo">🔒 Quem pode sincronizar é definido pelo grupo administrador do NX (campo Adm_NX do work item Project), lido do DevOps na importação. Campo vazio = liberado para todos.</sys:String>
+    <sys:String x:Key="Imp_AdmGroupSelected">🔒 Sincronizam: membros do grupo "{0}" (campo Adm_NX, lido do DevOps na importação).</sys:String>
     <sys:String x:Key="Imp_ScheduleRules">💡 Regras de cronograma: o esforço (HH Estimado) de cada Story é convertido em dias úteis. Se Data_Inicio estiver preenchida no DevOps, a barra começa nela; Data_Fim, se preenchida, é usada diretamente. Stories sem datas são encadeadas a partir da data de início do projeto.</sys:String>
     <sys:String x:Key="Imp_ConfigDevOps">⚙ Configurar DevOps</sys:String>
     <sys:String x:Key="Imp_ConfigDevOpsTip">Abre a configuração da integração com Azure DevOps</sys:String>
@@ -1055,6 +1064,8 @@
     <sys:String x:Key="ImpRes_Warn">⚠ Aviso</sys:String>
     <sys:String x:Key="ImpRes_Error">✖ Erro</sys:String>
     <sys:String x:Key="ImpRes_CopyLog">Copiar log</sys:String>
+    <sys:String x:Key="ImpRes_ShowDetails">Detalhes »</sys:String>
+    <sys:String x:Key="ImpRes_HideDetails">« Ocultar</sys:String>
     <sys:String x:Key="ImpRes_Close">Fechar</sys:String>
     <sys:String x:Key="ImpRes_LogInfo">[INFO] </sys:String>
     <sys:String x:Key="ImpRes_LogWarn">[AVS]  </sys:String>
@@ -1682,6 +1693,8 @@
     <sys:String x:Key="Banner_Process">Processo: {0}</sys:String>
     <sys:String x:Key="Banner_ReadOnly">🔒 Somente leitura</sys:String>
     <sys:String x:Key="Main_ReadOnlyBlocked">Este cronograma está em SOMENTE LEITURA — o Export/Sincronizar no DevOps está bloqueado. Para liberar, edite o projeto na configuração do Portfólio (marque/desmarque "Somente leitura") e reimporte. Edição local e Task Plan continuam livres.</sys:String>
+    <sys:String x:Key="Banner_AdmGroup">🔒 Sincroniza: grupo {0}</sys:String>
+    <sys:String x:Key="Main_AdmGroupBlocked">Somente os membros do grupo administrador do NX "{0}" podem sincronizar no DevOps. Seu usuário não está nesse grupo. Peça para ser incluído no grupo (ou ajuste o campo Adm_NX do work item Project) e reimporte. Edição local e Task Plan continuam livres.</sys:String>
     <sys:String x:Key="About_Company">Empresa</sys:String>
     <sys:String x:Key="About_GitHubHeader">Projeto no GitHub</sys:String>
     <sys:String x:Key="About_LicenseHeader">Licenca (Open Core)</sys:String>
@@ -2015,6 +2028,9 @@
     <sys:String x:Key="Cfg_ApprovedFieldEnable">Ler campo de aprovação da Task no DevOps</sys:String>
     <sys:String x:Key="Cfg_ApprovedField">Campo de aprovação (Task)</sys:String>
     <sys:String x:Key="Cfg_ApprovedFieldTip">Quando habilitado, o Load Task / Merge do Task Plan preenche a coluna "Aprovada" com o valor deste campo do work item (ex.: Aprovado ou Custom.Aprovado). Desligado, toda Task existente no DevOps entra como "Sim".</sys:String>
+    <sys:String x:Key="Cfg_AdmGroupEnable">Ler grupo administrador do NX (quem pode sincronizar)</sys:String>
+    <sys:String x:Key="Cfg_AdmGroupField">Campo do grupo (work item Project)</sys:String>
+    <sys:String x:Key="Cfg_AdmGroupTip">Quando habilitado, o import lê este campo do work item Project (ex.: Adm_NX). O valor é o nome de um grupo do DevOps; só os membros desse grupo podem acionar o Export/Sincronizar. Campo vazio ou ausente = liberado para todos.</sys:String>
     <sys:String x:Key="TLR_ColApproved">Aprovada</sys:String>
     <sys:String x:Key="PMap_TabTimeSheet">Time sheet</sys:String>
     <sys:String x:Key="PMap_TsResource">Recurso:</sys:String>

@@ -84,6 +84,8 @@ namespace NXProject.Views
             PlanGrid.BeginningEdit += OnBeginningEdit;
             // Propaga o "Estimado Story HH" digitado (1ª linha) para as demais linhas da Story.
             PlanGrid.CellEditEnding += OnStoryEstCellEditEnding;
+            // Sprint alterada no combo: atualiza IterationPath (oculto) e as datas da sprint.
+            PlanGrid.CellEditEnding += OnSprintCellEditEnding;
             _settings = TaskPlanSettingsStore.Load();
             _idColsMode = ParseIdColumnsMode(_settings.IdColumnsMode);
             UpdateIdVisibilityMenuState();
@@ -237,6 +239,12 @@ namespace NXProject.Views
         private const string StoryEstColumn = "HH Story";
         // Status da Story pai (somente leitura) — reflete o estado da Story no cronograma/TFS.
         private const string StoryStatusColumn = "Status Story";
+        // Sprint da Task (editável por combo) + datas (somente leitura, vindas da sprint).
+        private const string SprintColumn = "Sprint";
+        private const string StartColumn  = "Data Início";
+        private const string FinishColumn = "Data Fim";
+        // Coluna oculta com o IterationPath completo da Task (para gravar no DevOps).
+        private const string SprintPathCol = "__sprint_path";
         // HH concluído da Task (completed = CurrentHours) — coluna somente leitura "HH Feito",
         // ao lado do "HH Previsto" (HH remaining/estimado). Vem do cronograma.
         private const string HhPrevColumn = "HH Feito";
@@ -249,7 +257,10 @@ namespace NXProject.Views
         // A coluna "Aprovada" é booleana na planilha (True/False). Na LEITURA, valores
         // legados/planilhas do cliente com Sim/Nao, Yes/No, S/N, 1/0 são convertidos.
         private static readonly string[] ApprovalValues = ["False", "True"];
-        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", StoryEstColumn, StoryStatusColumn, "Task", "ID Task", "Prioridade", EstimateColumn, HhPrevColumn, PercConclusaoColumn, ResponsibleColumn, "Status" };
+        private static readonly string[] ScheduleColumns = { ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", StoryEstColumn, StoryStatusColumn, "Task", "ID Task", SprintColumn, StartColumn, FinishColumn, "Prioridade", EstimateColumn, HhPrevColumn, PercConclusaoColumn, ResponsibleColumn, "Status" };
+        private string? SprintCol => FindColumn(SprintColumn, "Iteration", "Iteração", "Iteracao");
+        private string? StartCol  => FindColumn(StartColumn, "Data Inicio", "DataInicio", "Início", "Inicio", "Start");
+        private string? FinishCol => FindColumn(FinishColumn, "Data Fim", "DataFim", "Fim", "Finish", "End");
         private string? StoryEstCol => FindColumn(StoryEstColumn, "Estimado Story HH", "Estimado Story", "Estimativa Story", "Story HH");
         private string? StoryStatusCol => FindColumn(StoryStatusColumn, "Story Status", "Estado Story", "Status da Story");
         private string? HhPrevCol   => FindColumn(HhPrevColumn, "HH Prev", "HH Closed", "HH Concluido", "HH Concluído", "HH Completed");
@@ -323,6 +334,9 @@ namespace NXProject.Views
                || colName == FindColumn(EstimateColumn, "Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH")
                || colName == StoryEstCol
                || colName == StoryStatusCol
+               || colName == SprintCol
+               || colName == StartCol
+               || colName == FinishCol
                || colName == HhPrevCol
                || colName == FindColumn("Status", "Estado", "State");
 
@@ -432,6 +446,9 @@ namespace NXProject.Views
                 StoryStatusCol,
                 FindColumn("Task", "Tarefa", "Nome da Task"),
                 FindColumn("ID Devops", "ID DevOps", "IdDevops", "ID_Devops", "ID Dev Ops", "ID Task", "IdTask", "ID_Task"),
+                SprintCol,
+                StartCol,
+                FinishCol,
                 FindColumn("Prioridade", "Priority", "Prio", "Prioridade Task"),
                 FindColumn(EstimateColumn, "Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH"),
                 HhPrevCol,
@@ -461,6 +478,9 @@ namespace NXProject.Views
             PlaceAfter(StoryIdCol, FindColumn("Story", "Nome da Story"));
             PlaceAfter(StoryEstCol, StoryIdCol);   // HH Story logo após o ID Story
             PlaceAfter(StoryStatusCol, StoryEstCol); // Status Story logo após o HH Story
+            PlaceAfter(SprintCol, TaskIdCol);        // Sprint logo após o ID Task
+            PlaceAfter(StartCol, SprintCol);         // Data Início após Sprint
+            PlaceAfter(FinishCol, StartCol);         // Data Fim após Data Início
             PlaceAfter(HhPrevCol, FindColumn(EstimateColumn, "Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH")); // HH Prev ao lado do Estimado HH
             FillStoryEstimatesFromSchedule();      // preenche/atualiza do cronograma aberto
             if (NumberCol is { } nc) _data.Table.Columns[nc]!.SetOrdinal(0);
@@ -866,8 +886,71 @@ namespace NXProject.Views
                     row[hp] = FormatHours(task.CurrentHours ?? 0);
             }
             FillStoryStatus();
+            FillSprintInfo();
             RecomputeNoHhFlags();
             ApplyStoryOverflowColor();
+        }
+
+        // Preenche Sprint (nome), Data Início/Fim (da sprint) e a coluna oculta com o
+        // IterationPath. A sprint da Task vem do TFS (pode diferir da Story) — se diferir,
+        // pinta a célula Sprint de amarelo.
+        private void FillSprintInfo()
+        {
+            if (_data == null || _vm?.Project == null || SprintCol is not { } sprintCol) return;
+            if (!_data.Table.Columns.Contains(SprintPathCol))
+                _data.Table.Columns.Add(SprintPathCol, typeof(string));
+            var startCol = StartCol; var finishCol = FinishCol;
+            var colorCol = ExcelTaskPlanService.ColorColPrefix + sprintCol;
+            if (!_data.Table.Columns.Contains(colorCol))
+                _data.Table.Columns.Add(colorCol, typeof(string));
+
+            var sprintByPath = new Dictionary<string, Sprint>(StringComparer.OrdinalIgnoreCase);
+            var sprintByName = new Dictionary<string, Sprint>(StringComparer.OrdinalIgnoreCase);
+            foreach (var s in _vm.Project.Sprints)
+            {
+                if (!string.IsNullOrWhiteSpace(s.Path)) sprintByPath[s.Path!.Trim()] = s;
+                sprintByName[s.Name.Trim()] = s;
+            }
+            var taskPathById  = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            var storyPathById = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in Flatten(_vm.Project.Tasks))
+            {
+                if (IsType(t, "Task")) taskPathById[t.DisplayId] = t.TfsIterationPath;
+                else if (IsType(t, "Story")) storyPathById[t.DisplayId] = t.TfsIterationPath;
+            }
+
+            static string Leaf(string? p) => (p ?? "").Split('\\').LastOrDefault()?.Trim() ?? "";
+
+            foreach (DataRow row in _data.Table.Rows)
+            {
+                if (row.RowState == DataRowState.Deleted) continue;
+
+                var path = row[SprintPathCol]?.ToString()?.Trim();
+                if (string.IsNullOrEmpty(path))
+                {
+                    var tid = TaskIdCol is { } idc ? row[idc]?.ToString()?.Trim() : null;
+                    if (!string.IsNullOrEmpty(tid) && taskPathById.TryGetValue(tid, out var tp) && !string.IsNullOrWhiteSpace(tp))
+                        path = tp!.Trim();
+                }
+                string? storyPath = null;
+                var sid = StoryIdCol is { } sc ? row[sc]?.ToString()?.Trim() : null;
+                if (!string.IsNullOrEmpty(sid)) storyPathById.TryGetValue(sid, out storyPath);
+                if (string.IsNullOrEmpty(path)) path = storyPath?.Trim();
+
+                row[SprintPathCol] = path ?? "";
+
+                Sprint? sp = null;
+                if (!string.IsNullOrEmpty(path) && !sprintByPath.TryGetValue(path, out sp))
+                    sprintByName.TryGetValue(Leaf(path), out sp);
+
+                row[sprintCol] = sp != null ? sp.Name : (string.IsNullOrEmpty(path) ? "" : Leaf(path));
+                if (startCol  != null) row[startCol]  = sp != null ? sp.Start.ToString("dd/MM/yyyy") : "";
+                if (finishCol != null) row[finishCol] = sp != null ? sp.End.ToString("dd/MM/yyyy") : "";
+
+                var diff = !string.IsNullOrEmpty(path) && !string.IsNullOrEmpty(storyPath)
+                           && !string.Equals(path, storyPath!.Trim(), StringComparison.OrdinalIgnoreCase);
+                row[colorCol] = diff ? "#FFF2CC" : "";
+            }
         }
 
         // Preenche o "Status Story" (somente leitura) a partir do estado da Story no cronograma.
@@ -960,12 +1043,22 @@ namespace NXProject.Views
             if (!_data.Table.Columns.Contains(NoHhFlagCol))
                 _data.Table.Columns.Add(NoHhFlagCol, typeof(string));
             var estimateCol = FindColumn(EstimateColumn, "Estimado HH", "Estimado", "Estimativa", "HH Estimado", "Estimated", "HH");
+            var statusCol = FindColumn("Status", "Estado", "State");
+            var pctCol = PercConclusaoCol;
+            static bool IsDoneState(string? s) =>
+                string.Equals(s?.Trim(), "Closed", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(s?.Trim(), "Resolved", StringComparison.OrdinalIgnoreCase);
             foreach (DataRow row in _data.Table.Rows)
             {
                 if (row.RowState == DataRowState.Deleted) continue;
                 var prev = estimateCol != null ? ParseHours(row[estimateCol]) : 0;
                 var feito = HhPrevCol is { } hp ? ParseHours(row[hp]) : 0;
-                row[NoHhFlagCol] = (prev <= 0 && feito <= 0) ? "1" : "";
+                // Task concluída = Closed/Resolved OU % de conclusão >= 100.
+                bool done = (statusCol != null && IsDoneState(row[statusCol]?.ToString()))
+                    || (pctCol != null && int.TryParse(row[pctCol]?.ToString()?.Trim(), out var pv) && pv >= 100);
+                // "Sem HH": falta o HH Previsto; OU (concluída e sem HH Feito).
+                // HH Feito vazio em task aberta com HH Previsto > 0 é normal — não marca.
+                row[NoHhFlagCol] = (prev <= 0 || (done && feito <= 0)) ? "1" : "";
             }
         }
 
@@ -1013,6 +1106,28 @@ namespace NXProject.Views
             }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
+        // Sprint escolhida no combo: grava o IterationPath (oculto) e as datas da sprint na linha.
+        private void OnSprintCellEditEnding(object? sender, System.Windows.Controls.DataGridCellEditEndingEventArgs args)
+        {
+            if (args.EditAction != DataGridEditAction.Commit) return;
+            if (SprintCol is not { } sprintCol) return;
+            if (!string.Equals(args.Column?.Header?.ToString(), sprintCol, StringComparison.Ordinal)) return;
+            if (args.Row?.Item is not System.Data.DataRowView drv) return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_data == null || _vm?.Project == null) return;
+                var name = drv.Row[sprintCol]?.ToString()?.Trim() ?? "";
+                var sp = _vm.Project.Sprints.FirstOrDefault(s => string.Equals(s.Name.Trim(), name, StringComparison.OrdinalIgnoreCase));
+                if (!_data.Table.Columns.Contains(SprintPathCol))
+                    _data.Table.Columns.Add(SprintPathCol, typeof(string));
+                drv.Row[SprintPathCol] = sp?.Path ?? "";
+                if (StartCol is { } scol)  drv.Row[scol]  = sp != null ? sp.Start.ToString("dd/MM/yyyy") : "";
+                if (FinishCol is { } fcol) drv.Row[fcol] = sp != null ? sp.End.ToString("dd/MM/yyyy") : "";
+                _dirty = true;
+                FillSprintInfo();   // reavalia o amarelo (Sprint da Task vs. Story)
+            }), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
         // Chave de agrupamento da Story (ID Story quando existe; senão o nome).
         private string StoryGroupKey(DataRow row)
         {
@@ -1029,7 +1144,7 @@ namespace NXProject.Views
             if (_vm?.Project == null || _vm.Project.Tasks.Count == 0) return;
 
             var table = new DataTable();
-            string[] cols = { NumberColumn, ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", StoryEstColumn, "Task", "ID Task", "Prioridade", EstimateColumn, HhPrevColumn, PercConclusaoColumn, ResponsibleColumn, "Status", "Descrição da Task", ObservationColumn };
+            string[] cols = { NumberColumn, ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", StoryEstColumn, StoryStatusColumn, "Task", "ID Task", SprintColumn, StartColumn, FinishColumn, "Prioridade", EstimateColumn, HhPrevColumn, PercConclusaoColumn, ResponsibleColumn, "Status", "Descrição da Task", ObservationColumn };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
 
             foreach (var t in Flatten(_vm.Project.Tasks).Where(t => IsType(t, "Task")))
@@ -1070,6 +1185,8 @@ namespace NXProject.Views
             PathText.Text = AppStrings.Get("TaskPlan_FromSchedule");
             RefreshNumberSortColumn();
             UpdateFixedColumns();
+            FillStoryStatus();
+            FillSprintInfo();
             BuildEpicFilter();
             ValidateAgainstSchedule();
             BindTable();
@@ -1187,7 +1304,7 @@ namespace NXProject.Views
         private void BuildEmptyPlan()
         {
             var table = new DataTable();
-            string[] cols = { NumberColumn, ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", StoryEstColumn, "Task", "ID Task", "Prioridade", EstimateColumn, HhPrevColumn, PercConclusaoColumn, ResponsibleColumn, "Status", "Descrição da Task", ObservationColumn };
+            string[] cols = { NumberColumn, ApprovalColumn, RegisterDateColumn, "EPIC", "ID EPIC", "Feature", "ID Feature", "Story", "ID Story", StoryEstColumn, StoryStatusColumn, "Task", "ID Task", SprintColumn, StartColumn, FinishColumn, "Prioridade", EstimateColumn, HhPrevColumn, PercConclusaoColumn, ResponsibleColumn, "Status", "Descrição da Task", ObservationColumn };
             foreach (var c in cols) table.Columns.Add(c, typeof(string));
             table.Rows.Add(table.NewRow());
 
@@ -1305,6 +1422,7 @@ namespace NXProject.Views
                         EnsureProjectResourceForAssignee(t);
                         dr[ResponsibleColumn] = TaskPlanAssignee(t);
                         dr["Status"]     = t.State ?? "";
+                        SetRowSprintPath(dr, t.IterationPath);
                         FillTaskDescriptionFromDevOps(dr, "Descrição da Task", t);
                         _data.Table.Rows.Add(dr);
                         existingIds.Add(t.TfsId);
@@ -1320,6 +1438,7 @@ namespace NXProject.Views
 
             if (added > 0)
                 RenumberTaskPlanRows();
+            FillSprintInfo();
             BuildEpicFilter();
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();
@@ -2014,6 +2133,23 @@ namespace NXProject.Views
             double FeitoOf(DataRow r) => HhPrevCol is { } hp ? ParseHours(r[hp]) : 0;
 
             int filled = 0;
+
+            // Normaliza Closed/Resolved ANTES de ratear:
+            //  • % Completed = 100 (task feita é 100%);
+            //  • se tem HH Previsto e NÃO tem HH Feito, o HH Feito recebe o HH Previsto (pelo menos isso).
+            foreach (DataRow r in _data.Table.Rows)
+            {
+                if (r.RowState == DataRowState.Deleted || !ClosedCell(r)) continue;
+                if (PercConclusaoCol is { } pcc
+                    && (!int.TryParse(r[pcc]?.ToString()?.Trim(), out var pv) || pv != 100))
+                    r[pcc] = "100";
+                if (HhPrevCol is { } hpc)
+                {
+                    var prev = PrevOf(r); var feito = ParseHours(r[hpc]);
+                    if (feito <= 0 && prev > 0) { r[hpc] = FormatHours(prev); SetRatedRowColor(r); filled++; }
+                }
+            }
+
             var tfsCache = new Dictionary<int, List<TfsImportService.DevOpsTaskInfo>?>();
             System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
             MergeProgress.Visibility = Visibility.Visible;
@@ -2082,14 +2218,14 @@ namespace NXProject.Views
                             {
                                 var prev = PrevOf(srow); var feito = FeitoOf(srow);
                                 var closed = ClosedCell(srow);
-                                existingPrev += prev + feito;
+                                existingPrev += closed ? feito : prev + feito;   // Closed conta só o HH Feito
                                 if (closed ? feito <= 0 : prev <= 0) { emptyCount++; writableEmpties.Add((srow, closed)); }
                             }
                             else
                             {
                                 var prev = t.EstimatedHours; var feito = t.CompletedHours;
-                                existingPrev += prev + feito;
                                 var closed = IsDoneState(t.State);
+                                existingPrev += closed ? feito : prev + feito;   // Closed conta só o HH Feito
                                 if (closed ? feito <= 0 : prev <= 0)
                                 {
                                     // Task do TFS que VAI ser ajustada e não está na planilha:
@@ -2109,7 +2245,7 @@ namespace NXProject.Views
                         if (tid is { } t2 && t2 > 0 && countedTfsIds.Contains(t2)) continue; // já contada via TFS
                         var prev = PrevOf(r); var feito = FeitoOf(r);
                         var closed = ClosedCell(r);
-                        existingPrev += prev + feito;
+                        existingPrev += closed ? feito : prev + feito;   // Closed conta só o HH Feito
                         var rOwner = respCol != null ? CleanName(r[respCol]?.ToString()) : "";
                         if (rOwner.Length > 0 && !NameMatches(rOwner, owner)) hasOther = true;
                         if (closed ? feito <= 0 : prev <= 0) { emptyCount++; writableEmpties.Add((r, closed)); }
@@ -2184,6 +2320,7 @@ namespace NXProject.Views
             if (ApprovalCol is { } ac) dr[ac] = ApprovalTrue;
             if (RegisterDateCol is { } rd) dr[rd] = FormatRegisterDate(t.CreatedDate ?? DateTime.Today);
             if (PercConclusaoCol is { } pc) dr[pc] = System.Math.Round(t.PercentComplete).ToString("0");
+            SetRowSprintPath(dr, t.IterationPath);
             _data.Table.Rows.Add(dr);
             return dr;
         }
@@ -2200,6 +2337,15 @@ namespace NXProject.Views
             if (!_data.Table.Columns.Contains(colorCol))
                 _data.Table.Columns.Add(colorCol, typeof(string));
             r[colorCol] = RatedRowColor;
+        }
+
+        // Grava o IterationPath (Sprint) do TFS na coluna oculta da linha (cria a coluna se falta).
+        private void SetRowSprintPath(DataRow r, string? path)
+        {
+            if (_data == null) return;
+            if (!_data.Table.Columns.Contains(SprintPathCol))
+                _data.Table.Columns.Add(SprintPathCol, typeof(string));
+            r[SprintPathCol] = path ?? "";
         }
 
         private static string CleanName(string? n) => (n ?? "").TrimStart('*').Trim();
@@ -2401,6 +2547,31 @@ namespace NXProject.Views
                 }
             }
 
+            // Sprint vira combo com as sprints do cronograma (Project.Sprints) + o valor atual.
+            var sprintName = SprintCol;
+            if (sprintName != null && _data != null && _vm?.Project != null
+                && !PlanGrid.Columns.Any(c => c is DataGridComboBoxColumn
+                    && string.Equals(c.Header?.ToString(), sprintName, StringComparison.OrdinalIgnoreCase)))
+            {
+                var txtCol = PlanGrid.Columns.FirstOrDefault(c => c is DataGridTextColumn
+                    && string.Equals(c.Header?.ToString(), sprintName, StringComparison.OrdinalIgnoreCase));
+                if (txtCol != null)
+                {
+                    var items = _vm.Project.Sprints.Select(s => s.Name.Trim())
+                        .Concat(_data.Table.Rows.Cast<DataRow>()
+                            .Select(r => r[sprintName]?.ToString()?.Trim() ?? "").Where(v => v.Length > 0))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    PlanGrid.Columns[PlanGrid.Columns.IndexOf(txtCol)] = new DataGridComboBoxColumn
+                    {
+                        Header = sprintName,
+                        SortMemberPath = sprintName,
+                        ItemsSource = items,
+                        SelectedItemBinding = new System.Windows.Data.Binding($"[{sprintName}]")
+                    };
+                }
+            }
+
             // Responsável volta a ser combo simples (lista fechada de pessoas do cronograma).
             var responsibleName = ResourceCol;
             if (responsibleName != null && _data != null
@@ -2447,10 +2618,12 @@ namespace NXProject.Views
                         col.IsReadOnly = true;
                     }
 
-                    // HH Feito e Status Story são informativos (vêm do cronograma): somente leitura.
-                    // HH Story é editável, mas só na 1ª linha da Story (ver BeginningEdit).
+                    // HH Feito, Status Story e as datas da Sprint são informativos: somente leitura.
+                    // HH Story é editável na 1ª linha; Sprint é editável por combo (ver OnColumnsGenerated).
                     if (string.Equals(name, HhPrevCol, StringComparison.Ordinal)
-                        || string.Equals(name, StoryStatusCol, StringComparison.Ordinal))
+                        || string.Equals(name, StoryStatusCol, StringComparison.Ordinal)
+                        || string.Equals(name, StartCol, StringComparison.Ordinal)
+                        || string.Equals(name, FinishCol, StringComparison.Ordinal))
                         col.IsReadOnly = true;
 
                     if (_data.Table.Columns.Contains(name))
@@ -3916,6 +4089,7 @@ namespace NXProject.Views
                         if (PercConclusaoCol is { } pc) row[pc] = System.Math.Round(t.PercentComplete).ToString("0");
                         if (respCol != null) { EnsureProjectResourceForAssignee(t); row[respCol] = TaskPlanAssignee(t); }
                         if (ApprovalCol is { } ac) row[ac] = ApprovalValueFromDevOps(t);
+                        SetRowSprintPath(row, t.IterationPath);   // Sprint da Task (TFS)
                         FillTaskDescriptionFromDevOps(row, descCol, t);
                         updated++;
                     }
@@ -3935,6 +4109,7 @@ namespace NXProject.Views
             _dirty = true;
             RecomputeNoHhFlags();
             ApplyStoryOverflowColor();
+            FillSprintInfo();
             ValidateAgainstSchedule();
             RebindGrid();
             StatusText.Foreground = System.Windows.Media.Brushes.Green;
@@ -4218,6 +4393,7 @@ namespace NXProject.Views
 
             int okCount = 0, richBlocked = 0;
             var errors = new List<string>();
+            _saveIdentityWarnings.Clear();
             System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
             MergeProgress.Visibility = Visibility.Visible;
             MergeProgress.IsIndeterminate = false;
@@ -4260,6 +4436,22 @@ namespace NXProject.Views
                     MessageBox.Show(this, AppStrings.Get("TaskPlan_SelDescRichMsg"),
                         AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
+
+            if (_saveIdentityWarnings.Count > 0)
+                MessageBox.Show(this,
+                    AppStrings.Get("TaskPlan_SaveIdentityMsg", string.Join("\n• ", _saveIdentityWarnings.Take(20))),
+                    AppStrings.Get("TaskPlan_Title"), MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private readonly List<string> _saveIdentityWarnings = new();
+
+        // Identidade inválida no DevOps (recurso removido/desligado): "unknown identity" no Assigned To.
+        private static bool IsUnknownIdentityError(Exception ex)
+        {
+            var m = ex.Message ?? "";
+            return m.IndexOf("unknown identity", StringComparison.OrdinalIgnoreCase) >= 0
+                || (m.IndexOf("Assigned To", StringComparison.OrdinalIgnoreCase) >= 0
+                    && m.IndexOf("identity", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         // Grava UMA linha (:T) no TFS: HH Previsto/Feito, prioridade, responsável, estado, título,
@@ -4299,14 +4491,55 @@ namespace NXProject.Views
                 }
             }
 
-            await TfsImportService.UpdateTaskFieldsAsync(options, taskId,
-                estimatedHours: est,
-                completedHours: comp,
-                priority: prio,
-                assignedTo: string.IsNullOrWhiteSpace(assignee) ? null : assignee,
-                state: string.IsNullOrWhiteSpace(state) ? null : state,
-                title: string.IsNullOrWhiteSpace(title) ? null : title,
-                descriptionHtml: descHtml);
+            // Sprint (IterationPath): usa o oculto; se vazio, resolve pelo nome no cronograma.
+            string? iterationPath = _data != null && _data.Table.Columns.Contains(SprintPathCol)
+                ? row[SprintPathCol]?.ToString()?.Trim() : null;
+            if (string.IsNullOrWhiteSpace(iterationPath) && SprintCol is { } spc && _vm?.Project != null)
+            {
+                var nm = row[spc]?.ToString()?.Trim();
+                if (!string.IsNullOrWhiteSpace(nm))
+                    iterationPath = _vm.Project.Sprints
+                        .FirstOrDefault(s => string.Equals(s.Name.Trim(), nm, StringComparison.OrdinalIgnoreCase))?.Path;
+            }
+
+            // Só envia o responsável quando REALMENTE mudou. Se for o mesmo do DevOps,
+            // não regrava — assim um recurso desligado (identidade inválida) não quebra o PATCH.
+            var assignedTo = string.IsNullOrWhiteSpace(assignee) ? null : assignee;
+            if (assignedTo != null)
+            {
+                var cur = await TfsImportService.FetchWorkItemAssigneesAsync(options, new[] { taskId });
+                if (cur.TryGetValue(taskId, out var who)
+                    && (string.Equals(who.Display?.Trim(), assignedTo, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(who.Email?.Trim(), assignedTo, StringComparison.OrdinalIgnoreCase)))
+                    assignedTo = null; // inalterado
+            }
+            try
+            {
+                await TfsImportService.UpdateTaskFieldsAsync(options, taskId,
+                    estimatedHours: est,
+                    completedHours: comp,
+                    priority: prio,
+                    assignedTo: assignedTo,
+                    state: string.IsNullOrWhiteSpace(state) ? null : state,
+                    title: string.IsNullOrWhiteSpace(title) ? null : title,
+                    descriptionHtml: descHtml,
+                    iterationPath: string.IsNullOrWhiteSpace(iterationPath) ? null : iterationPath);
+            }
+            catch (Exception ex) when (assignedTo != null && IsUnknownIdentityError(ex))
+            {
+                // Recurso saiu da empresa (identidade inválida no DevOps): grava os demais
+                // campos sem tocar no responsável e apenas avisa — a atividade foi feita por ele.
+                await TfsImportService.UpdateTaskFieldsAsync(options, taskId,
+                    estimatedHours: est,
+                    completedHours: comp,
+                    priority: prio,
+                    assignedTo: null,
+                    state: string.IsNullOrWhiteSpace(state) ? null : state,
+                    title: string.IsNullOrWhiteSpace(title) ? null : title,
+                    descriptionHtml: descHtml,
+                    iterationPath: string.IsNullOrWhiteSpace(iterationPath) ? null : iterationPath);
+                _saveIdentityWarnings.Add(AppStrings.Get("TaskPlan_SaveIdentitySkipped", taskId, assignedTo));
+            }
 
             if (ApprovalCol is { } approvalCol)
                 await TfsImportService.UpdateTaskApprovedAsync(options, taskId,
@@ -4686,6 +4919,7 @@ namespace NXProject.Views
                     if (HhPrevCol is { } hfU) row[hfU] = FormatHours(src.Info.CompletedHours);   // HH Feito (Completed do TFS)
                     if (StoryEstCol is { } seU && string.IsNullOrWhiteSpace(row[seU]?.ToString()))
                         row[seU] = FormatHours(GetStoryHours(src.Story));                        // HH Story (duração do cronograma)
+                    SetRowSprintPath(row, src.Info.IterationPath);   // Sprint da Task (TFS)
                     FillTaskDescriptionFromDevOps(row, descCol, src.Info);
                     FillHierarchyIdsFromNode(row, src.Story);
                     await FillObservationFromLastCommentAsync(options, row, src.Info);
@@ -4729,6 +4963,7 @@ namespace NXProject.Views
                 if (statusCol != null) dr[statusCol] = src.Info.State ?? "";
                 if (HhPrevCol is { } hfA) dr[hfA] = FormatHours(src.Info.CompletedHours);   // HH Feito (Completed do TFS)
                 if (StoryEstCol is { } seA) dr[seA] = FormatHours(GetStoryHours(src.Story)); // HH Story (duração do cronograma)
+                SetRowSprintPath(dr, src.Info.IterationPath);   // Sprint da Task (TFS)
                 FillTaskDescriptionFromDevOps(dr, descCol, src.Info);
                 await FillObservationFromLastCommentAsync(options, dr, src.Info);
                 _data.Table.Rows.Add(dr);
@@ -4747,6 +4982,7 @@ namespace NXProject.Views
             }
             RecomputeNoHhFlags();       // atualiza a flag "sem HH" após HH Previsto/Feito
             ApplyStoryOverflowColor();  // e a cor de estouro do HH da Story
+            FillSprintInfo();           // Sprint/datas + amarelo se diferir da Story
             BuildEpicFilter();
             ValidateAgainstSchedule();
             PlanGrid.Items.Refresh();

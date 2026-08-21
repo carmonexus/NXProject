@@ -66,6 +66,7 @@
                 <MenuItem Header="{DynamicResource Menu_View_Calendar}" Click="OnCalendarSettingsClick"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Menu_View_DevOpsList}" Click="OnDevOpsProjectListClick"/>
+                <MenuItem Header="{DynamicResource Menu_View_DevOpsConfig}" Click="OnDevOpsConfigClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_People}" Click="OnPeopleClick"/>
                 <MenuItem Header="{DynamicResource Main_CostPeople}" Click="OnPeopleCostClick"/>
                 <Separator/>

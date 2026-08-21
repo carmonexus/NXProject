@@ -75,9 +75,9 @@ namespace NXProject.Views
                     return;
                 }
 
-                foreach (var (id, title, type, owner) in found)
+                foreach (var (id, title, type, owner, admGroup) in found)
                 {
-                    var item = new DiscoveryItem { Id = id, Title = title, Type = type, Owner = owner };
+                    var item = new DiscoveryItem { Id = id, Title = title, Type = type, Owner = owner, AdmGroup = admGroup };
                     item.PropertyChanged += (_, _) => RefreshCount();
                     _items.Add(item);
                 }
@@ -112,7 +112,7 @@ namespace NXProject.Views
         {
             SelectedProjects = _items
                 .Where(i => i.IsSelected)
-                .Select(i => new DevOpsProject { Name = i.Title, RootWorkItemId = i.Id, Owner = i.Owner, Process = _process })
+                .Select(i => new DevOpsProject { Name = i.Title, RootWorkItemId = i.Id, Owner = i.Owner, Process = _process, AdmGroupName = i.AdmGroup })
                 .ToList();
 
             if (SelectedProjects.Count == 0)
@@ -138,6 +138,7 @@ namespace NXProject.Views
         public string Title { get; set; } = "";
         public string Type  { get; set; } = "";
         public string Owner { get; set; } = "";
+        public string AdmGroup { get; set; } = "";
 
         private bool _isSelected;
         public bool IsSelected

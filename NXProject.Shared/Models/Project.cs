@@ -70,6 +70,14 @@ namespace NXProject.Models
         // Plan continuam livres). Liberação só na configuração do Projeto no Portfólio.
         public bool ReadOnly { get; set; }
 
+        // Grupo administrador do NX (campo Adm_NX do work item Project no DevOps): nome do grupo
+        // cujos membros podem sincronizar. Vazio/ausente = liberado para todos. Lido na importação.
+        public string? AdmGroupName { get; set; }
+
+        // Membros resolvidos do grupo administrador (e-mails e nomes de exibição, minúsculos),
+        // usados para validar quem pode acionar o Sincronizar. Resolvido na importação.
+        public List<string> AdmGroupMembers { get; set; } = new();
+
         // % de Supervisão de Story: no rateio de HH da Story (Task Plan), quando o Owner da
         // Story NÃO tem Task própria, reserva este % para acompanhamento e distribui o restante
         // entre as Tasks sem HH. Configurável na tela de Alocação de Recursos. Padrão 20%.

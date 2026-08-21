@@ -113,6 +113,20 @@ namespace NXProject.Services
         public string EpicTypeFieldName { get; set; } = "EPIC_TYPE";
 
         /// <summary>
+        /// Habilita a leitura do grupo administrador do NX no work item Project (campo
+        /// <see cref="AdmGroupFieldName"/>). Os membros desse grupo do DevOps são os únicos que
+        /// podem sincronizar (Export → Sincronizar). Desligado, ou campo vazio, libera para todos.
+        /// </summary>
+        public bool AdmGroupFieldEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Nome (ou reference name) do campo do work item Project que aponta o grupo administrador
+        /// do NX — ex.: "Adm_NX" ou "Custom.Adm_NX". O valor é o nome de um grupo do DevOps cujos
+        /// membros podem sincronizar. Só é usado com <see cref="AdmGroupFieldEnabled"/> ligado.
+        /// </summary>
+        public string AdmGroupFieldName { get; set; } = "Adm_NX";
+
+        /// <summary>
         /// Habilita faixa personalizada de prioridade da Task. Desligado (padrão), a gravação
         /// usa a faixa padrão do DevOps (1–4). Ligue apenas se o processo do DevOps aceitar
         /// valores maiores — valor fora da faixa do processo dá erro na gravação do TFS.
@@ -274,6 +288,8 @@ namespace NXProject.Services
             public string ApprovedFieldName { get; set; } = "Approved";
             public bool   EpicTypeFieldEnabled { get; set; } = true;
             public string EpicTypeFieldName { get; set; } = "EPIC_TYPE";
+            public bool   AdmGroupFieldEnabled { get; set; } = true;
+            public string AdmGroupFieldName { get; set; } = "Adm_NX";
             public bool   TaskPriorityRangeEnabled { get; set; }
             public int    TaskPriorityMin { get; set; } = 1;
             public int    TaskPriorityMax { get; set; } = 4;
@@ -346,6 +362,9 @@ namespace NXProject.Services
                 options.EpicTypeFieldEnabled = stored.EpicTypeFieldEnabled;
                 options.EpicTypeFieldName = string.IsNullOrWhiteSpace(stored.EpicTypeFieldName)
                     ? options.EpicTypeFieldName : stored.EpicTypeFieldName.Trim();
+                options.AdmGroupFieldEnabled = stored.AdmGroupFieldEnabled;
+                options.AdmGroupFieldName = string.IsNullOrWhiteSpace(stored.AdmGroupFieldName)
+                    ? options.AdmGroupFieldName : stored.AdmGroupFieldName.Trim();
                 options.TaskPriorityRangeEnabled = stored.TaskPriorityRangeEnabled;
                 options.TaskPriorityMin = stored.TaskPriorityMin >= 1 ? stored.TaskPriorityMin : 1;
                 options.TaskPriorityMax = stored.TaskPriorityMax >= options.TaskPriorityMin
@@ -400,6 +419,8 @@ namespace NXProject.Services
                 ApprovedFieldName = string.IsNullOrWhiteSpace(options.ApprovedFieldName) ? "Approved" : options.ApprovedFieldName.Trim(),
                 EpicTypeFieldEnabled = options.EpicTypeFieldEnabled,
                 EpicTypeFieldName = string.IsNullOrWhiteSpace(options.EpicTypeFieldName) ? "EPIC_TYPE" : options.EpicTypeFieldName.Trim(),
+                AdmGroupFieldEnabled = options.AdmGroupFieldEnabled,
+                AdmGroupFieldName = string.IsNullOrWhiteSpace(options.AdmGroupFieldName) ? "Adm_NX" : options.AdmGroupFieldName.Trim(),
                 TaskPriorityRangeEnabled = options.TaskPriorityRangeEnabled,
                 TaskPriorityMin = options.TaskPriorityMin >= 1 ? options.TaskPriorityMin : 1,
                 TaskPriorityMax = options.TaskPriorityMax >= 1 ? options.TaskPriorityMax : 4,

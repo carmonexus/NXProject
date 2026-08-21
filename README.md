@@ -210,11 +210,16 @@ NXProject reads and writes custom fields on **Stories, Features and Epics** in A
 | `Tipo_Centro_Custo` | `Custom.Tipo_Centro_Custo` *(example)* | Text (`OPEX` / `CAPEX`) | `Tipo_Centro_Custo` | Epic | Cost-center type — used by the **Projects Portfolio** (OPEX/CAPEX) |
 | `Sync_version` | `Custom.Syncversion` *(example)* | Integer | `Sync_version` | Story, Feature, Epic | Concurrency version counter (auto-managed) |
 | `Sync_Name` | `Custom.SyncName` *(example)* | Text *(plain text, not Identity)* | `Sync_Name` | Story, Feature, Epic | Who last synced (auto-managed) |
+| `Adm_NX` | `Custom.Adm_NX` *(example)* | Identity (points to a DevOps group/Team) | `Adm_NX` | Project (root item) | NX admin group: **only members of this group can Export/Sync** to DevOps. Empty/missing = open to everyone. Enabled by default. |
 
 > **Optional HH fields (advanced).** Besides `HH Estimado`, NXProject recognizes separate hour fields when they exist, to preserve the plan on 100%-complete items: `HH Original` (`HH_Original_float`), `HH Restante` (`HH_Restante_float`) and `HH Atual` (`HH_Atual_float`) — on Story, Feature and Epic. If absent, NXProject derives the values from `HH Estimado`/state.
 
 > The reference names above are examples — Azure DevOps generates them automatically from the display name and your organization prefix.  
-> If your fields have different display names, set them in NXProject under **Configure Azure DevOps → Advanced fields**, where all field names are configurable: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, EPIC_TYPE, Tipo_Centro_Custo, Sync_version and Sync_Name.
+> If your fields have different display names, set them in NXProject under **Configure Azure DevOps → Advanced fields**, where all field names are configurable: HH Estimado, Data_Inicio, Data_Fim, Perc_Alocacao, Perc_Conclusao, EPIC_TYPE, Tipo_Centro_Custo, Sync_version, Sync_Name and Adm_NX.
+
+> **Admin group (`Adm_NX`) — who can sync.** On the root (`Project`) work item, create an **Identity** field named `Adm_NX` and point it to a DevOps **group/Team**. Only the **members of that group** can Export/Sync to DevOps from the imported schedule; local editing and Task Plan stay free for everyone. The group is shown in the banner and in the **Project Portfolio** editor. Who may sync is validated **live** at Sync time — NXProject **re-reads the `Adm_NX` field straight from the `Project` work item in DevOps** and compares it to the authenticated user (the PAT owner), without relying on the config checkbox or on what was cached in the `.nxp`; so turning the option off after import does **not** turn the gate off. Empty/missing field on the `Project` work item = **open to everyone**. It replaces the old Portfolio "Read-only" flag. Configurable (enable/name) under **Advanced fields**.
+>
+> **Important:** after creating the `Adm_NX` field in the process *template*, you must **open each `Project` work item, pick the group and Save**. Until the value is persisted on the item, the field is empty in the API — even if it shows in the form — and NXProject reads it as "open to everyone".
 
 > **Backlog order (StackRank / BacklogPriority):** NXProject writes the backlog order to the process's standard field — `Microsoft.VSTS.Common.StackRank` on **Agile/CMMI/Basic** and `Microsoft.VSTS.Common.BacklogPriority` on **Scrum**. These fields already exist in the process (no need to create them). The Team Project process is read automatically on import/discovery and shown in the banner and the Portfolio editor.
 

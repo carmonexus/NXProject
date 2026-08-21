@@ -20,10 +20,48 @@ namespace NXProject.Views
 
             _allEntries = new List<TfsImportService.SyncLogEntry>(report.Log);
 
-            if (_allEntries.Any(e => e.Level != TfsImportService.SyncLogLevel.Success))
-                ShowSuccess.IsChecked = false;
+            bool hasIssues = _allEntries.Any(e => e.Level != TfsImportService.SyncLogLevel.Success);
+            if (hasIssues) ShowSuccess.IsChecked = false;
+
+            // Detalhes começam recolhidos (só os totais). Se houver avisos/erros, já abre.
+            DetailsToggle.IsChecked = hasIssues;
+            ApplyDetailsState();
 
             ApplyFilter();
+        }
+
+        // Abre a janela à direita do cronograma (janela dona), sem cobri-lo.
+        private void OnWindowLoaded(object sender, RoutedEventArgs e)
+        {
+            var owner = Owner;
+            if (owner != null && owner.WindowState != WindowState.Maximized)
+            {
+                Left = owner.Left + owner.ActualWidth - Width - 24;
+                Top  = owner.Top + 90;
+            }
+            else
+            {
+                var wa = SystemParameters.WorkArea;
+                Left = wa.Right - Width - 24;
+                Top  = wa.Top + 90;
+            }
+            // Mantém dentro da área de trabalho.
+            var area = SystemParameters.WorkArea;
+            if (Left < area.Left) Left = area.Left + 8;
+            if (Left + Width > area.Right) Left = area.Right - Width - 8;
+            if (Top < area.Top) Top = area.Top + 8;
+        }
+
+        // Mostra/oculta o bloco de detalhes (filtros + log). Colapsado, a janela fica compacta.
+        private void OnDetailsToggle(object sender, RoutedEventArgs e) => ApplyDetailsState();
+
+        private void ApplyDetailsState()
+        {
+            if (DetailPanel == null) return;
+            bool show = DetailsToggle.IsChecked == true;
+            DetailPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            DetailsToggle.Content = AppStrings.Get(show ? "ImpRes_HideDetails" : "ImpRes_ShowDetails");
+            Height = show ? 500 : 235;
         }
 
         private void OnFilterChanged(object sender, RoutedEventArgs e) => ApplyFilter();

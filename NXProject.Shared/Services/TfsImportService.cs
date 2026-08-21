@@ -167,6 +167,11 @@ namespace NXProject.Services
                 ? ResolveField(fieldMap, options.EpicTypeFieldName, new[] { options.EpicTypeFieldName, "EPIC_TYPE", "Tipo_Epic" })
                 : null;
             if (epicTypeRef != null && !requestedFields.Contains(epicTypeRef)) requestedFields.Add(epicTypeRef);
+            // Grupo administrador do NX (opcional): campo do work item raiz cujos membros podem sincronizar.
+            var admGroupRef = options.AdmGroupFieldEnabled && !string.IsNullOrWhiteSpace(options.AdmGroupFieldName)
+                ? ResolveField(fieldMap, options.AdmGroupFieldName, new[] { options.AdmGroupFieldName, "Adm_NX", "AdmNX" })
+                : null;
+            if (admGroupRef != null && !requestedFields.Contains(admGroupRef)) requestedFields.Add(admGroupRef);
 
             // Campos do work item raiz (Project) usados no apontamento de horas.
             var pepElementRef  = ResolveField(fieldMap, null, new[] { "Elemento_PEP", "Elemento PEP", "ElementoPEP" });
@@ -238,6 +243,29 @@ namespace NXProject.Services
             // Processo do DevOps (Agile/Scrum/CMMI/Basic): define o campo de ordem do backlog
             // e é exibido no banner e na config do portfólio.
             project.DevOpsProcess = await LoadProcessNameAsync(orgBase, options.TeamProject, authHeader, cancellationToken);
+
+            // Grupo administrador do NX: lê o campo do work item raiz e resolve os membros do grupo
+            // do DevOps. Campo vazio/ausente = sem restrição (liberado para todos no Sincronizar).
+            // O campo Adm_NX é de identidade (aponta um grupo) → valor é objeto {displayName,...}.
+            // Lê pelo ref exato (resolvido pelo DISPLAY name) e cai no scan tolerante por nome.
+            var admFieldNm = options.AdmGroupFieldEnabled ? options.AdmGroupFieldName?.Trim() : null;
+            if (!string.IsNullOrWhiteSpace(admFieldNm) && rootItem.Fields.ValueKind == JsonValueKind.Object)
+            {
+                // O campo Adm_NX aponta um grupo → valor objeto {displayName, id, descriptor}.
+                var (admGroupName, admGroupId) = ReadGroupField(rootItem.Fields, admGroupRef, admFieldNm!);
+                if (!string.IsNullOrWhiteSpace(admGroupName))
+                {
+                    project.AdmGroupName = admGroupName;
+                    try
+                    {
+                        progress?.Report($"Resolvendo membros do grupo administrador '{admGroupName}'...");
+                        project.AdmGroupMembers = await ResolveAdmGroupMemberKeysAsync(
+                            options, orgBase, authHeader, admGroupName, admGroupId, cancellationToken);
+                    }
+                    catch (Exception ex) { progress?.Report($"Aviso: não foi possível resolver o grupo administrador '{admGroupName}': {ex.Message}"); }
+                }
+            }
+
             var resourcesByKey = new Dictionary<string, Resource>(StringComparer.OrdinalIgnoreCase);
             AddResourceIfAssigned(project, resourcesByKey, rootItem, options.HoursPerDay);
 
@@ -3627,6 +3655,8 @@ namespace NXProject.Services
             public string? Description { get; init; }
             public string? Activity { get; init; }
             public string? Tags { get; init; }
+            /// <summary>Sprint (System.IterationPath) da Task no DevOps.</summary>
+            public string? IterationPath { get; init; }
             public double? BacklogRank { get; init; }
             /// <summary>Data de criação (System.CreatedDate) do work item no DevOps, se disponível.</summary>
             public DateTime? CreatedDate { get; init; }
@@ -3748,6 +3778,26 @@ namespace NXProject.Services
             return result;
         }
 
+        /// <summary>Responsável atual (nome de exibição e e-mail/uniqueName) de cada work item.</summary>
+        public static async Task<Dictionary<int, (string Display, string Email)>> FetchWorkItemAssigneesAsync(
+            TfsConnectionOptions options, IEnumerable<int> ids, CancellationToken ct = default)
+        {
+            var result = new Dictionary<int, (string, string)>();
+            var idList = (ids ?? Enumerable.Empty<int>()).Where(i => i > 0).Distinct().ToList();
+            if (idList.Count == 0 || options == null
+                || string.IsNullOrWhiteSpace(options.OrganizationUrl)
+                || string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+                return result;
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue("Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+            var items = await LoadWorkItemsAsync(orgBase, auth, idList,
+                new List<string> { "System.Id", "System.AssignedTo" }, ct, expandRelations: false);
+            foreach (var kv in items)
+                result[kv.Key] = (kv.Value.AssigneeName ?? "", kv.Value.AssigneeEmail ?? "");
+            return result;
+        }
+
         public static async Task<List<DevOpsTaskInfo>?> FetchChildTasksFromDevOpsAsync(
             TfsConnectionOptions options, int parentTfsId, CancellationToken ct = default)
         {
@@ -3807,7 +3857,7 @@ namespace NXProject.Services
                 catch { /* campo inexistente no processo: segue sem ele */ }
             }
 
-            var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description,System.CreatedDate,System.CommentCount,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,Microsoft.VSTS.Common.StackRank,Microsoft.VSTS.Common.BacklogPriority,{ActivityRef}";
+            var fields = $"System.Id,System.Title,System.WorkItemType,System.State,System.AssignedTo,System.IterationPath,System.Description,System.CreatedDate,System.CommentCount,System.Tags,{OrigEstRef},{CompletedRef},Microsoft.VSTS.Common.Priority,Microsoft.VSTS.Common.StackRank,Microsoft.VSTS.Common.BacklogPriority,{ActivityRef}";
             if (percConcRef != null) fields += $",{percConcRef}";
             if (approvedRef != null) fields += $",{approvedRef}";
             var batchUrl = $"{orgBase}/_apis/wit/workitems?ids={ids}&fields={fields}&{ApiVersion}";
@@ -3861,6 +3911,7 @@ namespace NXProject.Services
                         : PercentCompleteFromState(state, completed, hours);
 
                     var activity = f.TryGetProperty(ActivityRef, out var ap) && ap.ValueKind == JsonValueKind.String ? ap.GetString() : null;
+                    var iterationPath = f.TryGetProperty("System.IterationPath", out var ipp) && ipp.ValueKind == JsonValueKind.String ? ipp.GetString() : null;
                     var description = f.TryGetProperty("System.Description", out var dp) && dp.ValueKind == JsonValueKind.String ? dp.GetString() : null;
                     var tags     = f.TryGetProperty("System.Tags", out var tgp) && tgp.ValueKind == JsonValueKind.String ? tgp.GetString() : null;
                     DateTime? createdDate = f.TryGetProperty("System.CreatedDate", out var cdp)
@@ -3876,6 +3927,7 @@ namespace NXProject.Services
                         EstimatedHours = hours, CompletedHours = completed,
                         PercentComplete = pct, AssignedTo = assignee, AssignedToDisplay = assigneeDisplay,
                         Priority = prio, Description = description, Activity = activity, Tags = tags,
+                        IterationPath = iterationPath,
                         BacklogRank = GetBacklogRank(f),
                         CreatedDate = createdDate,
                         CommentCount = f.TryGetProperty("System.CommentCount", out var ccp) && ccp.ValueKind == JsonValueKind.Number
@@ -4137,7 +4189,7 @@ namespace NXProject.Services
             int priority = 5, string? assignedTo = null,
             string? state = null, string? title = null,
             string? activity = null, string? tags = null,
-            string? descriptionHtml = null,
+            string? descriptionHtml = null, string? iterationPath = null,
             CancellationToken ct = default)
         {
             if (options == null || taskId <= 0) return;
@@ -4158,6 +4210,8 @@ namespace NXProject.Services
                 ops.Add(PatchAdd("/fields/System.AssignedTo", assignedTo));
             if (!string.IsNullOrWhiteSpace(state))
                 ops.Add(PatchAdd("/fields/System.State", state));
+            if (!string.IsNullOrWhiteSpace(iterationPath))
+                ops.Add(PatchAdd("/fields/System.IterationPath", iterationPath));
             if (!string.IsNullOrWhiteSpace(activity))
                 ops.Add(PatchAdd("/fields/Microsoft.VSTS.Common.Activity", activity));
             if (tags != null)
@@ -4198,7 +4252,7 @@ namespace NXProject.Services
             return "";
         }
 
-        public static async Task<List<(int Id, string Title, string Type, string Owner)>> FetchRootWorkItemsAsync(
+        public static async Task<List<(int Id, string Title, string Type, string Owner, string AdmGroup)>> FetchRootWorkItemsAsync(
             TfsConnectionOptions options, CancellationToken ct = default)
         {
             if (options == null)
@@ -4250,8 +4304,9 @@ namespace NXProject.Services
                 .Where(x => x > 0).ToList();
             if (ids.Count == 0) return [];
 
-            var result = new List<(int, string, string, string)>();
-            // Busca em lotes de 200
+            var result = new List<(int, string, string, string, string)>();
+            var projectIds = new List<int>();
+            // Busca em lotes de 200 (projeção enxuta: garante a listagem)
             for (int i = 0; i < ids.Count; i += 200)
             {
                 var batch = ids.Skip(i).Take(200).ToList();
@@ -4290,10 +4345,123 @@ namespace NXProject.Services
                     // "Owner" = responsavel do work item (System.AssignedTo).
                     var owner = ReadIdentityDisplayName(f, "System.AssignedTo");
                     if (id > 0 && string.Equals(type, "Project", StringComparison.OrdinalIgnoreCase))
-                        result.Add((id, title, type, owner));
+                    {
+                        result.Add((id, title, type, owner, ""));
+                        projectIds.Add(id);
+                    }
                 }
             }
+
+            // Grupo administrador do NX (Adm_NX): campo de identidade → só vem expandido com
+            // $expand=all (usa o mesmo loader do import). Lê por nome (casa o sufixo do reference
+            // name, ex.: Custom.Adm_NX) tratando identidade (objeto) ou texto.
+            var admFieldName = options.AdmGroupFieldEnabled ? options.AdmGroupFieldName?.Trim() : null;
+            if (!string.IsNullOrWhiteSpace(admFieldName) && projectIds.Count > 0)
+            {
+                try
+                {
+                    // Ref exato pelo mapa de campos (casa pelo DISPLAY name, que pode diferir do
+                    // reference name), com o scan tolerante por nome como reserva.
+                    string? admRef = null;
+                    try
+                    {
+                        var fieldMap = await LoadFieldMapAsync(orgBase, auth, ct);
+                        admRef = ResolveField(fieldMap, admFieldName, new[] { admFieldName!, "Adm_NX", "AdmNX" });
+                    }
+                    catch { admRef = null; }
+
+                    var full = await LoadWorkItemsAsync(orgBase, auth, projectIds,
+                        new List<string> { "System.Id" }, ct, expandRelations: true);
+                    for (int i = 0; i < result.Count; i++)
+                        if (full.TryGetValue(result[i].Item1, out var wi))
+                        {
+                            var g = (admRef != null ? ReadIdentityDisplayName(wi.Fields, admRef).Trim() : "");
+                            if (string.IsNullOrWhiteSpace(g)) g = ReadIdentityOrTextByFieldName(wi.Fields, admFieldName!);
+                            if (!string.IsNullOrWhiteSpace(g))
+                                result[i] = (result[i].Item1, result[i].Item2, result[i].Item3, result[i].Item4, g);
+                        }
+                }
+                catch { /* Discovery segue sem o grupo se a leitura falhar */ }
+            }
             return result;
+        }
+
+        // Lê o campo de grupo (Adm_NX): devolve (displayName, id). Tenta o ref exato e cai no
+        // scan tolerante por nome. Valor pode ser objeto de identidade {displayName,id,...} ou texto.
+        private static (string Display, string Id) ReadGroupField(JsonElement fields, string? exactRef, string cfgName)
+        {
+            if (fields.ValueKind != JsonValueKind.Object) return ("", "");
+            static (string, string) FromEl(JsonElement el)
+            {
+                if (el.ValueKind == JsonValueKind.Object)
+                {
+                    var d = (el.TryGetProperty("displayName", out var dn) ? dn.GetString() : null)
+                         ?? (el.TryGetProperty("uniqueName",  out var un) ? un.GetString() : null) ?? "";
+                    var id = el.TryGetProperty("id", out var idp) ? idp.GetString() ?? "" : "";
+                    return (d.Trim(), id.Trim());
+                }
+                if (el.ValueKind == JsonValueKind.String) return (el.GetString()?.Trim() ?? "", "");
+                return ("", "");
+            }
+            if (exactRef != null && fields.TryGetProperty(exactRef, out var exEl))
+            {
+                var r = FromEl(exEl);
+                if (!string.IsNullOrWhiteSpace(r.Item1)) return r;
+            }
+            static string Squash(string s) => new string(s.Where(c => c != '_' && c != ' ' && c != '-').ToArray()).ToLowerInvariant();
+            var target = Squash(cfgName.Trim());
+            foreach (var p in fields.EnumerateObject())
+            {
+                var leaf = p.Name.Contains('.') ? p.Name[(p.Name.LastIndexOf('.') + 1)..] : p.Name;
+                if (Squash(leaf) == target) return FromEl(p.Value);
+            }
+            return ("", "");
+        }
+
+        // Resolve os membros do grupo do Adm_NX priorizando a API de Teams (funciona com PAT de
+        // escopo de projeto; o grupo costuma ser um Team, cujo id vem no próprio campo). Cai no
+        // Graph por nome quando não é um Team (grupo de segurança puro).
+        private static async Task<List<string>> ResolveAdmGroupMemberKeysAsync(
+            TfsConnectionOptions options, string orgBase, AuthenticationHeaderValue auth,
+            string display, string teamId, CancellationToken ct)
+        {
+            var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // 1) API de Teams (PersonSearchService) — funciona com PAT de escopo de projeto.
+            try
+            {
+                var members = await PersonSearchService.GetGroupMembersAsync(options, display, teamId, ct);
+                foreach (var m in members) { AddIdentityKey(keys, m.Email); AddIdentityKey(keys, m.DisplayName); }
+            }
+            catch { /* não é Team ou sem acesso → tenta Graph */ }
+            // 2) Fallback: Graph por nome (exige escopo Graph/Identity no PAT).
+            if (keys.Count == 0 && !string.IsNullOrWhiteSpace(display))
+            {
+                try { foreach (var k in await ResolveGroupMemberKeysAsync(orgBase, auth, display, ct)) keys.Add(k); }
+                catch { /* Graph pode não estar disponível com o PAT */ }
+            }
+            return keys.ToList();
+        }
+
+        // Lê um campo pelo nome, comparando a "folha" do reference name (após o último ponto) de
+        // forma tolerante: ignora maiúsc./minúsc., "_" e espaços (ex.: cfg "Adm_NX" casa
+        // "Custom.Adm_NX", "Custom.AdmNX", "Custom.Adm NX"). Aceita identidade (objeto
+        // {displayName/uniqueName}) ou texto simples.
+        private static string ReadIdentityOrTextByFieldName(JsonElement fields, string cfgName)
+        {
+            if (fields.ValueKind != JsonValueKind.Object || string.IsNullOrWhiteSpace(cfgName)) return "";
+            static string Squash(string s) => new string(s.Where(c => c != '_' && c != ' ' && c != '-').ToArray()).ToLowerInvariant();
+            var target = Squash(cfgName.Trim());
+            foreach (var p in fields.EnumerateObject())
+            {
+                var leaf = p.Name.Contains('.') ? p.Name[(p.Name.LastIndexOf('.') + 1)..] : p.Name;
+                if (Squash(leaf) != target) continue;
+                var el = p.Value;
+                if (el.ValueKind == JsonValueKind.Object)
+                    return ((el.TryGetProperty("displayName", out var dn) ? dn.GetString() : null)
+                         ?? (el.TryGetProperty("uniqueName",  out var un) ? un.GetString() : null) ?? "").Trim();
+                if (el.ValueKind == JsonValueKind.String) return el.GetString()?.Trim() ?? "";
+            }
+            return "";
         }
 
         /// <summary>
@@ -4774,6 +4942,211 @@ namespace NXProject.Services
 
             throw new InvalidOperationException(BuildDiscoveryUserError(
                 0, "Team members listing failed", string.Join("\n\n---\n\n", failures), conn.TeamProject));
+        }
+
+        private static void AddIdentityKey(HashSet<string> set, string? v)
+        {
+            if (!string.IsNullOrWhiteSpace(v)) set.Add(v.Trim().ToLowerInvariant());
+        }
+
+        /// <summary>
+        /// Chaves de identidade (e-mail, principalName e displayName, em minúsculas) do usuário
+        /// autenticado no DevOps (dono do PAT/token), via _apis/connectionData. Lista vazia se
+        /// não for possível determinar — nesse caso o chamador deve liberar (fail-open).
+        /// </summary>
+        public static async Task<List<string>> GetCurrentUserKeysAsync(
+            TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (options == null || string.IsNullOrWhiteSpace(options.OrganizationUrl)
+                || string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+                return keys.ToList();
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue("Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+            try
+            {
+                var url = $"{orgBase}/_apis/connectionData?api-version=6.0-preview";
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                req.Headers.Authorization = auth;
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var text = await resp.Content.ReadAsStringAsync(ct);
+                    using var doc = JsonDocument.Parse(text);
+                    if (doc.RootElement.TryGetProperty("authenticatedUser", out var au))
+                    {
+                        AddIdentityKey(keys, ReadPickerString(au, "providerDisplayName"));
+                        AddIdentityKey(keys, ReadPickerString(au, "customDisplayName"));
+                        AddIdentityKey(keys, ReadPickerString(au, "subjectDescriptor"));
+                        if (au.TryGetProperty("properties", out var props)
+                            && props.TryGetProperty("Account", out var acct)
+                            && acct.TryGetProperty("$value", out var av) && av.ValueKind == JsonValueKind.String)
+                            AddIdentityKey(keys, av.GetString());
+                    }
+                }
+            }
+            catch { /* fail-open: chaves vazias */ }
+            return keys.ToList();
+        }
+
+        /// <summary>
+        /// Verdadeiro se o usuário atual pode sincronizar: grupo administrador vazio (liberado para
+        /// todos) OU o usuário autenticado no DevOps é membro do grupo. Fail-open (libera) quando
+        /// não é possível identificar o usuário, para não travar por falha de rede/API.
+        /// </summary>
+        public static async Task<bool> CanCurrentUserSyncAsync(
+            TfsConnectionOptions options, IEnumerable<string>? admMembers, CancellationToken ct = default)
+        {
+            var members = (admMembers ?? Enumerable.Empty<string>())
+                .Where(m => !string.IsNullOrWhiteSpace(m))
+                .Select(m => m.Trim().ToLowerInvariant())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (members.Count == 0) return true;              // sem grupo → liberado
+            var userKeys = await GetCurrentUserKeysAsync(options, ct);
+            if (userKeys.Count == 0) return true;             // não identificou → fail-open
+            return userKeys.Any(k => members.Contains(k));
+        }
+
+        /// <summary>
+        /// Validação AO VIVO do grupo administrador (Adm_NX) no momento do Sincronizar: relê o campo
+        /// direto do work item Project no DevOps (não usa o cache do .nxp nem o checkbox), resolve os
+        /// membros e compara com o usuário autenticado. Regras: campo vazio/ausente → libera; membros
+        /// não resolvíveis (rede/escopo) ou usuário não identificável → fail-open (libera, sem travar
+        /// por falha técnica). Devolve (Allowed, GroupName) — GroupName para a mensagem de bloqueio.
+        /// </summary>
+        public static async Task<(bool Allowed, string GroupName)> CanCurrentUserSyncLiveAsync(
+            TfsConnectionOptions options, int rootWorkItemId, string? fieldName, CancellationToken ct = default)
+        {
+            var field = string.IsNullOrWhiteSpace(fieldName) ? "Adm_NX" : fieldName.Trim();
+            if (options == null || string.IsNullOrWhiteSpace(options.OrganizationUrl)
+                || string.IsNullOrWhiteSpace(options.PersonalAccessToken) || rootWorkItemId <= 0)
+                return (true, "");
+
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue("Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+
+            // Relê o work item Project ao vivo, com todos os campos ($expand=all).
+            var items = await LoadWorkItemsAsync(orgBase, auth, new[] { rootWorkItemId },
+                new List<string> { "System.Id" }, ct, expandRelations: true);
+            if (!items.TryGetValue(rootWorkItemId, out var root) || root.Fields.ValueKind != JsonValueKind.Object)
+                return (true, "");
+
+            var (display, id) = ReadGroupField(root.Fields, null, field);
+            if (string.IsNullOrWhiteSpace(display)) return (true, "");   // vazio/ausente → libera
+
+            var members = await ResolveAdmGroupMemberKeysAsync(options, orgBase, auth, display, id, ct);
+            if (members.Count == 0) return (true, display);             // não resolveu → fail-open
+            var userKeys = await GetCurrentUserKeysAsync(options, ct);
+            if (userKeys.Count == 0) return (true, display);           // não identificou → fail-open
+            var set = new HashSet<string>(members, StringComparer.OrdinalIgnoreCase);
+            return (userKeys.Any(k => set.Contains(k)), display);
+        }
+
+        /// <summary>
+        /// Resolve os membros de um grupo do DevOps pelo nome de exibição (Graph API, vssps),
+        /// retornando chaves de identidade (e-mail/principalName/displayName, em minúsculas).
+        /// Subgrupos são expandidos. Lista vazia se o grupo não for encontrado.
+        /// </summary>
+        private static async Task<List<string>> ResolveGroupMemberKeysAsync(
+            string orgBase, AuthenticationHeaderValue auth, string groupName, CancellationToken ct)
+        {
+            var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // O valor do campo Adm_NX (string) pode vir como "[Escopo]\\Grupo"; compara também
+            // pela folha (nome do grupo após o último "\\").
+            var wantLeaf = groupName?.Split('\\').LastOrDefault()?.Trim();
+            foreach (var vsspsBase in GetDevOpsIdentityApiBaseCandidates(orgBase))
+            {
+                if (!vsspsBase.Contains("vssps", StringComparison.OrdinalIgnoreCase)) continue;
+                var baseUrl = vsspsBase.TrimEnd('/');
+
+                // 1) Descriptor do grupo pelo displayName/principalName (paginado).
+                string? groupDescriptor = null;
+                string? continuation = null; var safety = 0;
+                do
+                {
+                    var url = $"{baseUrl}/_apis/graph/groups?api-version=6.0-preview.1" +
+                              (string.IsNullOrEmpty(continuation) ? "" : $"&continuationToken={Uri.EscapeDataString(continuation)}");
+                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                    req.Headers.Authorization = auth;
+                    using var resp = await Http.SendAsync(req, ct);
+                    if (!resp.IsSuccessStatusCode) break;
+                    var text = await resp.Content.ReadAsStringAsync(ct);
+                    using var doc = JsonDocument.Parse(text);
+                    if (doc.RootElement.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array)
+                        foreach (var g in arr.EnumerateArray())
+                        {
+                            var dn = ReadPickerString(g, "displayName")?.Trim();
+                            var pn = ReadPickerString(g, "principalName")?.Trim();
+                            // principalName costuma ser "[Escopo]\\Nome" — compara pela parte final.
+                            var pnLeaf = pn?.Split('\\').LastOrDefault()?.Trim();
+                            if (string.Equals(dn, groupName, StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(pn, groupName, StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(pnLeaf, groupName, StringComparison.OrdinalIgnoreCase)
+                                || (!string.IsNullOrEmpty(wantLeaf) &&
+                                    (string.Equals(dn, wantLeaf, StringComparison.OrdinalIgnoreCase)
+                                     || string.Equals(pnLeaf, wantLeaf, StringComparison.OrdinalIgnoreCase))))
+                            { groupDescriptor = ReadPickerString(g, "descriptor"); break; }
+                        }
+                    if (groupDescriptor != null) break;
+                    continuation = resp.Headers.TryGetValues("X-MS-ContinuationToken", out var hv) ? hv.FirstOrDefault() : null;
+                }
+                while (!string.IsNullOrEmpty(continuation) && ++safety < 10000);
+
+                if (groupDescriptor == null) continue;
+
+                await CollectGroupMemberKeysAsync(baseUrl, auth, groupDescriptor, keys,
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase), 0, ct);
+                if (keys.Count > 0) break;
+            }
+            return keys.ToList();
+        }
+
+        // Percorre os membros (direção "down") de um grupo, expandindo subgrupos até 5 níveis.
+        private static async Task CollectGroupMemberKeysAsync(
+            string baseUrl, AuthenticationHeaderValue auth, string descriptor,
+            HashSet<string> keys, HashSet<string> visited, int depth, CancellationToken ct)
+        {
+            if (depth > 5 || !visited.Add(descriptor)) return;
+            var url = $"{baseUrl}/_apis/graph/memberships/{Uri.EscapeDataString(descriptor)}" +
+                      "?direction=down&api-version=6.0-preview.1";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = auth;
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return;
+            var text = await resp.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(text);
+            if (!doc.RootElement.TryGetProperty("value", out var arr) || arr.ValueKind != JsonValueKind.Array) return;
+
+            var memberDescriptors = new List<string>();
+            foreach (var m in arr.EnumerateArray())
+            {
+                var md = ReadPickerString(m, "memberDescriptor");
+                if (!string.IsNullOrWhiteSpace(md)) memberDescriptors.Add(md!);
+            }
+
+            foreach (var md in memberDescriptors)
+            {
+                // Tenta como usuário; se não for, trata como subgrupo e expande.
+                var userUrl = $"{baseUrl}/_apis/graph/users/{Uri.EscapeDataString(md)}?api-version=6.0-preview.1";
+                using var ureq = new HttpRequestMessage(HttpMethod.Get, userUrl);
+                ureq.Headers.Authorization = auth;
+                using var uresp = await Http.SendAsync(ureq, ct);
+                if (uresp.IsSuccessStatusCode)
+                {
+                    var ut = await uresp.Content.ReadAsStringAsync(ct);
+                    using var udoc = JsonDocument.Parse(ut);
+                    var u = udoc.RootElement;
+                    AddIdentityKey(keys, ReadPickerString(u, "mailAddress"));
+                    AddIdentityKey(keys, ReadPickerString(u, "principalName"));
+                    AddIdentityKey(keys, ReadPickerString(u, "displayName"));
+                }
+                else
+                {
+                    await CollectGroupMemberKeysAsync(baseUrl, auth, md, keys, visited, depth + 1, ct);
+                }
+            }
         }
 
         public static async Task<List<DevOpsUserInfo>> FetchUsersByFilterAsync(

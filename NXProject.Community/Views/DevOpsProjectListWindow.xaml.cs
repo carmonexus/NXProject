@@ -117,7 +117,8 @@ namespace NXProject.Views
 
             var dlg = new DevOpsProjectEditWindow(selected.Name, selected.RootWorkItemId,
                                                   selected.IsOpex, selected.CostCenter,
-                                                  selected.CostCenterSource, selected.Process, selected.ReadOnly) { Owner = this };
+                                                  selected.CostCenterSource, selected.Process,
+                                                  selected.ReadOnly, selected.AdmGroupName) { Owner = this };
             if (dlg.ShowDialog() == true && dlg.Result != null)
             {
                 // Owner é informativo (vem do DevOps) e não é editável nesta tela — preserva o atual.
@@ -168,6 +169,9 @@ namespace NXProject.Views
                     { existing.Owner = p.Owner; changed = true; }
                     if (!string.IsNullOrWhiteSpace(p.Name) && existing.Name != p.Name)
                     { existing.Name = p.Name; changed = true; }
+                    // Grupo administrador do NX (Adm_NX): atualiza quando o DevOps trouxe valor.
+                    if (!string.IsNullOrWhiteSpace(p.AdmGroupName) && existing.AdmGroupName != p.AdmGroupName)
+                    { existing.AdmGroupName = p.AdmGroupName; changed = true; }
                     if (changed) updated++;
                     continue;
                 }
