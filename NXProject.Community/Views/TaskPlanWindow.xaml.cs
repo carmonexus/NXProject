@@ -5240,8 +5240,11 @@ namespace NXProject.Views
             // Texto no padrão de reunião "Story – ..." é interpretado LOCALMENTE (parser,
             // instantâneo e determinístico) — a IA só entra quando o texto é livre.
             // Com Story/Feature NOVA o parser não serve (ele casa Story EXISTENTE): vai por IA.
+            // Interpreta localmente quando o texto tem o marcador "Story –" OU quando é a lista de
+            // reunião com tarefas em marcador ("- Criar view"). Só cai na IA para texto livre.
             var structured = !newStory
-                && System.Text.RegularExpressions.Regex.IsMatch(text, @"(?im)^\s*story\s*[–—:\-]");
+                && System.Text.RegularExpressions.Regex.IsMatch(
+                    text, @"(?im)^\s*story\s*[–—:\-]|^\s*(?:[-–—•*·▪‣◦∙+~>».]|\d{1,3}[.)])\s*\S");
 
             var ws = AISettingsStore.LoadWorkspace("NXProject.Community");
             var settings = ws.ResolveActiveSettings();
@@ -5698,9 +5701,15 @@ namespace NXProject.Views
                 }
 
                 var summary = AppStrings.Get("TaskPlan_AiIncludeDone", added, existing, noStory);
+                // Itens "sem Story" = nome não bate com nenhuma Story existente → são Story NOVA.
+                // Sem o modo "Story nova" não há Feature para criá-las; orienta o usuário.
+                if (noStory > 0 && !newStory)
+                    summary += " " + AppStrings.Get("TaskPlan_AiIncludeNewStoryHint");
                 WinLog(summary);
                 AiIncludeLog(summary);
-                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                StatusText.Foreground = noStory > 0 && added == 0
+                    ? System.Windows.Media.Brushes.DarkOrange
+                    : System.Windows.Media.Brushes.Green;
                 StatusText.Text = summary;
             }
             catch (Exception ex)
@@ -5953,10 +5962,70 @@ namespace NXProject.Views
                 .Where(x => x.Norm.Length > 0)
                 .ToList();
 
+            // Formato "cabeçalho + tarefas com marcador": a lista da reunião pode vir SEM o prefixo
+            // "Story –" — a 1ª linha é o nome da Story e as tarefas começam com marcador (- • *).
+            // Nesse formato, uma linha SEM marcador (e que não é Feature) é um cabeçalho de Story.
+            // Marcador de subtarefa: traço, ponto, bullet, asterisco, ">", "»", "~", "+" ou
+            // numeração ("1.", "2)") — com ou sem espaço depois.
+            const string bulletPat = @"^\s*(?:[-–—•*·▪‣◦∙+~>».]|\d{1,3}[.)])\s*(\S.*)$";
+            bool bulletFormat = System.Text.RegularExpressions.Regex.IsMatch(
+                text, @"(?im)^\s*(?:[-–—•*·▪‣◦∙+~>».]|\d{1,3}[.)])\s*\S");
+
             foreach (var rawLine in text.Split('\n'))
             {
-                var line = rawLine.Trim().TrimEnd('.');
+                var line = rawLine.Trim();
                 if (line.Length == 0) continue;
+
+                // Linha de tarefa com marcador ("- Criar view", ".teste", "1. ..."): remove o marcador.
+                var bullet = bulletFormat
+                    ? System.Text.RegularExpressions.Regex.Match(line, bulletPat)
+                    : System.Text.RegularExpressions.Match.Empty;
+                if (bullet.Success)
+                {
+                    line = bullet.Groups[1].Value.Trim().TrimEnd('.');
+                }
+                else
+                {
+                    line = line.TrimEnd('.');
+                    // Cabeçalho SEM prefixo no formato com marcador = nome da Story (casa por nome IGUAL).
+                    var isFeatureLine = System.Text.RegularExpressions.Regex.IsMatch(line, @"^(?i)(feature|story)\s*[–—:\-]")
+                        || System.Text.RegularExpressions.Regex.IsMatch(line, @"^(?i)depend");
+                    if (bulletFormat && !isFeatureLine)
+                    {
+                        var hn = System.Text.RegularExpressions.Regex.Replace(line, @"\s*\([^)]*\)\s*$", "").Trim();
+                        var exactStory = FindExactStory(hn, stories, out var exAmb);
+                        if (exactStory != null)
+                        {
+                            currentStory = exactStory;
+                            collectingForAi = false;
+                            log($"Story \"{hn}\" → \"{currentStory.Name}\" (id {currentStory.Id}, feature \"{Ancestor(currentStory, "Feature")}\", nome idêntico)");
+                        }
+                        else if (currentStory != null && !collectingForAi && items.Count > 0
+                            && items[^1].TryGetValue("story_id", out var lsid) && lsid is int li && li == currentStory.Id)
+                        {
+                            // Linha simples depois de uma tarefa (sem marcador) = descrição/continuação
+                            // da última tarefa daquela Story.
+                            var last = items[^1];
+                            last["descricao"] = last.TryGetValue("descricao", out var pd) && pd is string ps && ps.Length > 0
+                                ? $"{ps} {hn}" : hn;
+                            log($"  ↳ descrição da última task: \"{hn}\"");
+                        }
+                        else
+                        {
+                            currentStory = null;
+                            collectingForAi = true;
+                            aiFallback.AppendLine(rawLine.Trim());
+                            var (mm, ssc, _, _) = MatchStoryHeader(hn, currentFeature, stories);
+                            log($"? Story \"{hn}\": " + (exAmb
+                                    ? "mais de uma Story com esse nome — envia para a IA"
+                                    : mm != null
+                                        ? $"nome diferente da mais próxima \"{mm.Name}\" ({ssc:P0}) — não reaproveita"
+                                        : "sem Story de mesmo nome")
+                                + " — seção enviada para a IA (Story nova se o nome não bater).");
+                        }
+                        continue;
+                    }
+                }
 
                 var storyHeader = System.Text.RegularExpressions.Regex.Match(line, @"^(?i)story\s*[–—:\-]\s*(.+)$");
                 if (storyHeader.Success)
@@ -5964,32 +6033,29 @@ namespace NXProject.Views
                     // Nome do cabeçalho sem o sufixo de horas "(33 horas)".
                     var headerName = System.Text.RegularExpressions.Regex
                         .Replace(storyHeader.Groups[1].Value, @"\s*\([^)]*\)\s*$", "").Trim();
-                    var (match, score, ambiguous, candidates) = MatchStoryHeader(headerName, currentFeature, stories);
                     collectingForAi = false;
-                    // Heurística decide quando: (a) UMA única Story candidata (mesmo por parte
-                    // do nome) e EM ANDAMENTO (>0% e <100% — a lista já exclui as 100%), ou
-                    // (b) mais de uma candidata mas com cobertura TOTAL do nome e sem empate.
-                    // Qualquer outro caso (várias parciais, empate ou única a 0%) vai para a IA.
-                    var singleInProgress = candidates == 1 && match is { PercentComplete: > 0 };
-                    if (match != null && ambiguous == null && (singleInProgress || score >= 0.999))
+                    // Reaproveita a Story do cronograma SOMENTE quando o nome do cabeçalho é IGUAL
+                    // ao dela — ignorando acentos, maiúsc./minúsc., espaços, marcadores ((Story)/(US))
+                    // e pequenos erros de digitação. Semelhança parcial NÃO reaproveita (evita jogar
+                    // tasks na Story errada): vai para a IA (Story NOVA se o nome não bater).
+                    var exactStory2 = FindExactStory(headerName, stories, out var exAmb2);
+                    if (exactStory2 != null)
                     {
-                        currentStory = match;
-                        log($"Story \"{headerName}\" → \"{currentStory.Name}\" (id {currentStory.Id}, feature \"{Ancestor(currentStory, "Feature")}\", "
-                            + (singleInProgress && score < 0.999
-                                ? $"única candidata em andamento, semelhança {score:P0})"
-                                : "correspondência total)"));
+                        currentStory = exactStory2;
+                        log($"Story \"{headerName}\" → \"{currentStory.Name}\" (id {currentStory.Id}, feature \"{Ancestor(currentStory, "Feature")}\", nome idêntico)");
                     }
                     else
                     {
                         currentStory = null;
                         collectingForAi = true;
                         aiFallback.AppendLine(line);
-                        log($"? Story \"{headerName}\": " + (ambiguous != null
-                                ? $"empate entre candidatas ({string.Join(" | ", ambiguous)})"
-                                : match != null
-                                    ? $"{candidates} candidatas parciais (mais próxima: \"{match.Name}\", {score:P0})"
-                                    : "sem correspondência clara")
-                            + " — seção enviada para a IA decidir.");
+                        var (match2, score2, _, _) = MatchStoryHeader(headerName, currentFeature, stories);
+                        log($"? Story \"{headerName}\": " + (exAmb2
+                                ? "mais de uma Story com esse nome — envia para a IA"
+                                : match2 != null
+                                    ? $"nome diferente da mais próxima \"{match2.Name}\" ({score2:P0}) — não reaproveita"
+                                    : "sem Story de mesmo nome")
+                            + " — seção enviada para a IA (Story nova se o nome não bater).");
                     }
                     continue;
                 }
@@ -6012,8 +6078,9 @@ namespace NXProject.Views
 
                 if (currentStory == null)
                 {
-                    // Seção ambígua: as linhas de task acompanham o cabeçalho para a IA.
-                    if (collectingForAi) aiFallback.AppendLine(line);
+                    // Seção ambígua: as linhas de task acompanham o cabeçalho para a IA (mantém o
+                    // marcador original para a IA reconhecer a tarefa).
+                    if (collectingForAi) aiFallback.AppendLine(rawLine.Trim());
                     continue;
                 }
 
@@ -6229,6 +6296,70 @@ namespace NXProject.Views
                 : (top.Story, top.Score, null, scored.Count);
         }
 
+        /// <summary>
+        /// Verdadeiro quando o nome citado (cabeçalho "Story – X") é o MESMO nome de uma Story do
+        /// cronograma — ignorando acentos, maiúsc./minúsc., espaços/pontuação e pequenos erros de
+        /// digitação (distância de edição de 1–2). Semelhança parcial NÃO conta como igual.
+        /// </summary>
+        // Acha a Story de nome IGUAL ao cabeçalho entre as candidatas (não usa o ranking fuzzy):
+        // devolve a única correspondente; se houver mais de uma, marca ambíguo e devolve null.
+        private static ProjectTask? FindExactStory(string headerName, List<ProjectTask> stories, out bool ambiguous)
+        {
+            var hits = stories.Where(s => StoryNameMatches(headerName, s.Name)).ToList();
+            ambiguous = hits.Count > 1;
+            return hits.Count == 1 ? hits[0] : null;
+        }
+
+        private static bool StoryNameMatches(string? headerName, string? storyName)
+        {
+            var a = NormalizeNameStrict(headerName);
+            var b = NormalizeNameStrict(storyName);
+            if (a.Length == 0 || b.Length == 0) return false;
+            if (string.Equals(a, b, StringComparison.Ordinal)) return true;
+            // Tolera erro de digitação: no máximo 1–2 edições (proporcional ao tamanho).
+            var maxLen = Math.Max(a.Length, b.Length);
+            var allowed = Math.Min(2, Math.Max(1, maxLen / 10));
+            return LevenshteinWithin(a, b, allowed);
+        }
+
+        // Normaliza para comparação de nome cheio: remove marcadores de tipo entre parênteses
+        // ((Story), (US), (PBI), (Feature)...) e como sufixo solto (… US / … PBI / … Story),
+        // deixa minúsculas sem acento e colapsa pontuação/espaços.
+        private static string NormalizeNameStrict(string? s)
+        {
+            var raw = s ?? "";
+            // Remove qualquer marcador entre parênteses/colchetes em qualquer posição.
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"[\(\[][^\)\]]*[\)\]]", " ");
+            var n = NormalizeForMatch(raw);   // já minúsculo e sem acentos
+            n = System.Text.RegularExpressions.Regex.Replace(n, @"[^\p{L}\p{N}]+", " ").Trim();
+            // Remove marcador de tipo solto no fim: "user story", "story", "us", "pbi", "pb".
+            n = System.Text.RegularExpressions.Regex.Replace(n, @"\b(user story|story|us|pbi|pb)\s*$", "").Trim();
+            return n;
+        }
+
+        // Distância de Levenshtein com corte: para assim que ultrapassa 'max' (barato).
+        private static bool LevenshteinWithin(string a, string b, int max)
+        {
+            if (Math.Abs(a.Length - b.Length) > max) return false;
+            var prev = new int[b.Length + 1];
+            var cur = new int[b.Length + 1];
+            for (int j = 0; j <= b.Length; j++) prev[j] = j;
+            for (int i = 1; i <= a.Length; i++)
+            {
+                cur[0] = i;
+                int rowMin = cur[0];
+                for (int j = 1; j <= b.Length; j++)
+                {
+                    var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                    cur[j] = Math.Min(Math.Min(prev[j] + 1, cur[j - 1] + 1), prev[j - 1] + cost);
+                    if (cur[j] < rowMin) rowMin = cur[j];
+                }
+                if (rowMin > max) return false;   // não há como terminar dentro do limite
+                (prev, cur) = (cur, prev);
+            }
+            return prev[b.Length] <= max;
+        }
+
         /// <summary>Minúsculas e sem acentos, para casar nomes com diferenças de escrita.</summary>
         private static string NormalizeForMatch(string? s)
         {
@@ -6289,9 +6420,13 @@ namespace NXProject.Views
         private void AiIncludeLog(string message)
         {
             AiIncludeLogBox.Text = message;
-            AiIncludeLogBox.Visibility = string.IsNullOrWhiteSpace(message)
-                ? Visibility.Collapsed : Visibility.Visible;
+            var vis = string.IsNullOrWhiteSpace(message) ? Visibility.Collapsed : Visibility.Visible;
+            AiIncludeLogBox.Visibility = vis;
+            if (AiClearLogBtn != null) AiClearLogBtn.Visibility = vis;
         }
+
+        // Limpa manualmente a última mensagem da IA exibida no painel (fica visível até aqui).
+        private void OnAiClearLogClick(object sender, RoutedEventArgs e) => AiIncludeLog("");
 
         /// <summary>
         /// Exclui linhas totalmente vazias da planilha (só sobram valores automáticos como

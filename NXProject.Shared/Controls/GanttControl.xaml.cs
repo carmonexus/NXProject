@@ -737,21 +737,25 @@ namespace NXProject.Controls
 
                 if (!showLabel) continue;
 
+                // No zoom "Dia" o rótulo é o NÚMERO DO DIA (não a data completa), cabendo na
+                // largura da coluna — antes mostrava a data inteira e sobrepunha.
+                bool perDay = ZoomLevel is "Dia";
                 var label = new TextBlock
                 {
                     Text = ZoomLevel switch
                     {
-                        "Dia" => date.ToString("d", CultureInfo.CurrentCulture),
+                        "Dia" => date.Day.ToString(),
                         "Semana" => date.ToString("d", CultureInfo.CurrentCulture),
                         "Mês" => date.ToString("MMM/yy", CultureInfo.CurrentCulture),
                         "Trimestre" => $"{GetQuarterPrefix()}{(date.Month - 1) / 3 + 1}/{date.Year}",
                         _ => date.ToString("dd/MM")
                     },
-                    FontSize = 10,
+                    FontSize = perDay && DayWidth < 22 ? 8 : 10,
                     Foreground = Brushes.DimGray,
-                    Width = 60
+                    Width = perDay ? Math.Max(14, DayWidth - 1) : 60,
+                    TextAlignment = perDay ? TextAlignment.Center : TextAlignment.Left
                 };
-                Canvas.SetLeft(label, x + 1);
+                Canvas.SetLeft(label, x + (perDay ? 0 : 1));
                 Canvas.SetTop(label, 2);
                 HeaderCanvas.Children.Add(label);
 
@@ -1051,22 +1055,23 @@ namespace NXProject.Controls
                 if (DayWidth >= 6 || isDec)
                     HeaderCanvas.Children.Add(new Line { X1 = x, Y1 = dayTop, X2 = x, Y2 = HeaderHeight, Stroke = new SolidColorBrush(isDec ? Color.FromRgb(180, 190, 210) : Color.FromRgb(218, 220, 225)), StrokeThickness = isDec ? 0.8 : 0.4 });
 
-                // dígito
-                if (DayWidth >= 5)
+                // Número do dia (dd) por dia — legível quando a coluna tem largura suficiente;
+                // se muito estreita, cai no dígito compacto (unidade) para ainda mostrar algo.
+                if (DayWidth >= 6)
                 {
                     var fg = isToday ? new SolidColorBrush(Color.FromRgb(0, 80, 180))
                            : isDec   ? new SolidColorBrush(DecColor(date.Day))
                            :           new SolidColorBrush(Color.FromRgb(80, 90, 110));
                     var dayLbl = new TextBlock
                     {
-                        Text = ch,
-                        FontSize = isDec ? 9 : 8,
+                        Text = DayWidth >= 14 ? date.Day.ToString() : ch,
+                        FontSize = DayWidth >= 18 ? 10 : (DayWidth >= 12 ? 9 : 8),
                         FontWeight = isDec ? FontWeights.Bold : FontWeights.Normal,
                         Foreground = fg,
                         Width = DayWidth,
                         TextAlignment = TextAlignment.Center
                     };
-                    Canvas.SetLeft(dayLbl, x); Canvas.SetTop(dayLbl, dayTop + (tierH - (isDec ? 12 : 11)) / 2);
+                    Canvas.SetLeft(dayLbl, x); Canvas.SetTop(dayLbl, dayTop + (tierH - 12) / 2);
                     if (isDec) Panel.SetZIndex(dayLbl, 1);
                     HeaderCanvas.Children.Add(dayLbl);
                 }

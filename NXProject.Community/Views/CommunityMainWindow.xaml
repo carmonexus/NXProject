@@ -58,13 +58,25 @@
                 <MenuItem Header="{DynamicResource Menu_Edit_Indent}" Command="{Binding IndentTaskCommand}"/>
                 <MenuItem Header="{DynamicResource Menu_Edit_Outdent}" Command="{Binding OutdentTaskCommand}"/>
             </MenuItem>
-            <MenuItem Header="{DynamicResource Menu_View}">
+            <MenuItem Header="{DynamicResource Menu_ViewSchedule}">
                 <MenuItem Header="{DynamicResource Menu_View_Gantt}" Command="{Binding ShowGanttCommand}"/>
                 <MenuItem Header="{DynamicResource Menu_View_Sprint}" Click="OnSprintSettingsClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_Sfp}" Click="OnSfpSettingsClick"/>
                 <MenuItem Header="{DynamicResource Main_CustomizeColumns}" Click="OnCustomizeColumnsClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_Calendar}" Click="OnCalendarSettingsClick"/>
                 <Separator/>
+                <MenuItem Header="{DynamicResource Menu_Sched_Zoom}" Click="OnMenuZoomClick"/>
+                <MenuItem Header="{DynamicResource Menu_Sched_Magnifier}" Click="OnMenuMagnifierClick"/>
+                <MenuItem Header="{DynamicResource Menu_Sched_Layout}" Click="OnMenuLayoutClick"/>
+                <MenuItem Header="{DynamicResource Menu_Sched_OrgH}" Click="OnMenuGanttOriginalClick"/>
+                <MenuItem Header="{DynamicResource Menu_Sched_DailyPercent}" Click="OnMenuDailyPercentClick"/>
+                <MenuItem Header="{DynamicResource Menu_Sched_DayHeader}" Click="OnMenuDayHeaderClick"/>
+                <Separator/>
+                <MenuItem Header="{DynamicResource Toolbar_ExpandSelected}" Command="{Binding ExpandSelectedCommand}"/>
+                <MenuItem Header="{DynamicResource Toolbar_ExpandAll}" Command="{Binding ExpandAllCommand}"/>
+                <MenuItem Header="{DynamicResource Toolbar_CollapseAll}" Command="{Binding CollapseAllCommand}"/>
+            </MenuItem>
+            <MenuItem Header="{DynamicResource Menu_View}">
                 <MenuItem Header="{DynamicResource Menu_View_DevOpsList}" Click="OnDevOpsProjectListClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_DevOpsConfig}" Click="OnDevOpsConfigClick"/>
                 <MenuItem Header="{DynamicResource Menu_View_People}" Click="OnPeopleClick"/>
@@ -121,7 +133,13 @@
             </MenuItem>
         </Menu>
 
-        <ToolBar DockPanel.Dock="Top" Background="{StaticResource SurfaceBrush}" Padding="4,2"
+        <TabControl DockPanel.Dock="Top" Background="{StaticResource SurfaceBrush}"
+                    BorderThickness="0,0,0,1" BorderBrush="#D0D7E0" Padding="0" Margin="0">
+        <TabItem>
+            <TabItem.Header>
+                <TextBlock Text="&#x1F6E0;" FontSize="14" ToolTip="{DynamicResource Ribbon_Main}"/>
+            </TabItem.Header>
+        <ToolBar Background="{StaticResource SurfaceBrush}" Padding="4,2"
                  FocusManager.IsFocusScope="False"
                  Button.Click="OnToolbarButtonClick">
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding NewProjectCommand}" ToolTip="{DynamicResource Toolbar_NewProject}">
@@ -252,6 +270,58 @@
                     </Canvas>
                 </Viewbox>
             </Button>
+            <!-- Busca de atividade (perto do chat IA) -->
+            <Button x:Name="SearchTaskButton"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="OnSearchTaskClick"
+                    ToolTip="{DynamicResource Main_SearchTip}"
+                    Padding="4,2">
+                <Viewbox Width="18" Height="18" Stretch="Uniform">
+                    <Canvas Width="24" Height="24">
+                        <Ellipse Canvas.Left="2" Canvas.Top="2" Width="14" Height="14"
+                                 Stroke="#2B579A" StrokeThickness="2.5" Fill="Transparent"/>
+                        <Line X1="14" Y1="14" X2="22" Y2="22"
+                              Stroke="#2B579A" StrokeThickness="2.5"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
+            <!-- Abrir tela (layout legível), logo após a lupa -->
+            <Button x:Name="LayoutToggleButton"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="OnLayoutToggleClick"
+                    ToolTip="{DynamicResource Toolbar_Layout}">
+                <TextBlock x:Name="LayoutToggleText" Text="⤢" FontSize="14" FontWeight="SemiBold"/>
+            </Button>
+            <!-- Filtro por recurso e por % (junto da busca) -->
+            <Button x:Name="ResourceFilterButton"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="OnResourceFilterClick"
+                    ToolTip="{DynamicResource Toolbar_ResourceFilter}"
+                    MinWidth="36" Padding="4,2">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="&#x1F464;" FontSize="13" Margin="0,0,2,0"/>
+                    <TextBlock x:Name="ResourceFilterLabel" FontSize="10" VerticalAlignment="Center" Foreground="#2B579A"/>
+                </StackPanel>
+            </Button>
+            <Button x:Name="PercentFilterButton"
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="OnPercentFilterClick"
+                    ToolTip="{DynamicResource Toolbar_PercentFilter}"
+                    MinWidth="44" Padding="4,2">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="&lt;%" FontSize="12" FontWeight="SemiBold" Margin="0,0,2,0"/>
+                    <TextBlock x:Name="PercentFilterLabel" FontSize="10" VerticalAlignment="Center" Foreground="#2B579A"/>
+                </StackPanel>
+            </Button>
+            <!-- Daily (faro): % de conclusão diário, após o filtro <% -->
+            <ToggleButton x:Name="DailyPercentToggle"
+                          ToolTip="{DynamicResource Main_DailyToggleTip}"
+                          Width="30" Height="26" Padding="2"
+                          Click="OnDailyPercentToggleClick"
+                          VerticalAlignment="Center">
+                <TextBlock Text="&#x1F443;" FontSize="17"/>
+            </ToggleButton>
             <Separator/>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding AddTaskCommand}" ToolTip="{DynamicResource Toolbar_AddTask}">
                 <TextBlock Text="+" FontSize="16" FontWeight="Bold"/>
@@ -334,21 +404,6 @@
                     ToolTip="{DynamicResource Toolbar_Refresh}">
                 <TextBlock Text="&#x1F504;" FontSize="13"/>
             </Button>
-            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnExportPdfClick"
-                    ToolTip="{DynamicResource Toolbar_ExportPdf}">
-                <Grid Width="30" Height="26">
-                    <!-- folha -->
-                    <Rectangle RadiusX="2" RadiusY="2"
-                               Stroke="#555" StrokeThickness="1.5" Fill="White"
-                               Margin="2,0,5,0"/>
-                    <!-- dobra superior direita -->
-                    <Polyline Points="17,0 23,6 23,6 17,6 17,0"
-                              Stroke="#555" StrokeThickness="1.2" Fill="#DDD"/>
-                    <!-- letras PDF em vermelho -->
-                    <TextBlock Text="PDF" FontSize="8" FontWeight="Bold" Foreground="#CC2200"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,3,3,0"/>
-                </Grid>
-            </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnHierarchyColorPaletteClick"
                     ToolTip="{DynamicResource Main_PaletteTip}">
                 <Grid Width="22" Height="20">
@@ -357,51 +412,15 @@
                     <Rectangle RadiusX="2" RadiusY="2" Fill="#F5F5F5" Margin="0,10,0,0"/>
                 </Grid>
             </Button>
-            <Separator/>
-            <Button x:Name="LayoutToggleButton"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    Click="OnLayoutToggleClick"
-                    ToolTip="{DynamicResource Toolbar_Layout}">
-                <TextBlock x:Name="LayoutToggleText" Text="⤢" FontSize="14" FontWeight="SemiBold"/>
-            </Button>
-            <!-- Busca de atividade -->
-            <Button x:Name="SearchTaskButton"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    Click="OnSearchTaskClick"
-                    ToolTip="{DynamicResource Main_SearchTip}"
-                    Padding="4,2">
-                <Viewbox Width="18" Height="18" Stretch="Uniform">
-                    <Canvas Width="24" Height="24">
-                        <Ellipse Canvas.Left="2" Canvas.Top="2" Width="14" Height="14"
-                                 Stroke="#2B579A" StrokeThickness="2.5" Fill="Transparent"/>
-                        <Line X1="14" Y1="14" X2="22" Y2="22"
-                              Stroke="#2B579A" StrokeThickness="2.5"
-                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                    </Canvas>
-                </Viewbox>
-            </Button>
-            <Separator/>
-            <Button x:Name="ResourceFilterButton"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    Click="OnResourceFilterClick"
-                    ToolTip="{DynamicResource Toolbar_ResourceFilter}"
-                    MinWidth="36" Padding="4,2">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="&#x1F464;" FontSize="13" Margin="0,0,2,0"/>
-                    <TextBlock x:Name="ResourceFilterLabel" FontSize="10" VerticalAlignment="Center" Foreground="#2B579A"/>
-                </StackPanel>
-            </Button>
-            <Button x:Name="PercentFilterButton"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    Click="OnPercentFilterClick"
-                    ToolTip="{DynamicResource Toolbar_PercentFilter}"
-                    MinWidth="44" Padding="4,2">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="%" FontSize="12" FontWeight="SemiBold" Margin="0,0,2,0"/>
-                    <TextBlock x:Name="PercentFilterLabel" FontSize="10" VerticalAlignment="Center" Foreground="#2B579A"/>
-                </StackPanel>
-            </Button>
-            <Separator/>
+        </ToolBar>
+        </TabItem>
+        <TabItem>
+            <TabItem.Header>
+                <TextBlock Text="&#x1F4CA;" FontSize="14" ToolTip="{DynamicResource Ribbon_Schedule}"/>
+            </TabItem.Header>
+        <ToolBar Background="{StaticResource SurfaceBrush}" Padding="4,2"
+                 FocusManager.IsFocusScope="False"
+                 Button.Click="OnToolbarButtonClick">
             <Button x:Name="ZoomMenuButton"
                     Style="{StaticResource ToolbarButtonStyle}"
                     Click="OnZoomMenuClick"
@@ -440,20 +459,12 @@
                     </Canvas>
                 </Viewbox>
             </ToggleButton>
-            <ToggleButton x:Name="DailyPercentToggle"
-                          ToolTip="{DynamicResource Main_DailyToggleTip}"
-                          Width="28" Height="24" Padding="3"
-                          Click="OnDailyPercentToggleClick"
-                          VerticalAlignment="Center">
-                <TextBlock Text="&#x1F4AC;" FontSize="14"/>
-            </ToggleButton>
             <ToggleButton x:Name="DayHeaderToggle"
                           ToolTip="{DynamicResource Toolbar_DayView}"
                           Width="28"
                           Height="24"
                           Padding="3"
-                          Checked="OnDayHeaderToggled"
-                          Unchecked="OnDayHeaderToggled"
+                          Click="OnDayHeaderToggled"
                           VerticalAlignment="Center">
                 <Viewbox Width="16" Height="16">
                     <Canvas Width="18" Height="18">
@@ -535,6 +546,22 @@
 
             <Separator/>
 
+            <!-- Exportar PDF (aba Exibir Cronograma) -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnExportPdfClick"
+                    ToolTip="{DynamicResource Toolbar_ExportPdf}">
+                <Grid Width="30" Height="26">
+                    <Rectangle RadiusX="2" RadiusY="2"
+                               Stroke="#555" StrokeThickness="1.5" Fill="White"
+                               Margin="2,0,5,0"/>
+                    <Polyline Points="17,0 23,6 23,6 17,6 17,0"
+                              Stroke="#555" StrokeThickness="1.2" Fill="#DDD"/>
+                    <TextBlock Text="PDF" FontSize="8" FontWeight="Bold" Foreground="#CC2200"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,3,3,0"/>
+                </Grid>
+            </Button>
+
+            <Separator/>
+
             <!-- Revisão de Tasks (Tech Lead) -->
             <Button x:Name="TechLeadReviewButton"
                     Style="{StaticResource ToolbarButtonStyle}"
@@ -575,6 +602,8 @@
                 </Viewbox>
             </Button>
         </ToolBar>
+        </TabItem>
+        </TabControl>
 
         <!-- Indicador "IA em execução" (Task Plan rodando Incluir/Consultar via IA):
              faixa fina ABAIXO da toolbar, sempre visível quando ativa -->

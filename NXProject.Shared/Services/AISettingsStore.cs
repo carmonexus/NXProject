@@ -63,7 +63,7 @@ namespace NXProject.Services
         private const string LegacyScheduleNoDevOpsActionName = "Cronograma NoDevops";
 
         // Versao atual do schema de acoes (v2: "Fazer Cronograma DevOps"; v3: merge de arquivo externo; v4: merge por hierarquia/ID; v5: ID interno nao bloqueia busca TFS; v6: incluir tasks na planilha; v7: consultar task na planilha; v8: incluir captura responsavel/esforco; v9: nome da task com verbo no infinitivo + descricao; v10: acao de ajuste de nome de task).
-        private const int CurrentActionsSchemaVersion = 10;
+        private const int CurrentActionsSchemaVersion = 11;
 
         /// <summary>Prompt do merge de planilha externa (Task Plan) com as Tasks do DevOps.</summary>
         private const string LegacyMergeExternalActionPrompt =
@@ -128,7 +128,7 @@ namespace NXProject.Services
             "Se não encontrar Story correspondente para um item, devolva-o com story_id 0 e o motivo em obs.";
 
         /// <summary>Prompt da inclusão de tasks na planilha do Task Plan a partir de texto de reunião.</summary>
-        public const string PlanIncludeActionPrompt =
+        private const string PlanIncludeActionPromptV3 =
             "Você é um assistente do NXProject que inclui tasks na planilha do Task Plan a partir de uma " +
             "lista de atividades citadas em reunião. Você recebe: STORIES (tabela \"id | nome | feature | " +
             "epic\" com as Stories EM ABERTO do cronograma — pode haver Stories de MESMO NOME em feature/epic " +
@@ -162,6 +162,44 @@ namespace NXProject.Services
             "esforco: quando o TEXTO citar o esforço, devolva número em HORAS (ex.: \"8\", \"6,5\"); se o texto " +
             "der em DIAS, devolva o número com sufixo d (ex.: \"2d\"); sem esforço citado, omita. " +
             "Se não encontrar Story correspondente para um item, devolva-o com story_id 0 e o motivo em obs.";
+
+        public const string PlanIncludeActionPrompt =
+            "Você é um assistente do NXProject que inclui tasks na planilha do Task Plan a partir de uma " +
+            "lista de atividades citadas em reunião. Você recebe: STORIES (tabela \"id | nome | feature | " +
+            "epic\" com as Stories EM ABERTO do cronograma — pode haver Stories de MESMO NOME em feature/epic " +
+            "diferentes; use feature e epic para distinguir), RECURSOS (nomes das pessoas) e TEXTO (lista de " +
+            "atividades, tendo no mínimo a story e o nome da task em cada item; pode citar também o " +
+            "responsável, o esforço e detalhes). " +
+            "Convenção de nomes do NXProject: nome de STORY é NOMINAL e NUNCA se inicia com verbo (identifica " +
+            "o tema/entrega, ex.: \"Backup de dados\", \"Condição Y014\"); nome de TASK SEMPRE começa com VERBO " +
+            "NO INFINITIVO (identifica a ação, ex.: \"Validar cargas de backup\"). Use essa convenção para " +
+            "distinguir, no TEXTO, o que é Story e o que é task. " +
+            "REGRA DE REAPROVEITAMENTO DE STORY (obrigatória): só use uma Story de STORIES quando o nome citado " +
+            "no TEXTO for IGUAL ao nome dela — ignore APENAS acentuação, maiúsc./minúsc., espaços e pequenos " +
+            "erros de digitação. NÃO reaproveite por semelhança parcial, por abreviação, nem por compartilhar " +
+            "algumas palavras. Se o nome citado NÃO for essencialmente o MESMO de uma Story existente, então é " +
+            "uma Story NOVA: devolva story_id 0 e escreva o nome citado da story em obs (NÃO force o encaixe " +
+            "numa Story parecida). Havendo Stories de mesmo nome, desempate por feature/epic e contexto. " +
+            "Responda SOMENTE com um JSON válido, COMPACTO (uma linha, sem espaços desnecessários), sem " +
+            "comentários, no formato: [{\"story_id\":123,\"task\":\"nome da task\",\"responsavel\":\"\"," +
+            "\"esforco\":\"\",\"descricao\":\"\",\"obs\":\"\"}]. NÃO repita o nome da story na resposta e " +
+            "OMITA os campos vazios — só story_id e task são obrigatórios. " +
+            "Cada atividade do TEXTO gera EXATAMENTE UM item na resposta: NUNCA repita a mesma task " +
+            "em várias stories, e a resposta NUNCA tem mais itens que as linhas de atividade do TEXTO. " +
+            "Use story_id EXATAMENTE como veio em STORIES; não invente stories nem ids. " +
+            "task: nome CURTO da atividade começando com um VERBO NO INFINITIVO (ex.: \"Ajustar views de " +
+            "condição\", \"Criar tabela T001W\"). NUNCA use o nome da Story (nem tema sem verbo) como nome da " +
+            "task — Story identifica o tema, task identifica a AÇÃO. Se o TEXTO trouxer um tema sem verbo e a " +
+            "ação em seguida, componha \"tema - Verbo + complemento\" ou apenas \"Verbo + complemento (tema)\". " +
+            "descricao: o detalhe adicional citado no TEXTO sobre a atividade (contexto, escopo, observação " +
+            "técnica); omita se não houver — NÃO repita o nome da task. " +
+            "responsavel: quando o TEXTO citar quem fará a task (mesmo só parte do nome, apelido ou primeiro " +
+            "nome), devolva o nome EXATO correspondente da lista RECURSOS; sem correspondência na lista, " +
+            "devolva o nome COMO CITADO no TEXTO (o NX registra na observação) — só omita se o TEXTO não " +
+            "citar ninguém. " +
+            "esforco: quando o TEXTO citar o esforço, devolva número em HORAS (ex.: \"8\", \"6,5\"); se o texto " +
+            "der em DIAS, devolva o número com sufixo d (ex.: \"2d\"); sem esforço citado, omita. " +
+            "Se não encontrar Story com nome IGUAL para um item, devolva-o com story_id 0 e o nome citado em obs.";
 
         /// <summary>
         /// Sufixo do modo STORY NOVA da inclusão do Task Plan: a Story do TEXTO ainda não
@@ -337,11 +375,13 @@ namespace NXProject.Services
                 if (!workspace.ActionTypes.Any(a => a.Name == AIActionType.TaskNameFixActionName))
                     workspace.ActionTypes.Add(GetDefaultActions().First(a => a.Name == AIActionType.TaskNameFixActionName));
 
-                // v8/v9: prompts padrao antigos do incluir sao atualizados; editados pelo usuario ficam.
+                // v8/v9/v11: prompts padrao antigos do incluir sao atualizados (v11 = reaproveitar
+                // Story so com nome IGUAL); prompts editados pelo usuario ficam preservados.
                 var planInclude = workspace.ActionTypes.FirstOrDefault(a => a.Name == AIActionType.PlanIncludeActionName);
                 if (planInclude != null
                     && (string.Equals(planInclude.Prompt, PlanIncludeActionPromptV1, StringComparison.Ordinal)
-                        || string.Equals(planInclude.Prompt, PlanIncludeActionPromptV2, StringComparison.Ordinal)))
+                        || string.Equals(planInclude.Prompt, PlanIncludeActionPromptV2, StringComparison.Ordinal)
+                        || string.Equals(planInclude.Prompt, PlanIncludeActionPromptV3, StringComparison.Ordinal)))
                     planInclude.Prompt = PlanIncludeActionPrompt;
             }
 

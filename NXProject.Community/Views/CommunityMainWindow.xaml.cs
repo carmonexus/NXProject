@@ -2216,6 +2216,9 @@ namespace NXProject.Views
                 vm.ApplyImportedProject(
                     project,
                     $"Projeto importado do TFS: {project.Name}");
+                // Import ao vivo: habilita a checagem de participação no grupo (Leitura/Escrita).
+                _liveTfsImportRootId = project.DevOpsRootWorkItemId;
+                _admStatusRootId = -1;
                 UpdateDevOpsProjectBanner(project.DevOpsProjectName, project.DevOpsRootWorkItemId, project.DevOpsProjectOwner);
                 ResetScheduleViewport();
             }
@@ -2234,6 +2237,26 @@ namespace NXProject.Views
         {
             new TfsDevOpsConfigWindow("NXProject.Community") { Owner = this }.ShowDialog();
         }
+
+        // Menu "Exibir Cronograma": delega para os mesmos controles da barra do cronograma,
+        // para as ações ficarem TANTO na aba quanto no menu.
+        private void OnMenuZoomClick(object sender, RoutedEventArgs e) => OnZoomMenuClick(ZoomMenuButton, e);
+        private void OnMenuLayoutClick(object sender, RoutedEventArgs e) => OnLayoutToggleClick(LayoutToggleButton, e);
+        private void OnMenuMagnifierClick(object sender, RoutedEventArgs e)
+        {
+            MagnifierToggle.IsChecked = !(MagnifierToggle.IsChecked == true);
+            OnMagnifierToggleClick(MagnifierToggle, e);
+        }
+        private void OnMenuDailyPercentClick(object sender, RoutedEventArgs e)
+        {
+            DailyPercentToggle.IsChecked = !(DailyPercentToggle.IsChecked == true);
+            OnDailyPercentToggleClick(DailyPercentToggle, e);
+        }
+        // Estes usam Checked/Unchecked — basta inverter o IsChecked para disparar o handler.
+        private void OnMenuGanttOriginalClick(object sender, RoutedEventArgs e)
+            => GanttOriginalToggle.IsChecked = !(GanttOriginalToggle.IsChecked == true);
+        private void OnMenuDayHeaderClick(object sender, RoutedEventArgs e)
+            => DayHeaderToggle.IsChecked = !(DayHeaderToggle.IsChecked == true);
 
         private void OnDevOpsProjectListClick(object sender, RoutedEventArgs e)
         {
@@ -2296,8 +2319,19 @@ namespace NXProject.Views
             }
         }
 
+        // Cache do status do grupo Adm por projeto (evita rechecar a cada refresh do banner).
+        private int _admStatusRootId = -1;
+        private bool? _admStatusCanWrite;   // null = ainda verificando
+        // Root do projeto RECÉM-importado do TFS nesta sessão. Só nele a checagem de participação
+        // no grupo (rede) roda — ao abrir um cronograma salvo em arquivo não verifica.
+        private int _liveTfsImportRootId = -1;
+        private string? _lastBannerName;
+        private int _lastBannerId;
+        private string? _lastBannerOwner;
+
         private void UpdateDevOpsProjectBanner(string? name, int id, string? owner = null)
         {
+            _lastBannerName = name; _lastBannerId = id; _lastBannerOwner = owner;
             // Owner + NOME DO ARQUIVO (a barra de título do Windows às vezes não é vista;
             // aqui no banner fica sempre visível ao lado do título).
             var ownerText = string.IsNullOrWhiteSpace(owner) ? string.Empty : AppStrings.Get("Banner_Owner", owner);
@@ -2321,13 +2355,33 @@ namespace NXProject.Views
             var process = (DataContext as MainViewModel)?.Project?.DevOpsProcess;
             if (isDevOps && !string.IsNullOrWhiteSpace(process))
                 ownerText += "   •   " + AppStrings.Get("Banner_Process", process);
-            // Somente leitura: Export/Sincronizar bloqueado.
-            if ((DataContext as MainViewModel)?.Project?.ReadOnly == true)
+            // Grupo administrador do NX (Adm_NX): substitui o antigo "Somente leitura". Mostra o
+            // grupo e se VOCÊ está nele (escrita) ou não (leitura) — checagem ao vivo, cacheada.
+            var vmBanner = DataContext as MainViewModel;
+            var admGroup = vmBanner?.Project?.AdmGroupName;
+            // Só exibe o grupo Adm (Leitura/Escrita) para projeto RECÉM-importado do TFS nesta
+            // sessão — no cronograma aberto de arquivo o usuário atual pode ser outro, então não
+            // dá para afirmar leitura/escrita: não mostra nada.
+            var admRootId = vmBanner?.Project?.DevOpsRootWorkItemId ?? 0;
+            if (isDevOps && !string.IsNullOrWhiteSpace(admGroup)
+                && admRootId > 0 && admRootId == _liveTfsImportRootId)
+            {
+                if (_admStatusRootId != admRootId)
+                {
+                    _admStatusRootId = admRootId;
+                    _admStatusCanWrite = null;
+                    _ = CheckAdmGroupStatusAsync(admRootId);   // preenche o cache e recarrega o banner
+                }
+                var key = _admStatusCanWrite == true ? "Banner_AdmGroupWrite"
+                        : _admStatusCanWrite == false ? "Banner_AdmGroupRead"
+                        : "Banner_AdmGroup";
+                ownerText += "   •   " + AppStrings.Get(key, admGroup);
+            }
+            else if (vmBanner?.Project?.ReadOnly == true)
+            {
+                // Sem grupo Adm, mantém a marca antiga de somente leitura (compat.).
                 ownerText += "   •   " + AppStrings.Get("Banner_ReadOnly");
-            // Grupo administrador do NX (Adm_NX): só os membros podem sincronizar.
-            var admGroup = (DataContext as MainViewModel)?.Project?.AdmGroupName;
-            if (isDevOps && !string.IsNullOrWhiteSpace(admGroup))
-                ownerText += "   •   " + AppStrings.Get("Banner_AdmGroup", admGroup);
+            }
             DevOpsOwnerLabel.Text = ownerText;
 
             if (!string.IsNullOrWhiteSpace(name))
@@ -2349,6 +2403,33 @@ namespace NXProject.Views
                 DevOpsPercentLabel.Text = string.Empty;
                 DevOpsOwnerLabel.Text = string.Empty;
                 DevOpsProjectBanner.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        // Verifica AO VIVO se o usuário atual é membro do grupo Adm (pode sincronizar = Escrita)
+        // ou não (Leitura), e recarrega o banner. Só é chamado para projeto recém-importado do TFS.
+        private async Task CheckAdmGroupStatusAsync(int rootId)
+        {
+            bool canWrite = true;
+            try
+            {
+                var options = Services.TfsConnectionStore.Load("NXProject.Community");
+                var proj = (DataContext as MainViewModel)?.Project;
+                var projOrg = proj?.DevOpsOrganizationUrl?.Trim();
+                var projTeam = proj?.DevOpsTeamProject?.Trim();
+                if (!string.IsNullOrWhiteSpace(projOrg)) options.OrganizationUrl = projOrg;
+                if (!string.IsNullOrWhiteSpace(projTeam)) options.TeamProject = projTeam;
+                var (allowed, _) = await Services.TfsImportService.CanCurrentUserSyncLiveAsync(
+                    options, rootId, options.AdmGroupFieldName);
+                canWrite = allowed;   // membro OU não deu para resolver (fail-open) = pode gravar
+            }
+            catch { canWrite = true; }
+
+            if (_admStatusRootId == rootId)
+            {
+                _admStatusCanWrite = canWrite;
+                Dispatcher.Invoke(() =>
+                    UpdateDevOpsProjectBanner(_lastBannerName, _lastBannerId, _lastBannerOwner));
             }
         }
 
@@ -2535,17 +2616,43 @@ namespace NXProject.Views
             GanttCtrl.ForceRender();
         }
 
+        private bool _applyingDayHeader;
+
         private void OnDayHeaderToggled(object sender, RoutedEventArgs e)
         {
-            // Cicla: 0 (off) → 1 (dia1: seg/qua/sex) → 2 (dia2: dígito compacto) → 0
+            // Ignora o evento gerado ao ajustar o IsChecked dentro de ApplyDayHeaderMode
+            // (reentrância) — senão o clique pula modos e só alterna entre 2 estados.
+            if (_applyingDayHeader) return;
+            // Cicla: 0 (off) → 1 (dia1: seg/qua/sex) → 2 (dia2: número do dia) → 0
             int next = (GanttCtrl.DayHeaderMode + 1) % 3;
             ApplyDayHeaderMode(next);
+
+            if (DataContext is MainViewModel vm)
+            {
+                // Dia 2 só aparece com colunas largas: aproxima para "Dia" e GUARDA o zoom anterior.
+                if (next == 2 && vm.SelectedZoom is not ("Dia" or "Semana"))
+                {
+                    _zoomBeforeDay2 = vm.SelectedZoom;
+                    ApplyZoom("Dia");
+                }
+                // Voltou ao Off: restaura o zoom que havia antes do Dia 2 (padrão de entrada).
+                else if (next == 0 && !string.IsNullOrEmpty(_zoomBeforeDay2))
+                {
+                    var restore = _zoomBeforeDay2!;
+                    _zoomBeforeDay2 = null;
+                    ApplyZoom(restore);
+                }
+            }
         }
+
+        private string? _zoomBeforeDay2;
 
         private void ApplyDayHeaderMode(int mode)
         {
             GanttCtrl.DayHeaderMode = mode;
-            DayHeaderToggle.IsChecked = mode > 0;
+            _applyingDayHeader = true;
+            try { DayHeaderToggle.IsChecked = mode > 0; }
+            finally { _applyingDayHeader = false; }
 
             if (mode > 0)
             {

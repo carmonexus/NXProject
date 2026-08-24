@@ -340,11 +340,15 @@
                               Checked="OnAiNewFeatureChecked"
                               ToolTip="{DynamicResource TaskPlan_AiNewFeatureTip}"/>
                 </StackPanel>
-                <TextBox x:Name="AiIncludeLogBox" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                <TextBox x:Name="AiIncludeLogBox" Grid.Row="3" Grid.Column="0"
                          IsReadOnly="True" TextWrapping="Wrap" MaxHeight="90" MinHeight="0"
                          VerticalScrollBarVisibility="Auto" FontSize="11" Foreground="#444"
                          BorderThickness="0" Background="Transparent" Margin="0,6,0,0"
                          Visibility="Collapsed"/>
+                <Button x:Name="AiClearLogBtn" Grid.Row="3" Grid.Column="1"
+                        Content="{DynamicResource TaskPlan_AiClearLog}"
+                        Width="130" Height="26" Margin="8,6,0,0" VerticalAlignment="Top"
+                        Click="OnAiClearLogClick" Visibility="Collapsed"/>
             </Grid>
         </Border>
 

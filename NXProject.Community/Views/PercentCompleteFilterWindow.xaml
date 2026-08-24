@@ -25,7 +25,17 @@
                        Margin="0,4,0,0" Foreground="#666" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
 
-        <Grid Grid.Row="1" Margin="0,0,0,10">
+        <!-- Filtro rápido "< 100% (ativas)" como botão, logo no início -->
+        <ToggleButton Grid.Row="1"
+                      x:Name="ActiveOnlyCheck"
+                      Content="{DynamicResource PctFilter_ActiveOnly}"
+                      HorizontalAlignment="Left"
+                      Padding="16,7" Margin="0,0,0,14"
+                      FontSize="13" FontWeight="SemiBold" Cursor="Hand"
+                      Checked="OnActiveOnlyChanged"
+                      Unchecked="OnActiveOnlyChanged"/>
+
+        <Grid Grid.Row="2" Margin="0,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="14"/>
@@ -48,14 +58,6 @@
                          VerticalContentAlignment="Center"/>
             </StackPanel>
         </Grid>
-
-        <CheckBox Grid.Row="2"
-                  x:Name="ActiveOnlyCheck"
-                  Content="{DynamicResource PctFilter_ActiveOnly}"
-                  Margin="0,4,0,10"
-                  VerticalAlignment="Top"
-                  Checked="OnActiveOnlyChanged"
-                  Unchecked="OnActiveOnlyChanged"/>
 
         <GroupBox Grid.Row="3"
                   Header="{DynamicResource PctFilter_RefDate}"

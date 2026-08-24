@@ -731,13 +731,13 @@
 
             <!-- %Daily: % esperado ate hoje (baseline pela agenda). Oculta por padrao; toggle na toolbar. -->
             <DataGridTemplateColumn x:Name="DailyPercentColumn" Header="{DynamicResource Col_DailyPercent}"
-                                    Width="60" IsReadOnly="True" Visibility="Collapsed" SortMemberPath="DailyPercent" HeaderStyle="{StaticResource HdrTip_DailyPercent}">
+                                    Width="52" IsReadOnly="True" Visibility="Collapsed" SortMemberPath="DailyPercent" HeaderStyle="{StaticResource HdrTip_DailyPercent}">
                 <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Border Background="{Binding DailyPercentBackground}" CornerRadius="2" Margin="1">
                             <TextBlock Text="{Binding DailyPercentDisplay}"
                                        VerticalAlignment="Center" TextAlignment="Center"
-                                       FontSize="9" FontWeight="SemiBold" Foreground="#333"
+                                       FontSize="10" FontWeight="SemiBold" Foreground="#333"
                                        ToolTip="{DynamicResource Col_DailyPercentTip}"/>
                         </Border>
                     </DataTemplate>

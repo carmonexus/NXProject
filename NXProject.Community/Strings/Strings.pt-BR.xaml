@@ -273,7 +273,17 @@
     <sys:String x:Key="Menu_Manage_Baseline_AutoLoad">_Carregar automaticamente ao abrir projeto</sys:String>
 
     <!-- Menu Exibir -->
-    <sys:String x:Key="Menu_View">_Exibir</sys:String>
+    <sys:String x:Key="Menu_View">_Exibir Tela</sys:String>
+    <sys:String x:Key="Menu_ViewSchedule">Exibir _Cronograma</sys:String>
+    <sys:String x:Key="Ribbon_Main">Principal</sys:String>
+    <sys:String x:Key="Ribbon_Edit">Editar</sys:String>
+    <sys:String x:Key="Ribbon_Schedule">Exibir Cronograma</sys:String>
+    <sys:String x:Key="Menu_Sched_Zoom">_Zoom...</sys:String>
+    <sys:String x:Key="Menu_Sched_Magnifier">_Lupa do Gantt</sys:String>
+    <sys:String x:Key="Menu_Sched_Layout">Alternar _layout (grade/Gantt)</sys:String>
+    <sys:String x:Key="Menu_Sched_OrgH">Barra da estimativa _original</sys:String>
+    <sys:String x:Key="Menu_Sched_DailyPercent">% de conclusão _diário</sys:String>
+    <sys:String x:Key="Menu_Sched_DayHeader">Cabeçalho por _dia</sys:String>
     <sys:String x:Key="Menu_View_Gantt">G_antt</sys:String>
     <sys:String x:Key="Menu_View_Sprint">_Sprint e Caminho crítico...</sys:String>
     <sys:String x:Key="Menu_View_Sfp">S_PF...</sys:String>
@@ -413,7 +423,7 @@
     <sys:String x:Key="Col_Start">Início</sys:String>
     <sys:String x:Key="Col_Finish">Fim</sys:String>
     <sys:String x:Key="Col_PercentComplete">% Compl.</sys:String>
-    <sys:String x:Key="Col_DailyPercent">%Daily</sys:String>
+    <sys:String x:Key="Col_DailyPercent">%Dai</sys:String>
     <sys:String x:Key="Col_DailyPercentTip">% esperado até hoje (baseline pela agenda: Início + HH até a data). Destaque: vermelho = atrasada, verde = adiantada.</sys:String>
     <sys:String x:Key="Main_DailyToggleTip">Mostrar/ocultar a coluna %Daily (% esperado até hoje)</sys:String>
     <sys:String x:Key="ColTip_ID">ID — identificador da atividade; clique para editar o vínculo com o DevOps.</sys:String>
@@ -1693,7 +1703,10 @@
     <sys:String x:Key="Banner_Process">Processo: {0}</sys:String>
     <sys:String x:Key="Banner_ReadOnly">🔒 Somente leitura</sys:String>
     <sys:String x:Key="Main_ReadOnlyBlocked">Este cronograma está em SOMENTE LEITURA — o Export/Sincronizar no DevOps está bloqueado. Para liberar, edite o projeto na configuração do Portfólio (marque/desmarque "Somente leitura") e reimporte. Edição local e Task Plan continuam livres.</sys:String>
-    <sys:String x:Key="Banner_AdmGroup">🔒 Sincroniza: grupo {0}</sys:String>
+    <sys:String x:Key="Banner_AdmGroup">Grupo Adm {0}: verificando…</sys:String>
+    <sys:String x:Key="Banner_AdmGroupWrite">✍ Grupo Adm {0}: Escrita</sys:String>
+    <sys:String x:Key="Banner_AdmGroupRead">🔒 Grupo Adm {0}: Leitura</sys:String>
+    <sys:String x:Key="Banner_AdmGroupFile">Grupo Adm {0}: Arquivo</sys:String>
     <sys:String x:Key="Main_AdmGroupBlocked">Somente os membros do grupo administrador do NX "{0}" podem sincronizar no DevOps. Seu usuário não está nesse grupo. Peça para ser incluído no grupo (ou ajuste o campo Adm_NX do work item Project) e reimporte. Edição local e Task Plan continuam livres.</sys:String>
     <sys:String x:Key="About_Company">Empresa</sys:String>
     <sys:String x:Key="About_GitHubHeader">Projeto no GitHub</sys:String>
@@ -2133,7 +2146,9 @@
     <sys:String x:Key="TaskPlan_AiIncludeNoPlan">Abra ou crie uma planilha antes de incluir tasks com IA.</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeRunning">Consultando a IA para incluir as tasks...</sys:String>
     <sys:String x:Key="TaskPlan_AiIncludeDone">IA: {0} task(s) incluída(s), {1} já existia(m), {2} sem Story correspondente.</sys:String>
+    <sys:String x:Key="TaskPlan_AiIncludeNewStoryHint">As Story(ies) citadas não existem com esse nome — marque "Story nova" e informe a Feature para criá-las.</sys:String>
     <sys:String x:Key="TaskPlan_AiFind">Consultar task</sys:String>
+    <sys:String x:Key="TaskPlan_AiClearLog">Limpar</sys:String>
     <sys:String x:Key="TaskPlan_AiFindTip">A IA localiza na planilha a(s) atividade(s) descrita(s) no texto e seleciona a(s) linha(s) na grade.</sys:String>
     <sys:String x:Key="TaskPlan_AiFindDone">IA: {0} linha(s) encontrada(s) e selecionada(s) na planilha.</sys:String>
     <sys:String x:Key="TaskPlan_AiFindNone">IA: nenhuma linha da planilha corresponde ao texto.</sys:String>
