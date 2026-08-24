@@ -45,6 +45,7 @@
     <sys:String x:Key="Setup_Step1Success">✓ .NET 10 Desktop Runtime installed successfully.</sys:String>
     <sys:String x:Key="Setup_Step1Fail">Failed to install .NET automatically: {0}&#10;Download manually at: {1}</sys:String>
 
+    <sys:String x:Key="Setup_ClosingApp">Closing the running NXProject (to release files)...</sys:String>
     <sys:String x:Key="Setup_InstallingBase">Installing runtime and base libraries...</sys:String>
     <sys:String x:Key="Setup_CheckingLatest">Checking the latest NXProject version...</sys:String>
     <sys:String x:Key="Setup_CannotGetLatest">Could not get the latest NXProject version. Check your internet connection and try again.</sys:String>

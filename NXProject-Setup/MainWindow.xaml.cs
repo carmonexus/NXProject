@@ -282,6 +282,11 @@ public partial class MainWindow : Window
     {
         try
         {
+            // O NXProject pode estar aberto e segurando DLLs (ex.: Accessibility.dll) em memória,
+            // fazendo a cópia falhar com "being used by another process". Encerra antes de copiar.
+            Step2StatusText.Text = App.Str("Setup_ClosingApp");
+            await Task.Run(StopRunningNxProject);
+
             Directory.CreateDirectory(_installDir);
 
             Step2StatusText.Text = App.Str("Setup_InstallingBase");
@@ -342,6 +347,26 @@ public partial class MainWindow : Window
         {
             Step2Button.IsEnabled = true;
         }
+    }
+
+    // Encerra qualquer NXProject.Community em execução (o próprio app instalado que pode estar
+    // aberto), para liberar as DLLs antes de sobrescrever os arquivos na atualização.
+    private static void StopRunningNxProject()
+    {
+        try
+        {
+            var procs = System.Diagnostics.Process.GetProcessesByName("NXProject.Community");
+            foreach (var p in procs)
+            {
+                try { p.Kill(true); p.WaitForExit(5000); }
+                catch { /* já saiu / sem permissão: segue e tenta copiar mesmo assim */ }
+                finally { p.Dispose(); }
+            }
+            // Aguarda o SO liberar os handles das DLLs após o processo sair.
+            if (procs.Length > 0)
+                System.Threading.Thread.Sleep(500);
+        }
+        catch { /* não bloquear a instalação por falha ao listar/matar processos */ }
     }
 
     private static bool TryStart(string exePath, string? args = null)
