@@ -30,6 +30,7 @@ internal static class Program
         ("Cronograma: DevOps nao aceita duracao zero como marco local", ScheduleDevOpsZeroDurationIsIgnored),
         ("Cronograma: resumo soma HH rateado (OriginalEstimated), nao span do calendario", SummaryHoursUseRatedOriginalEstimateNotCalendarSpan),
         ("Import TFS: task fechada nao dobra HH Original dentro do HH Atual", ClosedTaskDoesNotDoubleOriginalIntoCurrent),
+        ("Import TFS: folha encerrada nao herda esforco como restante (import principal)", ImportClosedLeafHasNoRemainingHours),
         ("Cronograma: ID negativo NoDevOps aparece como interno", NoDevOpsNegativeTfsIdDisplaysAsInternal),
         ("Cronograma: DevOps pendente continua com ID interno", PendingDevOpsCreateDisplaysAsInternal),
         ("Cronograma: DevOps aceita predecessor I apenas se I tambem for DevOps", DevOpsPredecessorAcceptsInternalDevOpsOnly),
@@ -921,6 +922,26 @@ internal static class Program
         }
         AssertEqual(40.0, new TaskViewModel(story).DurationHours,
             "Resumo de tasks fechadas deve somar CompletedWork (40), nao dobrar com o Original (80).");
+    }
+
+    // Regressao do import principal (BuildStory): a folha encerrada sem RemainingWork explicito
+    // nao pode herdar o esforco estimado como "restante" — senao AbsorbRemaining o soma no HH
+    // Atual (CompletedWork) e dobra (ex.: 30 vira 60). Trava a regra ResolveImportRemainingHours.
+    private static void ImportClosedLeafHasNoRemainingHours()
+    {
+        // Encerrada sem RemainingWork explicito: restante = null (nao o estimado de 30).
+        if (TfsImportService.ResolveImportRemainingHours(remainingWork: null, plannedHours: 30, isClosed: true) != null)
+            throw new InvalidOperationException("Folha encerrada sem RemainingWork nao tem restante (evita dobrar o HH Atual).");
+
+        // Encerrada com RemainingWork explicito: respeita o valor informado.
+        AssertEqual(5.0,
+            TfsImportService.ResolveImportRemainingHours(5, 30, true) ?? -1,
+            "Folha encerrada com RemainingWork explicito usa o valor informado.");
+
+        // Em andamento/nova: restante = valor planejado (RemainingWork ou esforco).
+        AssertEqual(30.0,
+            TfsImportService.ResolveImportRemainingHours(null, 30, false) ?? -1,
+            "Folha em andamento usa o HH planejado como restante.");
     }
 
     private static void ScheduleDevOpsMilestoneAcceptsOnlyZeroDuration()

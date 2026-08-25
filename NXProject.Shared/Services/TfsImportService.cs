@@ -2756,7 +2756,7 @@ namespace NXProject.Services
             // Item encerrado sem HH Restante explícito NÃO tem restante: o esforço já está no
             // HH Atual (CompletedWork). Usar o estimado como restante contaria as horas duas
             // vezes (ex.: Completed 30 + Estimado 30 => 60). Ver ResolveTaskScheduleHours.
-            var restanteHours = IsClosedState(effectiveState) ? (remainingHours ?? 0.0) : durationHours;
+            var restanteHours = ResolveImportRemainingHours(remainingHours, durationHours, IsClosedState(effectiveState)) ?? 0.0;
             // Duração total = HH Atual + HH Restante.
             var totalDurationHours = (currentHoursRaw ?? 0) + restanteHours;
 
@@ -2781,7 +2781,7 @@ namespace NXProject.Services
                 Finish = finish,
                 // Encerrada: HH Restante = remaining explícito (0 se vazio), nunca o estimado —
                 // senão o AbsorbRemainingHoursWhenComplete somaria o estimado no HH Atual e dobraria.
-                EstimatedHours = IsClosedState(effectiveState) ? remainingHours : hours,
+                EstimatedHours = ResolveImportRemainingHours(remainingHours, hours, IsClosedState(effectiveState)),
                 OriginalEstimatedHours = ReadDouble(item, ctx.OriginalHoursRef) is { } origH && origH > 0 ? origH : null,
                 PercentComplete = percentComplete,
                 TfsId = item.Id,
@@ -3531,6 +3531,16 @@ namespace NXProject.Services
                 .OrderByDescending(a => a.Hours)
                 .ToList();
         }
+
+        /// <summary>
+        /// HH Restante (EstimatedHours) de um item no import principal (BuildStory).
+        /// Item encerrado sem RemainingWork explícito NÃO tem restante (retorna null): o esforço
+        /// já está no HH Atual (CompletedWork); usar o estimado como restante contaria as horas
+        /// duas vezes (o AbsorbRemainingHoursWhenComplete somaria o estimado no HH Atual). Em
+        /// andamento/nova, o restante é o valor planejado (RemainingWork ou esforço).
+        /// </summary>
+        public static double? ResolveImportRemainingHours(double? remainingWork, double? plannedHours, bool isClosed)
+            => isClosed ? remainingWork : plannedHours;
 
         /// <summary>
         /// HH de uma Task do DevOps para o cronograma: (Atual, Restante).
