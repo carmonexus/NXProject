@@ -2355,6 +2355,15 @@ namespace NXProject.Views
             var process = (DataContext as MainViewModel)?.Project?.DevOpsProcess;
             if (isDevOps && !string.IsNullOrWhiteSpace(process))
                 ownerText += "   •   " + AppStrings.Get("Banner_Process", process);
+            // Calendário em uso (afeta o cálculo de duração/datas): Geral (settings),
+            // Cronograma (embutido no .nxp) ou Erro (falha ao ler → padrão 8h).
+            var calKey = ProjectCalendarService.Origin switch
+            {
+                ProjectCalendarService.CalendarOrigin.Schedule => "Banner_CalSchedule",
+                ProjectCalendarService.CalendarOrigin.Error    => "Banner_CalError",
+                _                                              => "Banner_CalGeneral"
+            };
+            ownerText += "   •   " + AppStrings.Get(calKey, ProjectCalendarService.WorkingHoursPerDay.ToString("0.#"));
             // Grupo administrador do NX (Adm_NX): substitui o antigo "Somente leitura". Mostra o
             // grupo e se VOCÊ está nele (escrita) ou não (leitura) — checagem ao vivo, cacheada.
             var vmBanner = DataContext as MainViewModel;

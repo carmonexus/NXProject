@@ -28,6 +28,7 @@ internal static class Program
         ("Cronograma: No DevOps aceita duracao zero como marco", ScheduleNoDevOpsZeroDurationCreatesMilestone),
         ("Cronograma: Marco-Devops aceita somente duracao zero", ScheduleDevOpsMilestoneAcceptsOnlyZeroDuration),
         ("Cronograma: DevOps nao aceita duracao zero como marco local", ScheduleDevOpsZeroDurationIsIgnored),
+        ("Cronograma: resumo soma HH rateado (OriginalEstimated), nao span do calendario", SummaryHoursUseRatedOriginalEstimateNotCalendarSpan),
         ("Cronograma: ID negativo NoDevOps aparece como interno", NoDevOpsNegativeTfsIdDisplaysAsInternal),
         ("Cronograma: DevOps pendente continua com ID interno", PendingDevOpsCreateDisplaysAsInternal),
         ("Cronograma: DevOps aceita predecessor I apenas se I tambem for DevOps", DevOpsPredecessorAcceptsInternalDevOpsOnly),
@@ -834,6 +835,48 @@ internal static class Program
         AssertEqual(finish, task.Finish, "Atividade DevOps deve manter o fim original.");
         if (task.IsMilestone)
             throw new InvalidOperationException("Atividade DevOps nao deve virar milestone local com duracao zero.");
+    }
+
+    // Regressao do "duracao louca" (699h): um resumo cujas folhas so tem
+    // OriginalEstimatedHours (HH veio do rateio; CurrentHours=EstimatedHours=0) deve
+    // somar essas horas rateadas, e NAO o span do calendario entre Start e Finish.
+    private static void SummaryHoursUseRatedOriginalEstimateNotCalendarSpan()
+    {
+        var start = new DateTime(2026, 8, 12);
+        var finish = new DateTime(2026, 8, 31); // intervalo largo de proposito
+        var story = new ProjectTask
+        {
+            Id = 2200,
+            Name = "Story rateada",
+            TfsType = "Story",
+            Level = 0,
+            IsSummary = true,
+            Start = start,
+            Finish = finish
+        };
+        // Tres tasks fechadas sem HH do DevOps, so com a fracao do rateio.
+        foreach (var i in new[] { 1, 2, 3 })
+        {
+            story.Children.Add(new ProjectTask
+            {
+                Id = 2200 + i,
+                Name = "Task rateada " + i,
+                TfsType = "Task",
+                Parent = story,
+                Level = 1,
+                Start = start,
+                Finish = finish,
+                CurrentHours = 0,
+                EstimatedHours = 0,
+                OriginalEstimatedHours = 12.333333333333334
+            });
+        }
+
+        var vm = new TaskViewModel(story);
+
+        // 3 x 12,3333 = 37h (rateio), nao ~440h de span do calendario.
+        AssertEqual(37.0, Math.Round(vm.DurationHours, 3),
+            "Resumo deve somar OriginalEstimatedHours das folhas, nao o span do calendario.");
     }
 
     private static void ScheduleDevOpsMilestoneAcceptsOnlyZeroDuration()

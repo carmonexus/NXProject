@@ -17,6 +17,12 @@ namespace NXProject.Services
 
         public static ProjectCalendar Current { get; private set; } = new();
 
+        /// <summary>Origem do calendário ativo, para alertar no banner do cronograma.</summary>
+        public enum CalendarOrigin { General, Schedule, Error }
+
+        /// <summary>Qual calendário está em uso: Geral (settings), Cronograma (.nxp) ou Erro (padrão 8h).</summary>
+        public static CalendarOrigin Origin { get; private set; } = CalendarOrigin.General;
+
         public static string GetCalendarPath(string storageKey = "NXProject.Community")
         {
             var dir = Path.Combine(
@@ -34,15 +40,19 @@ namespace NXProject.Services
                 {
                     Current = new ProjectCalendar();
                     Save(Current, storageKey);
+                    Origin = CalendarOrigin.General;
                     return Current;
                 }
 
                 var json = File.ReadAllText(path);
                 Current = Normalize(JsonSerializer.Deserialize<ProjectCalendar>(json));
+                Origin = CalendarOrigin.General;
             }
             catch
             {
+                // Falha ao ler/interpretar o calendário geral → cai no padrão 8h (alerta "Erro").
                 Current = new ProjectCalendar();
+                Origin = CalendarOrigin.Error;
             }
 
             return Current;
@@ -60,7 +70,11 @@ namespace NXProject.Services
         /// Define o calendário ativo em memória (sem gravar em disco). Usado ao
         /// abrir um cronograma que traz calendário próprio embutido no .nxp.
         /// </summary>
-        public static void SetCurrent(ProjectCalendar calendar) => Current = Normalize(calendar);
+        public static void SetCurrent(ProjectCalendar calendar)
+        {
+            Current = Normalize(calendar);
+            Origin = CalendarOrigin.Schedule;
+        }
 
         /// <summary>Cópia profunda de um calendário (para copiar Geral ↔ Cronograma).</summary>
         public static ProjectCalendar Clone(ProjectCalendar source)

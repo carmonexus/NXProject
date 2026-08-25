@@ -871,6 +871,9 @@
     <sys:String x:Key="Banner_Owner">| Owner: {0}</sys:String>
     <sys:String x:Key="Banner_Source">Data source: {0}</sys:String>
     <sys:String x:Key="Banner_Process">Process: {0}</sys:String>
+    <sys:String x:Key="Banner_CalGeneral">📅 Calendar: General ({0}h/day)</sys:String>
+    <sys:String x:Key="Banner_CalSchedule">📅 Calendar: Schedule ({0}h/day)</sys:String>
+    <sys:String x:Key="Banner_CalError">⚠ Calendar: default ({0}h/day) — failed to read General</sys:String>
     <sys:String x:Key="Banner_ReadOnly">🔒 Read-only</sys:String>
     <sys:String x:Key="Main_ReadOnlyBlocked">This schedule is READ-ONLY — Export/Sync to DevOps is blocked. To unlock, edit the project in the Portfolio config (toggle "Read-only") and re-import. Local editing and Task Plan stay free.</sys:String>
     <sys:String x:Key="Banner_AdmGroup">Admin group {0}: checking…</sys:String>

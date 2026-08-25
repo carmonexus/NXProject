@@ -1701,6 +1701,9 @@
     <sys:String x:Key="About_VersioningExample">Exemplo: 1.0.0 = versao principal 1, release 0 e correcao de bugs 0.</sys:String>
     <sys:String x:Key="Banner_Source">Fonte de dados: {0}</sys:String>
     <sys:String x:Key="Banner_Process">Processo: {0}</sys:String>
+    <sys:String x:Key="Banner_CalGeneral">📅 Calendário: Geral ({0}h/dia)</sys:String>
+    <sys:String x:Key="Banner_CalSchedule">📅 Calendário: Cronograma ({0}h/dia)</sys:String>
+    <sys:String x:Key="Banner_CalError">⚠ Calendário: padrão ({0}h/dia) — falha ao ler o Geral</sys:String>
     <sys:String x:Key="Banner_ReadOnly">🔒 Somente leitura</sys:String>
     <sys:String x:Key="Main_ReadOnlyBlocked">Este cronograma está em SOMENTE LEITURA — o Export/Sincronizar no DevOps está bloqueado. Para liberar, edite o projeto na configuração do Portfólio (marque/desmarque "Somente leitura") e reimporte. Edição local e Task Plan continuam livres.</sys:String>
     <sys:String x:Key="Banner_AdmGroup">Grupo Adm {0}: verificando…</sys:String>

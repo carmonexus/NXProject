@@ -1739,9 +1739,14 @@ namespace NXProject.ViewModels
             {
                 var cur = task.CurrentHours ?? 0;
                 var est = task.EstimatedHours ?? 0;
-                return (cur > 0 || est > 0)
-                    ? cur + est
-                    : ProjectCalendarService.CountWorkingHours(task.Start, task.Finish);
+                if (cur > 0 || est > 0)
+                    return cur + est;
+                // Sem HH do DevOps: usa o que o rateio distribuiu (OriginalEstimatedHours).
+                // Precisa espelhar o getter DurationHours; sem isto o resumo somava o span do
+                // calendário (ex.: 699h) em vez das horas reais rateadas (~111h). [bug duração]
+                if (task.OriginalEstimatedHours is > 0)
+                    return task.OriginalEstimatedHours.Value;
+                return ProjectCalendarService.CountWorkingHours(task.Start, task.Finish);
             }
             return task.Children.Sum(SumTaskHours);
         }
