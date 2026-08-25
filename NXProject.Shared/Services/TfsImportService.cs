@@ -3528,6 +3528,27 @@ namespace NXProject.Services
                 .ToList();
         }
 
+        /// <summary>
+        /// HH de uma Task do DevOps para o cronograma: (Atual, Restante).
+        /// Fechada (% >= 100): Restante = 0 e o esforço vem do CompletedWork (ou do Original,
+        /// se não houve apontamento). O HH Original NÃO pode virar "restante" numa task fechada:
+        /// o AbsorbRemainingHoursWhenComplete somaria o Original em cima do Atual e dobraria as
+        /// horas (ex.: Completed 30 + Original 30 => 60). Em andamento/nova, mantém Original como
+        /// restante e Completed como atual.
+        /// </summary>
+        public static (double? Current, double? Estimated) ResolveTaskScheduleHours(
+            double originalEstimate, double completedWork, double percentComplete)
+        {
+            bool closed = percentComplete >= 100;
+            double? estimated = closed
+                ? (double?)null
+                : (originalEstimate > 0 ? originalEstimate : (double?)null);
+            double? current = completedWork > 0
+                ? completedWork
+                : (closed && originalEstimate > 0 ? originalEstimate : (double?)null);
+            return (current, estimated);
+        }
+
         /// <summary>Converte a descrição HTML do work item em texto puro (para exibir em grade/planilha).
         /// O HTML original permanece no DevOps — este texto é só para leitura.</summary>
         public static string ToPlainTextPublic(string? html) => ToPlainText(html);

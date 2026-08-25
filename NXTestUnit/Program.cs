@@ -29,6 +29,7 @@ internal static class Program
         ("Cronograma: Marco-Devops aceita somente duracao zero", ScheduleDevOpsMilestoneAcceptsOnlyZeroDuration),
         ("Cronograma: DevOps nao aceita duracao zero como marco local", ScheduleDevOpsZeroDurationIsIgnored),
         ("Cronograma: resumo soma HH rateado (OriginalEstimated), nao span do calendario", SummaryHoursUseRatedOriginalEstimateNotCalendarSpan),
+        ("Import TFS: task fechada nao dobra HH Original dentro do HH Atual", ClosedTaskDoesNotDoubleOriginalIntoCurrent),
         ("Cronograma: ID negativo NoDevOps aparece como interno", NoDevOpsNegativeTfsIdDisplaysAsInternal),
         ("Cronograma: DevOps pendente continua com ID interno", PendingDevOpsCreateDisplaysAsInternal),
         ("Cronograma: DevOps aceita predecessor I apenas se I tambem for DevOps", DevOpsPredecessorAcceptsInternalDevOpsOnly),
@@ -877,6 +878,49 @@ internal static class Program
         // 3 x 12,3333 = 37h (rateio), nao ~440h de span do calendario.
         AssertEqual(37.0, Math.Round(vm.DurationHours, 3),
             "Resumo deve somar OriginalEstimatedHours das folhas, nao o span do calendario.");
+    }
+
+    // Regressao do "rateio + task" (task fechada dobrando o HH): uma Task fechada com
+    // CompletedWork=30 e OriginalEstimate=30 nao pode virar 60. O Original nao e "restante";
+    // o AbsorbRemainingHoursWhenComplete somaria Original em cima do Atual e dobraria.
+    private static void ClosedTaskDoesNotDoubleOriginalIntoCurrent()
+    {
+        // Fechada com apontamento: Atual=Completed, Restante=0 (nao 30+30).
+        var (cur, est) = TfsImportService.ResolveTaskScheduleHours(
+            originalEstimate: 30, completedWork: 30, percentComplete: 100);
+        AssertEqual(30.0, cur ?? -1, "Task fechada: HH Atual = CompletedWork (nao Completed+Original).");
+        if (est != null)
+            throw new InvalidOperationException("Task fechada nao tem HH Restante (Original nao e restante).");
+
+        // Fechada sem apontamento: usa o Original como esforco concluido.
+        var (cur2, est2) = TfsImportService.ResolveTaskScheduleHours(30, 0, 100);
+        AssertEqual(30.0, cur2 ?? -1, "Task fechada sem CompletedWork: usa o Original como Atual.");
+        if (est2 != null)
+            throw new InvalidOperationException("Task fechada sem apontamento tambem tem restante 0.");
+
+        // Em andamento: mantem Original como restante e Completed como atual.
+        var (cur3, est3) = TfsImportService.ResolveTaskScheduleHours(30, 10, 50);
+        AssertEqual(10.0, cur3 ?? -1, "Task em andamento: HH Atual = CompletedWork.");
+        AssertEqual(30.0, est3 ?? -1, "Task em andamento: HH Restante = Original.");
+
+        // Nova (0%): sem atual, restante = Original.
+        var (cur4, est4) = TfsImportService.ResolveTaskScheduleHours(30, 0, 0);
+        if (cur4 != null)
+            throw new InvalidOperationException("Task nova nao tem HH Atual.");
+        AssertEqual(30.0, est4 ?? -1, "Task nova: HH Restante = Original.");
+
+        // Resumo com duas tasks fechadas (30 e 10) deve dar 40 no cronograma, nao 80.
+        var story = new ProjectTask { Id = 3300, Name = "Story", TfsType = "Story", IsSummary = true,
+            Start = new DateTime(2026, 8, 4), Finish = new DateTime(2026, 8, 10) };
+        foreach (var (orig, comp, id) in new[] { (30.0, 30.0, 3301), (10.0, 10.0, 3302) })
+        {
+            var (c, e) = TfsImportService.ResolveTaskScheduleHours(orig, comp, 100);
+            story.Children.Add(new ProjectTask { Id = id, Name = "Task " + id, TfsType = "Task",
+                Parent = story, PercentComplete = 100, CurrentHours = c, EstimatedHours = e,
+                Start = story.Start, Finish = story.Finish });
+        }
+        AssertEqual(40.0, new TaskViewModel(story).DurationHours,
+            "Resumo de tasks fechadas deve somar CompletedWork (40), nao dobrar com o Original (80).");
     }
 
     private static void ScheduleDevOpsMilestoneAcceptsOnlyZeroDuration()

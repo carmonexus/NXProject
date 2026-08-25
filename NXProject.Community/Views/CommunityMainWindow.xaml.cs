@@ -1324,6 +1324,8 @@ namespace NXProject.Views
             foreach (var r in rows)
             {
                 if (existingIds.Contains(r.TaskId)) continue;
+                var (curH, estH) = Services.TfsImportService.ResolveTaskScheduleHours(
+                    r.EstimatedHours, r.CompletedHours, r.PercentComplete);
                 var pt = new NXProject.Models.ProjectTask
                 {
                     // Contador central do projeto — FlatTasks pode estar desatualizado
@@ -1335,8 +1337,10 @@ namespace NXProject.Views
                     Parent           = story,
                     TfsId            = r.TaskId,
                     TfsType          = "Task",
-                    EstimatedHours   = r.EstimatedHours > 0 ? r.EstimatedHours : null,
-                    CurrentHours     = r.CompletedHours > 0 ? r.CompletedHours : null,
+                    // Task fechada (100%): restante = 0 e o esforço vem do CompletedWork — o HH
+                    // Original não vira "restante" (senão AbsorbRemaining dobraria). Ver helper.
+                    EstimatedHours   = estH,
+                    CurrentHours     = curH,
                     PercentComplete  = r.PercentComplete,
                     Priority         = r.Priority > 0 ? r.Priority : 5,
                     TfsStackRank     = r.BacklogRank,
@@ -1449,8 +1453,12 @@ namespace NXProject.Views
                 task.Description = row.Description.Trim();
             task.TfsId = row.TaskId;
             task.TfsType = "Task";
-            task.EstimatedHours = row.EstimatedHours > 0 ? row.EstimatedHours : null;
-            task.CurrentHours = row.CompletedHours > 0 ? row.CompletedHours : null;
+            // Task fechada (100%): restante = 0 (o esforço real já está em CompletedWork);
+            // não deixar o HH Original ser absorvido no Atual (senão dobra). Ver helper.
+            var (curH, estH) = Services.TfsImportService.ResolveTaskScheduleHours(
+                row.EstimatedHours, row.CompletedHours, row.PercentComplete);
+            task.EstimatedHours = estH;
+            task.CurrentHours = curH;
             task.PercentComplete = row.PercentComplete;
             task.Priority = row.Priority > 0 ? row.Priority : 5;
             task.TfsState = row.State;
