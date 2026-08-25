@@ -2753,10 +2753,12 @@ namespace NXProject.Services
                     ? ctx.HoursPerDay
                     : ProjectCalendarService.WorkingHoursPerDay;
 
-            // Duração total = HH Atual + HH Restante quando HH Atual disponível.
-            var totalDurationHours = currentHoursRaw is > 0
-                ? currentHoursRaw.Value + durationHours
-                : durationHours;
+            // Item encerrado sem HH Restante explícito NÃO tem restante: o esforço já está no
+            // HH Atual (CompletedWork). Usar o estimado como restante contaria as horas duas
+            // vezes (ex.: Completed 30 + Estimado 30 => 60). Ver ResolveTaskScheduleHours.
+            var restanteHours = IsClosedState(effectiveState) ? (remainingHours ?? 0.0) : durationHours;
+            // Duração total = HH Atual + HH Restante.
+            var totalDurationHours = (currentHoursRaw ?? 0) + restanteHours;
 
             DateTime finish = isMilestone
                 ? start
@@ -2777,7 +2779,9 @@ namespace NXProject.Services
                 IsMilestone = isMilestone,
                 Start = start,
                 Finish = finish,
-                EstimatedHours = hours,
+                // Encerrada: HH Restante = remaining explícito (0 se vazio), nunca o estimado —
+                // senão o AbsorbRemainingHoursWhenComplete somaria o estimado no HH Atual e dobraria.
+                EstimatedHours = IsClosedState(effectiveState) ? remainingHours : hours,
                 OriginalEstimatedHours = ReadDouble(item, ctx.OriginalHoursRef) is { } origH && origH > 0 ? origH : null,
                 PercentComplete = percentComplete,
                 TfsId = item.Id,
