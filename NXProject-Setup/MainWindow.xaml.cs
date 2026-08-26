@@ -479,6 +479,12 @@ public partial class MainWindow : Window
             var shortcutPath = Path.Combine(desktop, "NXProject.lnk");
             var workingDir = Path.GetDirectoryName(exePath) ?? "";
 
+            // Na atualização o atalho pode já existir (apontando para o exe da versão anterior).
+            // Em vez de acumular/deixar um atalho velho, apaga o antigo e recria apontando para o
+            // exe atual — fica sempre um único atalho, com o alvo/ícone corretos.
+            try { if (File.Exists(shortcutPath)) File.Delete(shortcutPath); }
+            catch { /* atalho em uso/bloqueado: o Save abaixo ainda tenta sobrescrever */ }
+
             var script = $$"""
                 $ws = New-Object -ComObject WScript.Shell
                 $sc = $ws.CreateShortcut('{{Escape(shortcutPath)}}')
