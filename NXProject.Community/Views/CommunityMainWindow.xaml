@@ -146,7 +146,7 @@
                 <TextBlock Text="&#x1F4C4;" FontSize="14"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding ClearProjectCommand}" ToolTip="{DynamicResource Toolbar_ClearProject}">
-                <TextBlock Text="{DynamicResource Main_Clear}" FontSize="11" FontWeight="SemiBold"/>
+                <TextBlock Text="&#x2716;" FontSize="14" FontWeight="Bold" Foreground="#C0392B"/>
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding OpenProjectCommand}" ToolTip="{DynamicResource Toolbar_Open}">
                 <TextBlock Text="&#x1F4C2;" FontSize="14"/>
@@ -171,44 +171,51 @@
                 </Viewbox>
             </Button>
 
-            <!-- Sincronizar com Azure DevOps -->
+            <!-- Sincronizar com Azure DevOps: disquete (salvar) + nome TFS juntos -->
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnSyncTfsToolbarClick"
                     ToolTip="{DynamicResource Main_SyncTip}">
-                <Viewbox Width="28" Height="22" Stretch="Uniform">
-                    <Canvas Width="64" Height="52">
-                        <Rectangle Canvas.Left="2" Canvas.Top="8" Width="39" Height="32" RadiusX="5" RadiusY="5"
-                                   Fill="#107C10" Stroke="#0B5E0B" StrokeThickness="2"/>
-                        <TextBlock Canvas.Left="7" Canvas.Top="9"
-                                   Text="TFS" Foreground="White" FontSize="21"
-                                   FontWeight="Black" FontFamily="Segoe UI"/>
-                        <Rectangle Canvas.Left="38" Canvas.Top="11" Width="23" Height="29" RadiusX="2" RadiusY="2"
-                                   Fill="#F8FAFC" Stroke="#0B5E0B" StrokeThickness="2.4"/>
-                        <Rectangle Canvas.Left="42" Canvas.Top="15" Width="12" Height="7"
-                                   Fill="#2B6CB0" Stroke="#0B5E0B" StrokeThickness="1"/>
-                        <Rectangle Canvas.Left="56" Canvas.Top="15" Width="3" Height="7" Fill="#0B5E0B"/>
-                        <Rectangle Canvas.Left="43" Canvas.Top="28" Width="13" Height="8" RadiusX="1" RadiusY="1"
-                                   Fill="#E8F1FB" Stroke="#0B5E0B" StrokeThickness="1"/>
-                    </Canvas>
-                </Viewbox>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="20" Height="20" Stretch="Uniform">
+                        <Canvas Width="56" Height="56">
+                            <!-- Corpo do disquete (canto superior direito recortado) -->
+                            <Path Fill="#107C10" Stroke="#0B5E0B" StrokeThickness="2.5" StrokeLineJoin="Round"
+                                  Data="M 6,6 L 40,6 L 50,16 L 50,50 L 6,50 Z"/>
+                            <!-- Obturador metálico (topo) com a trava -->
+                            <Rectangle Canvas.Left="16" Canvas.Top="6" Width="24" Height="15"
+                                       Fill="#E8F1FB" Stroke="#0B5E0B" StrokeThickness="1.5"/>
+                            <Rectangle Canvas.Left="31" Canvas.Top="8" Width="6" Height="11" Fill="#0B5E0B"/>
+                            <!-- Etiqueta branca (base) -->
+                            <Rectangle Canvas.Left="13" Canvas.Top="28" Width="30" Height="20" RadiusX="1.5" RadiusY="1.5"
+                                       Fill="#F8FAFC" Stroke="#0B5E0B" StrokeThickness="1.5"/>
+                            <Rectangle Canvas.Left="17" Canvas.Top="33" Width="22" Height="2.6" Fill="#9AA7B4"/>
+                            <Rectangle Canvas.Left="17" Canvas.Top="39" Width="22" Height="2.6" Fill="#9AA7B4"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="TFS" Foreground="#107C10" FontSize="12" FontWeight="Bold"
+                               FontFamily="Segoe UI" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
             </Button>
 
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnOpenSelectedTaskInDevOpsClick" ToolTip="{DynamicResource Main_OpenInDevOps}">
-                <Viewbox Width="28" Height="16" Stretch="Uniform">
-                    <Canvas Width="100" Height="56">
-                        <!-- Laço esquerdo -->
-                        <Path Stroke="#4A6FA5" StrokeThickness="7" Fill="Transparent"
-                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                              Data="M 50,28 C 50,10 30,2 18,10 C 6,18 6,38 18,46 C 30,54 50,46 50,28"/>
-                        <!-- Laço direito -->
-                        <Path Stroke="#4A6FA5" StrokeThickness="7" Fill="Transparent"
-                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                              Data="M 50,28 C 50,10 70,2 82,10 C 94,18 94,38 82,46 C 70,54 50,46 50,28"/>
-                        <!-- Seta topo esquerdo -->
-                        <Polygon Points="22,4 30,8 22,14" Fill="#4A6FA5"/>
-                        <!-- Seta baixo direito -->
-                        <Polygon Points="78,42 70,46 78,52" Fill="#4A6FA5"/>
-                    </Canvas>
-                </Viewbox>
+                <!-- Olho (abrir/ver no TFS) + nome TFS juntos -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="26" Height="16" Stretch="Uniform">
+                        <Canvas Width="100" Height="56">
+                            <!-- Contorno amendoado do olho -->
+                            <Path Stroke="#4A6FA5" StrokeThickness="6" Fill="#F8FAFC"
+                                  StrokeLineJoin="Round"
+                                  Data="M 8,28 Q 50,2 92,28 Q 50,54 8,28 Z"/>
+                            <!-- Íris -->
+                            <Ellipse Canvas.Left="35" Canvas.Top="13" Width="30" Height="30" Fill="#4A6FA5"/>
+                            <!-- Pupila -->
+                            <Ellipse Canvas.Left="44" Canvas.Top="22" Width="12" Height="12" Fill="#12233B"/>
+                            <!-- Brilho -->
+                            <Ellipse Canvas.Left="46" Canvas.Top="24" Width="4" Height="4" Fill="White"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="TFS" Foreground="#4A6FA5" FontSize="12" FontWeight="Bold"
+                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
             </Button>
 
             <!-- Ajustar sprints fora do período: bandeira de chegada + seta de ajuste -->
