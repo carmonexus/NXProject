@@ -923,6 +923,95 @@ namespace NXProject.Views
                 OpenTaskInDevOps(m);
         }
 
+        // Abre a janela de Consultas (Shared Queries do DevOps executadas dentro do NX).
+        private void OnTfsQueryClick(object sender, RoutedEventArgs e)
+        {
+            var conn = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(conn.OrganizationUrl) || string.IsNullOrWhiteSpace(conn.TeamProject)
+                || string.IsNullOrWhiteSpace(conn.PersonalAccessToken))
+            {
+                MessageBox.Show(this, AppStrings.Get("Query_LoadError",
+                        AppStrings.Get("Menu_View_DevOpsConfig")),
+                    "NXProject", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            // Passa os TfsIds do cronograma aberto + a ação de focar a task, para que a lista
+            // da query mostre o botão "ver no cronograma" nas linhas que já estão no plano.
+            var scheduleIds = (DataContext as MainViewModel)?.FlatTasks
+                .Where(t => t.Model.TfsId is > 0)
+                .Select(t => t.Model.TfsId!.Value)
+                .ToHashSet() ?? new System.Collections.Generic.HashSet<int>();
+
+            new NXProject.Views.TfsQueryWindow(scheduleIds, FocusScheduleTaskByTfsId) { Owner = this }.Show();
+        }
+
+        // Abre a visão de Backlog (Epic→Feature→Story→Task ordenado pela prioridade do DevOps).
+        private void OnTfsBacklogClick(object sender, RoutedEventArgs e)
+        {
+            var conn = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(conn.OrganizationUrl) || string.IsNullOrWhiteSpace(conn.TeamProject)
+                || string.IsNullOrWhiteSpace(conn.PersonalAccessToken))
+            {
+                MessageBox.Show(this, AppStrings.Get("Query_LoadError", AppStrings.Get("Menu_View_DevOpsConfig")),
+                    "NXProject", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            // Raiz: o root do cronograma aberto (se veio do DevOps); senão o ID raiz configurado.
+            var rootId = (DataContext as MainViewModel)?.Project?.DevOpsRootWorkItemId ?? 0;
+            if (rootId <= 0) rootId = conn.RootWorkItemId;
+            if (rootId <= 0)
+            {
+                MessageBox.Show(this, AppStrings.Get("Backlog_NoRoot"),
+                    "NXProject", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var scheduleIds = (DataContext as MainViewModel)?.FlatTasks
+                .Where(t => t.Model.TfsId is > 0)
+                .Select(t => t.Model.TfsId!.Value)
+                .ToHashSet() ?? new System.Collections.Generic.HashSet<int>();
+
+            new NXProject.Views.TfsBacklogWindow(rootId, scheduleIds, FocusScheduleTaskByTfsId) { Owner = this }.Show();
+        }
+
+        // Abre a visão de Sprint (Taskboard: cards por estado, filtro por pessoa e cronograma).
+        private void OnTfsSprintClick(object sender, RoutedEventArgs e)
+        {
+            var conn = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
+            if (string.IsNullOrWhiteSpace(conn.OrganizationUrl) || string.IsNullOrWhiteSpace(conn.TeamProject)
+                || string.IsNullOrWhiteSpace(conn.PersonalAccessToken))
+            {
+                MessageBox.Show(this, AppStrings.Get("Query_LoadError", AppStrings.Get("Menu_View_DevOpsConfig")),
+                    "NXProject", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var vm = DataContext as MainViewModel;
+            var scheduleIds = vm?.FlatTasks
+                .Where(t => t.Model.TfsId is > 0)
+                .Select(t => t.Model.TfsId!.Value)
+                .ToHashSet() ?? new System.Collections.Generic.HashSet<int>();
+            // Sprint sugerida: a mais frequente entre as atividades do cronograma aberto.
+            var preferred = vm?.FlatTasks
+                .Where(t => !string.IsNullOrWhiteSpace(t.Model.TfsIterationPath))
+                .GroupBy(t => t.Model.TfsIterationPath!)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .FirstOrDefault();
+
+            new NXProject.Views.TfsSprintWindow(scheduleIds, FocusScheduleTaskByTfsId, preferred) { Owner = this }.Show();
+        }
+
+        // Foca (seleciona + rola até) a atividade do cronograma com o TfsId dado.
+        private void FocusScheduleTaskByTfsId(int tfsId)
+        {
+            if (DataContext is not MainViewModel vm) return;
+            var target = vm.FlatTasks.FirstOrDefault(t => t.Model.TfsId == tfsId);
+            if (target == null) return;
+            Activate();
+            vm.SelectedTask = target;
+            vm.RequestScrollToSelected?.Invoke();
+        }
+
         private void OpenTaskInDevOps(NXProject.Models.ProjectTask task)
         {
             if (task.TfsId is not > 0) return;

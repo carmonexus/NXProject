@@ -76,130 +76,106 @@
 
                 <Rectangle Width="1" Fill="#C9D3CC" Margin="4,2,10,2"/>
 
-                <!-- Ações DevOps/cronograma: ícones com legenda (como no ribbon do Excel) -->
-                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnFetchDevOpsClick"
-                        Background="#2B579A" ToolTip="{DynamicResource TaskPlan_FetchDevOpsTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F50D;" FontSize="15" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapFetch}" FontSize="10" Foreground="White"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnMergeScheduleClick"
-                        Background="#00695C" ToolTip="{DynamicResource TaskPlan_MergeTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F500;" FontSize="15" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapMerge}" FontSize="10" Foreground="White"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnLoadTaskClick"
-                        Background="#0277BD" ToolTip="{DynamicResource TaskPlan_LoadTaskTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F4CB;" FontSize="15" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapLoadTask}" FontSize="10" Foreground="White"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnRefreshTfsClick"
-                        Background="#0097A7" ToolTip="{DynamicResource TaskPlan_RefreshTfsTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F504;" FontSize="15" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapRefreshTfs}" FontSize="9" Foreground="White"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Width="64" Height="46" Margin="0,0,4,2" Click="OnOpenSelectedTfsClick"
-                        Background="#455A64" ToolTip="{DynamicResource TaskPlan_OpenSelTfsTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F517;" FontSize="14" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapOpenSelTfs}" FontSize="9" Foreground="White"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Width="64" Height="46" Margin="0,0,4,2" Click="OnReadSelectedTfsClick"
-                        Background="#01579B" ToolTip="{DynamicResource TaskPlan_ReadSelTfsTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x2B07;" FontSize="14" Foreground="White" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapReadSelTfs}" FontSize="9" Foreground="White"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Width="64" Height="46" Margin="0,0,4,2" Click="OnSaveSelectedTfsClick"
-                        Background="#1B5E20" ToolTip="{DynamicResource TaskPlan_SaveSelTfsTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x2B06;" FontSize="14" Foreground="White" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapSaveSelTfs}" FontSize="9" Foreground="White"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button x:Name="AddTfsButton" Width="60" Height="46" Margin="0,0,4,2" Click="OnAddToTfsClick"
-                        IsEnabled="False"
-                        Background="#00838F" ToolTip="{DynamicResource TaskPlan_AddTfsTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x2795;" FontSize="13" Foreground="White" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapAddTfs}" FontSize="9" Foreground="White"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnApplyScheduleClick"
-                        Background="#6A1B9A" ToolTip="{DynamicResource TaskPlan_ApplyScheduleTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F4C6;" FontSize="15" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapApply}" FontSize="10" Foreground="White"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Width="60" Height="46" Margin="0,0,4,2" Click="OnLoadAllClick"
-                        Background="#B26A00" ToolTip="{DynamicResource TaskPlan_LoadAllTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F4E5;" FontSize="15" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapLoadAll}" FontSize="10" Foreground="White"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Height="46" Width="52" Margin="0,0,4,2" Click="OnClearFiltersClick"
-                        ToolTip="{DynamicResource TaskPlan_ClearFilters}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F9F9;" FontSize="14" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapClear}" FontSize="9"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button x:Name="ReapplyFilterBtn" Height="46" Width="52" Margin="0,0,4,2"
-                        Click="OnReapplyFilterClick"
-                        ToolTip="{DynamicResource TaskPlan_ReapplyFilterTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F501;" FontSize="14" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapReapply}" FontSize="9"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button Height="46" Width="52" Margin="0,0,4,2" Click="OnSaveFilterClick"
-                        ToolTip="{DynamicResource TaskPlan_SaveFilterTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="&#x1F4BE;" FontSize="14" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapSaveFilter}" FontSize="9"
-                                   TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Button>
-                <Button x:Name="IdVisibilityBtn" Height="46" Width="52" Margin="0,0,4,2" Click="OnIdVisibilityClick"
-                        ToolTip="{DynamicResource TaskPlan_IdVisTip}">
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="IdVisibilityIcon" Text="ID" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{DynamicResource TaskPlan_CapIds}" FontSize="10"
-                                   HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <Button.ContextMenu>
-                        <ContextMenu>
+                <!-- Ações agrupadas por assunto (mesmo padrão do menu Arquivo) -->
+
+                <!-- Menu TFS: buscar/atualizar/abrir/ler/gravar/incluir e carregar do DevOps -->
+                <Menu VerticalAlignment="Center" Background="Transparent" Margin="0,0,4,2">
+                    <MenuItem Padding="10,4" Background="#2B579A" Foreground="White" FontWeight="SemiBold">
+                        <MenuItem.Header>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="&#x1F517;" FontSize="15" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource TaskPlan_TfsMenu}" FontSize="10"
+                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapFetch}" Click="OnFetchDevOpsClick"
+                                  ToolTip="{DynamicResource TaskPlan_FetchDevOpsTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F50D;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapRefreshTfs}" Click="OnRefreshTfsClick"
+                                  ToolTip="{DynamicResource TaskPlan_RefreshTfsTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F504;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapOpenSelTfs}" Click="OnOpenSelectedTfsClick"
+                                  ToolTip="{DynamicResource TaskPlan_OpenSelTfsTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F517;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapReadSelTfs}" Click="OnReadSelectedTfsClick"
+                                  ToolTip="{DynamicResource TaskPlan_ReadSelTfsTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x2B07;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapSaveSelTfs}" Click="OnSaveSelectedTfsClick"
+                                  ToolTip="{DynamicResource TaskPlan_SaveSelTfsTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x2B06;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem x:Name="AddTfsButton" Header="{DynamicResource TaskPlan_CapAddTfs}" Click="OnAddToTfsClick"
+                                  IsEnabled="False" ToolTip="{DynamicResource TaskPlan_AddTfsTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x2795;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource TaskPlan_LoadTaskLong}" Click="OnLoadTaskClick"
+                                  ToolTip="{DynamicResource TaskPlan_LoadTaskTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F4CB;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapLoadAll}" Click="OnLoadAllClick"
+                                  ToolTip="{DynamicResource TaskPlan_LoadAllTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F4E5;"/></MenuItem.Icon>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
+
+                <!-- Menu Cronograma: mesclar, aplicar e ratear HH -->
+                <Menu VerticalAlignment="Center" Background="Transparent" Margin="0,0,4,2">
+                    <MenuItem Padding="10,4" Background="#00695C" Foreground="White" FontWeight="SemiBold">
+                        <MenuItem.Header>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="&#x1F4C6;" FontSize="15" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource TaskPlan_ScheduleMenu}" FontSize="10"
+                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapMerge}" Click="OnMergeScheduleClick"
+                                  ToolTip="{DynamicResource TaskPlan_MergeTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F500;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapApply}" Click="OnApplyScheduleClick"
+                                  ToolTip="{DynamicResource TaskPlan_ApplyScheduleTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F4C6;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem x:Name="RateStoryHhButton" Header="{DynamicResource TaskPlan_RateStoryHh}"
+                                  Visibility="Collapsed" Click="OnRateStoryHhClick"
+                                  ToolTip="{DynamicResource TaskPlan_RateStoryHhTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x2696;"/></MenuItem.Icon>
+                        </MenuItem>
+                    </MenuItem>
+                </Menu>
+
+                <!-- Menu Filtros: limpar/reaplicar/salvar filtro, IDs e filtros de estado -->
+                <Menu VerticalAlignment="Center" Background="Transparent" Margin="0,0,4,2">
+                    <MenuItem Padding="10,4" Background="#455A64" Foreground="White" FontWeight="SemiBold">
+                        <MenuItem.Header>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="&#x1F9F9;" FontSize="15" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource TaskPlan_FiltersMenu}" FontSize="10"
+                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapClear}" Click="OnClearFiltersClick"
+                                  ToolTip="{DynamicResource TaskPlan_ClearFilters}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F9F9;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem x:Name="ReapplyFilterBtn" Header="{DynamicResource TaskPlan_CapReapply}" Click="OnReapplyFilterClick"
+                                  ToolTip="{DynamicResource TaskPlan_ReapplyFilterTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F501;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{DynamicResource TaskPlan_CapSaveFilter}" Click="OnSaveFilterClick"
+                                  ToolTip="{DynamicResource TaskPlan_SaveFilterTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock Text="&#x1F4BE;"/></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource TaskPlan_IdsSubMenu}" ToolTip="{DynamicResource TaskPlan_IdVisTip}" Foreground="#222">
+                            <MenuItem.Icon><TextBlock x:Name="IdVisibilityIcon" Text="ID" FontWeight="SemiBold"/></MenuItem.Icon>
                             <MenuItem x:Name="IdVisAlwaysItem" Header="{DynamicResource TaskPlan_IdVisAlways}"
                                       IsCheckable="True" IsChecked="True" Click="OnIdVisModeClick" Tag="Always"/>
                             <MenuItem x:Name="IdVisHiddenItem" Header="{DynamicResource TaskPlan_IdVisHidden}"
@@ -208,62 +184,41 @@
                                       IsCheckable="True" Click="OnIdVisModeClick" Tag="OnlyInternal"/>
                             <Separator/>
                             <MenuItem Header="{DynamicResource TaskPlan_IdVisSave}" Click="OnIdVisSaveClick"/>
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>
-                <CheckBox x:Name="EnableAiCheckBox"
-                          Content="{DynamicResource TaskPlan_EnableAI}"
-                          IsChecked="False"
-                          VerticalAlignment="Center"
-                          Margin="8,0,4,2"
-                          Checked="OnEnableAiChanged"
-                          Unchecked="OnEnableAiChanged"
-                          ToolTip="{DynamicResource TaskPlan_EnableAITip}"/>
-                <CheckBox x:Name="AutoCloseStoryCheck"
-                          Content="{DynamicResource TaskPlan_AutoCloseStory}"
-                          IsChecked="False"
-                          VerticalAlignment="Center"
-                          Margin="8,0,4,2"
-                          ToolTip="{DynamicResource TaskPlan_AutoCloseStoryTip}"/>
-                <CheckBox x:Name="OpenTasksOnlyCheckBox"
-                          Content="{DynamicResource TaskPlan_OpenTasksOnly}"
-                          IsChecked="False"
-                          VerticalAlignment="Center"
-                          Margin="8,0,4,2"
-                          Checked="OnOpenTasksOnlyChanged"
-                          Unchecked="OnOpenTasksOnlyChanged"
-                          ToolTip="{DynamicResource TaskPlan_OpenTasksOnlyTip}"/>
-                <CheckBox x:Name="ClosedTasksOnlyCheckBox"
-                          Content="{DynamicResource TaskPlan_ClosedTasksOnly}"
-                          IsChecked="False"
-                          VerticalAlignment="Center"
-                          Margin="8,0,4,2"
-                          Checked="OnClosedTasksOnlyChanged"
-                          Unchecked="OnClosedTasksOnlyChanged"
-                          ToolTip="{DynamicResource TaskPlan_ClosedTasksOnlyTip}"/>
-                <CheckBox x:Name="NoHhCheckBox"
-                          Content="{DynamicResource TaskPlan_NoHh}"
-                          IsChecked="False"
-                          VerticalAlignment="Center"
-                          Margin="8,0,4,2"
-                          Checked="OnNoHhChanged"
-                          Unchecked="OnNoHhChanged"
-                          ToolTip="{DynamicResource TaskPlan_NoHhTip}"/>
-                <Button x:Name="RateStoryHhButton"
-                        Content="{DynamicResource TaskPlan_RateStoryHh}"
-                        Visibility="Collapsed"
-                        VerticalAlignment="Center"
-                        Margin="4,0,4,2" Padding="10,2"
-                        Click="OnRateStoryHhClick"
-                        ToolTip="{DynamicResource TaskPlan_RateStoryHhTip}"/>
-                <CheckBox x:Name="AiOnlyCheckBox"
-                          Content="{DynamicResource TaskPlan_AiOnly}"
-                          IsChecked="False"
-                          VerticalAlignment="Center"
-                          Margin="8,0,4,2"
-                          Checked="OnAiOnlyChanged"
-                          Unchecked="OnAiOnlyChanged"
-                          ToolTip="{DynamicResource TaskPlan_AiOnlyTip}"/>
+                        </MenuItem>
+                        <Separator/>
+                        <MenuItem x:Name="OpenTasksOnlyCheckBox" Header="{DynamicResource TaskPlan_OpenTasksOnly}"
+                                  IsCheckable="True" Checked="OnOpenTasksOnlyChanged" Unchecked="OnOpenTasksOnlyChanged"
+                                  ToolTip="{DynamicResource TaskPlan_OpenTasksOnlyTip}" Foreground="#222"/>
+                        <MenuItem x:Name="ClosedTasksOnlyCheckBox" Header="{DynamicResource TaskPlan_ClosedTasksOnly}"
+                                  IsCheckable="True" Checked="OnClosedTasksOnlyChanged" Unchecked="OnClosedTasksOnlyChanged"
+                                  ToolTip="{DynamicResource TaskPlan_ClosedTasksOnlyTip}" Foreground="#222"/>
+                        <MenuItem x:Name="NoHhCheckBox" Header="{DynamicResource TaskPlan_NoHh}"
+                                  IsCheckable="True" Checked="OnNoHhChanged" Unchecked="OnNoHhChanged"
+                                  ToolTip="{DynamicResource TaskPlan_NoHhTip}" Foreground="#222"/>
+                    </MenuItem>
+                </Menu>
+
+                <!-- Menu IA: habilitar IA, só atividades da IA e encerrar Story automático -->
+                <Menu VerticalAlignment="Center" Background="Transparent" Margin="0,0,4,2">
+                    <MenuItem Padding="10,4" Background="#6A1B9A" Foreground="White" FontWeight="SemiBold">
+                        <MenuItem.Header>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="&#x1F916;" FontSize="15" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource TaskPlan_AiMenu}" FontSize="10"
+                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </MenuItem.Header>
+                        <MenuItem x:Name="EnableAiCheckBox" Header="{DynamicResource TaskPlan_EnableAI}"
+                                  IsCheckable="True" Checked="OnEnableAiChanged" Unchecked="OnEnableAiChanged"
+                                  ToolTip="{DynamicResource TaskPlan_EnableAITip}" Foreground="#222"/>
+                        <MenuItem x:Name="AiOnlyCheckBox" Header="{DynamicResource TaskPlan_AiOnly}"
+                                  IsCheckable="True" Checked="OnAiOnlyChanged" Unchecked="OnAiOnlyChanged"
+                                  ToolTip="{DynamicResource TaskPlan_AiOnlyTip}" Foreground="#222"/>
+                        <Separator/>
+                        <MenuItem x:Name="AutoCloseStoryCheck" Header="{DynamicResource TaskPlan_AutoCloseStory}"
+                                  IsCheckable="True" ToolTip="{DynamicResource TaskPlan_AutoCloseStoryTip}" Foreground="#222"/>
+                    </MenuItem>
+                </Menu>
                 <!-- Indicador "IA em execução" (visível enquanto Incluir/Consultar rodam) -->
                 <StackPanel x:Name="AiRunningPanel" Orientation="Horizontal" Visibility="Collapsed"
                             VerticalAlignment="Center" Margin="12,0,4,2">

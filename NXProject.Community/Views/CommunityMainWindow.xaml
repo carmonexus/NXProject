@@ -98,6 +98,22 @@
                 <MenuItem Header="{DynamicResource Menu_Manage_ActivityDiagram}" Click="OnActivityDiagramClick"/>
                 <MenuItem Header="{DynamicResource Main_CostByResource}" Click="OnResourceCostClick"/>
                 <Separator/>
+                <MenuItem Header="{DynamicResource Query_Menu}" Click="OnTfsQueryClick">
+                    <MenuItem.Icon>
+                        <TextBlock Text="&#x1F50E;" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Backlog_Menu}" Click="OnTfsBacklogClick">
+                    <MenuItem.Icon>
+                        <TextBlock Text="&#x1F4DA;" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Sprint_Menu}" Click="OnTfsSprintClick">
+                    <MenuItem.Icon>
+                        <TextBlock Text="&#x1F5C2;" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
                 <MenuItem Header="{DynamicResource Main_CriticalPath}" Click="OnCriticalPathWindowClick"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource Menu_Manage_Baseline}" SubmenuOpened="OnBaselineMenuOpened">
@@ -153,69 +169,6 @@
             </Button>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding SaveProjectCommand}" ToolTip="{DynamicResource Toolbar_Save}">
                 <TextBlock Text="&#x1F4BE;" FontSize="14"/>
-            </Button>
-
-            <!-- Importar do Azure DevOps -->
-            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnImportTfsToolbarClick"
-                    ToolTip="{DynamicResource Main_ImportTip}">
-                <Viewbox Width="26" Height="20" Stretch="Uniform">
-                    <Canvas Width="72" Height="56">
-                        <!-- Nuvem DevOps -->
-                        <Path Fill="#0078D4"
-                              Data="M 36,6 C 26,6 18,13 17,22 C 11,23 6,28 6,35 C 6,43 12,48 20,48 L 52,48 C 60,48 66,43 66,35 C 66,28 61,23 55,22 C 54,13 46,6 36,6 Z"/>
-                        <!-- Seta para baixo (download/import) -->
-                        <Path Stroke="White" StrokeThickness="4" Fill="Transparent"
-                              Data="M 36,20 L 36,38 M 28,31 L 36,40 L 44,31"
-                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
-                    </Canvas>
-                </Viewbox>
-            </Button>
-
-            <!-- Sincronizar com Azure DevOps: disquete (salvar) + nome TFS juntos -->
-            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnSyncTfsToolbarClick"
-                    ToolTip="{DynamicResource Main_SyncTip}">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Viewbox Width="20" Height="20" Stretch="Uniform">
-                        <Canvas Width="56" Height="56">
-                            <!-- Corpo do disquete (canto superior direito recortado) -->
-                            <Path Fill="#107C10" Stroke="#0B5E0B" StrokeThickness="2.5" StrokeLineJoin="Round"
-                                  Data="M 6,6 L 40,6 L 50,16 L 50,50 L 6,50 Z"/>
-                            <!-- Obturador metálico (topo) com a trava -->
-                            <Rectangle Canvas.Left="16" Canvas.Top="6" Width="24" Height="15"
-                                       Fill="#E8F1FB" Stroke="#0B5E0B" StrokeThickness="1.5"/>
-                            <Rectangle Canvas.Left="31" Canvas.Top="8" Width="6" Height="11" Fill="#0B5E0B"/>
-                            <!-- Etiqueta branca (base) -->
-                            <Rectangle Canvas.Left="13" Canvas.Top="28" Width="30" Height="20" RadiusX="1.5" RadiusY="1.5"
-                                       Fill="#F8FAFC" Stroke="#0B5E0B" StrokeThickness="1.5"/>
-                            <Rectangle Canvas.Left="17" Canvas.Top="33" Width="22" Height="2.6" Fill="#9AA7B4"/>
-                            <Rectangle Canvas.Left="17" Canvas.Top="39" Width="22" Height="2.6" Fill="#9AA7B4"/>
-                        </Canvas>
-                    </Viewbox>
-                    <TextBlock Text="TFS" Foreground="#107C10" FontSize="12" FontWeight="Bold"
-                               FontFamily="Segoe UI" Margin="4,0,0,0" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
-
-            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnOpenSelectedTaskInDevOpsClick" ToolTip="{DynamicResource Main_OpenInDevOps}">
-                <!-- Olho (abrir/ver no TFS) + nome TFS juntos -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Viewbox Width="26" Height="16" Stretch="Uniform">
-                        <Canvas Width="100" Height="56">
-                            <!-- Contorno amendoado do olho -->
-                            <Path Stroke="#4A6FA5" StrokeThickness="6" Fill="#F8FAFC"
-                                  StrokeLineJoin="Round"
-                                  Data="M 8,28 Q 50,2 92,28 Q 50,54 8,28 Z"/>
-                            <!-- Íris -->
-                            <Ellipse Canvas.Left="35" Canvas.Top="13" Width="30" Height="30" Fill="#4A6FA5"/>
-                            <!-- Pupila -->
-                            <Ellipse Canvas.Left="44" Canvas.Top="22" Width="12" Height="12" Fill="#12233B"/>
-                            <!-- Brilho -->
-                            <Ellipse Canvas.Left="46" Canvas.Top="24" Width="4" Height="4" Fill="White"/>
-                        </Canvas>
-                    </Viewbox>
-                    <TextBlock Text="TFS" Foreground="#4A6FA5" FontSize="12" FontWeight="Bold"
-                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
-                </StackPanel>
             </Button>
 
             <!-- Ajustar sprints fora do período: bandeira de chegada + seta de ajuste -->
@@ -421,6 +374,7 @@
             </Button>
         </ToolBar>
         </TabItem>
+
         <TabItem>
             <TabItem.Header>
                 <TextBlock Text="&#x1F4CA;" FontSize="14" ToolTip="{DynamicResource Ribbon_Schedule}"/>
@@ -607,6 +561,116 @@
                         <Line X1="1.5" Y1="12.5" X2="16.5" Y2="12.5" Stroke="#00695C" StrokeThickness="1.5"/>
                     </Canvas>
                 </Viewbox>
+            </Button>
+        </ToolBar>
+        </TabItem>
+
+        <!-- Aba DevOps (por último): importar / sincronizar / abrir / consultar / backlog / taskboard -->
+        <TabItem>
+            <TabItem.Header>
+                <TextBlock Text="&#x1F4CB;" FontSize="15" ToolTip="{DynamicResource Ribbon_Tfs}"/>
+            </TabItem.Header>
+        <ToolBar Background="{StaticResource SurfaceBrush}" Padding="4,2"
+                 FocusManager.IsFocusScope="False"
+                 Button.Click="OnToolbarButtonClick">
+            <!-- Importar do Azure DevOps -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnImportTfsToolbarClick"
+                    ToolTip="{DynamicResource Main_ImportTip}">
+                <Viewbox Width="26" Height="20" Stretch="Uniform">
+                    <Canvas Width="72" Height="56">
+                        <Path Fill="#0078D4"
+                              Data="M 36,6 C 26,6 18,13 17,22 C 11,23 6,28 6,35 C 6,43 12,48 20,48 L 52,48 C 60,48 66,43 66,35 C 66,28 61,23 55,22 C 54,13 46,6 36,6 Z"/>
+                        <Path Stroke="White" StrokeThickness="4" Fill="Transparent"
+                              Data="M 36,20 L 36,38 M 28,31 L 36,40 L 44,31"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
+
+            <!-- Sincronizar com Azure DevOps: disquete -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnSyncTfsToolbarClick"
+                    ToolTip="{DynamicResource Main_SyncTip}">
+                <Viewbox Width="20" Height="20" Stretch="Uniform">
+                    <Canvas Width="56" Height="56">
+                        <Path Fill="#107C10" Stroke="#0B5E0B" StrokeThickness="2.5" StrokeLineJoin="Round"
+                              Data="M 6,6 L 40,6 L 50,16 L 50,50 L 6,50 Z"/>
+                        <Rectangle Canvas.Left="16" Canvas.Top="6" Width="24" Height="15"
+                                   Fill="#E8F1FB" Stroke="#0B5E0B" StrokeThickness="1.5"/>
+                        <Rectangle Canvas.Left="31" Canvas.Top="8" Width="6" Height="11" Fill="#0B5E0B"/>
+                        <Rectangle Canvas.Left="13" Canvas.Top="28" Width="30" Height="20" RadiusX="1.5" RadiusY="1.5"
+                                   Fill="#F8FAFC" Stroke="#0B5E0B" StrokeThickness="1.5"/>
+                        <Rectangle Canvas.Left="17" Canvas.Top="33" Width="22" Height="2.6" Fill="#9AA7B4"/>
+                        <Rectangle Canvas.Left="17" Canvas.Top="39" Width="22" Height="2.6" Fill="#9AA7B4"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
+
+            <!-- Abrir/ver o item selecionado no DevOps: olho -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnOpenSelectedTaskInDevOpsClick"
+                    ToolTip="{DynamicResource Main_OpenInDevOps}">
+                <Viewbox Width="26" Height="16" Stretch="Uniform">
+                    <Canvas Width="100" Height="56">
+                        <Path Stroke="#4A6FA5" StrokeThickness="6" Fill="#F8FAFC" StrokeLineJoin="Round"
+                              Data="M 8,28 Q 50,2 92,28 Q 50,54 8,28 Z"/>
+                        <Ellipse Canvas.Left="35" Canvas.Top="13" Width="30" Height="30" Fill="#4A6FA5"/>
+                        <Ellipse Canvas.Left="44" Canvas.Top="22" Width="12" Height="12" Fill="#12233B"/>
+                        <Ellipse Canvas.Left="46" Canvas.Top="24" Width="4" Height="4" Fill="White"/>
+                    </Canvas>
+                </Viewbox>
+            </Button>
+
+            <Rectangle Width="1" Fill="#C9D3CC" Margin="6,4,6,4"/>
+
+            <!-- Consultas (Shared Queries do DevOps): cilindro de banco (SQL) + "SQL" -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTfsQueryClick"
+                    ToolTip="{DynamicResource Query_Title}">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="17" Height="17" Stretch="Uniform">
+                        <Canvas Width="24" Height="24">
+                            <Path Fill="#2B579A" Data="M4,5 L4,19 A8,3 0 0 0 20,19 L20,5 Z"/>
+                            <Path Stroke="#8FB0DE" StrokeThickness="1.2" Fill="Transparent"
+                                  Data="M4,11 A8,3 0 0 0 20,11"/>
+                            <Path Stroke="#8FB0DE" StrokeThickness="1.2" Fill="Transparent"
+                                  Data="M4,15 A8,3 0 0 0 20,15"/>
+                            <Ellipse Canvas.Left="4" Canvas.Top="2" Width="16" Height="6"
+                                     Fill="#5B8BD0" Stroke="#2B579A" StrokeThickness="1"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="SQL" Foreground="#2B579A" FontSize="12" FontWeight="Bold"
+                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Backlog (Epic → Feature → Story → Task por prioridade) -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTfsBacklogClick"
+                    ToolTip="{DynamicResource Backlog_Title}">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="17" Height="17" Stretch="Uniform">
+                        <Canvas Width="24" Height="24">
+                            <Rectangle Canvas.Left="3" Canvas.Top="3" Width="18" Height="4" RadiusX="1" RadiusY="1" Fill="#B26A00"/>
+                            <Rectangle Canvas.Left="6" Canvas.Top="9" Width="15" Height="4" RadiusX="1" RadiusY="1" Fill="#6A1B9A"/>
+                            <Rectangle Canvas.Left="9" Canvas.Top="15" Width="12" Height="4" RadiusX="1" RadiusY="1" Fill="#2B579A"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="Backlog" Foreground="#5A6B7B" FontSize="12" FontWeight="Bold"
+                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Sprint / Taskboard (cards por estado) -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTfsSprintClick"
+                    ToolTip="{DynamicResource Sprint_BoardTitle}">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="17" Height="17" Stretch="Uniform">
+                        <Canvas Width="24" Height="24">
+                            <Rectangle Canvas.Left="2" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#6B7A8A"/>
+                            <Rectangle Canvas.Left="9" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#2B579A"/>
+                            <Rectangle Canvas.Left="16" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#107C10"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="TaskBoard" Foreground="#5A6B7B" FontSize="12" FontWeight="Bold"
+                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
             </Button>
         </ToolBar>
         </TabItem>

@@ -29,6 +29,10 @@ internal static class Program
         ("Cronograma: Marco-Devops aceita somente duracao zero", ScheduleDevOpsMilestoneAcceptsOnlyZeroDuration),
         ("Cronograma: DevOps nao aceita duracao zero como marco local", ScheduleDevOpsZeroDurationIsIgnored),
         ("Cronograma: resumo soma HH rateado (OriginalEstimated), nao span do calendario", SummaryHoursUseRatedOriginalEstimateNotCalendarSpan),
+        ("Recursos: Strings.*.xaml nao tem x:Key duplicada (evita crash no load)", StringsHaveNoDuplicateResourceKeys),
+        ("Prioridade: faixa central (config/descoberta) clampa e cicla corretamente", TaskPriorityRangeResolvesAndClamps),
+        ("TaskBoard: colunas de estado na ordem canonica (desconhecido ao fim)", TaskboardStatesAreOrderedCanonically),
+        ("TaskBoard: tag Doing/Done troca preservando as demais (andamento)", DoingTagMergePreservesOtherTags),
         ("Import TFS: task fechada nao dobra HH Original dentro do HH Atual", ClosedTaskDoesNotDoubleOriginalIntoCurrent),
         ("Import TFS: folha encerrada nao herda esforco como restante (import principal)", ImportClosedLeafHasNoRemainingHours),
         ("Cronograma: ID negativo NoDevOps aparece como interno", NoDevOpsNegativeTfsIdDisplaysAsInternal),
@@ -842,6 +846,113 @@ internal static class Program
     // Regressao do "duracao louca" (699h): um resumo cujas folhas so tem
     // OriginalEstimatedHours (HH veio do rateio; CurrentHours=EstimatedHours=0) deve
     // somar essas horas rateadas, e NAO o span do calendario entre Start e Finish.
+    // Uma x:Key duplicada num ResourceDictionary estoura em runtime ("DeferrableContent
+    // iniciou uma exceção"). Este teste varre os Strings.*.xaml e falha se houver duplicata,
+    // sugerindo qualificar com a tela/fonte (ver ResourceKeyRegistry).
+    // Crítico: as colunas do taskboard precisam sair na ordem de fluxo (New→Active→Resolved→
+    // Closed…), com estados desconhecidos ao fim — senão o board fica ilegível.
+    private static void TaskboardStatesAreOrderedCanonically()
+    {
+        var ordered = TfsImportService.OrderTaskboardStates(
+            new[] { "Closed", "New", "Zebra", "Active", "Resolved", "New" });
+        AssertEqual("New", ordered[0], "New deve vir primeiro.");
+        AssertEqual("Active", ordered[1], "Active depois de New.");
+        AssertEqual("Resolved", ordered[2], "Resolved depois de Active.");
+        AssertEqual("Closed", ordered[3], "Closed depois de Resolved.");
+        AssertEqual("Zebra", ordered[4], "Estado desconhecido vai para o fim.");
+        AssertEqual(5, ordered.Count, "Duplicatas (New) sao removidas.");
+    }
+
+    // Crítico: marcar/tirar Doing e virar Done não pode perder as outras tags do work item.
+    private static void DoingTagMergePreservesOtherTags()
+    {
+        AssertEqual("MARCO-PROJECT; Doing",
+            TfsImportService.MergeDoingTag("MARCO-PROJECT", "Doing"),
+            "Adiciona Doing preservando a tag existente.");
+        AssertEqual("MARCO-PROJECT; Done",
+            TfsImportService.MergeDoingTag("MARCO-PROJECT; Doing", "Done"),
+            "Doing vira Done (troca), mantendo as demais.");
+        AssertEqual("MARCO-PROJECT",
+            TfsImportService.MergeDoingTag("MARCO-PROJECT; Done", null),
+            "Remover (null) tira Done e mantem as demais.");
+        AssertEqual("Doing",
+            TfsImportService.MergeDoingTag("", "Doing"),
+            "Sem tags previas, fica so a Doing.");
+        AssertEqual("A; B",
+            TfsImportService.MergeDoingTag("A; Doing; B", null),
+            "Remove Doing do meio, preserva ordem das demais.");
+    }
+
+    private static void TaskPriorityRangeResolvesAndClamps()
+    {
+        // Sem config habilitada → padrão 1..9 (o do formulário do DevOps).
+        var def = TaskPriorityRange.FromOptions(null);
+        AssertEqual(1, def.Min, "Faixa padrao comeca em 1.");
+        AssertEqual(9, def.Max, "Faixa padrao vai ate 9.");
+        AssertEqual(9, def.Clamp(100), "Clamp limita ao maximo.");
+        AssertEqual(1, def.Clamp(0), "Clamp limita ao minimo.");
+        AssertEqual(1, def.Next(9), "Ao ciclar do maximo volta ao minimo.");
+        AssertEqual(4, def.Next(3), "Ciclo incrementa dentro da faixa.");
+
+        // Config habilitada (2..5) manda quando nao ha descoberta.
+        var opts = new TfsConnectionOptions { TaskPriorityRangeEnabled = true, TaskPriorityMin = 2, TaskPriorityMax = 5 };
+        var cfg = TaskPriorityRange.FromOptions(opts);
+        AssertEqual(2, cfg.Min, "Config define o minimo.");
+        AssertEqual(5, cfg.Max, "Config define o maximo.");
+
+        // Maximo descoberto no template manda sobre o da config.
+        var disc = TaskPriorityRange.FromOptions(opts, discoveredMax: 9);
+        AssertEqual(9, disc.Max, "Maximo descoberto (validateOnly) sobrepoe o da config.");
+    }
+
+    private static void StringsHaveNoDuplicateResourceKeys()
+    {
+        static string? FindUp(string rel)
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null)
+            {
+                var p = Path.Combine(dir.FullName, rel.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(p)) return p;
+                dir = dir.Parent;
+            }
+            return null;
+        }
+
+        var files = new[]
+        {
+            "NXProject.Community/Strings/Strings.pt-BR.xaml",
+            "NXProject.Community/Strings/Strings.en-US.xaml"
+        };
+
+        var problems = new List<string>();
+        var checkedAny = false;
+        foreach (var rel in files)
+        {
+            var path = FindUp(rel);
+            if (path == null) continue; // fora do checkout (ex.: rodando do zip) → ignora
+            checkedAny = true;
+            var content = File.ReadAllText(path);
+            var registry = new ResourceKeyRegistry();
+            foreach (System.Text.RegularExpressions.Match m in
+                     System.Text.RegularExpressions.Regex.Matches(content, "x:Key=\"([^\"]+)\""))
+            {
+                var key = m.Groups[1].Value;
+                if (registry.Contains(key))
+                    problems.Add($"{Path.GetFileName(path)}: chave duplicada '{key}'");
+                else
+                    registry.Add(key);
+            }
+        }
+
+        if (!checkedAny)
+            return; // não achou os fontes (execução fora do repositório): não falha
+        if (problems.Count > 0)
+            throw new InvalidOperationException(
+                "Chaves de recurso duplicadas (qualifique com o nome da tela/fonte):\n  "
+                + string.Join("\n  ", problems));
+    }
+
     private static void SummaryHoursUseRatedOriginalEstimateNotCalendarSpan()
     {
         var start = new DateTime(2026, 8, 12);
@@ -3284,6 +3395,18 @@ internal static class Program
     {
         if (Math.Abs(expected - actual) > tolerance)
             throw new InvalidOperationException($"{message} Esperado: {expected:0.####}; Atual: {actual:0.####}.");
+    }
+
+    private static void AssertEqual(string expected, string actual, string message)
+    {
+        if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            throw new InvalidOperationException($"{message} Esperado: '{expected}'; Atual: '{actual}'.");
+    }
+
+    private static void AssertEqual(int expected, int actual, string message)
+    {
+        if (expected != actual)
+            throw new InvalidOperationException($"{message} Esperado: {expected}; Atual: {actual}.");
     }
 
     // ── Task Plan (Excel/ClosedXML): funções base ────────────────────────────

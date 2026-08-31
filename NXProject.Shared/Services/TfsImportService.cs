@@ -76,6 +76,544 @@ namespace NXProject.Services
             return new TfsAuthContext(orgBase, project, auth);
         }
 
+        // ── Query (Shared Queries do Azure DevOps) ───────────────────────────
+        // Roda as queries salvas no proprio DevOps (a WIQL executa no servidor, entao
+        // qualquer filtro/campo custom funciona) e exibe o resultado com COLUNAS DINAMICAS:
+        // as colunas vem da definicao da query e os itens sao lidos com $expand=all, de modo
+        // que campos que o NX nem modela aparecem como texto, sem precisar de mapeamento.
+        private const string QueryApiVersion = "api-version=7.0";
+
+        public sealed record DevOpsQueryNode(
+            string Id, string Name, string Path, bool IsFolder, string? QueryType,
+            string? Author,
+            System.Collections.Generic.List<DevOpsQueryNode> Children);
+
+        public sealed record DevOpsQueryColumn(string ReferenceName, string Name);
+
+        public sealed record DevOpsQueryRunResult(
+            string QueryType,
+            System.Collections.Generic.List<DevOpsQueryColumn> Columns,
+            System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>> Rows,
+            System.Collections.Generic.List<int> Ids);
+
+        /// <summary>Lista a árvore de queries salvas (My Queries + Shared Queries) do projeto.</summary>
+        public static async Task<System.Collections.Generic.List<DevOpsQueryNode>> ListQueriesAsync(
+            TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "listar queries salvas");
+            var url = $"{ctx.OrgBase}/{Uri.EscapeDataString(ctx.TeamProject)}/_apis/wit/queries?$depth=2&$expand=all&{QueryApiVersion}";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+            using var resp = await Http.SendAsync(req, ct);
+            resp.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            var list = new System.Collections.Generic.List<DevOpsQueryNode>();
+            if (doc.RootElement.TryGetProperty("value", out var vals))
+                foreach (var el in vals.EnumerateArray())
+                    list.Add(ParseQueryNode(el));
+            return list;
+        }
+
+        private static DevOpsQueryNode ParseQueryNode(JsonElement el)
+        {
+            var id = el.TryGetProperty("id", out var ip) ? ip.GetString() ?? "" : "";
+            var name = el.TryGetProperty("name", out var np) ? np.GetString() ?? "" : "";
+            var path = el.TryGetProperty("path", out var pp) ? pp.GetString() ?? "" : "";
+            var isFolder = el.TryGetProperty("isFolder", out var fp) && fp.ValueKind == JsonValueKind.True;
+            string? qType = el.TryGetProperty("queryType", out var qp) ? qp.GetString() : null;
+            // Autor: preferir quem criou; se o DevOps não trouxe (comum), usar o último que modificou.
+            string? author = ReadIdentityDisplay(el, "createdBy") ?? ReadIdentityDisplay(el, "lastModifiedBy");
+            var children = new System.Collections.Generic.List<DevOpsQueryNode>();
+            if (el.TryGetProperty("children", out var ch) && ch.ValueKind == JsonValueKind.Array)
+                foreach (var c in ch.EnumerateArray())
+                    children.Add(ParseQueryNode(c));
+            return new DevOpsQueryNode(id, name, path, isFolder, qType, author, children);
+        }
+
+        private static string? ReadIdentityDisplay(JsonElement el, string prop)
+        {
+            if (el.TryGetProperty(prop, out var idn) && idn.ValueKind == JsonValueKind.Object
+                && idn.TryGetProperty("displayName", out var dn))
+            {
+                var s = dn.GetString();
+                return string.IsNullOrWhiteSpace(s) ? null : s;
+            }
+            return null;
+        }
+
+        /// <summary>Executa uma query salva (por id) e devolve colunas + linhas (flat).
+        /// Para query de árvore/one-hop, achata pelos itens-alvo.</summary>
+        public static async Task<DevOpsQueryRunResult> RunSavedQueryAsync(
+            TfsConnectionOptions options, string queryId, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "executar query");
+            var proj = Uri.EscapeDataString(ctx.TeamProject);
+
+            // 1) Definição: colunas exibidas + tipo da query.
+            var columns = new System.Collections.Generic.List<DevOpsQueryColumn>();
+            var queryType = "flat";
+            var defUrl = $"{ctx.OrgBase}/{proj}/_apis/wit/queries/{queryId}?$expand=all&{QueryApiVersion}";
+            using (var req = new HttpRequestMessage(HttpMethod.Get, defUrl))
+            {
+                req.Headers.Authorization = ctx.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                resp.EnsureSuccessStatusCode();
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                if (doc.RootElement.TryGetProperty("queryType", out var qt))
+                    queryType = qt.GetString() ?? "flat";
+                if (doc.RootElement.TryGetProperty("columns", out var cols) && cols.ValueKind == JsonValueKind.Array)
+                    foreach (var c in cols.EnumerateArray())
+                        columns.Add(new DevOpsQueryColumn(
+                            c.TryGetProperty("referenceName", out var rn) ? rn.GetString() ?? "" : "",
+                            c.TryGetProperty("name", out var nm) ? nm.GetString() ?? "" : ""));
+            }
+            if (columns.Count == 0)
+                columns.Add(new DevOpsQueryColumn("System.Id", "ID"));
+
+            // 2) Executa a query (por id) → lista de ids.
+            var ids = new System.Collections.Generic.List<int>();
+            var runUrl = $"{ctx.OrgBase}/{proj}/_apis/wit/wiql/{queryId}?{QueryApiVersion}";
+            using (var req = new HttpRequestMessage(HttpMethod.Get, runUrl))
+            {
+                req.Headers.Authorization = ctx.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                resp.EnsureSuccessStatusCode();
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                if (doc.RootElement.TryGetProperty("workItems", out var wi) && wi.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var w in wi.EnumerateArray())
+                        if (w.TryGetProperty("id", out var idp)) ids.Add(idp.GetInt32());
+                }
+                else if (doc.RootElement.TryGetProperty("workItemRelations", out var rels) && rels.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var r in rels.EnumerateArray())
+                        if (r.TryGetProperty("target", out var tg) && tg.ValueKind == JsonValueKind.Object
+                            && tg.TryGetProperty("id", out var tid))
+                        {
+                            var v = tid.GetInt32();
+                            if (!ids.Contains(v)) ids.Add(v);
+                        }
+                }
+            }
+
+            // 3) Lê os campos com $expand=all (em lotes de 200) e monta as linhas.
+            var byId = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.Dictionary<string, string>>();
+            for (int i = 0; i < ids.Count; i += 200)
+            {
+                var chunk = ids.GetRange(i, Math.Min(200, ids.Count - i));
+                var body = $"{{\"ids\":[{string.Join(",", chunk)}],\"$expand\":\"all\"}}";
+                var batchUrl = $"{ctx.OrgBase}/_apis/wit/workitemsbatch?{QueryApiVersion}";
+                using var req = new HttpRequestMessage(HttpMethod.Post, batchUrl)
+                {
+                    Content = new StringContent(body, Encoding.UTF8, "application/json")
+                };
+                req.Headers.Authorization = ctx.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                resp.EnsureSuccessStatusCode();
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                if (!doc.RootElement.TryGetProperty("value", out var vals)) continue;
+                foreach (var item in vals.EnumerateArray())
+                {
+                    if (!item.TryGetProperty("id", out var idp)) continue;
+                    var wid = idp.GetInt32();
+                    if (!item.TryGetProperty("fields", out var f)) continue;
+                    var dict = new System.Collections.Generic.Dictionary<string, string>();
+                    foreach (var col in columns)
+                        dict[col.ReferenceName] = FormatQueryFieldValue(f, col.ReferenceName, wid);
+                    byId[wid] = dict;
+                }
+            }
+
+            var rows = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, string>>();
+            foreach (var id in ids)
+                if (byId.TryGetValue(id, out var d)) rows.Add(d);
+
+            return new DevOpsQueryRunResult(queryType, columns, rows, ids);
+        }
+
+        // Formata o valor de um campo do work item para exibir na grade (texto genérico):
+        // identidade → displayName; data → dd/MM/yyyy HH:mm local; número/bool → texto; resto → string.
+        private static string FormatQueryFieldValue(JsonElement fields, string refName, int workItemId)
+        {
+            if (string.Equals(refName, "System.Id", StringComparison.OrdinalIgnoreCase))
+                return workItemId.ToString(CultureInfo.InvariantCulture);
+            if (!fields.TryGetProperty(refName, out var v)) return "";
+            switch (v.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    if (v.TryGetProperty("displayName", out var dn)) return dn.GetString() ?? "";
+                    if (v.TryGetProperty("name", out var nm)) return nm.GetString() ?? "";
+                    return "";
+                case JsonValueKind.Number:
+                    return v.TryGetDouble(out var d) ? d.ToString("0.##", CultureInfo.CurrentCulture) : v.GetRawText();
+                case JsonValueKind.True: return "Sim";
+                case JsonValueKind.False: return "Não";
+                case JsonValueKind.String:
+                    var s = v.GetString() ?? "";
+                    if (DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var dt)
+                        && s.IndexOf('T') > 0)
+                        return dt.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture);
+                    return s;
+                default: return "";
+            }
+        }
+
+        // ── Backlog (visão hierárquica ordenada pela prioridade do DevOps) ───
+        public sealed record BacklogItem(
+            int Id, string Title, string Type, string State, string AssignedTo,
+            string Effort, string Iteration, int Depth);
+
+        /// <summary>Cor (hex "#RRGGBB") e ícone configurados no DevOps por tipo de work item —
+        /// para pintar o ícone do backlog igual ao portal. Chave = nome do tipo.</summary>
+        public static async Task<System.Collections.Generic.Dictionary<string, (string Color, string Icon)>>
+            ListWorkItemTypeColorsAsync(TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "cores dos tipos");
+            var map = new System.Collections.Generic.Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
+            var url = $"{ctx.OrgBase}/{Uri.EscapeDataString(ctx.TeamProject)}/_apis/wit/workitemtypes?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = ctx.Authorization;
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return map;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (doc.RootElement.TryGetProperty("value", out var vals))
+                foreach (var t in vals.EnumerateArray())
+                {
+                    var name = t.TryGetProperty("name", out var np) ? np.GetString() ?? "" : "";
+                    if (string.IsNullOrEmpty(name)) continue;
+                    var color = t.TryGetProperty("color", out var cp) ? cp.GetString() ?? "" : "";
+                    var icon = t.TryGetProperty("icon", out var ip) && ip.ValueKind == JsonValueKind.Object
+                        && ip.TryGetProperty("id", out var iid) ? iid.GetString() ?? "" : "";
+                    if (!string.IsNullOrEmpty(color) && !color.StartsWith("#")) color = "#" + color;
+                    map[name] = (color, icon);
+                }
+            return map;
+        }
+
+        /// <summary>Resolve os ids raiz dos projetos do portfólio do NX a partir dos títulos
+        /// cadastrados (PortfolioProjectConfigs.ProjectName). Só os que existem no DevOps entram.</summary>
+        public static async Task<System.Collections.Generic.List<int>> ResolvePortfolioRootIdsAsync(
+            TfsConnectionOptions options, System.Collections.Generic.IEnumerable<string> projectNames,
+            CancellationToken ct = default)
+        {
+            var names = projectNames?.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList()
+                        ?? new System.Collections.Generic.List<string>();
+            var ids = new System.Collections.Generic.List<int>();
+            if (names.Count == 0) return ids;
+            var ctx = CreateTfsAuthContext(options, "resolver portfólio");
+            var proj = Uri.EscapeDataString(ctx.TeamProject);
+            var inList = string.Join(",", names.Select(n => "'" + n.Replace("'", "''") + "'"));
+            var query = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '"
+                        + ctx.TeamProject.Replace("'", "''") + "' AND [System.Title] IN (" + inList + ")";
+            var body = JsonSerializer.Serialize(new { query });
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"{ctx.OrgBase}/{proj}/_apis/wit/wiql?{QueryApiVersion}")
+            { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+            req.Headers.Authorization = ctx.Authorization;
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return ids;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (doc.RootElement.TryGetProperty("workItems", out var wis) && wis.ValueKind == JsonValueKind.Array)
+                foreach (var w in wis.EnumerateArray())
+                    if (w.TryGetProperty("id", out var idp)) ids.Add(idp.GetInt32());
+            return ids;
+        }
+
+        /// <summary>Monta o backlog (raiz → Epic → Feature → Story → Task) ordenado pela prioridade
+        /// do DevOps. Escopa numa única raiz (cronograma aberto). Só leitura.</summary>
+        public static Task<System.Collections.Generic.List<BacklogItem>> BuildBacklogAsync(
+            TfsConnectionOptions options, int rootId, CancellationToken ct = default)
+            => BuildBacklogAsync(options, new[] { rootId }, ct);
+
+        /// <summary>Monta o backlog escopado nas raízes informadas (os projetos do portfólio NX).
+        /// Sem raízes válidas, devolve vazio — NÃO varre o projeto inteiro do TFS.</summary>
+        public static async Task<System.Collections.Generic.List<BacklogItem>> BuildBacklogAsync(
+            TfsConnectionOptions options, System.Collections.Generic.IReadOnlyCollection<int> rootIds,
+            CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "montar backlog");
+            var proj = Uri.EscapeDataString(ctx.TeamProject);
+            var wiqlUrl = $"{ctx.OrgBase}/{proj}/_apis/wit/wiql?{QueryApiVersion}";
+            var validRoots = (rootIds ?? Array.Empty<int>()).Where(r => r > 0).Distinct().ToList();
+
+            // 1) Conjunto de ids = subárvore (WorkItemLinks recursivo) de CADA raiz do portfólio NX.
+            var all = new System.Collections.Generic.HashSet<int>();
+            foreach (var root in validRoots)
+            {
+                all.Add(root);
+                var query = "SELECT [System.Id] FROM WorkItemLinks WHERE ([Source].[System.Id] = "
+                    + root + ") AND ([System.Links.LinkType] = 'System.LinkTypes.Hierarchy-Forward') MODE(Recursive)";
+                using var req = new HttpRequestMessage(HttpMethod.Post, wiqlUrl)
+                { Content = new StringContent(JsonSerializer.Serialize(new { query }), Encoding.UTF8, "application/json") };
+                req.Headers.Authorization = ctx.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                resp.EnsureSuccessStatusCode();
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                if (doc.RootElement.TryGetProperty("workItemRelations", out var rels) && rels.ValueKind == JsonValueKind.Array)
+                    foreach (var r in rels.EnumerateArray())
+                    {
+                        if (r.TryGetProperty("source", out var s) && s.ValueKind == JsonValueKind.Object
+                            && s.TryGetProperty("id", out var sid)) all.Add(sid.GetInt32());
+                        if (r.TryGetProperty("target", out var t) && t.ValueKind == JsonValueKind.Object
+                            && t.TryGetProperty("id", out var tid)) all.Add(tid.GetInt32());
+                    }
+            }
+            if (all.Count == 0)
+                return new System.Collections.Generic.List<BacklogItem>();
+
+            // 2) Campos ($expand=all) + o pai (System.Parent) de cada item.
+            var info = new System.Collections.Generic.Dictionary<int,
+                (string Title, string Type, string State, string Who, string Effort, string Iter, double Rank)>();
+            var parent = new System.Collections.Generic.Dictionary<int, int>();
+            var ids = all.ToList();
+            for (int i = 0; i < ids.Count; i += 200)
+            {
+                var chunk = ids.GetRange(i, Math.Min(200, ids.Count - i));
+                var body = $"{{\"ids\":[{string.Join(",", chunk)}],\"$expand\":\"all\"}}";
+                var batchUrl = $"{ctx.OrgBase}/_apis/wit/workitemsbatch?{QueryApiVersion}";
+                using var req = new HttpRequestMessage(HttpMethod.Post, batchUrl)
+                {
+                    Content = new StringContent(body, Encoding.UTF8, "application/json")
+                };
+                req.Headers.Authorization = ctx.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                resp.EnsureSuccessStatusCode();
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                if (!doc.RootElement.TryGetProperty("value", out var vals)) continue;
+                foreach (var it in vals.EnumerateArray())
+                {
+                    if (!it.TryGetProperty("id", out var idp) || !it.TryGetProperty("fields", out var f)) continue;
+                    string S(string rn) => f.TryGetProperty(rn, out var v)
+                        ? (v.ValueKind == JsonValueKind.String ? v.GetString() ?? ""
+                           : v.ValueKind == JsonValueKind.Object && v.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? ""
+                           : v.ValueKind == JsonValueKind.Number ? v.GetRawText() : "")
+                        : "";
+                    double N(string rn) => f.TryGetProperty(rn, out var v) && v.ValueKind == JsonValueKind.Number
+                        && v.TryGetDouble(out var d) ? d : double.NaN;
+                    var rank = N("Microsoft.VSTS.Common.StackRank");
+                    if (double.IsNaN(rank)) rank = N("Microsoft.VSTS.Common.BacklogPriority");
+                    if (double.IsNaN(rank)) rank = double.MaxValue;
+                    var effN = N("Microsoft.VSTS.Scheduling.OriginalEstimate");
+                    var eff = double.IsNaN(effN) ? "" : effN.ToString("0.##", CultureInfo.CurrentCulture);
+                    var wid = idp.GetInt32();
+                    info[wid] = (S("System.Title"), S("System.WorkItemType"), S("System.State"),
+                        S("System.AssignedTo"), eff, S("System.IterationPath"), rank);
+                    if (f.TryGetProperty("System.Parent", out var pp) && pp.ValueKind == JsonValueKind.Number)
+                        parent[wid] = pp.GetInt32();
+                }
+            }
+
+            // 3) Árvore ordenada por rank. Raízes = itens sem pai dentro do conjunto (portfólio
+            //    inteiro) ou a própria raiz escopada; são exibidas no nível 1.
+            var children = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<int>>();
+            foreach (var kv in parent)
+            {
+                if (!all.Contains(kv.Value)) continue; // pai fora do conjunto → o filho vira raiz
+                if (!children.TryGetValue(kv.Value, out var l)) { l = new(); children[kv.Value] = l; }
+                l.Add(kv.Key);
+            }
+            double RankOf(int id) => info.TryGetValue(id, out var f) ? f.Rank : double.MaxValue;
+            var result = new System.Collections.Generic.List<BacklogItem>();
+            void Emit(int id, int depth)
+            {
+                if (info.TryGetValue(id, out var f))
+                    result.Add(new BacklogItem(id, f.Title, f.Type, f.State, f.Who, f.Effort, f.Iter, depth));
+                if (children.TryGetValue(id, out var kids))
+                    foreach (var c in kids.OrderBy(RankOf).ThenBy(c => c))
+                        Emit(c, depth + 1);
+            }
+            // Raízes no nível 1: itens do conjunto cujo pai não está no conjunto (portfólio) —
+            // ou a própria raiz escopada. Ordenadas por prioridade.
+            var roots = all
+                .Where(id => info.ContainsKey(id) && !(parent.TryGetValue(id, out var p) && all.Contains(p)))
+                .OrderBy(RankOf).ThenBy(id => id)
+                .ToList();
+            foreach (var r in roots)
+                Emit(r, 0);
+            return result;
+        }
+
+        // ── Sprint / Taskboard (visão da sprint com cards por estado) ────────
+        public sealed record SprintInfo(string Name, string Path, DateTime? Start, DateTime? End);
+        public sealed record SprintTaskCard(int Id, string Title, string State, string AssignedTo, string Effort, int? ParentId, string Tags, DateTime? ClosedDate, int Priority, double StackRank);
+        public sealed record SprintStoryRow(int Id, string Title, string State, string AssignedTo,
+            System.Collections.Generic.List<SprintTaskCard> Tasks)
+        {
+            /// <summary>Título da Feature pai (entrega) — para agrupar as Stories na visão por Story.</summary>
+            public string FeatureTitle { get; set; } = "";
+            /// <summary>Id da Feature pai (para criar novas Stories sob ela).</summary>
+            public int FeatureId { get; set; }
+            /// <summary>Ordem no backlog (StackRank/BacklogPriority) — para reordenar a Story.</summary>
+            public double StackRank { get; set; }
+        }
+        public sealed record SprintBoard(
+            System.Collections.Generic.List<string> States,
+            System.Collections.Generic.List<SprintStoryRow> Stories,
+            System.Collections.Generic.List<string> People);
+
+        /// <summary>Lista as sprints (iterações com datas) do projeto.</summary>
+        public static async Task<System.Collections.Generic.List<SprintInfo>> ListSprintsAsync(
+            TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "listar sprints");
+            var sprints = await LoadIterationsAsync(ctx.OrgBase, ctx.TeamProject, ctx.Authorization, ct);
+            return sprints
+                .Where(s => !string.IsNullOrEmpty(s.Path))
+                .Select(s => new SprintInfo(s.DisplayName ?? s.Path!, s.Path!, s.Start, s.End))
+                .OrderBy(s => s.Start ?? DateTime.MaxValue)
+                .ToList();
+        }
+
+        // Ordem canônica das colunas do taskboard (estados). Desconhecidos vão para o fim.
+        private static readonly string[] TaskboardStateOrder =
+            { "New", "To Do", "Approved", "Committed", "Open", "Active", "In Progress", "Doing",
+              "Resolved", "Done", "Completed", "Closed" };
+
+        /// <summary>Monta o taskboard da sprint: Stories (linhas) com suas Tasks agrupadas por estado.</summary>
+        public static async Task<SprintBoard> BuildSprintBoardAsync(
+            TfsConnectionOptions options, string iterationPath, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "montar sprint");
+            var proj = Uri.EscapeDataString(ctx.TeamProject);
+            string Esc(string s) => s.Replace("'", "''");
+
+            // 1) IDs da sprint (stories + tasks), via WIQL flat.
+            var ids = new System.Collections.Generic.List<int>();
+            // Sem filtro de WorkItemType: os nomes de tipo variam por processo (Agile/Scrum/CMMI)
+            // e citar um tipo inexistente faz o DevOps devolver 400. Filtramos por tipo no código
+            // (Task vira card; o resto vira linha de Story). O corpo é serializado com JsonSerializer
+            // para escapar corretamente as barras do IterationPath (JSON exige \\, não \).
+            // iterationPath vazio => "Todas as sprints": sem filtro de iteração (útil quando os
+            // itens não estão bem distribuídos nas sprints).
+            var iterFilter = string.IsNullOrWhiteSpace(iterationPath)
+                ? string.Empty
+                : " AND [System.IterationPath] UNDER '" + Esc(iterationPath) + "'";
+            var query = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '"
+                        + Esc(ctx.TeamProject) + "'" + iterFilter
+                        + " AND [System.State] <> 'Removed'";
+            var wiql = JsonSerializer.Serialize(new { query });
+            var wiqlUrl = $"{ctx.OrgBase}/{proj}/_apis/wit/wiql?{QueryApiVersion}";
+            using (var req = new HttpRequestMessage(HttpMethod.Post, wiqlUrl)
+            { Content = new StringContent(wiql, Encoding.UTF8, "application/json") })
+            {
+                req.Headers.Authorization = ctx.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                resp.EnsureSuccessStatusCode();
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                if (doc.RootElement.TryGetProperty("workItems", out var wi) && wi.ValueKind == JsonValueKind.Array)
+                    foreach (var w in wi.EnumerateArray())
+                        if (w.TryGetProperty("id", out var idp)) ids.Add(idp.GetInt32());
+            }
+
+            // 2) Campos ($expand=all).
+            var stories = new System.Collections.Generic.List<SprintStoryRow>();
+            var storyById = new System.Collections.Generic.Dictionary<int, SprintStoryRow>();
+            var storyParent = new System.Collections.Generic.Dictionary<int, int>(); // Story → Feature (pai)
+            var tasks = new System.Collections.Generic.List<SprintTaskCard>();
+            var people = new System.Collections.Generic.SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            var statesSeen = new System.Collections.Generic.HashSet<string>();
+
+            for (int i = 0; i < ids.Count; i += 200)
+            {
+                var chunk = ids.GetRange(i, Math.Min(200, ids.Count - i));
+                var body = $"{{\"ids\":[{string.Join(",", chunk)}],\"$expand\":\"all\"}}";
+                var batchUrl = $"{ctx.OrgBase}/_apis/wit/workitemsbatch?{QueryApiVersion}";
+                using var req = new HttpRequestMessage(HttpMethod.Post, batchUrl)
+                { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+                req.Headers.Authorization = ctx.Authorization;
+                using var resp = await Http.SendAsync(req, ct);
+                resp.EnsureSuccessStatusCode();
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                if (!doc.RootElement.TryGetProperty("value", out var vals)) continue;
+                foreach (var it in vals.EnumerateArray())
+                {
+                    if (!it.TryGetProperty("id", out var idp) || !it.TryGetProperty("fields", out var f)) continue;
+                    string S(string rn) => f.TryGetProperty(rn, out var v)
+                        ? (v.ValueKind == JsonValueKind.String ? v.GetString() ?? ""
+                           : v.ValueKind == JsonValueKind.Object && v.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? ""
+                           : v.ValueKind == JsonValueKind.Number ? v.GetRawText() : "") : "";
+                    var id = idp.GetInt32();
+                    var type = S("System.WorkItemType");
+                    var state = S("System.State");
+                    var who = S("System.AssignedTo");
+                    if (!string.IsNullOrWhiteSpace(who)) people.Add(who);
+                    if (string.Equals(type, "Task", StringComparison.OrdinalIgnoreCase))
+                    {
+                        int? parentId = f.TryGetProperty("System.Parent", out var pp) && pp.ValueKind == JsonValueKind.Number
+                            ? pp.GetInt32() : (int?)null;
+                        var effN = f.TryGetProperty("Microsoft.VSTS.Scheduling.OriginalEstimate", out var ev)
+                            && ev.ValueKind == JsonValueKind.Number && ev.TryGetDouble(out var d) ? d : double.NaN;
+                        var eff = double.IsNaN(effN) ? "" : effN.ToString("0.##", CultureInfo.CurrentCulture);
+                        DateTime? closedDate = f.TryGetProperty("Microsoft.VSTS.Common.ClosedDate", out var cdv)
+                            && cdv.ValueKind == JsonValueKind.String
+                            && DateTime.TryParse(cdv.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var cdd)
+                            ? cdd.ToLocalTime() : (DateTime?)null;
+                        var prio = f.TryGetProperty("Microsoft.VSTS.Common.Priority", out var pv) && pv.ValueKind == JsonValueKind.Number
+                            ? pv.GetInt32() : 0;
+                        tasks.Add(new SprintTaskCard(id, S("System.Title"), state, who, eff, parentId, S("System.Tags"), closedDate, prio, ReadRank(f)));
+                        statesSeen.Add(state);
+                    }
+                    else
+                    {
+                        var row = new SprintStoryRow(id, S("System.Title"), state, who, new()) { StackRank = ReadRank(f) };
+                        stories.Add(row);
+                        storyById[id] = row;
+                        if (f.TryGetProperty("System.Parent", out var spp) && spp.ValueKind == JsonValueKind.Number)
+                            storyParent[id] = spp.GetInt32();
+                    }
+                }
+            }
+
+            // 3) Distribui tasks nas stories (as sem story-pai viram uma linha "(sem Story)").
+            SprintStoryRow? orphans = null;
+            foreach (var t in tasks)
+            {
+                if (t.ParentId is int pid && storyById.TryGetValue(pid, out var st))
+                    st.Tasks.Add(t);
+                else
+                {
+                    orphans ??= new SprintStoryRow(0, "(sem Story)", "", "", new());
+                    orphans.Tasks.Add(t);
+                }
+            }
+            if (orphans != null) stories.Add(orphans);
+
+            // 3b) Feature (pai da Story) para agrupar por entrega: busca os títulos dos pais.
+            var featureIds = storyParent.Values.Distinct().Where(fid => !storyById.ContainsKey(fid)).ToList();
+            if (featureIds.Count > 0)
+            {
+                var featureTitle = new System.Collections.Generic.Dictionary<int, string>();
+                for (int i = 0; i < featureIds.Count; i += 200)
+                {
+                    var chunk = featureIds.GetRange(i, Math.Min(200, featureIds.Count - i));
+                    var body = $"{{\"ids\":[{string.Join(",", chunk)}],\"fields\":[\"System.Id\",\"System.Title\"]}}";
+                    using var req = new HttpRequestMessage(HttpMethod.Post, $"{ctx.OrgBase}/_apis/wit/workitemsbatch?{QueryApiVersion}")
+                    { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+                    req.Headers.Authorization = ctx.Authorization;
+                    using var resp = await Http.SendAsync(req, ct);
+                    if (!resp.IsSuccessStatusCode) continue;
+                    using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                    if (!doc.RootElement.TryGetProperty("value", out var vals)) continue;
+                    foreach (var it in vals.EnumerateArray())
+                        if (it.TryGetProperty("id", out var idp) && it.TryGetProperty("fields", out var f)
+                            && f.TryGetProperty("System.Title", out var tp))
+                            featureTitle[idp.GetInt32()] = tp.GetString() ?? "";
+                }
+                foreach (var kv in storyParent)
+                    if (storyById.TryGetValue(kv.Key, out var st))
+                    {
+                        st.FeatureId = kv.Value;
+                        st.FeatureTitle = featureTitle.TryGetValue(kv.Value, out var ft) ? ft : "";
+                    }
+            }
+
+            // 4) Colunas por estado, na ordem canônica.
+            var states = OrderTaskboardStates(statesSeen);
+            if (states.Count == 0) states.Add("New");
+
+            return new SprintBoard(states, stories, people.ToList());
+        }
+
         // Nomes de exibicao dos campos customizados procurados, na ordem de
         // preferencia. O rotulo "HH Estimado" no formulario corresponde ao campo
         // "Esforço Estimado"; o inicio/fim sao "Data_Inicio"/"Data_Fim" (com
@@ -3448,15 +3986,7 @@ namespace NXProject.Services
         /// processo do DevOps aceita causa erro na gravação — o erro aparece no log do sync.
         /// </summary>
         public static int ClampTaskPriority(TfsConnectionOptions? options, int priority)
-        {
-            int min = 1, max = 4;
-            if (options is { TaskPriorityRangeEnabled: true })
-            {
-                min = Math.Max(1, options.TaskPriorityMin);
-                max = Math.Max(min, options.TaskPriorityMax);
-            }
-            return Math.Clamp(priority, min, max);
-        }
+            => TaskPriorityRange.FromOptions(options).Clamp(priority);
         public static bool IsTaskTypePublic(string? type)  => IsTaskType(type);
 
         /// <summary>Busca no DevOps as Tasks de cada Story do projeto e grava/atualiza o resumo de
@@ -3700,6 +4230,40 @@ namespace NXProject.Services
             /// <summary>Valor do campo de aprovação configurado (opcional). Null = campo desligado
             /// na configuração TFS ou inexistente no processo do DevOps.</summary>
             public string? Approved { get; init; }
+        }
+
+        public sealed record CommentEntry(string Author, DateTime? Date, string Html);
+
+        /// <summary>Histórico de trâmites (comentários/discussão) do work item, do mais novo ao mais
+        /// antigo, com autor/data e o HTML (com imagens). Lista vazia se não houver.</summary>
+        public static async Task<System.Collections.Generic.List<CommentEntry>> GetWorkItemCommentsAsync(
+            TfsConnectionOptions options, int tfsId, CancellationToken ct = default)
+        {
+            var list = new System.Collections.Generic.List<CommentEntry>();
+            if (tfsId <= 0) return list;
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue(
+                "Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+            var url = $"{orgBase}/{Uri.EscapeDataString(options.TeamProject)}/_apis/wit/workItems/{tfsId}/comments?api-version=7.1-preview.3";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = auth;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return list;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("comments", out var arr) || arr.ValueKind != JsonValueKind.Array) return list;
+            foreach (var c in arr.EnumerateArray())
+            {
+                var html = c.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
+                var author = c.TryGetProperty("createdBy", out var cb) && cb.ValueKind == JsonValueKind.Object
+                    && cb.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? "" : "";
+                DateTime? date = c.TryGetProperty("createdDate", out var cd) && cd.ValueKind == JsonValueKind.String
+                    && DateTime.TryParse(cd.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var d)
+                    ? d.ToLocalTime() : (DateTime?)null;
+                list.Add(new CommentEntry(author, date, html));
+            }
+            list.Sort((a, b) => Nullable.Compare(b.Date, a.Date)); // mais novo primeiro
+            return list;
         }
 
         /// <summary>Último comentário (discussão/tramite) do work item, em texto plano; null se não houver.</summary>
@@ -5023,6 +5587,301 @@ namespace NXProject.Services
             }
             catch { /* fail-open: chaves vazias */ }
             return keys.ToList();
+        }
+
+        /// <summary>Nome de exibição do usuário autenticado no DevOps (dono do PAT), via
+        /// connectionData — usado para pré-selecionar a pessoa no taskboard. Null se indefinido.</summary>
+        public static async Task<string?> GetCurrentUserDisplayNameAsync(
+            TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            if (options == null || string.IsNullOrWhiteSpace(options.OrganizationUrl)
+                || string.IsNullOrWhiteSpace(options.PersonalAccessToken))
+                return null;
+            var orgBase = options.OrganizationUrl.TrimEnd('/');
+            var auth = new AuthenticationHeaderValue("Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes(":" + options.PersonalAccessToken)));
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Get, $"{orgBase}/_apis/connectionData?api-version=6.0-preview");
+                req.Headers.Authorization = auth;
+                using var resp = await Http.SendAsync(req, ct);
+                if (!resp.IsSuccessStatusCode) return null;
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+                if (doc.RootElement.TryGetProperty("authenticatedUser", out var au))
+                    return ReadPickerString(au, "providerDisplayName") ?? ReadPickerString(au, "customDisplayName");
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>Grava o novo estado (System.State) de um work item. Devolve (Ok, Mensagem):
+        /// 403/401 = sem permissão de escrita (não é responsável, não está no grupo, ou o token
+        /// não permite) — este é o teste real de permissão. Só leitura de resultado, não lança.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemStateAsync(
+            TfsConnectionOptions options, int id, string newState, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "alterar estado", requireTeamProject: false);
+            var ops = new List<object> { PatchAdd("/fields/System.State", newState) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try
+                {
+                    using var d = JsonDocument.Parse(body);
+                    if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg;
+                }
+                catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
+        /// <summary>Cria um work item (Story/Task) filho de <paramref name="parentId"/> na sprint.
+        /// Devolve (Id, Mensagem): Id &gt; 0 = criado; 0 = falha (403 = sem permissão).</summary>
+        public static async Task<(int Id, string Message)> CreateChildWorkItemAsync(
+            TfsConnectionOptions options, string type, string title, int parentId, string? iterationPath,
+            string? description = null, string? assignedTo = null, double? estimatedHours = null,
+            CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "criar work item");
+            var ops = new List<object> { PatchAdd("/fields/System.Title", title) };
+            if (!string.IsNullOrWhiteSpace(iterationPath))
+                ops.Add(PatchAdd("/fields/System.IterationPath", iterationPath));
+            if (!string.IsNullOrWhiteSpace(description))
+                ops.Add(PatchAdd("/fields/System.Description", description));
+            if (!string.IsNullOrWhiteSpace(assignedTo))
+                ops.Add(PatchAdd("/fields/System.AssignedTo", assignedTo));
+            if (estimatedHours is > 0)
+                ops.Add(PatchAdd("/fields/Microsoft.VSTS.Scheduling.OriginalEstimate", estimatedHours.Value));
+            if (parentId > 0)
+                ops.Add(new
+                {
+                    op = "add",
+                    path = "/relations/-",
+                    value = new { rel = "System.LinkTypes.Hierarchy-Reverse", url = $"{ctx.OrgBase}/_apis/wit/workItems/{parentId}" }
+                });
+            var typeName = MapWorkItemType(type);
+            var url = $"{ctx.OrgBase}/{Uri.EscapeDataString(ctx.TeamProject)}/_apis/wit/workitems/{Uri.EscapeDataString("$" + typeName)}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                if (resp.IsSuccessStatusCode)
+                {
+                    using var d = JsonDocument.Parse(body);
+                    return (d.RootElement.GetProperty("id").GetInt32(), string.Empty);
+                }
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (0, msg);
+            }
+            catch (Exception ex) { return (0, ex.Message); }
+        }
+
+        // Valida (sem gravar, validateOnly=true) se um valor de Priority é aceito pelo template.
+        private static async Task<bool> IsPriorityValueValidAsync(
+            TfsAuthContext ctx, int id, int value, CancellationToken ct)
+        {
+            var ops = new List<object> { PatchAdd("/fields/Microsoft.VSTS.Common.Priority", value) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?validateOnly=true&{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try { using var resp = await Http.SendAsync(req, ct); return resp.IsSuccessStatusCode; }
+            catch { return false; }
+        }
+
+        /// <summary>Descobre o maior valor de Priority aceito pelo template (o campo é Integer com
+        /// "limitedToValues", mas a API não lista os valores). Usa validateOnly em busca binária
+        /// numa Task de amostra. Retorna 0 se não conseguir determinar.</summary>
+        public static async Task<int> DiscoverTaskPriorityMaxAsync(
+            TfsConnectionOptions options, int sampleTaskId, CancellationToken ct = default)
+        {
+            if (sampleTaskId <= 0) return 0;
+            var ctx = CreateTfsAuthContext(options, "descobrir prioridade", requireTeamProject: false);
+            if (!await IsPriorityValueValidAsync(ctx, sampleTaskId, 1, ct)) return 0; // 1 sempre deve valer
+            int lo = 1, hi = 32, max = 1;
+            while (lo <= hi)
+            {
+                var mid = (lo + hi) / 2;
+                if (await IsPriorityValueValidAsync(ctx, sampleTaskId, mid, ct)) { max = mid; lo = mid + 1; }
+                else hi = mid - 1;
+            }
+            return max;
+        }
+
+        // Ordem no backlog: StackRank (Agile/CMMI) com fallback BacklogPriority (Scrum). NaN se ausente.
+        private static double ReadRank(JsonElement fields)
+        {
+            double R(string rn) => fields.TryGetProperty(rn, out var v) && v.ValueKind == JsonValueKind.Number
+                && v.TryGetDouble(out var d) ? d : double.NaN;
+            var r = R("Microsoft.VSTS.Common.StackRank");
+            return double.IsNaN(r) ? R("Microsoft.VSTS.Common.BacklogPriority") : r;
+        }
+
+        /// <summary>Grava a ordem do backlog (StackRank) de um work item — para reordenar Story/Task.
+        /// (Ok, Mensagem); 403 = sem permissão.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemStackRankAsync(
+            TfsConnectionOptions options, int id, double rank, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar rank", requireTeamProject: false);
+            var ops = new List<object> { PatchAdd("/fields/Microsoft.VSTS.Common.StackRank", rank) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
+        /// <summary>Grava a prioridade (Microsoft.VSTS.Common.Priority) de uma Task. (Ok, Mensagem);
+        /// 403 = sem permissão.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemPriorityAsync(
+            TfsConnectionOptions options, int id, int priority, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar prioridade", requireTeamProject: false);
+            var ops = new List<object> { PatchAdd("/fields/Microsoft.VSTS.Common.Priority", priority) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
+        /// <summary>Grava a descrição (System.Description, HTML) de um work item. (Ok, Mensagem);
+        /// 403 = sem permissão de escrita.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemDescriptionAsync(
+            TfsConnectionOptions options, int id, string html, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar descrição", requireTeamProject: false);
+            var ops = new List<object> { PatchAdd("/fields/System.Description", html ?? string.Empty) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
+        /// <summary>Funde a tag de andamento no conjunto atual: remove Doing e Done e adiciona
+        /// <paramref name="targetTag"/> (null/vazio = só remove), preservando as demais tags.</summary>
+        public static string MergeDoingTag(string? currentTags, string? targetTag)
+        {
+            var tags = (currentTags ?? string.Empty)
+                .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim())
+                .Where(t => t.Length > 0
+                    && !string.Equals(t, "Doing", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(t, "Done", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (!string.IsNullOrWhiteSpace(targetTag)) tags.Add(targetTag.Trim());
+            return string.Join("; ", tags);
+        }
+
+        /// <summary>Ordena os estados (colunas do taskboard) na ordem canônica; desconhecidos ao fim.</summary>
+        public static System.Collections.Generic.List<string> OrderTaskboardStates(System.Collections.Generic.IEnumerable<string> states)
+            => states.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(s => { var i = Array.FindIndex(TaskboardStateOrder, x => string.Equals(x, s, StringComparison.OrdinalIgnoreCase)); return i < 0 ? int.MaxValue : i; })
+                .ThenBy(s => s, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+        /// <summary>Ajusta a tag de andamento (Doing/Done) de um work item: remove Doing e Done
+        /// e adiciona <paramref name="targetTag"/> (null = só remove). Preserva as demais tags.
+        /// Devolve (Ok, Mensagem) — 403 = sem permissão de escrita.</summary>
+        public static async Task<(bool Ok, string Message)> SetDoingTagAsync(
+            TfsConnectionOptions options, int id, string? targetTag, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar tag", requireTeamProject: false);
+            string current = "";
+            try
+            {
+                var getUrl = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?fields=System.Tags&{QueryApiVersion}";
+                using var greq = new HttpRequestMessage(HttpMethod.Get, getUrl);
+                greq.Headers.Authorization = ctx.Authorization;
+                using var gresp = await Http.SendAsync(greq, ct);
+                if (gresp.IsSuccessStatusCode)
+                {
+                    using var gdoc = JsonDocument.Parse(await gresp.Content.ReadAsStringAsync(ct));
+                    if (gdoc.RootElement.TryGetProperty("fields", out var gf)
+                        && gf.TryGetProperty("System.Tags", out var tg) && tg.ValueKind == JsonValueKind.String)
+                        current = tg.GetString() ?? "";
+                }
+            }
+            catch { }
+
+            var newTags = MergeDoingTag(current, targetTag);
+
+            var ops = new List<object> { PatchAdd("/fields/System.Tags", newTags) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
         }
 
         /// <summary>
