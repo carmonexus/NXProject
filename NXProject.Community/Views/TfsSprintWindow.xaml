@@ -1,0 +1,99 @@
+<Window x:Class="NXProject.Views.TfsSprintWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource Sprint_BoardTitle}"
+        Height="680" Width="1180"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="10">
+        <!-- Ações (sempre visíveis, fora do wrap dos filtros) -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6" LastChildFill="False">
+            <Button x:Name="UpdateTfsButton" DockPanel.Dock="Right" VerticalAlignment="Center"
+                    Padding="10,3" Margin="8,0,0,0" IsEnabled="False" Click="OnUpdateTfsClick"
+                    Background="#107C10" Foreground="White" FontWeight="SemiBold"
+                    Content="{DynamicResource Sprint_UpdateTfs}"/>
+            <Button x:Name="RevertButton" DockPanel.Dock="Right" VerticalAlignment="Center"
+                    Padding="8,3" Margin="8,0,0,0" IsEnabled="False" Click="OnRevertClick"
+                    Content="{DynamicResource Sprint_Revert}"/>
+            <TextBlock x:Name="StatusText" DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="#555" Margin="0,0,8,0"/>
+        </DockPanel>
+        <!-- Filtros (quebram linha se faltar espaço) -->
+        <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock Text="{DynamicResource Sprint_Pick}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox x:Name="SprintCombo" DockPanel.Dock="Left" Width="220" VerticalAlignment="Center"
+                      SelectionChanged="OnSprintChanged"/>
+            <Button x:Name="CurrentSprintButton" VerticalAlignment="Center"
+                    Padding="8,2" Margin="4,0,0,0" Click="OnCurrentSprintClick"
+                    Content="{DynamicResource Sprint_Current}" ToolTip="{DynamicResource Sprint_CurrentTip}"/>
+            <Button x:Name="ReloadButton" VerticalAlignment="Center" Padding="6,2" Margin="4,0,0,0"
+                    Click="OnReloadClick" Content="🔄" ToolTip="{DynamicResource Sprint_Reload}"/>
+            <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Sprint_Person}" VerticalAlignment="Center" Margin="14,0,6,0"/>
+            <ComboBox x:Name="PersonCombo" DockPanel.Dock="Left" Width="200" VerticalAlignment="Center"
+                      SelectionChanged="OnFilterChanged"/>
+            <CheckBox x:Name="OnlyScheduleCheck" DockPanel.Dock="Left" VerticalAlignment="Center"
+                      Margin="14,0,0,0" Click="OnFilterChanged"
+                      Content="{DynamicResource Query_OnlySchedule}"
+                      ToolTip="{DynamicResource Query_OnlyScheduleTip}"/>
+            <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Sprint_View}" VerticalAlignment="Center" Margin="14,0,6,0"/>
+            <ComboBox x:Name="ViewCombo" DockPanel.Dock="Left" Width="150" VerticalAlignment="Center"
+                      SelectionChanged="OnFilterChanged"/>
+            <ToggleButton x:Name="StoryFilterToggle" DockPanel.Dock="Left" VerticalAlignment="Center"
+                          Padding="8,2" Margin="8,0,0,0" Content="{DynamicResource Sprint_StoryFilter}"/>
+            <Popup PlacementTarget="{Binding ElementName=StoryFilterToggle}" Placement="Bottom"
+                   IsOpen="{Binding IsChecked, ElementName=StoryFilterToggle}" StaysOpen="False" AllowsTransparency="True">
+                <Border Background="White" BorderBrush="#C9D3CC" BorderThickness="1" Padding="6">
+                    <DockPanel MaxHeight="380" MaxWidth="420">
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button Content="{DynamicResource Sprint_StoryAll}" Click="OnStoryFilterAll" Padding="8,2" Margin="0,0,6,0"/>
+                            <Button Content="{DynamicResource Sprint_StoryApply}" Click="OnStoryFilterApply" Padding="8,2"/>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="320">
+                            <StackPanel x:Name="StoryFilterList"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Popup>
+            <TextBlock DockPanel.Dock="Left" Text="{DynamicResource Sprint_Search}" VerticalAlignment="Center" Margin="14,0,4,0"/>
+            <TextBox x:Name="SearchBox" DockPanel.Dock="Left" Width="150" VerticalAlignment="Center"
+                     TextChanged="OnSearchChanged"/>
+            <ToggleButton x:Name="StateFilterToggle" DockPanel.Dock="Left" VerticalAlignment="Center"
+                          Padding="8,2" Margin="8,0,0,0" Content="{DynamicResource Sprint_StateFilter}"/>
+            <Popup PlacementTarget="{Binding ElementName=StateFilterToggle}" Placement="Bottom"
+                   IsOpen="{Binding IsChecked, ElementName=StateFilterToggle}" StaysOpen="False" AllowsTransparency="True">
+                <Border Background="White" BorderBrush="#C9D3CC" BorderThickness="1" Padding="6">
+                    <DockPanel MaxHeight="300" MinWidth="160">
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button Content="{DynamicResource Sprint_StoryAll}" Click="OnStateFilterAll" Padding="8,2" Margin="0,0,6,0"/>
+                            <Button Content="{DynamicResource Sprint_StoryApply}" Click="OnStateFilterApply" Padding="8,2"/>
+                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="{DynamicResource Sprint_ClosedDays}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="ClosedDaysBox" Width="46" Text="30" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel x:Name="StateFilterList"/>
+                    </DockPanel>
+                </Border>
+            </Popup>
+            <CheckBox x:Name="EditModeCheck" VerticalAlignment="Center"
+                      Margin="14,0,0,0" Click="OnFilterChanged"
+                      Content="{DynamicResource Sprint_EditMode}" ToolTip="{DynamicResource Sprint_EditModeTip}"/>
+        </WrapPanel>
+
+        <!-- Resumo por estado (contagem) -->
+        <Border DockPanel.Dock="Top" Background="#F3F6F4" BorderBrush="#D5DDD7" BorderThickness="1"
+                CornerRadius="4" Padding="8,6" Margin="0,0,0,8">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,4">
+                    <TextBlock Text="{DynamicResource Sprint_Summary}" FontWeight="SemiBold" DockPanel.Dock="Left"/>
+                    <TextBlock x:Name="FilterSummary" Foreground="#557" FontSize="11" TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </DockPanel>
+                <ItemsControl x:Name="SummaryHost"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Taskboard -->
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="BoardHost"/>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

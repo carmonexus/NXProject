@@ -1,0 +1,30 @@
+<Window x:Class="NXProject.Views.TfsBacklogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource Backlog_Title}"
+        Height="640" Width="1040"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="10">
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="False">
+            <Button x:Name="RefreshBtn" DockPanel.Dock="Left" Padding="10,4" Margin="0,0,6,0"
+                    Click="OnRefreshClick" Content="{DynamicResource Query_RefreshList}"/>
+            <Button DockPanel.Dock="Left" Padding="8,4" Margin="0,0,4,0"
+                    Click="OnExpandAllClick" Content="{DynamicResource Backlog_ExpandAll}"/>
+            <Button DockPanel.Dock="Left" Padding="8,4" Margin="0,0,10,0"
+                    Click="OnCollapseAllClick" Content="{DynamicResource Backlog_CollapseAll}"/>
+            <CheckBox x:Name="PortfolioCheck" DockPanel.Dock="Left" VerticalAlignment="Center"
+                      Margin="0,0,12,0" Click="OnRefreshClick"
+                      Content="{DynamicResource Backlog_Portfolio}"
+                      ToolTip="{DynamicResource Backlog_PortfolioTip}"/>
+            <CheckBox x:Name="OnlyScheduleCheck" DockPanel.Dock="Left" VerticalAlignment="Center"
+                      Click="OnFilterChanged"
+                      Content="{DynamicResource Query_OnlySchedule}"
+                      ToolTip="{DynamicResource Query_OnlyScheduleTip}"/>
+            <TextBlock x:Name="StatusText" DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="#555"/>
+        </DockPanel>
+
+        <Border BorderBrush="#D0D7E0" BorderThickness="1" CornerRadius="4">
+            <TreeView x:Name="Tree" BorderThickness="0"/>
+        </Border>
+    </DockPanel>
+</Window>

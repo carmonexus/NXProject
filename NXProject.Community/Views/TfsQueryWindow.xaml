@@ -1,0 +1,68 @@
+<Window x:Class="NXProject.Views.TfsQueryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource Query_Title}"
+        Height="620" Width="1000"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+    <DockPanel Margin="10">
+        <!-- Barra superior -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="False">
+            <Button x:Name="RefreshBtn" DockPanel.Dock="Left" Padding="10,4" Margin="0,0,6,0"
+                    Click="OnRefreshQueriesClick" Content="{DynamicResource Query_RefreshList}"/>
+            <Button x:Name="RunBtn" DockPanel.Dock="Left" Padding="10,4" Margin="0,0,6,0"
+                    Click="OnRunClick" Content="{DynamicResource Query_Run}"
+                    Background="#1B5E20" Foreground="White" FontWeight="SemiBold"/>
+            <Button x:Name="OpenBtn" DockPanel.Dock="Left" Padding="10,4"
+                    Click="OnOpenInDevOpsClick" Content="{DynamicResource Query_OpenInDevOps}"/>
+            <CheckBox x:Name="OnlyScheduleCheck" DockPanel.Dock="Left" VerticalAlignment="Center"
+                      Margin="12,0,0,0" Click="OnOnlyScheduleToggle"
+                      Content="{DynamicResource Query_OnlySchedule}"
+                      ToolTip="{DynamicResource Query_OnlyScheduleTip}"/>
+            <TextBlock x:Name="StatusText" DockPanel.Dock="Right" VerticalAlignment="Center"
+                       Foreground="#555" Text=""/>
+        </DockPanel>
+
+        <!-- Árvore de queries (esquerda) + resultados (direita) -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="#D0D7E0" BorderThickness="1" CornerRadius="4">
+                <TreeView x:Name="QueriesTree" BorderThickness="0"
+                          MouseDoubleClick="OnTreeDoubleClick"
+                          SelectedItemChanged="OnTreeSelectionChanged"/>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="Transparent"/>
+
+            <DataGrid x:Name="ResultsGrid" Grid.Column="2"
+                      AutoGenerateColumns="True" IsReadOnly="True"
+                      CanUserAddRows="False" SelectionMode="Single"
+                      HeadersVisibility="Column" GridLinesVisibility="All"
+                      MouseDoubleClick="OnGridDoubleClick"
+                      AutoGeneratingColumn="OnAutoGeneratingColumn"
+                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <DataGrid.Columns>
+                    <!-- Botão "ver no cronograma": só aparece quando o ID está no cronograma aberto -->
+                    <DataGridTemplateColumn Header="" Width="Auto" CanUserSort="False">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="&#x1F4C5;" FontSize="13" Padding="6,0" Margin="1"
+                                        Click="OnOpenInScheduleClick"
+                                        ToolTip="{DynamicResource Query_OpenInSchedule}"
+                                        Visibility="{Binding [InSchedule], Converter={StaticResource BoolToVis}}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+    </DockPanel>
+</Window>
