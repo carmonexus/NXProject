@@ -1881,6 +1881,10 @@
     <sys:String x:Key="Desc_Title">Description</sys:String>
     <sys:String x:Key="Desc_TitleFormat">Description — {0}</sys:String>
     <sys:String x:Key="Desc_Subtitle">The description will be saved to DevOps on the next sync.</sys:String>
+    <sys:String x:Key="Desc_Owner">Assignee:</sys:String>
+    <sys:String x:Key="Desc_Name">Name:</sys:String>
+    <sys:String x:Key="Desc_DescriptionLabel">Description:</sys:String>
+    <sys:String x:Key="Desc_NameRequired">Enter the item name (title).</sys:String>
     <sys:String x:Key="Desc_Preview">Preview</sys:String>
     <sys:String x:Key="Desc_Edit">Edit</sys:String>
     <sys:String x:Key="Desc_Fetch">⬇ Fetch Updated Description</sys:String>

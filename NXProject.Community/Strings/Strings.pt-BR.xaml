@@ -1593,6 +1593,10 @@
     <sys:String x:Key="Desc_Title">Descrição</sys:String>
     <sys:String x:Key="Desc_TitleFormat">Descrição — {0}</sys:String>
     <sys:String x:Key="Desc_Subtitle">A descrição será gravada no DevOps na próxima sincronização.</sys:String>
+    <sys:String x:Key="Desc_Owner">Responsável:</sys:String>
+    <sys:String x:Key="Desc_Name">Nome:</sys:String>
+    <sys:String x:Key="Desc_DescriptionLabel">Descrição:</sys:String>
+    <sys:String x:Key="Desc_NameRequired">Informe o nome (título) do item.</sys:String>
     <sys:String x:Key="Desc_Preview">Visualizar</sys:String>
     <sys:String x:Key="Desc_Edit">Editar</sys:String>
     <sys:String x:Key="Desc_Fetch">⬇ Buscar Descrição Atualizada</sys:String>

@@ -5816,6 +5816,60 @@ namespace NXProject.Services
             catch (Exception ex) { return (false, ex.Message); }
         }
 
+        /// <summary>Grava o título (System.Title) de um work item. (Ok, Mensagem);
+        /// 403 = sem permissão de escrita.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemTitleAsync(
+            TfsConnectionOptions options, int id, string title, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar título", requireTeamProject: false);
+            var ops = new List<object> { PatchAdd("/fields/System.Title", (title ?? string.Empty).Trim()) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
+        /// <summary>Grava o responsável (System.AssignedTo) de um work item. Valor vazio remove a
+        /// atribuição. (Ok, Mensagem); 403 = sem permissão de escrita.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemAssignedToAsync(
+            TfsConnectionOptions options, int id, string? assignedTo, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar responsável", requireTeamProject: false);
+            var ops = string.IsNullOrWhiteSpace(assignedTo)
+                ? new List<object> { new { op = "remove", path = "/fields/System.AssignedTo" } }
+                : new List<object> { PatchAdd("/fields/System.AssignedTo", assignedTo.Trim()) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
         /// <summary>Funde a tag de andamento no conjunto atual: remove Doing e Done e adiciona
         /// <paramref name="targetTag"/> (null/vazio = só remove), preservando as demais tags.</summary>
         public static string MergeDoingTag(string? currentTags, string? targetTag)

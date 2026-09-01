@@ -15,12 +15,46 @@ namespace NXProject.Views
         private string _html = string.Empty;
         private bool _editingInWebView;
 
-        public TaskDescriptionEditWindow(ProjectTask task)
+        // Responsável (opcional): quando 'people' é fornecido, exibe o editor de responsável.
+        // Após ShowDialog()==true, OwnerChanged indica se mudou e SelectedOwner traz o novo valor.
+        public bool OwnerEnabled { get; }
+        public string? SelectedOwner { get; private set; }
+        public bool OwnerChanged { get; private set; }
+        private readonly string _initialOwner;
+
+        // Edição do nome (título): habilitada quando enableNameEdit=true.
+        public bool NameEnabled { get; }
+        public string? EditedName { get; private set; }
+        public bool NameChanged { get; private set; }
+        private readonly string _initialName;
+
+        public TaskDescriptionEditWindow(ProjectTask task,
+            System.Collections.Generic.IReadOnlyList<string>? people = null, string? currentOwner = null,
+            bool enableNameEdit = false)
         {
             InitializeComponent();
             _task = task;
             TitleText.Text = AppStrings.Get("Desc_TitleFormat", task.Name);
             _html = task.Description ?? string.Empty;
+
+            _initialName = task.Name ?? string.Empty;
+            EditedName = _initialName;
+            if (enableNameEdit)
+            {
+                NameEnabled = true;
+                NamePanel.Visibility = Visibility.Visible;
+                NameBox.Text = _initialName;
+            }
+
+            _initialOwner = currentOwner ?? string.Empty;
+            SelectedOwner = _initialOwner;
+            if (people != null)
+            {
+                OwnerEnabled = true;
+                OwnerPanel.Visibility = Visibility.Visible;
+                foreach (var p in people) OwnerCombo.Items.Add(p);
+                OwnerCombo.Text = _initialOwner;
+            }
 
             if (task.TfsId is not > 0)
                 FetchBtn.IsEnabled = false;
@@ -173,6 +207,23 @@ namespace NXProject.Views
             }
 
             _task.Description = _html.Trim();
+            if (NameEnabled)
+            {
+                var name = (NameBox.Text ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    MessageBox.Show(this, AppStrings.Get("Desc_NameRequired"), "NXProject",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                EditedName = name;
+                NameChanged = !string.Equals(name, _initialName.Trim(), StringComparison.Ordinal);
+            }
+            if (OwnerEnabled)
+            {
+                SelectedOwner = (OwnerCombo.Text ?? string.Empty).Trim();
+                OwnerChanged = !string.Equals(SelectedOwner, _initialOwner.Trim(), StringComparison.OrdinalIgnoreCase);
+            }
             DialogResult = true;
             Close();
         }
