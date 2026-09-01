@@ -30,6 +30,12 @@
                 <TextBlock Text="{DynamicResource Desc_Owner}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <ComboBox x:Name="OwnerCombo" Width="240" IsEditable="True" VerticalAlignment="Center"/>
             </StackPanel>
+            <StackPanel x:Name="HoursPanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+                <TextBlock Text="{DynamicResource Desc_EstHours}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <TextBox x:Name="EstHoursBox" Width="70" VerticalAlignment="Center"/>
+                <TextBlock x:Name="DoneHoursLabel" Text="{DynamicResource Desc_DoneHours}" VerticalAlignment="Center" Margin="16,0,6,0" FontSize="12" Visibility="Collapsed"/>
+                <TextBox x:Name="DoneHoursBox" Width="70" VerticalAlignment="Center" Visibility="Collapsed"/>
+            </StackPanel>
             <TextBlock Text="{DynamicResource Desc_DescriptionLabel}" FontSize="12" FontWeight="SemiBold" Margin="0,8,0,0"/>
         </StackPanel>
 

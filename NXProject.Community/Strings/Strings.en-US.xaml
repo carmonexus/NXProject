@@ -1884,6 +1884,11 @@
     <sys:String x:Key="Desc_Owner">Assignee:</sys:String>
     <sys:String x:Key="Desc_Name">Name:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Description:</sys:String>
+    <sys:String x:Key="Desc_EditStory">Edit Story</sys:String>
+    <sys:String x:Key="Desc_EditTask">Edit Task</sys:String>
+    <sys:String x:Key="Desc_EstHours">Est. hours:</sys:String>
+    <sys:String x:Key="Desc_DoneHours">Completed hours:</sys:String>
+    <sys:String x:Key="Desc_HoursInvalid">Invalid hours — enter a number (hours) greater than or equal to zero.</sys:String>
     <sys:String x:Key="Desc_NameRequired">Enter the item name (title).</sys:String>
     <sys:String x:Key="Desc_Preview">Preview</sys:String>
     <sys:String x:Key="Desc_Edit">Edit</sys:String>

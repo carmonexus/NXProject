@@ -50,6 +50,9 @@ namespace NXProject.Views
         // Nome/título (System.Title) alterado (pendente) e o já gravado (baseline pós-Salvar).
         private readonly Dictionary<int, string> _titlePending = new();
         private readonly Dictionary<int, string> _titleApplied = new();
+        // HH estimado (OriginalEstimate) e HH realizado (CompletedWork) alterados, pendentes de gravar.
+        private readonly Dictionary<int, double?> _estPending = new();
+        private readonly Dictionary<int, double?> _donePending = new();
         // Prioridade da Task alterada (pendente) e a já gravada (baseline após Salvar TFS).
         private readonly Dictionary<int, int> _prioPending = new();
         private readonly Dictionary<int, int> _prioApplied = new();
@@ -255,6 +258,8 @@ namespace NXProject.Views
                 _ownerApplied.Clear();
                 _titlePending.Clear();
                 _titleApplied.Clear();
+                _estPending.Clear();
+                _donePending.Clear();
                 _newCards.Clear();
                 _prioPending.Clear();
                 _prioApplied.Clear();
@@ -418,16 +423,17 @@ namespace NXProject.Views
         }
 
         // Botões ✎ (descrição) e 💬 (trâmite) para Story/Task — reusam o editor WebView do NX.
-        private void AddEditButtons(Panel panel, int id, string title, string currentOwner = "")
+        private void AddEditButtons(Panel panel, int id, string title, string currentOwner = "", string kind = "Story")
         {
             if (id <= 0) return;
             // ✎ marca "●" quando há descrição OU responsável pendente.
-            var descDirty = _descPending.ContainsKey(id) || _ownerPending.ContainsKey(id);
+            var descDirty = _descPending.ContainsKey(id) || _ownerPending.ContainsKey(id)
+                || _titlePending.ContainsKey(id) || _estPending.ContainsKey(id) || _donePending.ContainsKey(id);
             var desc = new Button { Content = descDirty ? "✎●" : "✎", FontSize = 11,
                 Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
                 Foreground = descDirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black,
                 ToolTip = AppStrings.Get("Sprint_EditDesc") };
-            desc.Click += async (_, _) => await EditDescriptionAsync(id, title, currentOwner);
+            desc.Click += async (_, _) => await EditDescriptionAsync(id, title, currentOwner, kind);
             panel.Children.Add(desc);
             var tram = new Button { Content = _tramitePending.ContainsKey(id) ? "💬●" : "💬", FontSize = 11,
                 Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
@@ -438,7 +444,7 @@ namespace NXProject.Views
         }
 
         // Descrição: abre o editor (WebView) com a descrição atual do DevOps (ou o rascunho pendente).
-        private async Task EditDescriptionAsync(int id, string title, string currentOwner = "")
+        private async Task EditDescriptionAsync(int id, string title, string currentOwner = "", string kind = "Story")
         {
             // Nome efetivo (pendente > aplicado > título recebido), editável na mesma tela.
             var effName = EffTitle(id, title);
@@ -449,10 +455,27 @@ namespace NXProject.Views
             var owner = _ownerPending.TryGetValue(id, out var op) ? op
                 : _ownerApplied.TryGetValue(id, out var oa) ? oa : currentOwner;
             var people = _board?.People.ToList() ?? new List<string>();
-            var dlg = new TaskDescriptionEditWindow(pt, people, owner, enableNameEdit: id > 0) { Owner = this };
+            // HH atuais do DevOps (com pendências locais sobrepostas) + estado p/ decidir HH Realizado.
+            double? est = null, done = null; string hState = kind;
+            if (id > 0)
+            {
+                var (e, c, st) = await TfsImportService.GetWorkItemHoursAsync(_options, id);
+                est = _estPending.TryGetValue(id, out var ep) ? ep : e;
+                done = _donePending.TryGetValue(id, out var dp) ? dp : c;
+                hState = st;
+            }
+            var dlg = new TaskDescriptionEditWindow(pt, people, owner, enableNameEdit: id > 0, objectKind: kind,
+                enableHours: id > 0, estimate: est, completed: done, state: hState) { Owner = this };
             if (dlg.ShowDialog() == true)
             {
                 _descPending[id] = pt.Description ?? string.Empty;
+                if (dlg.HoursChanged)
+                {
+                    _estPending[id] = dlg.EstimatedHours;
+                    // HH Realizado só é enviado quando visível (estado Closed).
+                    if (dlg.CompletedHours.HasValue || _donePending.ContainsKey(id))
+                        _donePending[id] = dlg.CompletedHours;
+                }
                 if (dlg.NameChanged)
                 {
                     var baseName = _titleApplied.TryGetValue(id, out var bn) ? bn : title;
@@ -500,7 +523,7 @@ namespace NXProject.Views
         private int PendingCount()
         {
             var doingDiff = _doing.Except(_appliedDoing).Count() + _appliedDoing.Except(_doing).Count();
-            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count;
+            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count;
         }
 
         private void UpdatePendingButton()
@@ -521,6 +544,8 @@ namespace NXProject.Views
             _tramitePending.Clear();
             _ownerPending.Clear();
             _titlePending.Clear();
+            _estPending.Clear();
+            _donePending.Clear();
             _newCards.Clear();
             _prioPending.Clear();
             _storyRankPending.Clear();
@@ -601,6 +626,16 @@ namespace NXProject.Views
                 var (success, msg) = await TfsImportService.SetWorkItemTitleAsync(_options, kv.Key, kv.Value);
                 if (success) { _titleApplied[kv.Key] = kv.Value; _titlePending.Remove(kv.Key); ok++; }
                 else fails.Add($"#{kv.Key} (nome): {msg}");
+            }
+
+            // 3d) HH estimado (OriginalEstimate) e HH realizado (CompletedWork). 403 = sem permissão.
+            foreach (var wid in _estPending.Keys.Union(_donePending.Keys).ToList())
+            {
+                double? eh = _estPending.TryGetValue(wid, out var ev) ? ev : null;
+                double? ch = _donePending.TryGetValue(wid, out var cv) ? cv : null;
+                var (success, msg) = await TfsImportService.SetWorkItemHoursAsync(_options, wid, eh, ch);
+                if (success) { _estPending.Remove(wid); _donePending.Remove(wid); ok++; }
+                else fails.Add($"#{wid} (HH): {msg}");
             }
 
             // 4) Trâmite (comentário/discussão; aceita HTML com imagem).
@@ -1539,7 +1574,7 @@ namespace NXProject.Views
                 sched.Click += (_, _) => _openInSchedule!(t.Id);
                 actions.Children.Add(sched);
             }
-            AddEditButtons(actions, t.Id, t.Title, t.AssignedTo); // ✎ descrição e 💬 trâmite da Task
+            AddEditButtons(actions, t.Id, t.Title, t.AssignedTo, "Task"); // ✎ descrição e 💬 trâmite da Task
             sp.Children.Add(actions);
             border.Child = sp;
 

@@ -5842,6 +5842,54 @@ namespace NXProject.Services
             catch (Exception ex) { return (false, ex.Message); }
         }
 
+        /// <summary>Lê HH estimado (OriginalEstimate), HH realizado (CompletedWork) e estado de um work item.</summary>
+        public static async Task<(double? Estimate, double? Completed, string State)> GetWorkItemHoursAsync(
+            TfsConnectionOptions options, int id, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "ler HH", requireTeamProject: false);
+            var fields = "System.State,Microsoft.VSTS.Scheduling.OriginalEstimate,Microsoft.VSTS.Scheduling.CompletedWork";
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?fields={fields}&{QueryApiVersion}";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return (null, null, string.Empty);
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("fields", out var f)) return (null, null, string.Empty);
+            double? Num(string k) => f.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : (double?)null;
+            var state = f.TryGetProperty("System.State", out var s) ? s.GetString() ?? string.Empty : string.Empty;
+            return (Num("Microsoft.VSTS.Scheduling.OriginalEstimate"), Num("Microsoft.VSTS.Scheduling.CompletedWork"), state);
+        }
+
+        /// <summary>Grava HH estimado (OriginalEstimate) e/ou HH realizado (CompletedWork). null = não altera
+        /// aquele campo. (Ok, Mensagem); 403 = sem permissão de escrita.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemHoursAsync(
+            TfsConnectionOptions options, int id, double? estimate, double? completed, CancellationToken ct = default)
+        {
+            var ops = new List<object>();
+            if (estimate.HasValue) ops.Add(PatchAdd("/fields/Microsoft.VSTS.Scheduling.OriginalEstimate", estimate.Value));
+            if (completed.HasValue) ops.Add(PatchAdd("/fields/Microsoft.VSTS.Scheduling.CompletedWork", completed.Value));
+            if (ops.Count == 0) return (true, string.Empty);
+            var ctx = CreateTfsAuthContext(options, "gravar HH", requireTeamProject: false);
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
         /// <summary>Grava o responsável (System.AssignedTo) de um work item. Valor vazio remove a
         /// atribuição. (Ok, Mensagem); 403 = sem permissão de escrita.</summary>
         public static async Task<(bool Ok, string Message)> SetWorkItemAssignedToAsync(

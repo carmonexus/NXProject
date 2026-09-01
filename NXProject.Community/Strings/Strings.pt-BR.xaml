@@ -1596,6 +1596,11 @@
     <sys:String x:Key="Desc_Owner">Responsável:</sys:String>
     <sys:String x:Key="Desc_Name">Nome:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Descrição:</sys:String>
+    <sys:String x:Key="Desc_EditStory">Edição de Story</sys:String>
+    <sys:String x:Key="Desc_EditTask">Edição de Task</sys:String>
+    <sys:String x:Key="Desc_EstHours">HH Estimado:</sys:String>
+    <sys:String x:Key="Desc_DoneHours">HH Realizado:</sys:String>
+    <sys:String x:Key="Desc_HoursInvalid">HH inválido — informe um número (horas) maior ou igual a zero.</sys:String>
     <sys:String x:Key="Desc_NameRequired">Informe o nome (título) do item.</sys:String>
     <sys:String x:Key="Desc_Preview">Visualizar</sys:String>
     <sys:String x:Key="Desc_Edit">Editar</sys:String>

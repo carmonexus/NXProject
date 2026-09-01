@@ -28,12 +28,29 @@ namespace NXProject.Views
         public bool NameChanged { get; private set; }
         private readonly string _initialName;
 
+        // Edição de HH: estimado sempre; realizado só quando o estado é Closed.
+        public bool HoursEnabled { get; }
+        public double? EstimatedHours { get; private set; }
+        public double? CompletedHours { get; private set; }
+        public bool HoursChanged { get; private set; }
+        private readonly double? _initialEstimate;
+        private readonly double? _initialCompleted;
+        private bool _doneVisible;
+
         public TaskDescriptionEditWindow(ProjectTask task,
             System.Collections.Generic.IReadOnlyList<string>? people = null, string? currentOwner = null,
-            bool enableNameEdit = false)
+            bool enableNameEdit = false, string? objectKind = null,
+            bool enableHours = false, double? estimate = null, double? completed = null, string? state = null)
         {
             InitializeComponent();
             _task = task;
+            // Título da janela conforme o objeto (Story/Task) quando informado; senão o padrão.
+            Title = objectKind switch
+            {
+                "Story" => AppStrings.Get("Desc_EditStory"),
+                "Task" => AppStrings.Get("Desc_EditTask"),
+                _ => AppStrings.Get("Desc_Title")
+            };
             TitleText.Text = AppStrings.Get("Desc_TitleFormat", task.Name);
             _html = task.Description ?? string.Empty;
 
@@ -44,6 +61,27 @@ namespace NXProject.Views
                 NameEnabled = true;
                 NamePanel.Visibility = Visibility.Visible;
                 NameBox.Text = _initialName;
+            }
+
+            _initialEstimate = estimate;
+            _initialCompleted = completed;
+            EstimatedHours = estimate;
+            CompletedHours = completed;
+            if (enableHours)
+            {
+                HoursEnabled = true;
+                HoursPanel.Visibility = Visibility.Visible;
+                EstHoursBox.Text = estimate.HasValue ? estimate.Value.ToString("0.##") : string.Empty;
+                // HH Realizado só faz sentido quando o item está Closed.
+                _doneVisible = string.Equals(state, "Closed", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(state, "Done", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(state, "Completed", StringComparison.OrdinalIgnoreCase);
+                if (_doneVisible)
+                {
+                    DoneHoursLabel.Visibility = Visibility.Visible;
+                    DoneHoursBox.Visibility = Visibility.Visible;
+                    DoneHoursBox.Text = completed.HasValue ? completed.Value.ToString("0.##") : string.Empty;
+                }
             }
 
             _initialOwner = currentOwner ?? string.Empty;
@@ -223,6 +261,31 @@ namespace NXProject.Views
             {
                 SelectedOwner = (OwnerCombo.Text ?? string.Empty).Trim();
                 OwnerChanged = !string.Equals(SelectedOwner, _initialOwner.Trim(), StringComparison.OrdinalIgnoreCase);
+            }
+            if (HoursEnabled)
+            {
+                double? ParseHours(string? txt, out bool bad)
+                {
+                    bad = false;
+                    var t = (txt ?? string.Empty).Trim().Replace(',', '.');
+                    if (t.Length == 0) return null;
+                    if (double.TryParse(t, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var v) && v >= 0)
+                        return v;
+                    bad = true; return null;
+                }
+                var est = ParseHours(EstHoursBox.Text, out var badEst);
+                bool badDone = false;
+                double? done = _doneVisible ? ParseHours(DoneHoursBox.Text, out badDone) : null;
+                if (badEst || badDone)
+                {
+                    MessageBox.Show(this, AppStrings.Get("Desc_HoursInvalid"), "NXProject",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                EstimatedHours = est;
+                CompletedHours = done;
+                bool Diff(double? a, double? b) => (a ?? -1) != (b ?? -1);
+                HoursChanged = Diff(est, _initialEstimate) || (_doneVisible && Diff(done, _initialCompleted));
             }
             DialogResult = true;
             Close();
