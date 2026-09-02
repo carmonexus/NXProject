@@ -197,25 +197,6 @@
                 </Viewbox>
             </Button>
 
-            <!-- Task Plan: planejamento de tasks por EPIC em planilha (.xlsx) -->
-            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTaskPlanClick"
-                    ToolTip="{DynamicResource Toolbar_TaskPlan}">
-                <Viewbox Width="22" Height="20" Stretch="Uniform">
-                    <Canvas Width="24" Height="24">
-                        <!-- folha da planilha -->
-                        <Rectangle Canvas.Left="2" Canvas.Top="2" Width="20" Height="20" RadiusX="2" RadiusY="2"
-                                   Fill="White" Stroke="#1B7A43" StrokeThickness="2"/>
-                        <!-- cabeçalho verde -->
-                        <Rectangle Canvas.Left="2" Canvas.Top="2" Width="20" Height="5" Fill="#1B7A43"/>
-                        <!-- linhas -->
-                        <Line X1="2" Y1="12" X2="22" Y2="12" Stroke="#8FBF9F" StrokeThickness="1"/>
-                        <Line X1="2" Y1="17" X2="22" Y2="17" Stroke="#8FBF9F" StrokeThickness="1"/>
-                        <!-- colunas -->
-                        <Line X1="9"  Y1="7" X2="9"  Y2="22" Stroke="#8FBF9F" StrokeThickness="1"/>
-                        <Line X1="15.5" Y1="7" X2="15.5" Y2="22" Stroke="#8FBF9F" StrokeThickness="1"/>
-                    </Canvas>
-                </Viewbox>
-            </Button>
             <!-- Chat de análise do cronograma com IA -->
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnAiChatClick"
                     ToolTip="{DynamicResource Toolbar_AiChat}">
@@ -653,6 +634,26 @@
                         </Canvas>
                     </Viewbox>
                     <TextBlock Text="Backlog" Foreground="#5A6B7B" FontSize="12" FontWeight="Bold"
+                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Task Plan: planejamento de tasks por EPIC em planilha (.xlsx) -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTaskPlanClick"
+                    ToolTip="{DynamicResource Toolbar_TaskPlan}">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="17" Height="17" Stretch="Uniform">
+                        <Canvas Width="24" Height="24">
+                            <Rectangle Canvas.Left="2" Canvas.Top="2" Width="20" Height="20" RadiusX="2" RadiusY="2"
+                                       Fill="White" Stroke="#1B7A43" StrokeThickness="2"/>
+                            <Rectangle Canvas.Left="2" Canvas.Top="2" Width="20" Height="5" Fill="#1B7A43"/>
+                            <Line X1="2" Y1="12" X2="22" Y2="12" Stroke="#8FBF9F" StrokeThickness="1"/>
+                            <Line X1="2" Y1="17" X2="22" Y2="17" Stroke="#8FBF9F" StrokeThickness="1"/>
+                            <Line X1="9"  Y1="7" X2="9"  Y2="22" Stroke="#8FBF9F" StrokeThickness="1"/>
+                            <Line X1="15.5" Y1="7" X2="15.5" Y2="22" Stroke="#8FBF9F" StrokeThickness="1"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="Task Plan" Foreground="#5A6B7B" FontSize="12" FontWeight="Bold"
                                FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </Button>

@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Web.WebView2.Core;
 using NXProject.Models;
 using NXProject.Services;
@@ -28,6 +30,18 @@ namespace NXProject.Views
         public bool NameChanged { get; private set; }
         private readonly string _initialName;
 
+        // Bloqueio (tag) — habilitado via enableBlocked.
+        public bool BlockedEnabled { get; }
+        public bool Blocked { get; private set; }
+        public bool BlockedChanged { get; private set; }
+        private readonly bool _initialBlocked;
+
+        // Edição da Sprint (iteração): habilitada quando 'sprints' é fornecido.
+        public bool SprintEnabled { get; }
+        public string? SelectedIteration { get; private set; }
+        public bool IterationChanged { get; private set; }
+        private readonly string _initialIteration = "";
+
         // Edição de HH: estimado sempre; realizado só quando o estado é Closed.
         public bool HoursEnabled { get; }
         public double? EstimatedHours { get; private set; }
@@ -40,7 +54,9 @@ namespace NXProject.Views
         public TaskDescriptionEditWindow(ProjectTask task,
             System.Collections.Generic.IReadOnlyList<string>? people = null, string? currentOwner = null,
             bool enableNameEdit = false, string? objectKind = null,
-            bool enableHours = false, double? estimate = null, double? completed = null, string? state = null)
+            bool enableHours = false, double? estimate = null, double? completed = null, string? state = null,
+            System.Collections.Generic.IReadOnlyList<(string Name, string Path)>? sprints = null, string? currentIteration = null,
+            bool enableBlocked = false, bool currentBlocked = false)
         {
             InitializeComponent();
             _task = task;
@@ -82,6 +98,26 @@ namespace NXProject.Views
                     DoneHoursBox.Visibility = Visibility.Visible;
                     DoneHoursBox.Text = completed.HasValue ? completed.Value.ToString("0.##") : string.Empty;
                 }
+            }
+
+            _initialIteration = currentIteration ?? string.Empty;
+            SelectedIteration = _initialIteration;
+            if (sprints != null && sprints.Count > 0)
+            {
+                SprintEnabled = true;
+                SprintPanel.Visibility = Visibility.Visible;
+                foreach (var s in sprints) SprintCombo.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s.Path });
+                var sel = SprintCombo.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == _initialIteration);
+                if (sel != null) SprintCombo.SelectedItem = sel;
+            }
+
+            _initialBlocked = currentBlocked;
+            Blocked = currentBlocked;
+            if (enableBlocked)
+            {
+                BlockedEnabled = true;
+                BlockedCheck.Visibility = Visibility.Visible;
+                BlockedCheck.IsChecked = currentBlocked;
             }
 
             _initialOwner = currentOwner ?? string.Empty;
@@ -261,6 +297,16 @@ namespace NXProject.Views
             {
                 SelectedOwner = (OwnerCombo.Text ?? string.Empty).Trim();
                 OwnerChanged = !string.Equals(SelectedOwner, _initialOwner.Trim(), StringComparison.OrdinalIgnoreCase);
+            }
+            if (SprintEnabled && SprintCombo.SelectedItem is ComboBoxItem si)
+            {
+                SelectedIteration = (string)si.Tag;
+                IterationChanged = !string.Equals(SelectedIteration, _initialIteration, StringComparison.OrdinalIgnoreCase);
+            }
+            if (BlockedEnabled)
+            {
+                Blocked = BlockedCheck.IsChecked == true;
+                BlockedChanged = Blocked != _initialBlocked;
             }
             if (HoursEnabled)
             {

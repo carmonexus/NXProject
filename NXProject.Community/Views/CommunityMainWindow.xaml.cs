@@ -310,6 +310,53 @@ namespace NXProject.Views
                 }
             };
             ApplyLayoutMode(expanded: false);
+            RestoreWindowState();
+        }
+
+        private sealed class WinState { public bool Maximized { get; set; } public double Left { get; set; } public double Top { get; set; } public double Width { get; set; } public double Height { get; set; } }
+
+        private static string WindowStateFile => System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "NXProject.Community", "windowstate.json");
+
+        // Restaura posição/tamanho e o estado maximizado da última sessão.
+        private void RestoreWindowState()
+        {
+            try
+            {
+                if (!System.IO.File.Exists(WindowStateFile)) return;
+                var s = System.Text.Json.JsonSerializer.Deserialize<WinState>(System.IO.File.ReadAllText(WindowStateFile));
+                if (s == null) return;
+                if (s.Width > 200 && s.Height > 200)
+                {
+                    WindowStartupLocation = WindowStartupLocation.Manual;
+                    Left = s.Left; Top = s.Top; Width = s.Width; Height = s.Height;
+                }
+                // Maximizar no construtor costuma ser ignorado; aplica em SourceInitialized.
+                _restoreMaximized = s.Maximized;
+            }
+            catch { }
+        }
+        private bool _restoreMaximized;
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            if (_restoreMaximized) WindowState = WindowState.Maximized;
+        }
+
+        // Grava o estado atual (usa RestoreBounds para preservar o tamanho "normal" mesmo maximizado).
+        private void SaveWindowState()
+        {
+            try
+            {
+                var b = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
+                var s = new WinState { Maximized = WindowState == WindowState.Maximized,
+                    Left = b.Left, Top = b.Top, Width = b.Width, Height = b.Height };
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(WindowStateFile)!);
+                System.IO.File.WriteAllText(WindowStateFile, System.Text.Json.JsonSerializer.Serialize(s));
+            }
+            catch { }
         }
 
         /// <summary>Abre a janela principal já com um cronograma carregado de arquivo
@@ -975,14 +1022,19 @@ namespace NXProject.Views
         }
 
         // Abre a visão de Sprint (Taskboard: cards por estado, filtro por pessoa e cronograma).
-        private void OnTfsSprintClick(object sender, RoutedEventArgs e)
+        private void OnTfsSprintClick(object sender, RoutedEventArgs e) => OpenTaskBoard(silent: false);
+
+        // Abre o TaskBoard do NX. silent=true (auto-abertura na inicialização) não mostra
+        // aviso caso o DevOps ainda não esteja configurado — apenas não abre.
+        private void OpenTaskBoard(bool silent)
         {
             var conn = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
             if (string.IsNullOrWhiteSpace(conn.OrganizationUrl) || string.IsNullOrWhiteSpace(conn.TeamProject)
                 || string.IsNullOrWhiteSpace(conn.PersonalAccessToken))
             {
-                MessageBox.Show(this, AppStrings.Get("Query_LoadError", AppStrings.Get("Menu_View_DevOpsConfig")),
-                    "NXProject", MessageBoxButton.OK, MessageBoxImage.Information);
+                if (!silent)
+                    MessageBox.Show(this, AppStrings.Get("Query_LoadError", AppStrings.Get("Menu_View_DevOpsConfig")),
+                        "NXProject", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             var vm = DataContext as MainViewModel;
@@ -3921,6 +3973,13 @@ namespace NXProject.Views
             var opts = Services.TfsConnectionStore.Load("NXProject.Community");
             BaselineAutoLoadItem.IsChecked = opts.AutoLoadBaseline;
 
+            // Perfil desenvolvedor: abrir o TaskBoard automaticamente ao iniciar (opção da própria tela).
+            if (NXProject.Views.TfsSprintWindow.ShouldAutoOpenTaskBoard())
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (_licenseAccepted || HasAcceptedLicense()) OpenTaskBoard(silent: true);
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
             // Setup pediu para baixar a IA Local (LLaMA)? Abre o Gerenciar IA Local já baixando
             // (usa a pasta configurada nessa tela — mantém o path consistente). Após a licença.
             if (NXProject.CommunityApp.ConsumeInstallLlama())
@@ -3980,6 +4039,8 @@ namespace NXProject.Views
 
         private void OnCommunityWindowClosing(object? sender, CancelEventArgs e)
         {
+            SaveWindowState(); // preserva tamanho/posição/maximizado para a próxima sessão
+
             if (_allowClose)
                 return;
 

@@ -27,6 +27,8 @@ namespace NXProject.Views
         private const string AllPeople = "— Todos —";
         // Filtro múltiplo por Story (vazio = todas) e lookup id→Story.
         private readonly HashSet<int> _selectedStoryIds = new();
+        // Filtro múltiplo por Pessoa (vazio = todas).
+        private readonly HashSet<string> _selectedPeople = new(StringComparer.CurrentCultureIgnoreCase);
         private Dictionary<int, TfsImportService.SprintStoryRow> _storyById = new();
         // Filtro por estado (vazio = todos), nome do usuário atual e edição de cards.
         private readonly HashSet<string> _hiddenStates = new(StringComparer.OrdinalIgnoreCase);
@@ -53,6 +55,15 @@ namespace NXProject.Views
         // HH estimado (OriginalEstimate) e HH realizado (CompletedWork) alterados, pendentes de gravar.
         private readonly Dictionary<int, double?> _estPending = new();
         private readonly Dictionary<int, double?> _donePending = new();
+        // Tasks (New) marcadas para excluir; a exclusão no DevOps ocorre no Salvar TFS.
+        private readonly HashSet<int> _deletePending = new();
+        // Iteração (sprint) da Story alterada (pendente) e a já gravada (baseline pós-Salvar).
+        private readonly Dictionary<int, string> _iterPending = new();
+        private readonly Dictionary<int, string> _iterApplied = new();
+        // Bloqueio (tag "Blocked") alterado (pendente: novo valor) e conjuntos de tags já gravados.
+        private const string BlockedTag = "Blocked";
+        private readonly Dictionary<int, bool> _blockPending = new();
+        private readonly Dictionary<int, string> _tagsApplied = new(); // tags após gravar (baseline)
         // Prioridade da Task alterada (pendente) e a já gravada (baseline após Salvar TFS).
         private readonly Dictionary<int, int> _prioPending = new();
         private readonly Dictionary<int, int> _prioApplied = new();
@@ -68,61 +79,88 @@ namespace NXProject.Views
         // Lookup dos cards efetivos por id (para saber prioridade/rank ao arrastar).
         private readonly Dictionary<int, TfsImportService.SprintTaskCard> _cardById = new();
         // Novos cards (Story/Task) criados localmente, sem ID do TFS ainda (id temporário negativo).
-        private sealed class NewCard { public int TempId; public string Type = ""; public string Title = ""; public int ParentId; public string FeatureTitle = ""; public int FeatureId; public string AssignedTo = ""; public double? Effort; public string Description = ""; }
+        private sealed class NewCard { public int TempId; public string Type = ""; public string Title = ""; public int ParentId; public string FeatureTitle = ""; public int FeatureId; public string AssignedTo = ""; public double? Effort; public string Description = ""; public string IterationPath = ""; }
         private readonly List<NewCard> _newCards = new();
         private int _nextTempId = -1;
-        private string _sprintPath = "";
-        private bool _initialSelection = true;
+        // Sprints selecionadas (1 = normal; várias = união; vazio = "todas"). O caminho "único"
+        // só existe quando exatamente uma sprint específica está ativa (usado p/ criar itens/last).
+        private List<string> _sprintPaths = new();
+        private string _sprintPath => _sprintPaths.Count == 1 ? _sprintPaths[0] : "";
 
         private static string SprintSettingsPath => System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "NXProject.Community", "sprintview.json");
 
-        private static string? LoadLastSprintPath()
+        // Preferências persistidas da tela (últimos filtros do usuário).
+        private sealed class SprintPrefs
+        {
+            public string LastSprintPath { get; set; } = "";
+            public int? ClosedDays { get; set; }        // só > 0 (0/null = todos)
+            public List<string>? Persons { get; set; }   // vazio/null = todas
+            public int? View { get; set; }              // 0 = Por Story, 1 = Pessoa & Task
+            public bool? OnlySchedule { get; set; }
+            public bool? EditMode { get; set; }
+            public List<string>? HiddenStates { get; set; }
+            public List<string>? SprintPaths { get; set; }   // >1 = multi-seleção de sprints
+            public Dictionary<string, string>? StateColors { get; set; } // estado(lower) -> #RRGGBB
+            public bool AutoOpen { get; set; }   // abrir o TaskBoard ao iniciar o NX
+            public bool WinMaximized { get; set; }
+            public double WinLeft { get; set; }
+            public double WinTop { get; set; }
+            public double WinWidth { get; set; }
+            public double WinHeight { get; set; }
+        }
+        private SprintPrefs _prefs = new();
+        private bool _restoringPrefs;   // evita salvar enquanto restaura os controles
+        private bool _firstBoardLoad = true; // aplica os filtros salvos só na 1ª carga
+        private bool _boardEverLoaded;  // só salva prefs depois da 1ª carga (evita sobrescrever com defaults)
+
+        private static SprintPrefs LoadPrefs()
         {
             try
             {
                 var p = SprintSettingsPath;
-                if (!System.IO.File.Exists(p)) return null;
-                using var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(p));
-                return doc.RootElement.TryGetProperty("LastSprintPath", out var v) ? v.GetString() : null;
+                if (System.IO.File.Exists(p))
+                    return System.Text.Json.JsonSerializer.Deserialize<SprintPrefs>(System.IO.File.ReadAllText(p)) ?? new();
             }
-            catch { return null; }
+            catch { }
+            return new();
         }
 
-        // Dias anteriores para exibir Closed. Só é gravado quando > 0 (0 = "todos", não persiste).
-        private static int? LoadClosedDays()
+        /// <summary>Se o usuário pediu para abrir o TaskBoard automaticamente ao iniciar o NX.</summary>
+        public static bool ShouldAutoOpenTaskBoard() => LoadPrefs().AutoOpen;
+
+        protected override void OnSourceInitialized(EventArgs e)
         {
-            try
-            {
-                var p = SprintSettingsPath;
-                if (!System.IO.File.Exists(p)) return null;
-                using var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(p));
-                return doc.RootElement.TryGetProperty("ClosedDays", out var v)
-                    && v.TryGetInt32(out var d) && d > 0 ? d : (int?)null;
-            }
-            catch { return null; }
+            base.OnSourceInitialized(e);
+            if (_prefs.WinMaximized) WindowState = WindowState.Maximized;
         }
 
-        private static void SaveLastSprintPath(string path) => WriteSprintSettings(path, null);
+        private static string? LoadLastSprintPath() => LoadPrefs().LastSprintPath is { Length: > 0 } s ? s : null;
+        private static int? LoadClosedDays() => LoadPrefs().ClosedDays is int d && d > 0 ? d : (int?)null;
 
-        // Grava ClosedDays só se > 0; zero remove a chave (volta a "todos" ao reabrir).
-        private static void SaveClosedDays(int days) => WriteSprintSettings(null, days);
-
-        private static void WriteSprintSettings(string? path, int? closedDays)
+        // Persiste o estado atual dos filtros (chamado a cada mudança). ClosedDays só grava se > 0.
+        private void SavePrefs()
         {
+            if (_restoringPrefs || !_boardEverLoaded) return;
             try
             {
+                _prefs.LastSprintPath = _sprintPath ?? "";
+                _prefs.SprintPaths = _sprintPaths.Count > 1 ? _sprintPaths.ToList() : null;
+                // Geometria da janela (usa RestoreBounds p/ manter o tamanho normal mesmo maximizado).
+                _prefs.WinMaximized = WindowState == WindowState.Maximized;
+                var b = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
+                if (b.Width > 200 && b.Height > 200)
+                { _prefs.WinLeft = b.Left; _prefs.WinTop = b.Top; _prefs.WinWidth = b.Width; _prefs.WinHeight = b.Height; }
+                _prefs.ClosedDays = _closedDays > 0 ? _closedDays : (int?)null;
+                _prefs.Persons = _selectedPeople.Count > 0 ? _selectedPeople.ToList() : null;
+                _prefs.View = ViewCombo.SelectedIndex;
+                _prefs.OnlySchedule = OnlyScheduleCheck.IsChecked == true;
+                _prefs.EditMode = EditModeCheck.IsChecked == true;
+                _prefs.HiddenStates = _hiddenStates.ToList();
                 var p = SprintSettingsPath;
-                string? curPath = LoadLastSprintPath();
-                int? curDays = LoadClosedDays();
-                var finalPath = path ?? curPath ?? "";
-                var finalDays = closedDays ?? curDays;
                 System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(p)!);
-                object payload = finalDays is int fd && fd > 0
-                    ? new { LastSprintPath = finalPath, ClosedDays = fd }
-                    : new { LastSprintPath = finalPath };
-                System.IO.File.WriteAllText(p, System.Text.Json.JsonSerializer.Serialize(payload));
+                System.IO.File.WriteAllText(p, System.Text.Json.JsonSerializer.Serialize(_prefs));
             }
             catch { }
         }
@@ -143,9 +181,22 @@ namespace NXProject.Views
             ViewCombo.Items.Add(AppStrings.Get("Sprint_ViewBoard"));   // 0 = StoryBoard
             ViewCombo.Items.Add(AppStrings.Get("Sprint_ViewByPerson")); // 1 = TaskBoard (por pessoa)
             ViewCombo.SelectedIndex = 0;
+            SearchScopeCombo.Items.Add(AppStrings.Get("Sprint_ScopeBoth"));  // 0
+            SearchScopeCombo.Items.Add(AppStrings.Get("Sprint_ScopeTask"));  // 1
+            SearchScopeCombo.Items.Add(AppStrings.Get("Sprint_ScopeStory")); // 2
+            SearchScopeCombo.SelectedIndex = 0;
+            // Carrega os últimos filtros salvos (aplicados na 1ª carga do board).
+            _prefs = LoadPrefs();
+            AutoOpenCheck.IsChecked = _prefs.AutoOpen;
+            // Restaura geometria/estado da janela do TaskBoard.
+            if (_prefs.WinWidth > 200 && _prefs.WinHeight > 200)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual;
+                Left = _prefs.WinLeft; Top = _prefs.WinTop; Width = _prefs.WinWidth; Height = _prefs.WinHeight;
+            }
+            Closing += (_, _) => SavePrefs();
             // Restaura a preferência de "dias anteriores" do Closed (0/ausente = padrão 30).
-            var savedDays = LoadClosedDays();
-            if (savedDays is int sd && sd > 0)
+            if (_prefs.ClosedDays is int sd && sd > 0)
             {
                 _closedDays = sd;
                 ClosedDaysBox.Text = sd.ToString();
@@ -160,25 +211,30 @@ namespace NXProject.Views
             {
                 _currentUser = await TfsImportService.GetCurrentUserDisplayNameAsync(_options);
                 _sprints = await TfsImportService.ListSprintsAsync(_options);
-                // Opção "Todas as sprints" (Path vazio): board sem filtro de iteração — útil
-                // quando as Stories/Tasks não estão bem distribuídas nas sprints.
-                _sprints.Insert(0, new TfsImportService.SprintInfo(
-                    AppStrings.Get("Sprint_AllSprints"), "", null, null));
-                SprintCombo.ItemsSource = _sprints;
-                SprintCombo.DisplayMemberPath = nameof(TfsImportService.SprintInfo.Name);
-                // Na ENTRADA: última sprint salva → sprint atual (por data) → sugerida do cronograma
-                // → última da lista. Depois, o usuário troca à vontade (e a escolha é salva).
-                int idx = -1;
-                var saved = LoadLastSprintPath();
-                if (!string.IsNullOrWhiteSpace(saved))
-                    idx = _sprints.FindIndex(s => string.Equals(s.Path, saved, StringComparison.OrdinalIgnoreCase));
-                if (idx < 0) idx = CurrentSprintIndex();
-                if (idx < 0 && !string.IsNullOrWhiteSpace(_preferredSprint))
-                    idx = _sprints.FindIndex(s => string.Equals(s.Path, _preferredSprint, StringComparison.OrdinalIgnoreCase));
-                if (idx < 0) idx = _sprints.Count - 1;
+                // Lista multi-seleção (estilo do filtro de pessoa): cada sprint com data início–fim.
+                PopulateSprintList();
+                // Seleção inicial: multi salva → última sprint salva → sprint atual (data)
+                // → sugerida do cronograma → última da lista.
+                var initial = new List<string>();
+                if (_prefs.SprintPaths is { Count: > 1 } saved2
+                    && saved2.All(p => _sprints.Any(s => string.Equals(s.Path, p, StringComparison.OrdinalIgnoreCase))))
+                    initial = saved2.ToList();
+                else
+                {
+                    string? one = null;
+                    var saved = LoadLastSprintPath();
+                    if (!string.IsNullOrWhiteSpace(saved) && _sprints.Any(s => string.Equals(s.Path, saved, StringComparison.OrdinalIgnoreCase)))
+                        one = saved;
+                    one ??= CurrentSprintPath();
+                    if (one == null && !string.IsNullOrWhiteSpace(_preferredSprint)
+                        && _sprints.Any(s => string.Equals(s.Path, _preferredSprint, StringComparison.OrdinalIgnoreCase)))
+                        one = _preferredSprint;
+                    one ??= _sprints.LastOrDefault()?.Path;
+                    if (!string.IsNullOrEmpty(one)) initial.Add(one);
+                }
                 StatusText.Text = "";
-                _initialSelection = true;
-                if (idx >= 0) SprintCombo.SelectedIndex = idx; // dispara OnSprintChanged
+                ApplySprintChecks(initial);
+                await ReloadBoardAsync(initial);
             }
             catch (Exception ex)
             {
@@ -188,65 +244,154 @@ namespace NXProject.Views
             }
         }
 
-        // Índice da sprint atual pela data (a de menor duração que contém hoje = a folha, não o container).
-        private int CurrentSprintIndex()
+        // Preenche os checkboxes das sprints com o rótulo "Nome (dd/MM/aa–dd/MM/aa)".
+        private void PopulateSprintList()
+        {
+            SprintMultiList.Children.Clear();
+            foreach (var sp in _sprints.Where(s => !string.IsNullOrEmpty(s.Path)))
+                SprintMultiList.Children.Add(new CheckBox { Content = SprintLabel(sp), Tag = sp.Path,
+                    IsChecked = _sprintPaths.Contains(sp.Path), Margin = new Thickness(0, 1, 0, 1) });
+        }
+
+        private static string SprintLabel(TfsImportService.SprintInfo s)
+        {
+            if (s.Start is { } st && s.End is { } en)
+                return $"{s.Name}   ({st:dd/MM/yy}–{en:dd/MM/yy})";
+            return s.Name;
+        }
+
+        private void ApplySprintChecks(List<string> paths)
+        {
+            foreach (var cb in SprintMultiList.Children.OfType<CheckBox>())
+                cb.IsChecked = cb.Tag is string tp && paths.Contains(tp);
+            UpdateSprintToggleText();
+        }
+
+        private void UpdateSprintToggleText()
+        {
+            if (_sprintPaths.Count == 0)
+                SprintFilterToggle.Content = AppStrings.Get("Sprint_AllSprints");
+            else if (_sprintPaths.Count == 1)
+            {
+                var sp = _sprints.FirstOrDefault(s => string.Equals(s.Path, _sprintPaths[0], StringComparison.OrdinalIgnoreCase));
+                SprintFilterToggle.Content = sp != null ? SprintLabel(sp) : _sprintPaths[0];
+            }
+            else
+                SprintFilterToggle.Content = AppStrings.Get("Sprint_MultiN", _sprintPaths.Count.ToString());
+        }
+
+        // Caminho da sprint atual pela data (a de menor duração que contém hoje).
+        private string? CurrentSprintPath()
         {
             var today = DateTime.Today;
-            var candidates = _sprints
-                .Select((s, i) => (s, i))
-                .Where(x => x.s.Start is { } st && x.s.End is { } en && today >= st && today <= en)
-                .OrderBy(x => (x.s.End!.Value - x.s.Start!.Value).TotalDays)
-                .ToList();
-            return candidates.Count > 0 ? candidates[0].i : -1;
+            return _sprints
+                .Where(s => !string.IsNullOrEmpty(s.Path) && s.Start is { } st && s.End is { } en && today >= st && today <= en)
+                .OrderBy(s => (s.End!.Value - s.Start!.Value).TotalDays)
+                .FirstOrDefault()?.Path;
         }
 
-        private void OnCurrentSprintClick(object sender, RoutedEventArgs e)
+        private async void OnCurrentSprintClick(object sender, RoutedEventArgs e)
         {
-            var idx = CurrentSprintIndex();
-            if (idx >= 0) SprintCombo.SelectedIndex = idx;
+            var path = CurrentSprintPath();
+            if (path == null) return;
+            var sel = new List<string> { path };
+            ApplySprintChecks(sel);
+            await ReloadBoardAsync(sel);
+            SavePrefs();
         }
 
-        // Recarrega a sprint atual do TFS. Se houver mudanças pendentes, pede confirmação (o reload as descarta).
+        // Recarrega do TFS. Se houver mudanças pendentes, pede confirmação (o reload as descarta).
         private async void OnReloadClick(object sender, RoutedEventArgs e)
         {
-            if (SprintCombo.SelectedItem is not TfsImportService.SprintInfo) return;
             if (PendingCount() > 0 &&
                 MessageBox.Show(this, AppStrings.Get("Sprint_ReloadConfirm"), "NXProject",
                     MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
                 return;
-            await ReloadBoardAsync(_sprintPath);
+            await ReloadBoardAsync(_sprintPaths.ToList());
         }
 
-        private async void OnSprintChanged(object sender, SelectionChangedEventArgs e)
+        private void OnCloseClick(object sender, RoutedEventArgs e)
         {
-            if (SprintCombo.SelectedItem is not TfsImportService.SprintInfo sp) return;
-            // Memoriza a sprint escolhida (exceto o posicionamento automático da entrada).
-            if (!_initialSelection) SaveLastSprintPath(sp.Path);
-            _initialSelection = false;
-            await ReloadBoardAsync(sp.Path);
+            if (PendingCount() > 0 &&
+                MessageBox.Show(this, AppStrings.Get("Sprint_CloseConfirm"), "NXProject",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+            Close();
         }
 
-        // Carrega/recarrega o board da sprint e reseta o estado local (pendências, filtros).
-        private async Task ReloadBoardAsync(string path)
+        // Ao abrir o popup, reflete a seleção atual (evita "união" acidental com a sprint anterior).
+        private void OnSprintFilterOpened(object sender, RoutedEventArgs e) => ApplySprintChecks(_sprintPaths.ToList());
+
+        // Aplica a seleção de sprints (0 marcadas = todas as sprints).
+        private async void OnSprintMultiApply(object sender, RoutedEventArgs e)
+        {
+            var paths = SprintMultiList.Children.OfType<CheckBox>()
+                .Where(cb => cb.IsChecked == true && cb.Tag is string).Select(cb => (string)cb.Tag!).ToList();
+            SprintFilterToggle.IsChecked = false;
+            await ReloadBoardAsync(paths);
+            SavePrefs();
+        }
+
+        private void OnSprintMultiNone(object sender, RoutedEventArgs e)
+        {
+            foreach (var cb in SprintMultiList.Children.OfType<CheckBox>()) cb.IsChecked = false;
+        }
+
+        // Compat: recarrega uma única sprint (ou "todas" com path vazio).
+        private Task ReloadBoardAsync(string path) =>
+            ReloadBoardAsync(string.IsNullOrEmpty(path) ? new List<string>() : new List<string> { path });
+
+        // Carrega/recarrega o board (1+ sprints) e reseta o estado local (pendências, filtros).
+        private async Task ReloadBoardAsync(List<string> paths)
         {
             StatusText.Text = AppStrings.Get("Sprint_Loading");
             try
             {
-                _sprintPath = path;
-                _board = await TfsImportService.BuildSprintBoardAsync(_options, path);
-                var people = new List<string> { AllPeople };
-                people.AddRange(_board.People);
-                var keep = PersonCombo.SelectedItem as string;
-                PersonCombo.ItemsSource = people;
-                PersonCombo.SelectedItem = keep != null && people.Contains(keep) ? keep : AllPeople;
+                _sprintPaths = paths;
+                UpdateSprintToggleText();
+                _board = await TfsImportService.BuildSprintBoardAsync(_options, paths);
+                var people = _board.People.ToList();
+                // Mantém só as pessoas ainda existentes no board (preserva a seleção múltipla).
+                _selectedPeople.RemoveWhere(p => !people.Contains(p, StringComparer.CurrentCultureIgnoreCase));
+                PopulatePersonFilter(people);
                 _storyById = _board.Stories.Where(s => s.Id > 0).ToDictionary(s => s.Id);
                 _selectedStoryIds.Clear();
                 // Com projeto aberto: por padrão filtra só as Stories dele (Todo Portfólio desmarcado).
                 var openIds = _board.Stories.Where(s => s.Id > 0 && _scheduleIds.Contains(s.Id)).Select(s => s.Id).ToList();
                 if (openIds.Count > 0)
                     foreach (var oid in openIds) _selectedStoryIds.Add(oid);
-                _hiddenStates.Clear();
-                foreach (var st in _board.States.Where(IsClosedState)) _hiddenStates.Add(st);
+                // Na PRIMEIRA carga: restaura os filtros salvos (ou o padrão: esconder Closed).
+                // Nos reloads seguintes: PRESERVA a seleção do usuário (só descarta estados que
+                // sumiram do board), para não voltar a esconder Closed a cada troca de sprint.
+                if (_firstBoardLoad)
+                {
+                    _restoringPrefs = true;
+                    try
+                    {
+                        _selectedPeople.Clear();
+                        if (_prefs.Persons is { Count: > 0 } pl)
+                            foreach (var p in pl.Where(x => people.Contains(x, StringComparer.CurrentCultureIgnoreCase)))
+                                _selectedPeople.Add(p);
+                        else if (MatchCurrentUser() is { } me) // padrão: o usuário atual
+                            _selectedPeople.Add(me);
+                        PopulatePersonFilter(people);
+                        if (_prefs.View is int vw && vw >= 0 && vw < ViewCombo.Items.Count) ViewCombo.SelectedIndex = vw;
+                        if (_prefs.OnlySchedule is bool os) OnlyScheduleCheck.IsChecked = os;
+                        if (_prefs.EditMode is bool em) EditModeCheck.IsChecked = em;
+                        _hiddenStates.Clear();
+                        if (_prefs.HiddenStates is { } hs)
+                            foreach (var st in hs) _hiddenStates.Add(st); // pode ser vazio (Closed visível)
+                        else
+                            foreach (var st in _board.States.Where(IsClosedState)) _hiddenStates.Add(st);
+                    }
+                    finally { _restoringPrefs = false; }
+                    _firstBoardLoad = false;
+                }
+                else
+                {
+                    _hiddenStates.RemoveWhere(s => !_board.States.Contains(s, StringComparer.OrdinalIgnoreCase));
+                }
+                _boardEverLoaded = true; // a partir daqui, mudanças de filtro podem ser salvas
                 _pending.Clear();
                 _applied.Clear();
                 _order.Clear();
@@ -260,6 +405,11 @@ namespace NXProject.Views
                 _titleApplied.Clear();
                 _estPending.Clear();
                 _donePending.Clear();
+                _deletePending.Clear();
+                _iterPending.Clear();
+                _iterApplied.Clear();
+                _blockPending.Clear();
+                _tagsApplied.Clear();
                 _newCards.Clear();
                 _prioPending.Clear();
                 _prioApplied.Clear();
@@ -325,7 +475,7 @@ namespace NXProject.Views
         }
 
         private TfsImportService.SprintTaskCard NewToCard(NewCard n) =>
-            new(n.TempId, n.Title, "New", n.AssignedTo ?? "", "", n.ParentId, "", null, 0, 0);
+            new(n.TempId, n.Title, "New", n.AssignedTo ?? "", "", n.ParentId, "", null, 0, 0) { IterationPath = n.IterationPath };
 
         // Diálogo simples de uma linha (nome do novo card).
         private string? PromptText(string title)
@@ -350,7 +500,7 @@ namespace NXProject.Views
         // Cria um card NOVO vazio (editável no próprio card): Nome, Responsável, HH, Descrição.
         private void AddNewStory(int featureId, string featureTitle)
         {
-            _newCards.Add(new NewCard { TempId = _nextTempId--, Type = "Story", ParentId = featureId, FeatureId = featureId, FeatureTitle = featureTitle });
+            _newCards.Add(new NewCard { TempId = _nextTempId--, Type = "Story", ParentId = featureId, FeatureId = featureId, FeatureTitle = featureTitle, IterationPath = DefaultNewIterationPath() });
             UpdatePendingButton(); Render();
         }
 
@@ -358,19 +508,78 @@ namespace NXProject.Views
         {
             // Já nasce na faixa da pessoa onde foi criado (fica no grupo da Story).
             var who = string.Equals(assignedTo, AppStrings.Get("Sprint_NoOwner"), StringComparison.Ordinal) ? "" : (assignedTo ?? "");
-            _newCards.Add(new NewCard { TempId = _nextTempId--, Type = "Task", ParentId = storyId, AssignedTo = who });
+            _newCards.Add(new NewCard { TempId = _nextTempId--, Type = "Task", ParentId = storyId, AssignedTo = who, IterationPath = DefaultNewIterationPath() });
             UpdatePendingButton(); Render();
         }
 
+        // Sprint sugerida p/ novos cards: a única aberta → a atual (se estiver entre as selecionadas)
+        // → a 1ª selecionada → a atual → a 1ª sprint real.
+        private string DefaultNewIterationPath()
+        {
+            if (!string.IsNullOrEmpty(_sprintPath)) return _sprintPath;
+            var cur = CurrentSprintPath();
+            if (cur != null && (_sprintPaths.Count == 0 || _sprintPaths.Contains(cur))) return cur;
+            if (_sprintPaths.Count > 0) return _sprintPaths[0];
+            return cur ?? _sprints.FirstOrDefault(s => !string.IsNullOrEmpty(s.Path))?.Path ?? "";
+        }
+
+        // Sprints oferecidas no card novo: as selecionadas (se houver) ou todas as reais.
+        private List<TfsImportService.SprintInfo> NewCardSprintOptions() =>
+            (_sprintPaths.Count > 0
+                ? _sprints.Where(s => _sprintPaths.Contains(s.Path))
+                : _sprints.Where(s => !string.IsNullOrEmpty(s.Path))).ToList();
+
         private void OnFilterChanged(object sender, RoutedEventArgs e)
         {
-            // Ao entrar em "Task por Pessoa" com o filtro em Todos, já traz o usuário do NX.
-            if (ViewCombo.SelectedIndex == 1 && (PersonCombo.SelectedItem as string) == AllPeople)
+            // Ao entrar em "Pessoa & Task" sem ninguém marcado, já traz o usuário do NX.
+            if (ViewCombo.SelectedIndex == 1 && _selectedPeople.Count == 0
+                && _board != null && MatchCurrentUser() is { } me)
             {
-                var me = MatchCurrentUser();
-                if (me != null) { PersonCombo.SelectedItem = me; return; } // re-dispara → Render
+                _selectedPeople.Add(me);
+                PopulatePersonFilter(_board.People.ToList());
             }
             Render();
+            SavePrefs();
+        }
+
+        // (Re)constrói a lista de checkboxes de pessoas e atualiza o texto do botão.
+        private void PopulatePersonFilter(List<string> people)
+        {
+            PersonFilterList.Children.Clear();
+            foreach (var p in people)
+                PersonFilterList.Children.Add(new CheckBox { Content = p, Tag = p,
+                    IsChecked = _selectedPeople.Contains(p), Margin = new Thickness(0, 1, 0, 1) });
+            UpdatePersonToggleText();
+        }
+
+        private void UpdatePersonToggleText()
+        {
+            PersonFilterToggle.Content = _selectedPeople.Count == 0
+                ? AppStrings.Get("Sprint_PersonAll")
+                : _selectedPeople.Count == 1 ? _selectedPeople.First()
+                : AppStrings.Get("Sprint_PersonN", _selectedPeople.Count.ToString());
+        }
+
+        private void OnPersonFilterApply(object sender, RoutedEventArgs e)
+        {
+            _selectedPeople.Clear();
+            foreach (var cb in PersonFilterList.Children.OfType<CheckBox>())
+                if (cb.IsChecked == true && cb.Tag is string p) _selectedPeople.Add(p);
+            PersonFilterToggle.IsChecked = false;
+            UpdatePersonToggleText();
+            Render();
+            SavePrefs();
+        }
+
+        private void OnPersonFilterNone(object sender, RoutedEventArgs e)
+        {
+            foreach (var cb in PersonFilterList.Children.OfType<CheckBox>()) cb.IsChecked = false;
+        }
+
+        private void OnAutoOpenChanged(object sender, RoutedEventArgs e)
+        {
+            _prefs.AutoOpen = AutoOpenCheck.IsChecked == true;
+            SavePrefs();
         }
 
         // Casa o usuário autenticado (connectionData) com uma pessoa da sprint.
@@ -414,26 +623,25 @@ namespace NXProject.Views
             foreach (var cb in StateFilterList.Children.OfType<CheckBox>())
                 if (cb.IsChecked != true && cb.Tag is string s) _hiddenStates.Add(s);
             if (int.TryParse(ClosedDaysBox.Text?.Trim(), out var d) && d >= 0)
-            {
-                _closedDays = d;
-                SaveClosedDays(d); // grava só se > 0; zero remove a preferência
-            }
+                _closedDays = d; // 0 = todos (não persiste)
             StateFilterToggle.IsChecked = false;
             Render();
+            SavePrefs(); // grava estados ocultos + ClosedDays (>0)
         }
 
         // Botões ✎ (descrição) e 💬 (trâmite) para Story/Task — reusam o editor WebView do NX.
-        private void AddEditButtons(Panel panel, int id, string title, string currentOwner = "", string kind = "Story")
+        private void AddEditButtons(Panel panel, int id, string title, string currentOwner = "", string kind = "Story", string currentIteration = "")
         {
             if (id <= 0) return;
-            // ✎ marca "●" quando há descrição OU responsável pendente.
+            // ✎ marca "●" quando há descrição OU responsável/HH/sprint pendente.
             var descDirty = _descPending.ContainsKey(id) || _ownerPending.ContainsKey(id)
-                || _titlePending.ContainsKey(id) || _estPending.ContainsKey(id) || _donePending.ContainsKey(id);
+                || _titlePending.ContainsKey(id) || _estPending.ContainsKey(id) || _donePending.ContainsKey(id)
+                || _iterPending.ContainsKey(id);
             var desc = new Button { Content = descDirty ? "✎●" : "✎", FontSize = 11,
                 Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
                 Foreground = descDirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black,
                 ToolTip = AppStrings.Get("Sprint_EditDesc") };
-            desc.Click += async (_, _) => await EditDescriptionAsync(id, title, currentOwner, kind);
+            desc.Click += async (_, _) => await EditDescriptionAsync(id, title, currentOwner, kind, currentIteration);
             panel.Children.Add(desc);
             var tram = new Button { Content = _tramitePending.ContainsKey(id) ? "💬●" : "💬", FontSize = 11,
                 Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
@@ -444,7 +652,7 @@ namespace NXProject.Views
         }
 
         // Descrição: abre o editor (WebView) com a descrição atual do DevOps (ou o rascunho pendente).
-        private async Task EditDescriptionAsync(int id, string title, string currentOwner = "", string kind = "Story")
+        private async Task EditDescriptionAsync(int id, string title, string currentOwner = "", string kind = "Story", string currentIteration = "")
         {
             // Nome efetivo (pendente > aplicado > título recebido), editável na mesma tela.
             var effName = EffTitle(id, title);
@@ -462,13 +670,44 @@ namespace NXProject.Views
                 var (e, c, st) = await TfsImportService.GetWorkItemHoursAsync(_options, id);
                 est = _estPending.TryGetValue(id, out var ep) ? ep : e;
                 done = _donePending.TryGetValue(id, out var dp) ? dp : c;
-                hState = st;
+                // Estado EFETIVO (considera arrasto pendente p/ Closed) → libera o HH Realizado.
+                hState = _cardById.TryGetValue(id, out var cardH) ? EffState(cardH) : st;
             }
+            // Sprint editável para Story e Task (com ID). Oferece as sprints reais; valor efetivo (pendente).
+            System.Collections.Generic.IReadOnlyList<(string Name, string Path)>? sprints = null;
+            var effIter = "";
+            if (id > 0)
+            {
+                // Para Task, a iteração-base vem do próprio card se não veio no parâmetro.
+                var baseIterOrig = !string.IsNullOrEmpty(currentIteration) ? currentIteration
+                    : (_cardById.TryGetValue(id, out var cIt) ? cIt.IterationPath : "");
+                sprints = _sprints.Where(s => !string.IsNullOrEmpty(s.Path)).Select(s => (s.Name, s.Path)).ToList();
+                effIter = _iterPending.TryGetValue(id, out var ip) ? ip
+                    : _iterApplied.TryGetValue(id, out var ia) ? ia : baseIterOrig;
+            }
+            // Bloqueio (tag) editável para itens com ID.
+            var curTags = kind == "Task"
+                ? (_cardById.TryGetValue(id, out var cc) ? cc.Tags : "")
+                : (StoryById(id)?.Tags ?? "");
+            var curBlocked = id > 0 && EffBlocked(id, curTags);
             var dlg = new TaskDescriptionEditWindow(pt, people, owner, enableNameEdit: id > 0, objectKind: kind,
-                enableHours: id > 0, estimate: est, completed: done, state: hState) { Owner = this };
+                enableHours: id > 0, estimate: est, completed: done, state: hState,
+                sprints: sprints, currentIteration: effIter,
+                enableBlocked: id > 0, currentBlocked: curBlocked) { Owner = this };
             if (dlg.ShowDialog() == true)
             {
                 _descPending[id] = pt.Description ?? string.Empty;
+                if (dlg.IterationChanged)
+                {
+                    var origIter = !string.IsNullOrEmpty(currentIteration) ? currentIteration
+                        : (_cardById.TryGetValue(id, out var c2) ? c2.IterationPath : "");
+                    var baseIter = _iterApplied.TryGetValue(id, out var bi) ? bi : origIter;
+                    var chosenIter = dlg.SelectedIteration ?? string.Empty;
+                    if (string.Equals(chosenIter, (baseIter ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                        _iterPending.Remove(id);
+                    else
+                        _iterPending[id] = chosenIter;
+                }
                 if (dlg.HoursChanged)
                 {
                     _estPending[id] = dlg.EstimatedHours;
@@ -484,6 +723,11 @@ namespace NXProject.Views
                         _titlePending.Remove(id);
                     else
                         _titlePending[id] = newName;
+                }
+                if (dlg.BlockedChanged)
+                {
+                    var baseBlocked = HasTag(EffTags(id, curTags), BlockedTag);
+                    if (dlg.Blocked == baseBlocked) _blockPending.Remove(id); else _blockPending[id] = dlg.Blocked;
                 }
                 if (dlg.OwnerChanged)
                 {
@@ -523,7 +767,7 @@ namespace NXProject.Views
         private int PendingCount()
         {
             var doingDiff = _doing.Except(_appliedDoing).Count() + _appliedDoing.Except(_doing).Count();
-            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count;
+            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count + _deletePending.Count + _iterPending.Count + _blockPending.Count;
         }
 
         private void UpdatePendingButton()
@@ -546,6 +790,9 @@ namespace NXProject.Views
             _titlePending.Clear();
             _estPending.Clear();
             _donePending.Clear();
+            _deletePending.Clear();
+            _iterPending.Clear();
+            _blockPending.Clear();
             _newCards.Clear();
             _prioPending.Clear();
             _storyRankPending.Clear();
@@ -577,11 +824,40 @@ namespace NXProject.Views
             UpdateTfsButton.IsEnabled = false;
             var ok = 0;
             var fails = new List<string>();
+            // Barra de progresso + texto da etapa durante a gravação.
+            var total = PendingCount();
+            SaveProgress.Maximum = Math.Max(1, total);
+            SaveProgress.Value = 0;
+            SaveProgress.Visibility = Visibility.Visible;
+            void Phase(string key)
+            {
+                StatusText.Text = AppStrings.Get(key);
+                SaveProgress.Value = Math.Min(SaveProgress.Maximum, ok + fails.Count);
+            }
+            try
+            {
 
             // 1) Mudanças de estado (arrasto). Guarda os que mudaram para reavaliar a tag (Doing→Done).
+            Phase("Sprint_PhState");
             var stateChanged = _pending.Keys.ToHashSet();
             foreach (var kv in _pending.ToList())
             {
+                // Fechar (Closed) exige HH Realizado preenchido (> 0). Bloqueia e pede para informar.
+                if (IsClosedState(kv.Value))
+                {
+                    double? completed = _donePending.TryGetValue(kv.Key, out var dv) ? dv : null;
+                    if (!(completed > 0))
+                    {
+                        var (_, c, _) = await TfsImportService.GetWorkItemHoursAsync(_options, kv.Key);
+                        completed = _donePending.TryGetValue(kv.Key, out var dv2) ? dv2 : c;
+                    }
+                    if (!(completed > 0))
+                    {
+                        fails.Add(AppStrings.Get("Sprint_ClosedNeedsHH", kv.Key.ToString()));
+                        stateChanged.Remove(kv.Key);
+                        continue; // não fecha sem HH Realizado
+                    }
+                }
                 var (success, msg) = await TfsImportService.SetWorkItemStateAsync(_options, kv.Key, kv.Value);
                 if (success) { _applied[kv.Key] = kv.Value; _pending.Remove(kv.Key); ok++; }
                 else { fails.Add($"#{kv.Key}: {msg}"); stateChanged.Remove(kv.Key); }
@@ -606,6 +882,7 @@ namespace NXProject.Views
             }
 
             // 3) Descrição (grava direto no TFS; 403 = sem permissão).
+            Phase("Sprint_PhFields");
             foreach (var kv in _descPending.ToList())
             {
                 var (success, msg) = await TfsImportService.SetWorkItemDescriptionAsync(_options, kv.Key, kv.Value);
@@ -638,7 +915,43 @@ namespace NXProject.Views
                 else fails.Add($"#{wid} (HH): {msg}");
             }
 
+            // 3f) Sprint/iteração da Story (System.IterationPath). 403 = sem permissão.
+            foreach (var kv in _iterPending.ToList())
+            {
+                var (success, msg) = await TfsImportService.SetWorkItemIterationPathAsync(_options, kv.Key, kv.Value);
+                if (success) { _iterApplied[kv.Key] = kv.Value; _iterPending.Remove(kv.Key); ok++; }
+                else fails.Add($"#{kv.Key} (sprint): {msg}");
+            }
+
+            Phase("Sprint_PhFields");
+            // 3g) Bloqueio (tag "Blocked"), preservando as demais tags. 403 = sem permissão.
+            foreach (var kv in _blockPending.ToList())
+            {
+                var cur = _cardById.TryGetValue(kv.Key, out var cc2) ? cc2.Tags : (StoryById(kv.Key)?.Tags ?? "");
+                var newTags = TfsImportService.ToggleTag(EffTags(kv.Key, cur), BlockedTag, kv.Value);
+                var (success, msg) = await TfsImportService.SetWorkItemTagsAsync(_options, kv.Key, newTags);
+                if (success) { _tagsApplied[kv.Key] = newTags; _blockPending.Remove(kv.Key); ok++; }
+                else fails.Add($"#{kv.Key} (bloqueio): {msg}");
+            }
+
+            // 3e) Exclusão de Tasks marcadas (só New). Move para a lixeira do DevOps.
+            var reload = false;
+            foreach (var did in _deletePending.ToList())
+            {
+                var (success, msg) = await TfsImportService.TryDeleteWorkItemAsync(_options, did);
+                if (success)
+                {
+                    _deletePending.Remove(did);
+                    _pending.Remove(did); _descPending.Remove(did); _tramitePending.Remove(did);
+                    _ownerPending.Remove(did); _titlePending.Remove(did); _prioPending.Remove(did);
+                    _estPending.Remove(did); _donePending.Remove(did); _taskRankPending.Remove(did);
+                    ok++; reload = true;
+                }
+                else fails.Add($"#{did} (excluir): {msg}");
+            }
+
             // 4) Trâmite (comentário/discussão; aceita HTML com imagem).
+            Phase("Sprint_PhTramite");
             foreach (var kv in _tramitePending.ToList())
             {
                 try
@@ -679,43 +992,47 @@ namespace NXProject.Views
                 else fails.Add($"#{kv.Key} (estado Story): {msg}");
             }
 
+            Phase("Sprint_PhNew");
             // 5) Novos cards: cria Stories (recebem ID) e depois Tasks (usando o ID da story-pai).
             // Em "Todas as sprints" não há iteração-alvo: não permite criar itens novos.
-            var reload = false;
             var tempToReal = new Dictionary<int, int>();
-            var canCreate = !(string.IsNullOrWhiteSpace(_sprintPath) && _newCards.Count > 0);
-            if (!canCreate) fails.Add(AppStrings.Get("Sprint_NewNeedsSprint"));
-            foreach (var ns in _newCards.Where(n => canCreate && n.Type == "Story").ToList())
+            // Iteração-alvo de cada card: a escolhida no card, senão a sprint única aberta.
+            string IterOf(NewCard n) => !string.IsNullOrWhiteSpace(n.IterationPath) ? n.IterationPath : _sprintPath;
+            foreach (var ns in _newCards.Where(n => n.Type == "Story").ToList())
             {
                 if (string.IsNullOrWhiteSpace(ns.Title) || !(ns.Effort is > 0) || string.IsNullOrWhiteSpace(ns.AssignedTo))
                 { fails.Add(AppStrings.Get("Sprint_NewIncomplete")); continue; }
+                if (string.IsNullOrWhiteSpace(IterOf(ns))) { fails.Add(AppStrings.Get("Sprint_NewNeedsSprint")); continue; }
                 bool dup = (_board?.Stories.Any(s => s.FeatureId == ns.FeatureId && s.Title.Trim().Equals(ns.Title.Trim(), StringComparison.CurrentCultureIgnoreCase)) ?? false)
                     || _newCards.Any(o => o != ns && o.Type == "Story" && o.FeatureId == ns.FeatureId && o.Title.Trim().Equals(ns.Title.Trim(), StringComparison.CurrentCultureIgnoreCase));
                 if (dup) { fails.Add($"Story '{ns.Title}': {AppStrings.Get("Sprint_DupName")}"); continue; }
-                var (nid, msg) = await TfsImportService.CreateChildWorkItemAsync(_options, "User Story", ns.Title.Trim(), ns.ParentId, _sprintPath,
+                var (nid, msg) = await TfsImportService.CreateChildWorkItemAsync(_options, "User Story", ns.Title.Trim(), ns.ParentId, IterOf(ns),
                     string.IsNullOrWhiteSpace(ns.Description) ? null : TfsImportService.PlainTextToSimpleHtml(ns.Description),
                     string.IsNullOrWhiteSpace(ns.AssignedTo) ? null : ns.AssignedTo, ns.Effort);
                 if (nid > 0) { tempToReal[ns.TempId] = nid; _newCards.Remove(ns); ok++; reload = true; }
                 else fails.Add($"Story '{ns.Title}': {msg}");
             }
-            foreach (var nt in _newCards.Where(n => canCreate && n.Type == "Task").ToList())
+            foreach (var nt in _newCards.Where(n => n.Type == "Task").ToList())
             {
                 if (string.IsNullOrWhiteSpace(nt.Title) || !(nt.Effort is > 0) || string.IsNullOrWhiteSpace(nt.AssignedTo))
                 { fails.Add(AppStrings.Get("Sprint_NewIncomplete")); continue; }
+                if (string.IsNullOrWhiteSpace(IterOf(nt))) { fails.Add(AppStrings.Get("Sprint_NewNeedsSprint")); continue; }
                 var parent = nt.ParentId < 0 ? (tempToReal.TryGetValue(nt.ParentId, out var r) ? r : 0) : nt.ParentId;
                 if (parent <= 0) { fails.Add($"Task '{nt.Title}': story-pai não criada"); continue; }
                 bool dup = (_board?.Stories.FirstOrDefault(s => s.Id == parent)?.Tasks.Any(t => t.Title.Trim().Equals(nt.Title.Trim(), StringComparison.CurrentCultureIgnoreCase)) ?? false)
                     || _newCards.Any(o => o != nt && o.Type == "Task" && o.ParentId == nt.ParentId && o.Title.Trim().Equals(nt.Title.Trim(), StringComparison.CurrentCultureIgnoreCase));
                 if (dup) { fails.Add($"Task '{nt.Title}': {AppStrings.Get("Sprint_DupName")}"); continue; }
-                var (nid, msg) = await TfsImportService.CreateChildWorkItemAsync(_options, "Task", nt.Title.Trim(), parent, _sprintPath,
+                var (nid, msg) = await TfsImportService.CreateChildWorkItemAsync(_options, "Task", nt.Title.Trim(), parent, IterOf(nt),
                     string.IsNullOrWhiteSpace(nt.Description) ? null : TfsImportService.PlainTextToSimpleHtml(nt.Description),
                     string.IsNullOrWhiteSpace(nt.AssignedTo) ? null : nt.AssignedTo, nt.Effort);
                 if (nid > 0) { _newCards.Remove(nt); ok++; reload = true; }
                 else fails.Add($"Task '{nt.Title}': {msg}");
             }
 
+            Phase("Sprint_PhReload");
+            SaveProgress.Value = SaveProgress.Maximum;
             if (reload)
-                await ReloadBoardAsync(_sprintPath); // recarrega: os novos aparecem com ID do TFS e cor normal
+                await ReloadBoardAsync(_sprintPaths.ToList()); // recarrega a seleção atual (não "todas")
             UpdatePendingButton();
             Render();
             if (fails.Count == 0)
@@ -725,29 +1042,38 @@ namespace NXProject.Views
                 MessageBox.Show(this, AppStrings.Get("Sprint_UpdatePartial",
                         ok.ToString(), fails.Count.ToString(), string.Join("\n", fails)),
                     "NXProject", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                SaveProgress.Visibility = Visibility.Collapsed;
+                StatusText.Text = "";
+                UpdatePendingButton(); // reabilita o botão conforme pendências restantes
+            }
         }
 
         // Filtros de recorte (pessoa, cronograma, story) — não mexem nas colunas.
         private bool PassesBaseFilters(TfsImportService.SprintTaskCard t)
         {
             if (OnlyScheduleCheck.IsChecked == true && !_scheduleIds.Contains(t.Id)) return false;
-            var person = PersonCombo.SelectedItem as string;
-            if (!string.IsNullOrEmpty(person) && person != AllPeople
-                && !string.Equals(t.AssignedTo, person, StringComparison.CurrentCultureIgnoreCase)) return false;
+            if (_selectedPeople.Count > 0 && !_selectedPeople.Contains(t.AssignedTo ?? "")) return false;
             if (_selectedStoryIds.Count > 0 && !(t.ParentId is int p && _selectedStoryIds.Contains(p))) return false;
-            // Busca ao vivo: casa no título da task, no responsável ou no título da Story.
+            // Busca ao vivo com escopo (Ambos / Task / Story).
             var q = SearchBox?.Text?.Trim();
             if (!string.IsNullOrEmpty(q))
             {
+                var scope = SearchScope();
                 var storyTitle = t.ParentId is int sp && _storyById.TryGetValue(sp, out var st) ? st.Title : "";
-                bool match = t.Title.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0
-                    || (!string.IsNullOrEmpty(t.AssignedTo) && t.AssignedTo.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0)
-                    || (!string.IsNullOrEmpty(storyTitle) && storyTitle.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0)
-                    || t.Id.ToString().Contains(q);
+                bool Has(string? s) => !string.IsNullOrEmpty(s) && s.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0;
+                bool taskMatch = Has(t.Title) || Has(t.AssignedTo) || t.Id.ToString().Contains(q);
+                bool storyMatch = Has(storyTitle);
+                bool match = scope switch { 1 => taskMatch, 2 => storyMatch, _ => taskMatch || storyMatch };
                 if (!match) return false;
             }
             return true;
         }
+
+        // 0 = Ambos, 1 = Task, 2 = Story.
+        private int SearchScope() => SearchScopeCombo?.SelectedIndex is int i && i >= 0 ? i : 0;
 
         private void OnSearchChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
@@ -935,9 +1261,10 @@ namespace NXProject.Views
         private string BuildFilterSummary()
         {
             var parts = new List<string>();
-            var person = PersonCombo.SelectedItem as string;
-            if (!string.IsNullOrEmpty(person) && person != AllPeople)
-                parts.Add(AppStrings.Get("Sprint_FSPerson", person));
+            if (_selectedPeople.Count == 1)
+                parts.Add(AppStrings.Get("Sprint_FSPerson", _selectedPeople.First()));
+            else if (_selectedPeople.Count > 1)
+                parts.Add(AppStrings.Get("Sprint_FSPerson", AppStrings.Get("Sprint_PersonN", _selectedPeople.Count.ToString())));
             if (_selectedStoryIds.Count > 0)
                 parts.Add(AppStrings.Get("Sprint_FSStories", _selectedStoryIds.Count.ToString()));
             if (_hiddenStates.Count > 0)
@@ -1022,7 +1349,7 @@ namespace NXProject.Views
                 }
                 sp.Children.Add(up);
 
-                var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+                var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
                 var open = new Button { Content = "DevOps", FontSize = 10, Padding = new Thickness(5, 0, 5, 0) };
                 open.Click += (_, _) => OpenInDevOps(t.Id);
                 actions.Children.Add(open);
@@ -1080,8 +1407,8 @@ namespace NXProject.Views
                     Text = "👤 " + (string.IsNullOrWhiteSpace(sowner) ? AppStrings.Get("Sprint_NoOwner") : sowner),
                     FontSize = 10, TextWrapping = TextWrapping.Wrap,
                     Foreground = _ownerPending.ContainsKey(story.Id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray });
-                var stActions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-                AddEditButtons(stActions, story.Id, story.Title, story.AssignedTo); // ✎/💬 da Story
+                var stActions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
+                AddEditButtons(stActions, story.Id, story.Title, story.AssignedTo, "Story", story.IterationPath); // ✎/💬 da Story
                 sp.Children.Add(stActions);
             }
             storyBorder.Child = sp;
@@ -1137,39 +1464,85 @@ namespace NXProject.Views
                          .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
             {
                 var firstRow = true;
+                // Ordena as Stories da pessoa por StackRank (permite reordenar por arraste); título desempata.
+                int GroupStoryId(IGrouping<string, TfsImportService.SprintTaskCard> g) =>
+                    g.FirstOrDefault(t => t.ParentId is int)?.ParentId ?? 0;
                 foreach (var sg in pg
                              .GroupBy(t => t.ParentId is int pid && _storyById.TryGetValue(pid, out var st) ? st.Title : AppStrings.Get("Sprint_NoStory"))
-                             .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
+                             .OrderBy(g => StoryRankOf(GroupStoryId(g)))
+                             .ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
                 {
                     var row = MakeRowGrid(cols);
                     if (firstRow)
-                        AddCell(row, 0, new TextBlock { Text = pg.Key, FontWeight = FontWeights.Bold,
-                            TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 2, 4, 2) });
+                    {
+                        var personCell = new TextBlock { Text = pg.Key, FontWeight = FontWeights.Bold,
+                            TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 2, 4, 2) };
+                        if (EditModeCheck.IsChecked == true)
+                        {
+                            var personKey0 = pg.Key;
+                            personCell.AllowDrop = true;
+                            personCell.Drop += (s, ev) => OnStoryOwnerDrop(ev, personKey0);
+                            personCell.DragOver += (s, ev) => { ev.Effects = DragDropEffects.Move; ev.Handled = true; };
+                        }
+                        AddCell(row, 0, personCell);
+                    }
                     var tks = sg.ToList();
                     var storySp = new StackPanel();
                     var storyId = tks.FirstOrDefault(t => t.ParentId is int)?.ParentId ?? 0;
+                    var sOwnerOrig = storyId > 0 ? (StoryById(storyId)?.AssignedTo ?? string.Empty) : string.Empty;
+                    var sOwner = EffOwner(storyId, sOwnerOrig);
+                    // "Ajudante": a pessoa desta faixa tem task na Story mas NÃO é a responsável dela.
+                    var isHelper = storyId > 0 && !string.IsNullOrWhiteSpace(sOwner)
+                        && !string.Equals(sOwner.Trim(), pg.Key.Trim(), StringComparison.OrdinalIgnoreCase);
                     storySp.Children.Add(new TextBlock { Text = EffTitle(storyId, sg.Key), FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap,
                         Foreground = _titlePending.ContainsKey(storyId) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black });
                     if (storyId > 0)
                     {
-                        var sOwnerOrig = StoryById(storyId)?.AssignedTo ?? string.Empty;
-                        var sOwner = EffOwner(storyId, sOwnerOrig);
                         storySp.Children.Add(new TextBlock {
                             Text = "👤 " + (string.IsNullOrWhiteSpace(sOwner) ? AppStrings.Get("Sprint_NoOwner") : sOwner),
                             FontSize = 10, TextWrapping = TextWrapping.Wrap,
                             Foreground = _ownerPending.ContainsKey(storyId) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray });
-                        var stActions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-                        AddEditButtons(stActions, storyId, sg.Key, sOwnerOrig);
+                        if (isHelper)
+                            storySp.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_Helping"),
+                                FontSize = 10, FontStyle = FontStyles.Italic, Foreground = new SolidColorBrush(Color.FromRgb(0xB2, 0x6A, 0x00)) });
+                        // Sprint da Story quando há mais de uma sprint no board.
+                        var sIter = IterLeaf(EffIter(storyId, StoryById(storyId)?.IterationPath ?? ""));
+                        if (_sprintPaths.Count != 1 && !string.IsNullOrEmpty(sIter))
+                            storySp.Children.Add(new TextBlock { Text = "🗓 " + sIter, FontSize = 10, TextWrapping = TextWrapping.Wrap,
+                                Foreground = _iterPending.ContainsKey(storyId) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray });
+                        var stActions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
+                        AddEditButtons(stActions, storyId, sg.Key, sOwnerOrig, "Story", StoryById(storyId)?.IterationPath ?? "");
                         var addTask = new Button { Content = AppStrings.Get("Sprint_AddTask"), FontSize = 10, Padding = new Thickness(5, 0, 5, 0) };
                         var personKey = pg.Key;
                         addTask.Click += (_, _) => AddNewTask(storyId, personKey); // já nasce na faixa da pessoa
                         stActions.Children.Add(addTask);
                         storySp.Children.Add(stActions);
                     }
-                    var storyBorder = new Border { Background = new SolidColorBrush(Color.FromRgb(0xEE, 0xF2, 0xF7)),
-                        BorderBrush = new SolidColorBrush(Color.FromRgb(0xD0, 0xD7, 0xE0)), BorderThickness = new Thickness(1),
+                    // Destaque laranja quando a Story tem alteração pendente (rank/responsável/nome).
+                    var storyPend = storyId > 0 && (_storyRankPending.Contains(storyId) || _ownerPending.ContainsKey(storyId) || _titlePending.ContainsKey(storyId));
+                    // Colaborador: cor customizável (paleta "Story Colaborador"); dono: azul-claro normal.
+                    var storyBorder = new Border {
+                        Background = isHelper ? StateBrush(HelperColorKey) : new SolidColorBrush(Color.FromRgb(0xEE, 0xF2, 0xF7)),
+                        BorderBrush = new SolidColorBrush(storyPend ? Color.FromRgb(0xE0, 0x8A, 0x00) : isHelper ? Color.FromRgb(0xE6, 0xC9, 0x8A) : Color.FromRgb(0xD0, 0xD7, 0xE0)),
+                        BorderThickness = new Thickness(storyPend ? 2 : 1),
                         CornerRadius = new CornerRadius(3), Margin = new Thickness(3), Padding = new Thickness(6),
-                        Child = storySp };
+                        Child = storySp, Tag = storyId };
+                    // Modo edição: arrastar a Story p/ outra pessoa troca o Responsável — só quando esta
+                    // pessoa É a responsável (ajudante não move a Story de outro).
+                    if (EditModeCheck.IsChecked == true && storyId > 0 && !isHelper)
+                    {
+                        var personKey2 = pg.Key;
+                        storyBorder.Cursor = System.Windows.Input.Cursors.SizeAll;
+                        storyBorder.PreviewMouseMove += (s, ev) =>
+                        {
+                            if (ev.LeftButton != System.Windows.Input.MouseButtonState.Pressed) return;
+                            if (IsInteractive(ev.OriginalSource as DependencyObject)) return;
+                            DragDrop.DoDragDrop(storyBorder, "STORYOWNER:" + storyId, DragDropEffects.Move);
+                        };
+                        storyBorder.AllowDrop = true;
+                        storyBorder.Drop += (s, ev) => OnStoryOwnerDrop(ev, personKey2, storyId);
+                        storyBorder.DragOver += (s, ev) => { ev.Effects = DragDropEffects.Move; ev.Handled = true; };
+                    }
                     AddCell(row, 1, storyBorder);
                     for (int i = 0; i < states.Count; i++)
                         AddCell(row, i + 2, BuildStateCell(states[i], tks, showStory: false));
@@ -1179,6 +1552,41 @@ namespace NXProject.Views
                 // separador entre pessoas
                 BoardHost.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(0xD5, 0xDD, 0xD7)), Margin = new Thickness(0, 2, 0, 4) });
             }
+        }
+
+        // Soltou uma Story na visão Pessoa & Task:
+        //  • na MESMA pessoa, sobre outra Story → reordena (troca o StackRank);
+        //  • em OUTRA pessoa → troca o Responsável da Story.
+        private void OnStoryOwnerDrop(DragEventArgs e, string targetPerson, int targetStoryId = 0)
+        {
+            if (!e.Data.GetDataPresent(DataFormats.StringFormat)) return;
+            var payload = e.Data.GetData(DataFormats.StringFormat) as string;
+            if (payload == null || !payload.StartsWith("STORYOWNER:")) return;
+            if (!int.TryParse(payload.Substring("STORYOWNER:".Length), out var id) || id <= 0) return;
+            var story = StoryById(id);
+            if (story == null) return;
+            var owner = EffOwner(id, story.AssignedTo);
+            var samegroup = string.Equals((targetPerson ?? "").Trim(), (owner ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+            if (samegroup)
+            {
+                // Mesma pessoa: reordena trocando o rank com a Story-alvo.
+                if (targetStoryId > 0 && targetStoryId != id)
+                {
+                    var a = StoryRankOf(id); var b = StoryRankOf(targetStoryId);
+                    _storyRank[id] = b; _storyRank[targetStoryId] = a;
+                    _storyRankPending.Add(id); _storyRankPending.Add(targetStoryId);
+                }
+            }
+            else
+            {
+                var baseline = _ownerApplied.TryGetValue(id, out var ap) ? ap : story.AssignedTo;
+                if (string.Equals((targetPerson ?? "").Trim(), (baseline ?? "").Trim(), StringComparison.OrdinalIgnoreCase))
+                    _ownerPending.Remove(id);
+                else
+                    _ownerPending[id] = targetPerson ?? string.Empty;
+            }
+            UpdatePendingButton();
+            Render();
         }
 
         // StoryBoard: a STORY é o card, posicionada na coluna do seu estado, agrupada por Feature.
@@ -1254,6 +1662,29 @@ namespace NXProject.Views
             _ownerPending.TryGetValue(id, out var p) ? p
             : _ownerApplied.TryGetValue(id, out var a) ? a : original;
 
+        // Tags/estado de bloqueio efetivos (pendente > tags aplicadas > tags originais).
+        private string EffTags(int id, string original) =>
+            _tagsApplied.TryGetValue(id, out var a) ? a : (original ?? "");
+        private bool EffBlocked(int id, string originalTags) =>
+            _blockPending.TryGetValue(id, out var b) ? b : HasTag(EffTags(id, originalTags), BlockedTag);
+        // Alterna o bloqueio (pendente) comparando com a baseline (tags gravadas/originais).
+        private void ToggleBlockPending(int id, string originalTags)
+        {
+            var baseBlocked = HasTag(EffTags(id, originalTags), BlockedTag);
+            var target = !EffBlocked(id, originalTags);
+            if (target == baseBlocked) _blockPending.Remove(id); else _blockPending[id] = target;
+            UpdatePendingButton(); Render();
+        }
+
+        // Iteração (sprint) efetiva da Story (pendente > aplicado > valor original).
+        private string EffIter(int id, string original) =>
+            _iterPending.TryGetValue(id, out var p) ? p
+            : _iterApplied.TryGetValue(id, out var a) ? a : original;
+
+        // Último segmento do IterationPath (nome curto da sprint).
+        private static string IterLeaf(string path) =>
+            string.IsNullOrEmpty(path) ? "" : path.Split('\\', '/').LastOrDefault() ?? path;
+
         // Nome/título efetivo de um work item (pendente > aplicado > valor original).
         private string EffTitle(int id, string original) =>
             id <= 0 ? original
@@ -1264,9 +1695,24 @@ namespace NXProject.Views
         {
             if (s.Id < 0) return true; // Story nova sempre visível
             if (_selectedStoryIds.Count > 0 && !_selectedStoryIds.Contains(s.Id)) return false;
+            // Filtro de pessoa também na visão Por Story: mostra a Story se o responsável dela
+            // ou alguma task sua for de uma das pessoas selecionadas.
+            if (_selectedPeople.Count > 0)
+            {
+                var ownerMatch = !string.IsNullOrWhiteSpace(EffOwner(s.Id, s.AssignedTo))
+                                 && _selectedPeople.Contains(EffOwner(s.Id, s.AssignedTo));
+                var taskMatch = s.Tasks.Any(t => _selectedPeople.Contains(t.AssignedTo ?? ""));
+                if (!ownerMatch && !taskMatch) return false;
+            }
             var q = SearchBox?.Text?.Trim();
             if (!string.IsNullOrEmpty(q))
-                return s.Title.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0 || s.Id.ToString().Contains(q);
+            {
+                var scope = SearchScope();
+                bool storyMatch = s.Title.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0 || s.Id.ToString().Contains(q);
+                bool taskMatch = s.Tasks.Any(t => t.Title.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0
+                    || (!string.IsNullOrEmpty(t.AssignedTo) && t.AssignedTo.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0));
+                return scope switch { 1 => taskMatch, 2 => storyMatch, _ => storyMatch || taskMatch };
+            }
             return true;
         }
 
@@ -1297,9 +1743,16 @@ namespace NXProject.Views
             sp.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_FldOwner"), FontSize = 10, Foreground = Brushes.Gray });
             var person = new ComboBox { IsEditable = true, FontSize = 11, Margin = new Thickness(0, 0, 0, 3), Text = nc.AssignedTo };
             if (_board != null) foreach (var p in _board.People) person.Items.Add(p);
-            // Trocar a pessoa move o card para a faixa dela (re-renderiza).
-            person.SelectionChanged += (_, _) => { nc.AssignedTo = (person.SelectedItem as string) ?? person.Text; UpdatePendingButton(); Render(); };
-            person.LostFocus += (_, _) => { if (nc.AssignedTo != person.Text) { nc.AssignedTo = person.Text; Render(); } };
+            // Trocar a pessoa move o card para a faixa dela. O re-render é ADIADO (Dispatcher) para
+            // não reconstruir a árvore no meio do evento do ComboBox — senão a 1ª troca não reagrupa.
+            void RegroupDeferred() => Dispatcher.BeginInvoke(new Action(Render), System.Windows.Threading.DispatcherPriority.Background);
+            person.SelectionChanged += (_, _) =>
+            {
+                var chosen = person.SelectedItem as string;
+                if (string.IsNullOrEmpty(chosen) || string.Equals(chosen, nc.AssignedTo, StringComparison.CurrentCultureIgnoreCase)) return;
+                nc.AssignedTo = chosen; UpdatePendingButton(); RegroupDeferred();
+            };
+            person.LostFocus += (_, _) => { if (nc.AssignedTo != person.Text) { nc.AssignedTo = person.Text; RegroupDeferred(); } };
             sp.Children.Add(person);
 
             var hhRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
@@ -1308,6 +1761,20 @@ namespace NXProject.Views
             hh.TextChanged += (_, _) => nc.Effort = double.TryParse(hh.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out var v) ? v : (double?)null;
             hhRow.Children.Add(hh);
             sp.Children.Add(hhRow);
+
+            // Sprint-alvo: só aparece quando há mais de uma opção (várias sprints/"Todas" selecionadas).
+            var sprintOpts = NewCardSprintOptions();
+            if (sprintOpts.Count > 1)
+            {
+                if (string.IsNullOrEmpty(nc.IterationPath) || sprintOpts.All(s => s.Path != nc.IterationPath))
+                    nc.IterationPath = DefaultNewIterationPath();
+                sp.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_FldSprint"), FontSize = 10, Foreground = Brushes.Gray });
+                var spCombo = new ComboBox { FontSize = 11, Margin = new Thickness(0, 0, 0, 3),
+                    ItemsSource = sprintOpts, DisplayMemberPath = nameof(TfsImportService.SprintInfo.Name) };
+                spCombo.SelectedItem = sprintOpts.FirstOrDefault(s => s.Path == nc.IterationPath) ?? sprintOpts[0];
+                spCombo.SelectionChanged += (_, _) => { if (spCombo.SelectedItem is TfsImportService.SprintInfo si) nc.IterationPath = si.Path; };
+                sp.Children.Add(spCombo);
+            }
 
             sp.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_FldDesc"), FontSize = 10, Foreground = Brushes.Gray });
             var desc = new TextBox { Text = nc.Description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 46, FontSize = 11, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -1327,14 +1794,18 @@ namespace NXProject.Views
             if (story.Id < 0 && _newCards.FirstOrDefault(n => n.TempId == story.Id) is { } ncs)
                 return BuildNewCardBorder(ncs);
             var isNew = story.Id < 0;
-            var pend = _storyStatePending.ContainsKey(story.Id) || _storyRankPending.Contains(story.Id);
+            var pend = _storyStatePending.ContainsKey(story.Id) || _storyRankPending.Contains(story.Id)
+                || _ownerPending.ContainsKey(story.Id) || _titlePending.ContainsKey(story.Id) || _iterPending.ContainsKey(story.Id)
+                || _blockPending.ContainsKey(story.Id);
+            var storyBlocked = story.Id > 0 && EffBlocked(story.Id, story.Tags);
             var border = new Border
             {
-                Background = new SolidColorBrush(isNew ? Color.FromRgb(0xE7, 0xF6, 0xE7) : pend ? Color.FromRgb(0xFF, 0xF4, 0xD6) : Color.FromRgb(0xEE, 0xF2, 0xF7)),
+                Background = isNew ? new SolidColorBrush(Color.FromRgb(0xE7, 0xF6, 0xE7)) : pend ? new SolidColorBrush(Color.FromRgb(0xFF, 0xF4, 0xD6)) : StateTintBrush(EffStoryState(story)),
                 BorderBrush = new SolidColorBrush(isNew ? Color.FromRgb(0x10, 0x7C, 0x10) : pend ? Color.FromRgb(0xE0, 0x8A, 0x00) : Color.FromRgb(0xD0, 0xD7, 0xE0)),
                 BorderThickness = new Thickness(isNew || pend ? 2 : 1),
                 CornerRadius = new CornerRadius(3), Margin = new Thickness(0, 0, 0, 4), Padding = new Thickness(6), Tag = story.Id
             };
+            if (storyBlocked && !pend) { border.BorderBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)); border.BorderThickness = new Thickness(2); }
             var sp = new StackPanel();
             sp.Children.Add(new TextBlock { Text = (isNew ? "🆕 " : "") + EffTitle(story.Id, story.Title), FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap,
                 Foreground = _titlePending.ContainsKey(story.Id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black });
@@ -1348,9 +1819,18 @@ namespace NXProject.Views
                     Text = "👤 " + (string.IsNullOrWhiteSpace(owner) ? AppStrings.Get("Sprint_NoOwner") : owner),
                     FontSize = 10, TextWrapping = TextWrapping.Wrap,
                     Foreground = ownerDirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray });
+                // Sprint da Story (🗓). Laranja quando há troca pendente.
+                var iterLeaf = IterLeaf(EffIter(story.Id, story.IterationPath));
+                if (!string.IsNullOrEmpty(iterLeaf))
+                    sp.Children.Add(new TextBlock { Text = "🗓 " + iterLeaf, FontSize = 10, TextWrapping = TextWrapping.Wrap,
+                        Foreground = _iterPending.ContainsKey(story.Id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray });
                 // StoryBoard = nível Story: aqui NÃO cria Task (isso é na visão Pessoa & Task).
-                var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-                AddEditButtons(actions, story.Id, story.Title, story.AssignedTo);
+                var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
+                AddEditButtons(actions, story.Id, story.Title, story.AssignedTo, "Story", story.IterationPath);
+                var openStory = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                    Margin = new Thickness(0, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
+                openStory.Click += (_, _) => OpenInDevOps(story.Id);
+                actions.Children.Add(openStory);
                 sp.Children.Add(actions);
             }
             else
@@ -1459,17 +1939,27 @@ namespace NXProject.Views
             var inSched = _scheduleIds.Contains(t.Id);
             var isPending = _pending.ContainsKey(t.Id) || _taskRankPending.Contains(t.Id);
             var isNew = t.Id < 0; // card novo (sem ID do TFS) → destaque verde até salvar
+            var toDelete = _deletePending.Contains(t.Id); // marcada p/ excluir no Salvar TFS
             var border = new Border
             {
-                Background = isNew ? new SolidColorBrush(Color.FromRgb(0xE7, 0xF6, 0xE7))
-                    : isPending ? new SolidColorBrush(Color.FromRgb(0xFF, 0xF4, 0xD6)) : Brushes.White,
-                BorderBrush = new SolidColorBrush(isNew ? Color.FromRgb(0x10, 0x7C, 0x10)
+                Background = toDelete ? new SolidColorBrush(Color.FromRgb(0xFB, 0xE3, 0xE3))
+                    : isNew ? new SolidColorBrush(Color.FromRgb(0xE7, 0xF6, 0xE7))
+                    : isPending ? new SolidColorBrush(Color.FromRgb(0xFF, 0xF4, 0xD6)) : StateTintBrush(EffState(t)),
+                BorderBrush = new SolidColorBrush(toDelete ? Color.FromRgb(0xC0, 0x30, 0x30)
+                    : isNew ? Color.FromRgb(0x10, 0x7C, 0x10)
                     : isPending ? Color.FromRgb(0xE0, 0x8A, 0x00)
                     : inSched ? Color.FromRgb(0x2B, 0x57, 0x9A) : Color.FromRgb(0xCF, 0xD8, 0xE3)),
-                BorderThickness = new Thickness(isNew || isPending || inSched ? 2 : 1),
+                BorderThickness = new Thickness(toDelete || isNew || isPending || inSched ? 2 : 1),
                 CornerRadius = new CornerRadius(3), Margin = new Thickness(0, 0, 0, 4), Padding = new Thickness(6),
                 Tag = t.Id
             };
+            // Bloqueada: apenas borda vermelha (sem chip escuro), exceto se marcada p/ excluir.
+            var blocked = !isNew && EffBlocked(t.Id, t.Tags);
+            if (blocked && !toDelete)
+            {
+                border.BorderBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30));
+                border.BorderThickness = new Thickness(2);
+            }
             var sp = new StackPanel();
             var titleLine = new StackPanel { Orientation = Orientation.Horizontal };
             if (isNew)
@@ -1484,6 +1974,7 @@ namespace NXProject.Views
                 var combo = new ComboBox
                 {
                     Width = 52, FontSize = 10, FontWeight = FontWeights.Bold, Height = 20,
+                    Cursor = System.Windows.Input.Cursors.Arrow,
                     Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center,
                     Background = eff > 0 ? PriorityBrush(eff) : new SolidColorBrush(Color.FromRgb(0xB0, 0xB8, 0xC0)),
                     BorderBrush = prioPend ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Gray,
@@ -1507,14 +1998,22 @@ namespace NXProject.Views
                 titleLine.Children.Add(new TextBlock { Text = "● ", Foreground = new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)),
                     FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center,
                     ToolTip = AppStrings.Get("Sprint_UpdateTfs") });
-            titleLine.Children.Add(new TextBlock { Text = EffTitle(t.Id, t.Title), TextWrapping = TextWrapping.Wrap, FontSize = 12,
-                Foreground = _titlePending.ContainsKey(t.Id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black });
+            var titleTb = new TextBlock { Text = EffTitle(t.Id, t.Title), TextWrapping = TextWrapping.Wrap, FontSize = 12,
+                Foreground = toDelete ? new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30))
+                    : _titlePending.ContainsKey(t.Id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black };
+            if (toDelete) titleTb.TextDecorations = TextDecorations.Strikethrough; // marcada p/ excluir
+            titleLine.Children.Add(titleTb);
             sp.Children.Add(titleLine);
             var line = new TextBlock { FontSize = 10, Foreground = Brushes.Gray };
             line.Text = (isNew ? AppStrings.Get("Sprint_New") : $"#{t.Id}")
                 + (string.IsNullOrWhiteSpace(t.AssignedTo) ? "" : $"  ·  {t.AssignedTo}")
                 + (string.IsNullOrWhiteSpace(t.Effort) ? "" : $"  ·  {t.Effort}h");
             sp.Children.Add(line);
+            // Sprint da Task: mostra quando há mais de uma sprint no board (várias/"Todas").
+            var tIter = IterLeaf(EffIter(t.Id, t.IterationPath));
+            if (_sprintPaths.Count != 1 && !string.IsNullOrEmpty(tIter))
+                sp.Children.Add(new TextBlock { Text = "🗓 " + tIter, FontSize = 10, TextWrapping = TextWrapping.Wrap,
+                    Foreground = _iterPending.ContainsKey(t.Id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray });
             if (!string.IsNullOrWhiteSpace(storyTitle))
                 sp.Children.Add(new TextBlock
                 {
@@ -1527,6 +2026,28 @@ namespace NXProject.Views
                 // Card novo: sem ID/ações do TFS ainda; será criado no Salvar TFS.
                 border.Child = sp;
                 return border;
+            }
+
+            // Ao mover para Closed (arrasto pendente), aparece um campo HH Realizado direto no card,
+            // para não precisar abrir o editor. O valor entra na fila (CompletedWork).
+            if (_pending.TryGetValue(t.Id, out var pendState) && IsClosedState(pendState))
+            {
+                var hhRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0),
+                    Cursor = System.Windows.Input.Cursors.Arrow };
+                hhRow.Children.Add(new TextBlock { Text = AppStrings.Get("Desc_DoneHours"), FontSize = 10,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
+                var hhBox = new TextBox { Width = 56, FontSize = 11, VerticalAlignment = VerticalAlignment.Center,
+                    Text = _donePending.TryGetValue(t.Id, out var dpv) && dpv.HasValue ? dpv.Value.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) : "" };
+                hhBox.TextChanged += (_, _) =>
+                {
+                    var txt = (hhBox.Text ?? "").Trim().Replace(',', '.');
+                    if (string.IsNullOrEmpty(txt)) _donePending.Remove(t.Id);
+                    else if (double.TryParse(txt, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var v) && v >= 0)
+                        _donePending[t.Id] = v;
+                    UpdatePendingButton();
+                };
+                hhRow.Children.Add(hhBox);
+                sp.Children.Add(hhRow);
             }
 
             // Marca "Doing" (o que está atuando agora): chip azul; se o card estiver Closed vira "Done".
@@ -1547,8 +2068,8 @@ namespace NXProject.Views
                 sp.Children.Add(chip);
             }
 
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-            var open = new Button { Content = "DevOps", FontSize = 10, Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0) };
+            var actions = new WrapPanel { Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
+            var open = new Button { Content = "DevOps", FontSize = 10, Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 2) };
             open.Click += (_, _) => OpenInDevOps(t.Id);
             actions.Children.Add(open);
             // Botão Doing: só faz sentido nos abertos (não-Closed) para marcar; e para tirar em qualquer estado.
@@ -1574,7 +2095,28 @@ namespace NXProject.Views
                 sched.Click += (_, _) => _openInSchedule!(t.Id);
                 actions.Children.Add(sched);
             }
+            // Bloquear/desbloquear (tag "Blocked"): entra na fila do Salvar TFS.
+            var blk = new Button { Content = EffBlocked(t.Id, t.Tags) ? "🔒" : "🔓", FontSize = 11,
+                Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 2),
+                ToolTip = AppStrings.Get(EffBlocked(t.Id, t.Tags) ? "Sprint_Unblock" : "Sprint_Block") };
+            blk.Click += (_, _) => ToggleBlockPending(t.Id, t.Tags);
+            actions.Children.Add(blk);
             AddEditButtons(actions, t.Id, t.Title, t.AssignedTo, "Task"); // ✎ descrição e 💬 trâmite da Task
+            // Excluir: só Tasks reais no estado New (evita apagar itens já em andamento/encerrados).
+            // Marca para excluir (pendente); a exclusão no DevOps ocorre no Salvar TFS.
+            if (t.Id > 0 && string.Equals(EffState(t), "New", StringComparison.OrdinalIgnoreCase))
+            {
+                var marked = _deletePending.Contains(t.Id);
+                var del = new Button { Content = marked ? "↩" : "🗑", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                    Margin = new Thickness(4, 0, 0, 0), Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)),
+                    ToolTip = AppStrings.Get(marked ? "Sprint_UndoDelete" : "Sprint_DeleteTask") };
+                del.Click += (_, _) =>
+                {
+                    if (!_deletePending.Remove(t.Id)) _deletePending.Add(t.Id);
+                    UpdatePendingButton(); Render();
+                };
+                actions.Children.Add(del);
+            }
             sp.Children.Add(actions);
             border.Child = sp;
 
@@ -1595,7 +2137,7 @@ namespace NXProject.Views
         }
 
         // Soltou um card numa coluna de estado: marca a mudança como pendente (grava com "Atualizar TFS").
-        private void OnCardDrop(object sender, DragEventArgs e)
+        private async void OnCardDrop(object sender, DragEventArgs e)
         {
             if (sender is not FrameworkElement fe || fe.Tag is not string newState) return;
             if (!e.Data.GetDataPresent(typeof(int))) return;
@@ -1615,6 +2157,19 @@ namespace NXProject.Views
                 var baseline = _applied.TryGetValue(id, out var a) ? a : dragged.State;
                 if (SameState(baseline, newState)) _pending.Remove(id);
                 else _pending[id] = newState;
+
+                // Ao fechar (Closed) e SEM HH Realizado (nem pendente nem no DevOps), sugere o HH
+                // Estimado como padrão no campo do card.
+                if (id > 0 && IsClosedState(newState) && !_donePending.ContainsKey(id))
+                {
+                    var (est, comp, _) = await TfsImportService.GetWorkItemHoursAsync(_options, id);
+                    if (!(comp > 0))
+                    {
+                        double? def = est is > 0 ? est
+                            : (double.TryParse(dragged.Effort, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out var eh) && eh > 0 ? eh : (double?)null);
+                        if (def is > 0) _donePending[id] = def;
+                    }
+                }
             }
             RepositionOrder(cell, id, y);
             UpdatePendingButton();
@@ -1702,14 +2257,107 @@ namespace NXProject.Views
 
         private static bool SameState(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
-        private static Brush StateBrush(string state) => state.ToLowerInvariant() switch
+        // Cor do estado: usa a cor customizada (prefs) se houver; senão a paleta padrão.
+        private Brush StateBrush(string state)
         {
-            "new" or "to do" or "approved" => new SolidColorBrush(Color.FromRgb(0x6B, 0x7A, 0x8A)),
-            "active" or "committed" or "in progress" or "doing" or "open" => new SolidColorBrush(Color.FromRgb(0x2B, 0x57, 0x9A)),
-            "resolved" => new SolidColorBrush(Color.FromRgb(0xB2, 0x6A, 0x00)),
-            "done" or "closed" or "completed" => new SolidColorBrush(Color.FromRgb(0x10, 0x7C, 0x10)),
-            _ => new SolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x8A))
+            if (_prefs.StateColors != null && _prefs.StateColors.TryGetValue(state.ToLowerInvariant(), out var hex)
+                && TryParseColor(hex, out var c))
+                return new SolidColorBrush(c);
+            return new SolidColorBrush(DefaultStateColor(state));
+        }
+
+        // Cor padrão do estado: primeiro as cores que o usuário salvou como padrão; senão a de fábrica.
+        private static Color DefaultStateColor(string state)
+        {
+            if (SavedDefaultColors.TryGetValue(state.ToLowerInvariant(), out var hex) && TryParseColor(hex, out var c))
+                return c;
+            return FactoryStateColor(state);
+        }
+
+        // Chave da cor do "Story Colaborador" (pessoa ajuda na task, mas não é responsável da Story).
+        private const string HelperColorKey = "story-colaborador";
+
+        private static Color FactoryStateColor(string state) => state.ToLowerInvariant() switch
+        {
+            HelperColorKey => Color.FromRgb(0xFD, 0xF3, 0xE0), // âmbar bem claro
+            "new" or "to do" or "approved" => Color.FromRgb(0x6B, 0x7A, 0x8A),
+            // Active = cor de DESTAQUE (accent forte); é o estado que precisa de atenção.
+            "active" or "committed" or "in progress" or "doing" or "open" => Color.FromRgb(0x00, 0x78, 0xD4),
+            "resolved" => Color.FromRgb(0xB2, 0x6A, 0x00),
+            // Closed = concluído, cor suave (verde acinzentado) para não roubar o destaque.
+            "done" or "closed" or "completed" => Color.FromRgb(0x8A, 0xA5, 0x95),
+            _ => Color.FromRgb(0x8A, 0x8A, 0x8A)
         };
+
+        // Cores salvas como padrão (compartilhadas por todos os boards). Arquivo em LocalAppData.
+        private static string DefaultColorsFile => System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "NXProject.Community", "statecolors-default.json");
+        private static Dictionary<string, string>? _savedDefaultColors;
+        private static Dictionary<string, string> SavedDefaultColors
+        {
+            get
+            {
+                if (_savedDefaultColors != null) return _savedDefaultColors;
+                try
+                {
+                    if (System.IO.File.Exists(DefaultColorsFile))
+                        _savedDefaultColors = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                            System.IO.File.ReadAllText(DefaultColorsFile));
+                }
+                catch { }
+                return _savedDefaultColors ??= new();
+            }
+        }
+        private static void SaveDefaultColors(IReadOnlyDictionary<string, string> map)
+        {
+            try
+            {
+                _savedDefaultColors = new Dictionary<string, string>(map.ToDictionary(k => k.Key.ToLowerInvariant(), v => v.Value));
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(DefaultColorsFile)!);
+                System.IO.File.WriteAllText(DefaultColorsFile, System.Text.Json.JsonSerializer.Serialize(_savedDefaultColors));
+            }
+            catch { }
+        }
+
+        // Fundo claro do card tingido pela cor do estado (mistura com branco).
+        private Brush StateTintBrush(string state)
+        {
+            var c = (StateBrush(state) as SolidColorBrush)?.Color ?? DefaultStateColor(state);
+            byte Mix(byte v) => (byte)(v + (255 - v) * 0.82); // ~18% da cor sobre branco
+            return new SolidColorBrush(Color.FromRgb(Mix(c.R), Mix(c.G), Mix(c.B)));
+        }
+
+        private static bool TryParseColor(string? hex, out Color color)
+        {
+            color = Colors.Gray;
+            if (string.IsNullOrWhiteSpace(hex)) return false;
+            try { color = (Color)ColorConverter.ConvertFromString(hex.Trim()); return true; }
+            catch { return false; }
+        }
+
+        // Abre o editor de cores por estado; ao confirmar, salva nas prefs e re-renderiza.
+        private void OnColorsClick(object sender, RoutedEventArgs e)
+        {
+            var states = _board?.States?.ToList() ?? new List<string>();
+            if (states.Count == 0) return;
+            var dlg = new StateColorsWindow(states, _prefs.StateColors, DefaultStateColor,
+                onSaveDefault: all =>
+                {
+                    // "Definir como padrão": vira o padrão de todos os boards e limpa o override local.
+                    SaveDefaultColors(all);
+                    _prefs.StateColors = null;
+                    SavePrefs();
+                    Render();
+                },
+                extraRows: new[] { (AppStrings.Get("Colors_StoryHelp"), HelperColorKey) }) { Owner = this };
+            if (dlg.ShowDialog() == true)
+            {
+                _prefs.StateColors = dlg.Result.Count > 0 ? dlg.Result : null;
+                SavePrefs();
+                Render();
+            }
+        }
 
         private void OpenInDevOps(int id)
         {

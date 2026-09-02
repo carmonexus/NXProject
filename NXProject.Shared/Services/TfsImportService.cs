@@ -435,7 +435,11 @@ namespace NXProject.Services
 
         // ── Sprint / Taskboard (visão da sprint com cards por estado) ────────
         public sealed record SprintInfo(string Name, string Path, DateTime? Start, DateTime? End);
-        public sealed record SprintTaskCard(int Id, string Title, string State, string AssignedTo, string Effort, int? ParentId, string Tags, DateTime? ClosedDate, int Priority, double StackRank);
+        public sealed record SprintTaskCard(int Id, string Title, string State, string AssignedTo, string Effort, int? ParentId, string Tags, DateTime? ClosedDate, int Priority, double StackRank)
+        {
+            /// <summary>Iteração (sprint) da Task.</summary>
+            public string IterationPath { get; init; } = "";
+        }
         public sealed record SprintStoryRow(int Id, string Title, string State, string AssignedTo,
             System.Collections.Generic.List<SprintTaskCard> Tasks)
         {
@@ -445,6 +449,10 @@ namespace NXProject.Services
             public int FeatureId { get; set; }
             /// <summary>Ordem no backlog (StackRank/BacklogPriority) — para reordenar a Story.</summary>
             public double StackRank { get; set; }
+            /// <summary>Iteração (sprint) atual da Story.</summary>
+            public string IterationPath { get; set; } = "";
+            /// <summary>Tags (ex.: "Blocked").</summary>
+            public string Tags { get; set; } = "";
         }
         public sealed record SprintBoard(
             System.Collections.Generic.List<string> States,
@@ -470,8 +478,15 @@ namespace NXProject.Services
               "Resolved", "Done", "Completed", "Closed" };
 
         /// <summary>Monta o taskboard da sprint: Stories (linhas) com suas Tasks agrupadas por estado.</summary>
-        public static async Task<SprintBoard> BuildSprintBoardAsync(
+        public static Task<SprintBoard> BuildSprintBoardAsync(
             TfsConnectionOptions options, string iterationPath, CancellationToken ct = default)
+            => BuildSprintBoardAsync(options, new[] { iterationPath }, ct);
+
+        /// <summary>Versão multi-sprint: une os itens de várias iterações (OR de UNDER). Lista vazia
+        /// ou com caminho vazio = todas as sprints (sem filtro de iteração).</summary>
+        public static async Task<SprintBoard> BuildSprintBoardAsync(
+            TfsConnectionOptions options, System.Collections.Generic.IReadOnlyCollection<string> iterationPaths,
+            CancellationToken ct = default)
         {
             var ctx = CreateTfsAuthContext(options, "montar sprint");
             var proj = Uri.EscapeDataString(ctx.TeamProject);
@@ -483,11 +498,13 @@ namespace NXProject.Services
             // e citar um tipo inexistente faz o DevOps devolver 400. Filtramos por tipo no código
             // (Task vira card; o resto vira linha de Story). O corpo é serializado com JsonSerializer
             // para escapar corretamente as barras do IterationPath (JSON exige \\, não \).
-            // iterationPath vazio => "Todas as sprints": sem filtro de iteração (útil quando os
-            // itens não estão bem distribuídos nas sprints).
-            var iterFilter = string.IsNullOrWhiteSpace(iterationPath)
+            // Sem caminho (ou caminho vazio) => "Todas as sprints": sem filtro de iteração.
+            // Com vários => OR de UNDER (une as sprints selecionadas).
+            var paths = (iterationPaths ?? Array.Empty<string>())
+                .Where(p => !string.IsNullOrWhiteSpace(p)).Distinct().ToList();
+            var iterFilter = paths.Count == 0
                 ? string.Empty
-                : " AND [System.IterationPath] UNDER '" + Esc(iterationPath) + "'";
+                : " AND (" + string.Join(" OR ", paths.Select(p => "[System.IterationPath] UNDER '" + Esc(p) + "'")) + ")";
             var query = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '"
                         + Esc(ctx.TeamProject) + "'" + iterFilter
                         + " AND [System.State] <> 'Removed'";
@@ -550,12 +567,12 @@ namespace NXProject.Services
                             ? cdd.ToLocalTime() : (DateTime?)null;
                         var prio = f.TryGetProperty("Microsoft.VSTS.Common.Priority", out var pv) && pv.ValueKind == JsonValueKind.Number
                             ? pv.GetInt32() : 0;
-                        tasks.Add(new SprintTaskCard(id, S("System.Title"), state, who, eff, parentId, S("System.Tags"), closedDate, prio, ReadRank(f)));
+                        tasks.Add(new SprintTaskCard(id, S("System.Title"), state, who, eff, parentId, S("System.Tags"), closedDate, prio, ReadRank(f)) { IterationPath = S("System.IterationPath") });
                         statesSeen.Add(state);
                     }
                     else
                     {
-                        var row = new SprintStoryRow(id, S("System.Title"), state, who, new()) { StackRank = ReadRank(f) };
+                        var row = new SprintStoryRow(id, S("System.Title"), state, who, new()) { StackRank = ReadRank(f), IterationPath = S("System.IterationPath"), Tags = S("System.Tags") };
                         stories.Add(row);
                         storyById[id] = row;
                         if (f.TryGetProperty("System.Parent", out var spp) && spp.ValueKind == JsonValueKind.Number)
@@ -5816,6 +5833,70 @@ namespace NXProject.Services
             catch (Exception ex) { return (false, ex.Message); }
         }
 
+        /// <summary>Grava o conjunto de tags (System.Tags, CSV "a; b") de um work item.
+        /// (Ok, Mensagem); 403 = sem permissão de escrita.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemTagsAsync(
+            TfsConnectionOptions options, int id, string tagsCsv, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar tags", requireTeamProject: false);
+            var ops = new List<object> { PatchAdd("/fields/System.Tags", tagsCsv ?? string.Empty) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
+        /// <summary>Adiciona/remove uma tag preservando as demais. Retorna o CSV resultante.</summary>
+        public static string ToggleTag(string? currentTags, string tag, bool on)
+        {
+            var set = (currentTags ?? string.Empty)
+                .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim()).Where(t => t.Length > 0)
+                .Where(t => !string.Equals(t, tag, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (on) set.Add(tag);
+            return string.Join("; ", set);
+        }
+
+        /// <summary>Grava a iteração/sprint (System.IterationPath) de um work item. (Ok, Mensagem);
+        /// 403 = sem permissão de escrita.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemIterationPathAsync(
+            TfsConnectionOptions options, int id, string iterationPath, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar sprint", requireTeamProject: false);
+            var ops = new List<object> { PatchAdd("/fields/System.IterationPath", (iterationPath ?? string.Empty).Trim()) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
         /// <summary>Grava o título (System.Title) de um work item. (Ok, Mensagem);
         /// 403 = sem permissão de escrita.</summary>
         public static async Task<(bool Ok, string Message)> SetWorkItemTitleAsync(
@@ -5828,6 +5909,27 @@ namespace NXProject.Services
             {
                 Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
             };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
+        /// <summary>Exclui (move para a lixeira) um work item. (Ok, Mensagem); 403 = sem permissão.</summary>
+        public static async Task<(bool Ok, string Message)> TryDeleteWorkItemAsync(
+            TfsConnectionOptions options, int id, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "excluir work item", requireTeamProject: false);
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(HttpMethod.Delete, url);
             req.Headers.Authorization = ctx.Authorization;
             req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             try

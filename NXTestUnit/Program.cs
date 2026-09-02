@@ -933,15 +933,16 @@ internal static class Program
             if (path == null) continue; // fora do checkout (ex.: rodando do zip) → ignora
             checkedAny = true;
             var content = File.ReadAllText(path);
-            var registry = new ResourceKeyRegistry();
+            var firstLine = new Dictionary<string, int>();
             foreach (System.Text.RegularExpressions.Match m in
                      System.Text.RegularExpressions.Regex.Matches(content, "x:Key=\"([^\"]+)\""))
             {
                 var key = m.Groups[1].Value;
-                if (registry.Contains(key))
-                    problems.Add($"{Path.GetFileName(path)}: chave duplicada '{key}'");
+                var line = content.Take(m.Index).Count(ch => ch == '\n') + 1;
+                if (firstLine.TryGetValue(key, out var prev))
+                    problems.Add($"{Path.GetFileName(path)}: chave duplicada '{key}' (linhas {prev} e {line})");
                 else
-                    registry.Add(key);
+                    firstLine[key] = line;
             }
         }
 
