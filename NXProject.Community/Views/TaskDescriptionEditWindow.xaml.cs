@@ -36,6 +36,12 @@ namespace NXProject.Views
         public bool BlockedChanged { get; private set; }
         private readonly bool _initialBlocked;
 
+        // Data de Início (Story): habilitada quando enableStartDate=true.
+        public bool StartDateEnabled { get; }
+        public DateTime? SelectedStartDate { get; private set; }
+        public bool StartDateChanged { get; private set; }
+        private DateTime? _initialStartDate;
+
         // Troca de Feature (Story New): habilitada quando 'features' é fornecido.
         public bool FeatureEnabled { get; }
         public int SelectedFeatureId { get; private set; }
@@ -70,7 +76,9 @@ namespace NXProject.Views
             System.Collections.Generic.IReadOnlyList<(string Name, string Path)>? sprints = null, string? currentIteration = null,
             bool enableBlocked = false, bool currentBlocked = false,
             System.Collections.Generic.IReadOnlyList<string>? states = null, string? currentState = null,
-            System.Collections.Generic.IReadOnlyList<(string Title, int Id)>? features = null, int currentFeatureId = 0)
+            System.Collections.Generic.IReadOnlyList<(string Title, int Id)>? features = null, int currentFeatureId = 0,
+            bool enableStartDate = false, DateTime? currentStartDate = null,
+            string? epicTitle = null, string? projectTitle = null)
         {
             InitializeComponent();
             _task = task;
@@ -83,6 +91,18 @@ namespace NXProject.Views
             };
             TitleText.Text = AppStrings.Get("Desc_TitleFormat", task.Name);
             _html = task.Description ?? string.Empty;
+
+            // Ancestralidade (Feature): EPIC pai e Work Item "Project", só leitura.
+            var hasEpic = !string.IsNullOrWhiteSpace(epicTitle);
+            var hasProj = !string.IsNullOrWhiteSpace(projectTitle);
+            if (hasEpic || hasProj)
+            {
+                AncestryPanel.Visibility = Visibility.Visible;
+                ProjectText.Text = hasProj ? "🗂 " + projectTitle : string.Empty;
+                ProjectText.Visibility = hasProj ? Visibility.Visible : Visibility.Collapsed;
+                EpicText.Text = hasEpic ? "🏔 " + epicTitle : string.Empty;
+                EpicText.Visibility = hasEpic ? Visibility.Visible : Visibility.Collapsed;
+            }
 
             _initialName = task.Name ?? string.Empty;
             EditedName = _initialName;
@@ -123,6 +143,15 @@ namespace NXProject.Views
                 foreach (var s in sprints) SprintCombo.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s.Path });
                 var sel = SprintCombo.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == _initialIteration);
                 if (sel != null) SprintCombo.SelectedItem = sel;
+            }
+
+            _initialStartDate = currentStartDate;
+            SelectedStartDate = currentStartDate;
+            if (enableStartDate)
+            {
+                StartDateEnabled = true;
+                StartDatePanel.Visibility = Visibility.Visible;
+                StartDatePicker.SelectedDate = currentStartDate;
             }
 
             _initialFeatureId = currentFeatureId;
@@ -352,6 +381,11 @@ namespace NXProject.Views
             {
                 SelectedFeatureId = (int)fi.Tag;
                 FeatureChanged = SelectedFeatureId != _initialFeatureId;
+            }
+            if (StartDateEnabled)
+            {
+                SelectedStartDate = StartDatePicker.SelectedDate?.Date;
+                StartDateChanged = SelectedStartDate != _initialStartDate?.Date;
             }
             if (HoursEnabled)
             {

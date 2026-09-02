@@ -1598,6 +1598,7 @@
     <sys:String x:Key="Desc_Name">Nome:</sys:String>
     <sys:String x:Key="Desc_State">Estado:</sys:String>
     <sys:String x:Key="Desc_Feature">Feature:</sys:String>
+    <sys:String x:Key="Desc_StartDate">Data de Início:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Descrição:</sys:String>
     <sys:String x:Key="Desc_EditStory">Edição de Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edição de Task</sys:String>
@@ -1757,6 +1758,12 @@
     <sys:String x:Key="Sprint_Summary">Resumo por estado</sys:String>
     <sys:String x:Key="Sprint_ColStory">Story</sys:String>
     <sys:String x:Key="Sprint_ColFeature">Feature</sys:String>
+    <sys:String x:Key="Sprint_ColEpic">EPIC</sys:String>
+    <sys:String x:Key="Sprint_ColProject">Projeto</sys:String>
+    <sys:String x:Key="Sprint_ShowEpicHint">Marcado: EPIC em coluna própria. Desmarcado: EPIC dentro do card da Feature.</sys:String>
+    <sys:String x:Key="Sprint_ShowProjHint">Marcado: Projeto em coluna própria. Desmarcado: Projeto junto do EPIC.</sys:String>
+    <sys:String x:Key="Sprint_CardsAreStories">↓ Cards por estado: STORY</sys:String>
+    <sys:String x:Key="Sprint_CardsAreTasks">↓ Cards por estado: TASK</sys:String>
     <sys:String x:Key="Sprint_NoFeature">(sem Feature)</sys:String>
     <sys:String x:Key="Sprint_Search">Buscar:</sys:String>
     <sys:String x:Key="Sprint_New">🆕 novo (salvar no TFS)</sys:String>
@@ -1786,7 +1793,7 @@
     <sys:String x:Key="Sprint_Error">Falha ao montar a sprint: {0}</sys:String>
     <sys:String x:Key="Sprint_TaskCount">{0} tarefas ({1} no cronograma)</sys:String>
     <sys:String x:Key="Sprint_View">Visão:</sys:String>
-    <sys:String x:Key="Sprint_ViewBoard">Por Story</sys:String>
+    <sys:String x:Key="Sprint_ViewBoard">Projeto &amp; Story</sys:String>
     <sys:String x:Key="Sprint_ViewByTask">Story por Lista</sys:String>
     <sys:String x:Key="Sprint_ViewByPerson">Pessoa &amp; Task</sys:String>
     <sys:String x:Key="Sprint_Revert">Reverter</sys:String>
@@ -1795,6 +1802,7 @@
     <sys:String x:Key="Sprint_Config">Configurações</sys:String>
     <sys:String x:Key="Sprint_Helping">↳ colaborador (responsável é outro)</sys:String>
     <sys:String x:Key="Colors_StoryHelp">Story Colaborador</sys:String>
+    <sys:String x:Key="Colors_Feature">Feature</sys:String>
     <sys:String x:Key="Sprint_CloseConfirm">Há alterações pendentes não gravadas. Fechar mesmo assim?</sys:String>
     <sys:String x:Key="Sprint_ScopeBoth">Story+Task</sys:String>
     <sys:String x:Key="Sprint_ScopeTask">Só Task</sys:String>
@@ -1815,9 +1823,11 @@
     <sys:String x:Key="Sprint_DeleteTaskConfirm">Excluir a Task "{0}"? Esta ação move o item para a lixeira do DevOps.</sys:String>
     <sys:String x:Key="Sprint_UndoDelete">Desfazer exclusão</sys:String>
     <sys:String x:Key="Sprint_FldSprint">Sprint:</sys:String>
+    <sys:String x:Key="Sprint_FldStart">Início:</sys:String>
     <sys:String x:Key="Sprint_Block">Bloquear</sys:String>
     <sys:String x:Key="Sprint_Unblock">Desbloquear</sys:String>
     <sys:String x:Key="Sprint_Blocked">Bloqueado</sys:String>
+    <sys:String x:Key="Sprint_FeatureDesc">Ver descrição da Feature</sys:String>
     <sys:String x:Key="Sprint_PhState">Gravando estados…</sys:String>
     <sys:String x:Key="Sprint_PhFields">Gravando campos…</sys:String>
     <sys:String x:Key="Sprint_PhTramite">Gravando trâmites…</sys:String>

@@ -1084,8 +1084,8 @@ namespace NXProject.Views
                 new()
                 {
                     ("Duas visões",
-                     "• Por Story: cada Story é um card, posicionada na coluna do seu estado, agrupada por Feature.\n" +
-                     "• Pessoa & Task: agrupa por Pessoa → Story, e as Tasks aparecem como cards por estado.\n" +
+                     "• Projeto & Story: colunas Projeto → EPIC → Feature, e cada Story é um card na coluna do seu estado.\n" +
+                     "• Pessoa & Task: colunas Pessoa → EPIC → Feature → Story, e as Tasks aparecem como cards por estado.\n" +
                      "• A busca tem escopo (Story+Task / Só Task / Só Story) e filtra ao digitar."),
                     ("Seleção de sprint (uma ou várias)",
                      "• O seletor de sprint é como o de pessoa: checkboxes com a data início–fim de cada sprint.\n" +
@@ -1971,8 +1971,8 @@ namespace NXProject.Views
                 new()
                 {
                     ("Two views",
-                     "• By Story: each Story is a card, placed in its state column, grouped by Feature.\n" +
-                     "• Person & Task: groups by Person → Story, with Tasks as cards by state.\n" +
+                     "• Project & Story: Project → EPIC → Feature columns, each Story a card in its state column.\n" +
+                     "• Person & Task: Person → EPIC → Feature → Story columns, with Tasks as cards by state.\n" +
                      "• Search has a scope (Story+Task / Task only / Story only) and filters as you type."),
                     ("Sprint selection (one or many)",
                      "• The sprint picker works like the person one: checkboxes with each sprint's start–end date.\n" +

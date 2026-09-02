@@ -447,6 +447,12 @@ namespace NXProject.Services
             public string FeatureTitle { get; set; } = "";
             /// <summary>Id da Feature pai (para criar novas Stories sob ela).</summary>
             public int FeatureId { get; set; }
+            /// <summary>Responsável (demandante) da Feature pai — exibido no card da Feature.</summary>
+            public string FeatureAssignedTo { get; set; } = "";
+            /// <summary>Título do EPIC pai da Feature — exibido no card da Feature.</summary>
+            public string FeatureEpicTitle { get; set; } = "";
+            /// <summary>Título do Work Item "Project" (portfólio) acima do EPIC — exibido no card da Feature.</summary>
+            public string FeatureProjectTitle { get; set; } = "";
             /// <summary>Ordem no backlog (StackRank/BacklogPriority) — para reordenar a Story.</summary>
             public double StackRank { get; set; }
             /// <summary>Iteração (sprint) atual da Story.</summary>
@@ -595,15 +601,28 @@ namespace NXProject.Services
             }
             if (orphans != null) stories.Add(orphans);
 
-            // 3b) Feature (pai da Story) para agrupar por entrega: busca os títulos dos pais.
-            var featureIds = storyParent.Values.Distinct().Where(fid => !storyById.ContainsKey(fid)).ToList();
-            if (featureIds.Count > 0)
+            // 3b) Feature (pai da Story) para agrupar por entrega: busca os títulos dos pais que
+            // NÃO estão no board; os que já vieram como linha usam o próprio título.
+            var featureTitle = new System.Collections.Generic.Dictionary<int, string>();
+            var featureOwner = new System.Collections.Generic.Dictionary<int, string>();
+            // Ancestrais (id -> título/pai/tipo) para subir Feature → EPIC → Work Item "Project".
+            var nodeTitle = new System.Collections.Generic.Dictionary<int, string>();
+            var nodeParent = new System.Collections.Generic.Dictionary<int, int>();
+            var nodeType = new System.Collections.Generic.Dictionary<int, string>();
+            foreach (var fid in storyById.Keys) { featureTitle[fid] = storyById[fid].Title; featureOwner[fid] = storyById[fid].AssignedTo; } // pai já no board
+            // Semeia os ancestrais com o que o board já sabe: itens que vieram como linha não
+            // entram no fetch abaixo, então sem isto ficariam sem pai (e sem EPIC/Project).
+            foreach (var kv in storyParent) nodeParent[kv.Key] = kv.Value;
+
+            // Busca em lote id -> (título, pai, tipo, responsável) para os ids informados.
+            async System.Threading.Tasks.Task FetchNodesAsync(System.Collections.Generic.List<int> ids, bool wantOwner)
             {
-                var featureTitle = new System.Collections.Generic.Dictionary<int, string>();
-                for (int i = 0; i < featureIds.Count; i += 200)
+                for (int i = 0; i < ids.Count; i += 200)
                 {
-                    var chunk = featureIds.GetRange(i, Math.Min(200, featureIds.Count - i));
-                    var body = $"{{\"ids\":[{string.Join(",", chunk)}],\"fields\":[\"System.Id\",\"System.Title\"]}}";
+                    var chunk = ids.GetRange(i, Math.Min(200, ids.Count - i));
+                    // $expand=all traz System.Parent E as relations (necessário em TFS on-prem,
+                    // onde o campo System.Parent nem sempre volta numa consulta só de fields).
+                    var body = $"{{\"ids\":[{string.Join(",", chunk)}],\"$expand\":\"all\"}}";
                     using var req = new HttpRequestMessage(HttpMethod.Post, $"{ctx.OrgBase}/_apis/wit/workitemsbatch?{QueryApiVersion}")
                     { Content = new StringContent(body, Encoding.UTF8, "application/json") };
                     req.Headers.Authorization = ctx.Authorization;
@@ -612,17 +631,76 @@ namespace NXProject.Services
                     using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
                     if (!doc.RootElement.TryGetProperty("value", out var vals)) continue;
                     foreach (var it in vals.EnumerateArray())
-                        if (it.TryGetProperty("id", out var idp) && it.TryGetProperty("fields", out var f)
-                            && f.TryGetProperty("System.Title", out var tp))
-                            featureTitle[idp.GetInt32()] = tp.GetString() ?? "";
+                        if (it.TryGetProperty("id", out var idp) && it.TryGetProperty("fields", out var f))
+                        {
+                            var wid = idp.GetInt32();
+                            var tt = f.TryGetProperty("System.Title", out var tp) ? tp.GetString() ?? "" : "";
+                            nodeTitle[wid] = tt;
+                            if (f.TryGetProperty("System.WorkItemType", out var wtp)) nodeType[wid] = wtp.GetString() ?? "";
+                            // Pai: primeiro o campo System.Parent; senão, a relação Hierarchy-Reverse.
+                            if (f.TryGetProperty("System.Parent", out var ppx) && ppx.ValueKind == JsonValueKind.Number)
+                                nodeParent[wid] = ppx.GetInt32();
+                            else if (it.TryGetProperty("relations", out var rels) && rels.ValueKind == JsonValueKind.Array)
+                                foreach (var r in rels.EnumerateArray())
+                                    if (r.TryGetProperty("rel", out var rt)
+                                        && rt.GetString() == "System.LinkTypes.Hierarchy-Reverse"
+                                        && r.TryGetProperty("url", out var ru)
+                                        && int.TryParse((ru.GetString() ?? "").TrimEnd('/').Split('/').LastOrDefault(), out var pid2))
+                                    { nodeParent[wid] = pid2; break; }
+                            if (wantOwner)
+                            {
+                                featureTitle[wid] = tt;
+                                featureOwner[wid] = ReadIdentityDisplayName(f, "System.AssignedTo");
+                            }
+                        }
                 }
-                foreach (var kv in storyParent)
-                    if (storyById.TryGetValue(kv.Key, out var st))
-                    {
-                        st.FeatureId = kv.Value;
-                        st.FeatureTitle = featureTitle.TryGetValue(kv.Value, out var ft) ? ft : "";
-                    }
             }
+
+            var featureIds = storyParent.Values.Distinct().Where(fid => !featureTitle.ContainsKey(fid)).ToList();
+            await FetchNodesAsync(featureIds, wantOwner: true);
+            // Sobe a árvore genericamente (até 5 níveis) buscando os ancestrais ainda desconhecidos.
+            for (int level = 0; level < 5; level++)
+            {
+                var nextIds = nodeParent.Values.Where(pid => pid > 0 && !nodeTitle.ContainsKey(pid)).Distinct().ToList();
+                if (nextIds.Count == 0) break;
+                await FetchNodesAsync(nextIds, wantOwner: false);
+            }
+
+            // Classifica um ancestral: EPIC (tipo Epic) e Work Item "Project" (tipo Project/topo).
+            (string Epic, string Project) ResolveAncestry(int featureId)
+            {
+                string epic = "", proj = "";
+                var cur = featureId; var guard = 0;
+                while (nodeParent.TryGetValue(cur, out var par) && par > 0 && guard++ < 8)
+                {
+                    var t = nodeType.TryGetValue(par, out var tt) ? tt : "";
+                    var title = nodeTitle.TryGetValue(par, out var nt) ? nt : "";
+                    if (string.Equals(t, "Epic", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(epic))
+                        epic = title;
+                    else if (string.Equals(t, "Project", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(proj))
+                        proj = title;
+                    cur = par;
+                }
+                // Fallback: se não achou por tipo, usa o pai imediato como EPIC e o avô como Project.
+                if (string.IsNullOrEmpty(epic) && string.IsNullOrEmpty(proj)
+                    && nodeParent.TryGetValue(featureId, out var p1) && nodeTitle.TryGetValue(p1, out var t1))
+                {
+                    epic = t1;
+                    if (nodeParent.TryGetValue(p1, out var p2) && nodeTitle.TryGetValue(p2, out var t2)) proj = t2;
+                }
+                return (epic, proj);
+            }
+
+            foreach (var kv in storyParent)
+                if (storyById.TryGetValue(kv.Key, out var st))
+                {
+                    st.FeatureId = kv.Value;
+                    st.FeatureTitle = featureTitle.TryGetValue(kv.Value, out var ft) ? ft : "";
+                    st.FeatureAssignedTo = featureOwner.TryGetValue(kv.Value, out var fo) ? fo : "";
+                    var (epicT, projT) = ResolveAncestry(kv.Value);
+                    st.FeatureEpicTitle = epicT;
+                    st.FeatureProjectTitle = projT;
+                }
 
             // 4) Colunas por estado, na ordem canônica.
             var states = OrderTaskboardStates(statesSeen);
@@ -5668,12 +5746,18 @@ namespace NXProject.Services
         public static async Task<(int Id, string Message)> CreateChildWorkItemAsync(
             TfsConnectionOptions options, string type, string title, int parentId, string? iterationPath,
             string? description = null, string? assignedTo = null, double? estimatedHours = null,
-            CancellationToken ct = default)
+            DateTime? startDate = null, CancellationToken ct = default)
         {
             var ctx = CreateTfsAuthContext(options, "criar work item");
             var ops = new List<object> { PatchAdd("/fields/System.Title", title) };
             if (!string.IsNullOrWhiteSpace(iterationPath))
                 ops.Add(PatchAdd("/fields/System.IterationPath", iterationPath));
+            if (startDate.HasValue)
+            {
+                var startRef = await ResolveStartFieldRefAsync(options, ct);
+                if (!string.IsNullOrEmpty(startRef))
+                    ops.Add(PatchAdd($"/fields/{startRef}", startDate.Value.ToString("yyyy-MM-ddT00:00:00Z")));
+            }
             if (!string.IsNullOrWhiteSpace(description))
                 ops.Add(PatchAdd("/fields/System.Description", description));
             if (!string.IsNullOrWhiteSpace(assignedTo))
@@ -5917,6 +6001,73 @@ namespace NXProject.Services
                 };
                 req.Headers.Authorization = ctx.Authorization;
                 req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
+        // Cache do reference name do campo de Data de Início por organização (evita re-resolver).
+        private static readonly Dictionary<string, string> _startRefCache = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Reference name do campo de Data de Início (config → candidatos conhecidos), ou null.</summary>
+        public static async Task<string?> ResolveStartFieldRefAsync(TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "ler campos", requireTeamProject: false);
+            if (_startRefCache.TryGetValue(ctx.OrgBase, out var cached)) return string.IsNullOrEmpty(cached) ? null : cached;
+            try
+            {
+                var map = await LoadFieldMapAsync(ctx.OrgBase, ctx.Authorization, ct);
+                var r = ResolveField(map, options.StartFieldName, StartFieldNames);
+                _startRefCache[ctx.OrgBase] = r ?? "";
+                return string.IsNullOrEmpty(r) ? null : r;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>Lê a Data de Início (campo Data_Inicio) de um work item, ou null.</summary>
+        public static async Task<DateTime?> GetWorkItemStartDateAsync(TfsConnectionOptions options, int id, CancellationToken ct = default)
+        {
+            var startRef = await ResolveStartFieldRefAsync(options, ct);
+            if (string.IsNullOrEmpty(startRef)) return null;
+            var ctx = CreateTfsAuthContext(options, "ler Data de Início", requireTeamProject: false);
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?fields={Uri.EscapeDataString(startRef)}&{QueryApiVersion}";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (doc.RootElement.TryGetProperty("fields", out var f) && f.TryGetProperty(startRef, out var v)
+                && v.ValueKind == JsonValueKind.String && DateTime.TryParse(v.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var dt))
+                return dt.ToLocalTime().Date;
+            return null;
+        }
+
+        /// <summary>Grava a Data de Início (campo Data_Inicio) de um work item. null remove.
+        /// (Ok, Mensagem); 403 = sem permissão.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemStartDateAsync(
+            TfsConnectionOptions options, int id, DateTime? date, CancellationToken ct = default)
+        {
+            var startRef = await ResolveStartFieldRefAsync(options, ct);
+            if (string.IsNullOrEmpty(startRef)) return (false, "campo de Data de Início não encontrado no DevOps");
+            var ctx = CreateTfsAuthContext(options, "gravar Data de Início", requireTeamProject: false);
+            var ops = date.HasValue
+                ? new List<object> { PatchAdd($"/fields/{startRef}", date.Value.ToString("yyyy-MM-ddT00:00:00Z")) }
+                : new List<object> { new { op = "remove", path = $"/fields/{startRef}" } };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
                 using var resp = await Http.SendAsync(req, ct);
                 if (resp.IsSuccessStatusCode) return (true, string.Empty);
                 var body = await resp.Content.ReadAsStringAsync(ct);

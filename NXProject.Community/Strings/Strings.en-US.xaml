@@ -916,6 +916,12 @@
     <sys:String x:Key="Sprint_Summary">Summary by state</sys:String>
     <sys:String x:Key="Sprint_ColStory">Story</sys:String>
     <sys:String x:Key="Sprint_ColFeature">Feature</sys:String>
+    <sys:String x:Key="Sprint_ColEpic">EPIC</sys:String>
+    <sys:String x:Key="Sprint_ColProject">Project</sys:String>
+    <sys:String x:Key="Sprint_ShowEpicHint">Checked: EPIC in its own column. Unchecked: EPIC inside the Feature card.</sys:String>
+    <sys:String x:Key="Sprint_ShowProjHint">Checked: Project in its own column. Unchecked: Project shown next to the EPIC.</sys:String>
+    <sys:String x:Key="Sprint_CardsAreStories">↓ Cards by state: STORY</sys:String>
+    <sys:String x:Key="Sprint_CardsAreTasks">↓ Cards by state: TASK</sys:String>
     <sys:String x:Key="Sprint_NoFeature">(no Feature)</sys:String>
     <sys:String x:Key="Sprint_Search">Search:</sys:String>
     <sys:String x:Key="Sprint_New">🆕 new (save to TFS)</sys:String>
@@ -945,7 +951,7 @@
     <sys:String x:Key="Sprint_Error">Failed to build the sprint: {0}</sys:String>
     <sys:String x:Key="Sprint_TaskCount">{0} tasks ({1} in schedule)</sys:String>
     <sys:String x:Key="Sprint_View">View:</sys:String>
-    <sys:String x:Key="Sprint_ViewBoard">By Story</sys:String>
+    <sys:String x:Key="Sprint_ViewBoard">Project &amp; Story</sys:String>
     <sys:String x:Key="Sprint_ViewByTask">Story list</sys:String>
     <sys:String x:Key="Sprint_ViewByPerson">Person &amp; Task</sys:String>
     <sys:String x:Key="Sprint_Revert">Revert</sys:String>
@@ -954,6 +960,7 @@
     <sys:String x:Key="Sprint_Config">Settings</sys:String>
     <sys:String x:Key="Sprint_Helping">↳ collaborator (owned by someone else)</sys:String>
     <sys:String x:Key="Colors_StoryHelp">Story Collaborator</sys:String>
+    <sys:String x:Key="Colors_Feature">Feature</sys:String>
     <sys:String x:Key="Sprint_CloseConfirm">There are unsaved pending changes. Close anyway?</sys:String>
     <sys:String x:Key="Sprint_ScopeBoth">Story+Task</sys:String>
     <sys:String x:Key="Sprint_ScopeTask">Task only</sys:String>
@@ -974,9 +981,11 @@
     <sys:String x:Key="Sprint_DeleteTaskConfirm">Delete Task "{0}"? This moves the item to the DevOps recycle bin.</sys:String>
     <sys:String x:Key="Sprint_UndoDelete">Undo delete</sys:String>
     <sys:String x:Key="Sprint_FldSprint">Sprint:</sys:String>
+    <sys:String x:Key="Sprint_FldStart">Start:</sys:String>
     <sys:String x:Key="Sprint_Block">Block</sys:String>
     <sys:String x:Key="Sprint_Unblock">Unblock</sys:String>
     <sys:String x:Key="Sprint_Blocked">Blocked</sys:String>
+    <sys:String x:Key="Sprint_FeatureDesc">View Feature description</sys:String>
     <sys:String x:Key="Sprint_PhState">Saving states…</sys:String>
     <sys:String x:Key="Sprint_PhFields">Saving fields…</sys:String>
     <sys:String x:Key="Sprint_PhTramite">Saving comments…</sys:String>
@@ -1923,6 +1932,7 @@
     <sys:String x:Key="Desc_Name">Name:</sys:String>
     <sys:String x:Key="Desc_State">State:</sys:String>
     <sys:String x:Key="Desc_Feature">Feature:</sys:String>
+    <sys:String x:Key="Desc_StartDate">Start date:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Description:</sys:String>
     <sys:String x:Key="Desc_EditStory">Edit Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edit Task</sys:String>

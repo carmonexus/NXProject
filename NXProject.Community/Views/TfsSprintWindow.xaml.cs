@@ -63,6 +63,8 @@ namespace NXProject.Views
         // Feature (pai) da Story alterada (pendente: novo FeatureId) e a já gravada.
         private readonly Dictionary<int, int> _featurePending = new();
         private readonly Dictionary<int, int> _featureApplied = new();
+        // Data de Início (Data_Inicio) da Story alterada (pendente) e a já gravada.
+        private readonly Dictionary<int, DateTime?> _startPending = new();
         // Bloqueio (tag "Blocked") alterado (pendente: novo valor) e conjuntos de tags já gravados.
         private const string BlockedTag = "Blocked";
         private readonly Dictionary<int, bool> _blockPending = new();
@@ -82,7 +84,7 @@ namespace NXProject.Views
         // Lookup dos cards efetivos por id (para saber prioridade/rank ao arrastar).
         private readonly Dictionary<int, TfsImportService.SprintTaskCard> _cardById = new();
         // Novos cards (Story/Task) criados localmente, sem ID do TFS ainda (id temporário negativo).
-        private sealed class NewCard { public int TempId; public string Type = ""; public string Title = ""; public int ParentId; public string FeatureTitle = ""; public int FeatureId; public string AssignedTo = ""; public double? Effort; public string Description = ""; public string IterationPath = ""; }
+        private sealed class NewCard { public int TempId; public string Type = ""; public string Title = ""; public int ParentId; public string FeatureTitle = ""; public int FeatureId; public string AssignedTo = ""; public double? Effort; public string Description = ""; public string IterationPath = ""; public DateTime? StartDate; }
         private readonly List<NewCard> _newCards = new();
         private int _nextTempId = -1;
         // Sprints selecionadas (1 = normal; várias = união; vazio = "todas"). O caminho "único"
@@ -107,6 +109,8 @@ namespace NXProject.Views
             public List<string>? SprintPaths { get; set; }   // >1 = multi-seleção de sprints
             public Dictionary<string, string>? StateColors { get; set; } // estado(lower) -> #RRGGBB
             public bool AutoOpen { get; set; }   // abrir o TaskBoard ao iniciar o NX
+            public bool? ShowEpic { get; set; }  // coluna EPIC na visão Pessoa & Task (null = mostra)
+            public bool? ShowProjCol { get; set; } // coluna Projeto na visão Projeto & Story (null = mostra)
             public bool WinMaximized { get; set; }
             public double WinLeft { get; set; }
             public double WinTop { get; set; }
@@ -415,6 +419,7 @@ namespace NXProject.Views
                 _tagsApplied.Clear();
                 _featurePending.Clear();
                 _featureApplied.Clear();
+                _startPending.Clear();
                 _newCards.Clear();
                 _prioPending.Clear();
                 _prioApplied.Clear();
@@ -641,7 +646,7 @@ namespace NXProject.Views
             // ✎ marca "●" quando há descrição OU responsável/HH/sprint pendente.
             var descDirty = _descPending.ContainsKey(id) || _ownerPending.ContainsKey(id)
                 || _titlePending.ContainsKey(id) || _estPending.ContainsKey(id) || _donePending.ContainsKey(id)
-                || _iterPending.ContainsKey(id) || _featurePending.ContainsKey(id);
+                || _iterPending.ContainsKey(id) || _featurePending.ContainsKey(id) || _startPending.ContainsKey(id);
             var desc = new Button { Content = descDirty ? "✎●" : "✎", FontSize = 11,
                 Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
                 Foreground = descDirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black,
@@ -669,8 +674,9 @@ namespace NXProject.Views
                 : _ownerApplied.TryGetValue(id, out var oa) ? oa : currentOwner;
             var people = _board?.People.ToList() ?? new List<string>();
             // HH atuais do DevOps (com pendências locais sobrepostas) + estado p/ decidir HH Realizado.
+            // Feature: só descrição (sem HH/estado/sprint), então não busca horas.
             double? est = null, done = null; string hState = kind;
-            if (id > 0)
+            if (id > 0 && kind != "Feature")
             {
                 var (e, c, st) = await TfsImportService.GetWorkItemHoursAsync(_options, id);
                 est = _estPending.TryGetValue(id, out var ep) ? ep : e;
@@ -678,10 +684,10 @@ namespace NXProject.Views
                 // Estado EFETIVO (considera arrasto pendente p/ Closed) → libera o HH Realizado.
                 hState = _cardById.TryGetValue(id, out var cardH) ? EffState(cardH) : st;
             }
-            // Sprint editável para Story e Task (com ID). Oferece as sprints reais; valor efetivo (pendente).
+            // Sprint editável para Story e Task (Feature NÃO fica em sprint). Valor efetivo (pendente).
             System.Collections.Generic.IReadOnlyList<(string Name, string Path)>? sprints = null;
             var effIter = "";
-            if (id > 0)
+            if (id > 0 && kind != "Feature")
             {
                 // Para Task, a iteração-base vem do próprio card se não veio no parâmetro.
                 var baseIterOrig = !string.IsNullOrEmpty(currentIteration) ? currentIteration
@@ -715,12 +721,29 @@ namespace NXProject.Views
                 curFeatureId = _featurePending.TryGetValue(id, out var fp) ? fp
                     : _featureApplied.TryGetValue(id, out var fa) ? fa : fsrow.FeatureId;
             }
-            var dlg = new TaskDescriptionEditWindow(pt, people, owner, enableNameEdit: id > 0, objectKind: kind,
-                enableHours: id > 0, estimate: est, completed: done, state: hState,
+            // Data de Início: editável para Story. Valor efetivo (pendente > DevOps).
+            var enableStart = kind == "Story" && id > 0;
+            DateTime? curStart = null;
+            if (enableStart)
+                curStart = _startPending.TryGetValue(id, out var sp) ? sp
+                    : await TfsImportService.GetWorkItemStartDateAsync(_options, id);
+            var isFeat = kind == "Feature";
+            // Feature: EPIC pai e Work Item "Project" (só leitura) — buscados numa Story sob a Feature.
+            string epicTitle = "", projTitle = "";
+            if (isFeat && _board?.Stories.FirstOrDefault(s => s.FeatureId == id) is { } fsr)
+            {
+                epicTitle = fsr.FeatureEpicTitle;
+                projTitle = fsr.FeatureProjectTitle;
+            }
+            // Feature: responsável é demandante (não editável aqui) → não exibe o combo de responsável.
+            var dlg = new TaskDescriptionEditWindow(pt, isFeat ? null : people, owner, enableNameEdit: id > 0, objectKind: kind,
+                enableHours: id > 0 && !isFeat, estimate: est, completed: done, state: hState,
                 sprints: sprints, currentIteration: effIter,
-                enableBlocked: id > 0, currentBlocked: curBlocked,
+                enableBlocked: id > 0 && !isFeat, currentBlocked: curBlocked,
                 states: storyStates, currentState: effStState,
-                features: features, currentFeatureId: curFeatureId) { Owner = this };
+                features: features, currentFeatureId: curFeatureId,
+                enableStartDate: enableStart, currentStartDate: curStart,
+                epicTitle: epicTitle, projectTitle: projTitle) { Owner = this };
             if (dlg.ShowDialog() == true)
             {
                 _descPending[id] = pt.Description ?? string.Empty;
@@ -769,6 +792,7 @@ namespace NXProject.Views
                     if (dlg.SelectedFeatureId == baseFeat) _featurePending.Remove(id);
                     else _featurePending[id] = dlg.SelectedFeatureId;
                 }
+                if (dlg.StartDateChanged) _startPending[id] = dlg.SelectedStartDate;
                 if (dlg.OwnerChanged)
                 {
                     var baseline = _ownerApplied.TryGetValue(id, out var b) ? b : currentOwner;
@@ -807,7 +831,7 @@ namespace NXProject.Views
         private int PendingCount()
         {
             var doingDiff = _doing.Except(_appliedDoing).Count() + _appliedDoing.Except(_doing).Count();
-            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count + _deletePending.Count + _iterPending.Count + _blockPending.Count + _featurePending.Count;
+            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count + _deletePending.Count + _iterPending.Count + _blockPending.Count + _featurePending.Count + _startPending.Count;
         }
 
         private void UpdatePendingButton()
@@ -834,6 +858,7 @@ namespace NXProject.Views
             _iterPending.Clear();
             _blockPending.Clear();
             _featurePending.Clear();
+            _startPending.Clear();
             _newCards.Clear();
             _prioPending.Clear();
             _storyRankPending.Clear();
@@ -966,6 +991,14 @@ namespace NXProject.Views
             }
 
             Phase("Sprint_PhFields");
+            // 3i) Data de Início (Data_Inicio) da Story. 403 = sem permissão.
+            foreach (var kv in _startPending.ToList())
+            {
+                var (success, msg) = await TfsImportService.SetWorkItemStartDateAsync(_options, kv.Key, kv.Value);
+                if (success) { _startPending.Remove(kv.Key); ok++; }
+                else fails.Add($"#{kv.Key} (data início): {msg}");
+            }
+
             // 3h) Feature (pai) da Story. 403 = sem permissão.
             foreach (var kv in _featurePending.ToList())
             {
@@ -1057,7 +1090,7 @@ namespace NXProject.Views
                 if (dup) { fails.Add($"Story '{ns.Title}': {AppStrings.Get("Sprint_DupName")}"); continue; }
                 var (nid, msg) = await TfsImportService.CreateChildWorkItemAsync(_options, "User Story", ns.Title.Trim(), ns.ParentId, IterOf(ns),
                     string.IsNullOrWhiteSpace(ns.Description) ? null : TfsImportService.PlainTextToSimpleHtml(ns.Description),
-                    string.IsNullOrWhiteSpace(ns.AssignedTo) ? null : ns.AssignedTo, ns.Effort);
+                    string.IsNullOrWhiteSpace(ns.AssignedTo) ? null : ns.AssignedTo, ns.Effort, ns.StartDate);
                 if (nid > 0) { tempToReal[ns.TempId] = nid; _newCards.Remove(ns); ok++; reload = true; }
                 else fails.Add($"Story '{ns.Title}': {msg}");
             }
@@ -1496,16 +1529,126 @@ namespace NXProject.Views
 
         // TaskBoard por Pessoa com coluna de Story: Pessoa | Story | estados. Agrupa os cards
         // por (pessoa → story) para visualizar melhor.
+        // Mostra o Work Item "Project" no card da Feature só quando há mais de um projeto no board.
+        private bool MultiProjectBoard() =>
+            (_board?.Stories ?? Enumerable.Empty<TfsImportService.SprintStoryRow>())
+                .Select(s => s.FeatureProjectTitle).Where(p => !string.IsNullOrWhiteSpace(p))
+                .Distinct(StringComparer.CurrentCultureIgnoreCase).Count() > 1;
+
+        // Card só de rótulo (colunas Work Item "Project" e EPIC da visão "Por Story").
+        // `strong` deixa o texto maior/negrito (EPIC); senão fica discreto (Project).
+        private UIElement BuildLabelCard(string icon, string text, bool strong)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return new TextBlock();
+            var c = (StateBrush(FeatureColorKey) as SolidColorBrush)?.Color ?? FactoryStateColor(FeatureColorKey);
+            byte Mix(byte v, double f) => (byte)(v + (255 - v) * f);
+            // Project fica sem borda (só o texto); EPIC mantém o card com borda.
+            if (!strong)
+                return new TextBlock
+                {
+                    Text = icon + " " + text, TextWrapping = TextWrapping.Wrap, FontSize = 10,
+                    Margin = new Thickness(4, 6, 4, 2), VerticalAlignment = VerticalAlignment.Top,
+                    Foreground = new SolidColorBrush(Color.FromRgb(Mix(c.R, .45), Mix(c.G, .45), Mix(c.B, .45)))
+                };
+            return new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(Mix(c.R, .70), Mix(c.G, .70), Mix(c.B, .70))),
+                BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
+                Margin = new Thickness(3), Padding = new Thickness(6),
+                VerticalAlignment = VerticalAlignment.Top,
+                Child = new TextBlock
+                {
+                    Text = icon + " " + text, TextWrapping = TextWrapping.Wrap,
+                    FontSize = strong ? 11 : 10,
+                    FontWeight = strong ? FontWeights.SemiBold : FontWeights.Normal,
+                    Foreground = strong ? new SolidColorBrush(c)
+                        : new SolidColorBrush(Color.FromRgb(Mix(c.R, .45), Mix(c.G, .45), Mix(c.B, .45)))
+                }
+            };
+        }
+
+        // Card da Feature — mesmo visual nas visões "Por Story" e "Pessoa & Task".
+        // `extra` recebe um botão adicional da visão (ex.: "+Story" na visão Por Story).
+        private Border BuildFeatureCard(int featId, string featTitle, string featOwner,
+            string featEpic, string featProj, bool multiProject, UIElement? extra = null)
+        {
+            // Cor configurável na paleta (chave "feature").
+            var featColor = (StateBrush(FeatureColorKey) as SolidColorBrush)?.Color ?? FactoryStateColor(FeatureColorKey);
+            var featBrush = new SolidColorBrush(featColor);
+            byte MixF(byte v) => (byte)(v + (255 - v) * 0.55); // tom claro da cor p/ projeto
+            var featLight = new SolidColorBrush(Color.FromRgb(MixF(featColor.R), MixF(featColor.G), MixF(featColor.B)));
+            var featSp = new StackPanel();
+            // Projeto (Work Item "Project") só quando há mais de um projeto no board.
+            if (multiProject && !string.IsNullOrWhiteSpace(featProj))
+                featSp.Children.Add(new TextBlock { Text = "🗂 " + featProj, FontSize = 9,
+                    Foreground = featLight, TextWrapping = TextWrapping.Wrap });
+            // EPIC pai — destacado (negrito/cor forte) para diferenciar do Project.
+            if (!string.IsNullOrWhiteSpace(featEpic))
+                featSp.Children.Add(new TextBlock { Text = "🏔 " + featEpic, FontSize = 10,
+                    FontWeight = FontWeights.SemiBold, Foreground = featBrush, TextWrapping = TextWrapping.Wrap });
+            featSp.Children.Add(new TextBlock { Text = "📦 " + featTitle, FontSize = 11, FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap, Foreground = featBrush });
+            if (!string.IsNullOrWhiteSpace(featOwner))
+                featSp.Children.Add(new TextBlock { Text = "👤 " + featOwner, FontSize = 10,
+                    Margin = new Thickness(0, 2, 0, 0), Foreground = featBrush, TextWrapping = TextWrapping.Wrap });
+            if (featId > 0)
+            {
+                var fid = featId; var ftit = featTitle;
+                var featBtns = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0),
+                    Cursor = System.Windows.Input.Cursors.Arrow };
+                var featDesc = new Button { Content = "📄", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                    Margin = new Thickness(0, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_FeatureDesc") };
+                featDesc.Click += async (_, _) => await EditDescriptionAsync(fid, ftit, "", "Feature");
+                featBtns.Children.Add(featDesc);
+                var featOpen = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                    ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
+                featOpen.Click += (_, _) => OpenInDevOps(fid);
+                featBtns.Children.Add(featOpen);
+                if (extra != null) featBtns.Children.Add(extra);
+                featSp.Children.Add(featBtns);
+            }
+            byte Bg(byte v) => (byte)(v + (255 - v) * 0.92); // fundo bem claro da cor
+            byte Bd(byte v) => (byte)(v + (255 - v) * 0.70); // borda clara da cor
+            return new Border { Background = new SolidColorBrush(Color.FromRgb(Bg(featColor.R), Bg(featColor.G), Bg(featColor.B))),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(Bd(featColor.R), Bd(featColor.G), Bd(featColor.B))),
+                BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
+                Margin = new Thickness(3), Padding = new Thickness(6), Child = featSp };
+        }
+
         private void RenderPersonBoard(List<TfsImportService.SprintTaskCard> allVisible, List<string> states)
         {
-            var cols = new List<GridLength> { new(170), new(220) };
+            // Coluna EPIC é opcional nesta visão (checkbox no cabeçalho da Feature).
+            var showEpic = _prefs.ShowEpic ?? true;
+            // Colunas: Pessoa | [EPIC] | Feature | Story | estados.
+            var cols = new List<GridLength> { new(150) };
+            if (showEpic) cols.Add(new(160));
+            cols.Add(new(160)); cols.Add(new(210));
+            var cFeat = showEpic ? 2 : 1;          // índice da coluna Feature
+            var cStory = cFeat + 1;                // Story
+            var cState0 = cStory + 1;              // 1ª coluna de estado
             foreach (var _ in states) cols.Add(new GridLength(210));
 
-            // Cabeçalho.
+            var multiProject = MultiProjectBoard();
+
+            // Faixa: nesta visão os cards das colunas de estado são TASKS.
+            AddCardsBandRow(cols, cState0, AppStrings.Get("Sprint_CardsAreTasks"));
             var head = MakeRowGrid(cols);
             AddCell(head, 0, MakeHeader(AppStrings.Get("Sprint_ColPerson")));
-            AddCell(head, 1, MakeHeader(AppStrings.Get("Sprint_ColStory")));
-            for (int i = 0; i < states.Count; i++) AddCell(head, i + 2, MakeStateHeader(states[i]));
+            if (showEpic) AddCell(head, 1, MakeHeader(AppStrings.Get("Sprint_ColEpic")));
+            // Cabeçalho da Feature + checkbox que liga/desliga a coluna do EPIC.
+            var featHead = new StackPanel { Orientation = Orientation.Horizontal };
+            featHead.Children.Add(MakeHeader(AppStrings.Get("Sprint_ColFeature")));
+            var epicChk = new CheckBox
+            {
+                Content = AppStrings.Get("Sprint_ColEpic"), IsChecked = showEpic,
+                VerticalAlignment = VerticalAlignment.Center, FontSize = 10, Margin = new Thickness(6, 2, 0, 2),
+                ToolTip = AppStrings.Get("Sprint_ShowEpicHint")
+            };
+            epicChk.Click += (_, _) => { _prefs.ShowEpic = epicChk.IsChecked == true; SavePrefs(); Render(); };
+            featHead.Children.Add(epicChk);
+            AddCell(head, cFeat, featHead);
+            AddCell(head, cStory, MakeHeader(AppStrings.Get("Sprint_ColStory")));
+            for (int i = 0; i < states.Count; i++) AddCell(head, i + cState0, MakeStateHeader(states[i]));
             BoardHost.Children.Add(head);
 
             foreach (var pg in allVisible
@@ -1597,9 +1740,31 @@ namespace NXProject.Views
                         storyBorder.Drop += (s, ev) => OnStoryOwnerDrop(ev, personKey2, storyId);
                         storyBorder.DragOver += (s, ev) => { ev.Effects = DragDropEffects.Move; ev.Handled = true; };
                     }
-                    AddCell(row, 1, storyBorder);
+                    // Coluna Feature (📦) — card só com borda; botão 📄 abre a descrição da Feature.
+                    var featTitle = storyId > 0 ? (StoryById(storyId)?.FeatureTitle ?? "") : "";
+                    var featId = storyId > 0 ? (StoryById(storyId)?.FeatureId ?? 0) : 0;
+                    var featOwner = storyId > 0 ? (StoryById(storyId)?.FeatureAssignedTo ?? "") : "";
+                    var featEpic = storyId > 0 ? (StoryById(storyId)?.FeatureEpicTitle ?? "") : "";
+                    var featProj = storyId > 0 ? (StoryById(storyId)?.FeatureProjectTitle ?? "") : "";
+                    // Coluna EPIC (opcional): card do EPIC com o Projeto (sem borda) acima quando há vários.
+                    if (showEpic)
+                    {
+                        var epicSp = new StackPanel();
+                        if (multiProject && !string.IsNullOrWhiteSpace(featProj))
+                            epicSp.Children.Add(BuildLabelCard("🗂", featProj, strong: false));
+                        if (!string.IsNullOrWhiteSpace(featEpic))
+                            epicSp.Children.Add(BuildLabelCard("🏔", featEpic, strong: true));
+                        AddCell(row, 1, epicSp);
+                    }
+                    // Card da Feature: com a coluna EPIC ligada ele não repete o EPIC; desligada,
+                    // o EPIC/Project voltam para dentro do card (linha no nome da Feature).
+                    UIElement featCell = string.IsNullOrWhiteSpace(featTitle) ? new TextBlock()
+                        : showEpic ? BuildFeatureCard(featId, featTitle, featOwner, "", "", false)
+                        : BuildFeatureCard(featId, featTitle, featOwner, featEpic, featProj, multiProject);
+                    AddCell(row, cFeat, featCell);
+                    AddCell(row, cStory, storyBorder);
                     for (int i = 0; i < states.Count; i++)
-                        AddCell(row, i + 2, BuildStateCell(states[i], tks, showStory: false));
+                        AddCell(row, i + cState0, BuildStateCell(states[i], tks, showStory: false));
                     BoardHost.Children.Add(row);
                     firstRow = false;
                 }
@@ -1651,17 +1816,45 @@ namespace NXProject.Views
             var storyStates = TfsImportService.OrderTaskboardStates(states.Concat(stories.Select(EffStoryState)));
             if (storyStates.Count == 0) storyStates = states;
 
-            var cols = new List<GridLength> { new(180) };
+            // Coluna Projeto é opcional (checkbox no cabeçalho do EPIC).
+            var showProjCol = _prefs.ShowProjCol ?? true;
+            // Colunas: [Projeto] | EPIC | Feature | estados.
+            var cols = new List<GridLength>();
+            if (showProjCol) cols.Add(new(150));
+            cols.Add(new(170)); cols.Add(new(180));
+            var cEpic = showProjCol ? 1 : 0;
+            var cFeat = cEpic + 1;
+            var cState0 = cFeat + 1;
             foreach (var _ in storyStates) cols.Add(new GridLength(240));
 
+            // Faixa: nesta visão os cards das colunas de estado são STORIES.
+            AddCardsBandRow(cols, cState0, AppStrings.Get("Sprint_CardsAreStories"));
             var head = MakeRowGrid(cols);
-            AddCell(head, 0, MakeHeader(AppStrings.Get("Sprint_ColFeature")));
-            for (int i = 0; i < storyStates.Count; i++) AddCell(head, i + 1, MakeStateHeader(storyStates[i]));
+            if (showProjCol) AddCell(head, 0, MakeHeader(AppStrings.Get("Sprint_ColProject")));
+            // Cabeçalho do EPIC + checkbox que liga/desliga a coluna do Projeto.
+            var epicHead = new StackPanel { Orientation = Orientation.Horizontal };
+            epicHead.Children.Add(MakeHeader(AppStrings.Get("Sprint_ColEpic")));
+            var projChk = new CheckBox
+            {
+                Content = AppStrings.Get("Sprint_ColProject"), IsChecked = showProjCol,
+                VerticalAlignment = VerticalAlignment.Center, FontSize = 10, Margin = new Thickness(6, 2, 0, 2),
+                ToolTip = AppStrings.Get("Sprint_ShowProjHint")
+            };
+            projChk.Click += (_, _) => { _prefs.ShowProjCol = projChk.IsChecked == true; SavePrefs(); Render(); };
+            epicHead.Children.Add(projChk);
+            AddCell(head, cEpic, epicHead);
+            AddCell(head, cFeat, MakeHeader(AppStrings.Get("Sprint_ColFeature")));
+            for (int i = 0; i < storyStates.Count; i++) AddCell(head, i + cState0, MakeStateHeader(storyStates[i]));
             BoardHost.Children.Add(head);
 
+            // Cards de Project/EPIC aparecem só na 1ª Feature de cada um (não repetem).
+            var lastProj = (string?)null;
+            var lastEpic = (string?)null;
             foreach (var fg in stories
                          .GroupBy(s => string.IsNullOrWhiteSpace(s.FeatureTitle) ? AppStrings.Get("Sprint_NoFeature") : s.FeatureTitle)
-                         .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
+                         .OrderBy(g => g.FirstOrDefault()?.FeatureProjectTitle ?? "", StringComparer.CurrentCultureIgnoreCase)
+                         .ThenBy(g => g.FirstOrDefault()?.FeatureEpicTitle ?? "", StringComparer.CurrentCultureIgnoreCase)
+                         .ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
             {
                 var featureId = fg.Select(s => s.FeatureId).FirstOrDefault(id => id > 0);
                 var groupStories = fg.OrderBy(s => StoryRankOf(s.Id))
@@ -1669,17 +1862,36 @@ namespace NXProject.Views
                 var realIds = groupStories.Where(s => s.Id > 0).Select(s => s.Id).ToList();
 
                 var row = MakeRowGrid(cols);
-                var featPanel = new StackPanel();
-                featPanel.Children.Add(new TextBlock { Text = fg.Key, FontWeight = FontWeights.Bold,
-                    TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 2, 4, 2) });
+                // Card da Feature igual ao da visão Pessoa & Task, com o "+Story" junto dos botões.
+                var featRow = fg.FirstOrDefault(s => s.FeatureId > 0);
+                UIElement addStory = null!;
                 if (featureId > 0)
                 {
-                    var addStory = new Button { Content = AppStrings.Get("Sprint_AddStory"), FontSize = 10,
-                        Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(4, 2, 4, 2), HorizontalAlignment = HorizontalAlignment.Left };
-                    addStory.Click += (_, _) => AddNewStory(featureId, fg.Key);
-                    featPanel.Children.Add(addStory);
+                    var btn = new Button { Content = AppStrings.Get("Sprint_AddStory"), FontSize = 10,
+                        Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(4, 0, 0, 0) };
+                    btn.Click += (_, _) => AddNewStory(featureId, fg.Key);
+                    addStory = btn;
                 }
-                AddCell(row, 0, featPanel);
+                // Colunas Project e EPIC (só na 1ª Feature de cada um, para não repetir).
+                var projTitle = featRow?.FeatureProjectTitle ?? "";
+                var epicTitle = featRow?.FeatureEpicTitle ?? "";
+                var isNewBlock = epicTitle != lastEpic || projTitle != lastProj;
+                if (showProjCol)
+                    AddCell(row, 0, projTitle == lastProj ? new TextBlock()
+                        : BuildLabelCard("🗂", projTitle, strong: false));
+                // Sem a coluna Projeto, ele aparece como linha discreta acima do EPIC.
+                var epicSp = new StackPanel();
+                if (isNewBlock)
+                {
+                    if (!showProjCol && !string.IsNullOrWhiteSpace(projTitle))
+                        epicSp.Children.Add(BuildLabelCard("🗂", projTitle, strong: false));
+                    epicSp.Children.Add(BuildLabelCard("🏔", epicTitle, strong: true));
+                }
+                AddCell(row, cEpic, epicSp);
+                lastProj = projTitle; lastEpic = epicTitle;
+                // Card da Feature (sem EPIC/Project — já têm coluna própria aqui).
+                AddCell(row, cFeat, BuildFeatureCard(featureId, fg.Key,
+                    featRow?.FeatureAssignedTo ?? "", "", "", false, addStory));
 
                 for (int i = 0; i < storyStates.Count; i++)
                 {
@@ -1698,9 +1910,9 @@ namespace NXProject.Views
                         };
                         host.Drop += OnStoryDrop;
                         host.DragOver += (s, ev) => { ev.Effects = DragDropEffects.Move; ev.Handled = true; };
-                        AddCell(row, i + 1, host);
+                        AddCell(row, i + cState0, host);
                     }
-                    else AddCell(row, i + 1, cell);
+                    else AddCell(row, i + cState0, cell);
                 }
                 BoardHost.Children.Add(row);
                 BoardHost.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(0xD5, 0xDD, 0xD7)), Margin = new Thickness(0, 2, 0, 4) });
@@ -1830,6 +2042,17 @@ namespace NXProject.Views
                 sp.Children.Add(spCombo);
             }
 
+            // Data de Início (só Story): opcional, gravada no Data_Inicio ao criar.
+            if (nc.Type == "Story")
+            {
+                var dtRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+                dtRow.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_FldStart"), FontSize = 10, Foreground = Brushes.Gray, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
+                var dp = new DatePicker { SelectedDate = nc.StartDate, FontSize = 11, Width = 118 };
+                dp.SelectedDateChanged += (_, _) => nc.StartDate = dp.SelectedDate;
+                dtRow.Children.Add(dp);
+                sp.Children.Add(dtRow);
+            }
+
             sp.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_FldDesc"), FontSize = 10, Foreground = Brushes.Gray });
             var desc = new TextBox { Text = nc.Description, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 46, FontSize = 11, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             desc.TextChanged += (_, _) => nc.Description = desc.Text;
@@ -1850,7 +2073,7 @@ namespace NXProject.Views
             var isNew = story.Id < 0;
             var pend = _storyStatePending.ContainsKey(story.Id) || _storyRankPending.Contains(story.Id)
                 || _ownerPending.ContainsKey(story.Id) || _titlePending.ContainsKey(story.Id) || _iterPending.ContainsKey(story.Id)
-                || _blockPending.ContainsKey(story.Id) || _featurePending.ContainsKey(story.Id);
+                || _blockPending.ContainsKey(story.Id) || _featurePending.ContainsKey(story.Id) || _startPending.ContainsKey(story.Id);
             var storyBlocked = story.Id > 0 && EffBlocked(story.Id, story.Tags);
             var storyToDelete = _deletePending.Contains(story.Id);
             var border = new Border
@@ -2003,6 +2226,22 @@ namespace NXProject.Views
             Margin = new Thickness(3, 0, 3, 0), Padding = new Thickness(6, 2, 6, 2),
             Child = new TextBlock { Text = state, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 11 }
         };
+
+        // Faixa acima das colunas de estado dizendo QUAL objeto são os cards daquelas colunas
+        // (Story na visão "Por Story", Task na visão "Pessoa & Task").
+        private void AddCardsBandRow(List<GridLength> cols, int firstStateCol, string text)
+        {
+            var band = MakeRowGrid(cols);
+            var label = new TextBlock
+            {
+                Text = text, FontSize = 10, FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x60, 0x6A, 0x76)),
+                Margin = new Thickness(4, 2, 4, 2)
+            };
+            Grid.SetColumnSpan(label, cols.Count - firstStateCol);
+            AddCell(band, firstStateCol, label);
+            BoardHost.Children.Add(band);
+        }
 
         private Border BuildCard(TfsImportService.SprintTaskCard t, string? storyTitle = null)
         {
@@ -2353,10 +2592,13 @@ namespace NXProject.Views
 
         // Chave da cor do "Story Colaborador" (pessoa ajuda na task, mas não é responsável da Story).
         private const string HelperColorKey = "story-colaborador";
+        // Chave da cor do card de Feature (visão Pessoa & Task).
+        private const string FeatureColorKey = "feature";
 
         private static Color FactoryStateColor(string state) => state.ToLowerInvariant() switch
         {
             HelperColorKey => Color.FromRgb(0xFD, 0xF3, 0xE0), // âmbar bem claro
+            FeatureColorKey => Color.FromRgb(0x6A, 0x1B, 0x9A), // roxo
             "new" or "to do" or "approved" => Color.FromRgb(0x6B, 0x7A, 0x8A),
             // Active = cor de DESTAQUE (accent forte); é o estado que precisa de atenção.
             "active" or "committed" or "in progress" or "doing" or "open" => Color.FromRgb(0x00, 0x78, 0xD4),
@@ -2427,7 +2669,8 @@ namespace NXProject.Views
                     SavePrefs();
                     Render();
                 },
-                extraRows: new[] { (AppStrings.Get("Colors_StoryHelp"), HelperColorKey) }) { Owner = this };
+                extraRows: new[] { (AppStrings.Get("Colors_StoryHelp"), HelperColorKey),
+                                   (AppStrings.Get("Colors_Feature"), FeatureColorKey) }) { Owner = this };
             if (dlg.ShowDialog() == true)
             {
                 _prefs.StateColors = dlg.Result.Count > 0 ? dlg.Result : null;
