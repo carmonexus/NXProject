@@ -1922,6 +1922,7 @@
     <sys:String x:Key="Desc_Owner">Assignee:</sys:String>
     <sys:String x:Key="Desc_Name">Name:</sys:String>
     <sys:String x:Key="Desc_State">State:</sys:String>
+    <sys:String x:Key="Desc_Feature">Feature:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Description:</sys:String>
     <sys:String x:Key="Desc_EditStory">Edit Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edit Task</sys:String>

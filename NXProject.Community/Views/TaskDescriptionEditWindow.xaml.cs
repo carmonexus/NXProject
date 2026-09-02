@@ -36,6 +36,12 @@ namespace NXProject.Views
         public bool BlockedChanged { get; private set; }
         private readonly bool _initialBlocked;
 
+        // Troca de Feature (Story New): habilitada quando 'features' é fornecido.
+        public bool FeatureEnabled { get; }
+        public int SelectedFeatureId { get; private set; }
+        public bool FeatureChanged { get; private set; }
+        private int _initialFeatureId;
+
         // Edição do Estado (Story): habilitada quando 'states' é fornecido.
         public bool StateEnabled { get; }
         public string? SelectedState { get; private set; }
@@ -63,7 +69,8 @@ namespace NXProject.Views
             bool enableHours = false, double? estimate = null, double? completed = null, string? state = null,
             System.Collections.Generic.IReadOnlyList<(string Name, string Path)>? sprints = null, string? currentIteration = null,
             bool enableBlocked = false, bool currentBlocked = false,
-            System.Collections.Generic.IReadOnlyList<string>? states = null, string? currentState = null)
+            System.Collections.Generic.IReadOnlyList<string>? states = null, string? currentState = null,
+            System.Collections.Generic.IReadOnlyList<(string Title, int Id)>? features = null, int currentFeatureId = 0)
         {
             InitializeComponent();
             _task = task;
@@ -116,6 +123,17 @@ namespace NXProject.Views
                 foreach (var s in sprints) SprintCombo.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s.Path });
                 var sel = SprintCombo.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == _initialIteration);
                 if (sel != null) SprintCombo.SelectedItem = sel;
+            }
+
+            _initialFeatureId = currentFeatureId;
+            SelectedFeatureId = currentFeatureId;
+            if (features != null && features.Count > 0)
+            {
+                FeatureEnabled = true;
+                FeaturePanel.Visibility = Visibility.Visible;
+                foreach (var f in features) FeatureCombo.Items.Add(new ComboBoxItem { Content = f.Title, Tag = f.Id });
+                var sel = FeatureCombo.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (int)i.Tag == currentFeatureId);
+                if (sel != null) FeatureCombo.SelectedItem = sel;
             }
 
             _initialState = currentState ?? string.Empty;
@@ -329,6 +347,11 @@ namespace NXProject.Views
             {
                 SelectedState = ss;
                 StateWasChanged = !string.Equals(SelectedState, _initialState, StringComparison.OrdinalIgnoreCase);
+            }
+            if (FeatureEnabled && FeatureCombo.SelectedItem is ComboBoxItem fi)
+            {
+                SelectedFeatureId = (int)fi.Tag;
+                FeatureChanged = SelectedFeatureId != _initialFeatureId;
             }
             if (HoursEnabled)
             {

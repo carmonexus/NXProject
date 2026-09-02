@@ -5871,6 +5871,62 @@ namespace NXProject.Services
             return string.Join("; ", set);
         }
 
+        /// <summary>Troca o pai (Feature) de um work item: remove o vínculo de pai atual e adiciona o
+        /// novo (System.LinkTypes.Hierarchy-Reverse). (Ok, Mensagem); 403 = sem permissão.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemParentAsync(
+            TfsConnectionOptions options, int id, int newParentId, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "trocar Feature", requireTeamProject: false);
+            try
+            {
+                // 1) Lê as relações atuais para achar o índice do pai existente.
+                var getUrl = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?$expand=relations&{QueryApiVersion}";
+                using var greq = new HttpRequestMessage(HttpMethod.Get, getUrl);
+                greq.Headers.Authorization = ctx.Authorization;
+                greq.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                using var gresp = await Http.SendAsync(greq, ct);
+                if (!gresp.IsSuccessStatusCode) return (false, $"HTTP {(int)gresp.StatusCode}");
+                using var gdoc = JsonDocument.Parse(await gresp.Content.ReadAsStringAsync(ct));
+
+                int parentIdx = -1;
+                if (gdoc.RootElement.TryGetProperty("relations", out var rels) && rels.ValueKind == JsonValueKind.Array)
+                {
+                    int i = 0;
+                    foreach (var r in rels.EnumerateArray())
+                    {
+                        if (r.TryGetProperty("rel", out var rl) && rl.GetString() == "System.LinkTypes.Hierarchy-Reverse")
+                        { parentIdx = i; break; }
+                        i++;
+                    }
+                }
+
+                var ops = new List<object>();
+                if (parentIdx >= 0)
+                    ops.Add(new { op = "remove", path = $"/relations/{parentIdx}" });
+                ops.Add(new
+                {
+                    op = "add",
+                    path = "/relations/-",
+                    value = new { rel = "System.LinkTypes.Hierarchy-Reverse", url = $"{ctx.OrgBase}/_apis/wit/workItems/{newParentId}" }
+                });
+
+                var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+                using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+                };
+                req.Headers.Authorization = ctx.Authorization;
+                req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
+        }
+
         /// <summary>Grava a iteração/sprint (System.IterationPath) de um work item. (Ok, Mensagem);
         /// 403 = sem permissão de escrita.</summary>
         public static async Task<(bool Ok, string Message)> SetWorkItemIterationPathAsync(

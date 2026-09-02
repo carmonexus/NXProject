@@ -60,6 +60,9 @@ namespace NXProject.Views
         // Iteração (sprint) da Story alterada (pendente) e a já gravada (baseline pós-Salvar).
         private readonly Dictionary<int, string> _iterPending = new();
         private readonly Dictionary<int, string> _iterApplied = new();
+        // Feature (pai) da Story alterada (pendente: novo FeatureId) e a já gravada.
+        private readonly Dictionary<int, int> _featurePending = new();
+        private readonly Dictionary<int, int> _featureApplied = new();
         // Bloqueio (tag "Blocked") alterado (pendente: novo valor) e conjuntos de tags já gravados.
         private const string BlockedTag = "Blocked";
         private readonly Dictionary<int, bool> _blockPending = new();
@@ -410,6 +413,8 @@ namespace NXProject.Views
                 _iterApplied.Clear();
                 _blockPending.Clear();
                 _tagsApplied.Clear();
+                _featurePending.Clear();
+                _featureApplied.Clear();
                 _newCards.Clear();
                 _prioPending.Clear();
                 _prioApplied.Clear();
@@ -636,7 +641,7 @@ namespace NXProject.Views
             // ✎ marca "●" quando há descrição OU responsável/HH/sprint pendente.
             var descDirty = _descPending.ContainsKey(id) || _ownerPending.ContainsKey(id)
                 || _titlePending.ContainsKey(id) || _estPending.ContainsKey(id) || _donePending.ContainsKey(id)
-                || _iterPending.ContainsKey(id);
+                || _iterPending.ContainsKey(id) || _featurePending.ContainsKey(id);
             var desc = new Button { Content = descDirty ? "✎●" : "✎", FontSize = 11,
                 Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
                 Foreground = descDirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black,
@@ -698,11 +703,24 @@ namespace NXProject.Views
                 storyStates = _board?.States?.ToList();
                 effStState = EffStoryState(srow);
             }
+            // Troca de Feature: só para Story em New (evita reparent de itens em andamento).
+            System.Collections.Generic.IReadOnlyList<(string Title, int Id)>? features = null;
+            var curFeatureId = 0;
+            if (kind == "Story" && id > 0 && StoryById(id) is { } fsrow
+                && string.Equals(EffStoryState(fsrow), "New", StringComparison.OrdinalIgnoreCase))
+            {
+                features = _board?.Stories.Where(s => s.FeatureId > 0)
+                    .Select(s => (Title: s.FeatureTitle, Id: s.FeatureId))
+                    .Distinct().OrderBy(f => f.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
+                curFeatureId = _featurePending.TryGetValue(id, out var fp) ? fp
+                    : _featureApplied.TryGetValue(id, out var fa) ? fa : fsrow.FeatureId;
+            }
             var dlg = new TaskDescriptionEditWindow(pt, people, owner, enableNameEdit: id > 0, objectKind: kind,
                 enableHours: id > 0, estimate: est, completed: done, state: hState,
                 sprints: sprints, currentIteration: effIter,
                 enableBlocked: id > 0, currentBlocked: curBlocked,
-                states: storyStates, currentState: effStState) { Owner = this };
+                states: storyStates, currentState: effStState,
+                features: features, currentFeatureId: curFeatureId) { Owner = this };
             if (dlg.ShowDialog() == true)
             {
                 _descPending[id] = pt.Description ?? string.Empty;
@@ -745,6 +763,12 @@ namespace NXProject.Views
                     if (SameState(chosen, baseState)) _storyStatePending.Remove(id);
                     else _storyStatePending[id] = chosen;
                 }
+                if (dlg.FeatureChanged && StoryById(id) is { } srow3)
+                {
+                    var baseFeat = _featureApplied.TryGetValue(id, out var bf) ? bf : srow3.FeatureId;
+                    if (dlg.SelectedFeatureId == baseFeat) _featurePending.Remove(id);
+                    else _featurePending[id] = dlg.SelectedFeatureId;
+                }
                 if (dlg.OwnerChanged)
                 {
                     var baseline = _ownerApplied.TryGetValue(id, out var b) ? b : currentOwner;
@@ -783,7 +807,7 @@ namespace NXProject.Views
         private int PendingCount()
         {
             var doingDiff = _doing.Except(_appliedDoing).Count() + _appliedDoing.Except(_doing).Count();
-            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count + _deletePending.Count + _iterPending.Count + _blockPending.Count;
+            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count + _deletePending.Count + _iterPending.Count + _blockPending.Count + _featurePending.Count;
         }
 
         private void UpdatePendingButton()
@@ -809,6 +833,7 @@ namespace NXProject.Views
             _deletePending.Clear();
             _iterPending.Clear();
             _blockPending.Clear();
+            _featurePending.Clear();
             _newCards.Clear();
             _prioPending.Clear();
             _storyRankPending.Clear();
@@ -852,6 +877,7 @@ namespace NXProject.Views
             }
             try
             {
+            var reload = false;
 
             // 1) Mudanças de estado (arrasto). Guarda os que mudaram para reavaliar a tag (Doing→Done).
             Phase("Sprint_PhState");
@@ -940,6 +966,14 @@ namespace NXProject.Views
             }
 
             Phase("Sprint_PhFields");
+            // 3h) Feature (pai) da Story. 403 = sem permissão.
+            foreach (var kv in _featurePending.ToList())
+            {
+                var (success, msg) = await TfsImportService.SetWorkItemParentAsync(_options, kv.Key, kv.Value);
+                if (success) { _featureApplied[kv.Key] = kv.Value; _featurePending.Remove(kv.Key); ok++; reload = true; }
+                else fails.Add($"#{kv.Key} (feature): {msg}");
+            }
+
             // 3g) Bloqueio (tag "Blocked"), preservando as demais tags. 403 = sem permissão.
             foreach (var kv in _blockPending.ToList())
             {
@@ -951,7 +985,6 @@ namespace NXProject.Views
             }
 
             // 3e) Exclusão de Tasks marcadas (só New). Move para a lixeira do DevOps.
-            var reload = false;
             foreach (var did in _deletePending.ToList())
             {
                 var (success, msg) = await TfsImportService.TryDeleteWorkItemAsync(_options, did);
@@ -1817,19 +1850,23 @@ namespace NXProject.Views
             var isNew = story.Id < 0;
             var pend = _storyStatePending.ContainsKey(story.Id) || _storyRankPending.Contains(story.Id)
                 || _ownerPending.ContainsKey(story.Id) || _titlePending.ContainsKey(story.Id) || _iterPending.ContainsKey(story.Id)
-                || _blockPending.ContainsKey(story.Id);
+                || _blockPending.ContainsKey(story.Id) || _featurePending.ContainsKey(story.Id);
             var storyBlocked = story.Id > 0 && EffBlocked(story.Id, story.Tags);
+            var storyToDelete = _deletePending.Contains(story.Id);
             var border = new Border
             {
-                Background = isNew ? new SolidColorBrush(Color.FromRgb(0xE7, 0xF6, 0xE7)) : pend ? new SolidColorBrush(Color.FromRgb(0xFF, 0xF4, 0xD6)) : StateTintBrush(EffStoryState(story)),
-                BorderBrush = new SolidColorBrush(isNew ? Color.FromRgb(0x10, 0x7C, 0x10) : pend ? Color.FromRgb(0xE0, 0x8A, 0x00) : Color.FromRgb(0xD0, 0xD7, 0xE0)),
-                BorderThickness = new Thickness(isNew || pend ? 2 : 1),
+                Background = storyToDelete ? new SolidColorBrush(Color.FromRgb(0xFB, 0xE3, 0xE3))
+                    : isNew ? new SolidColorBrush(Color.FromRgb(0xE7, 0xF6, 0xE7)) : pend ? new SolidColorBrush(Color.FromRgb(0xFF, 0xF4, 0xD6)) : StateTintBrush(EffStoryState(story)),
+                BorderBrush = new SolidColorBrush(storyToDelete ? Color.FromRgb(0xC0, 0x30, 0x30) : isNew ? Color.FromRgb(0x10, 0x7C, 0x10) : pend ? Color.FromRgb(0xE0, 0x8A, 0x00) : Color.FromRgb(0xD0, 0xD7, 0xE0)),
+                BorderThickness = new Thickness(storyToDelete || isNew || pend ? 2 : 1),
                 CornerRadius = new CornerRadius(3), Margin = new Thickness(0, 0, 0, 4), Padding = new Thickness(6), Tag = story.Id
             };
-            if (storyBlocked && !pend) { border.BorderBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)); border.BorderThickness = new Thickness(2); }
+            if (storyBlocked && !pend && !storyToDelete) { border.BorderBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)); border.BorderThickness = new Thickness(2); }
             var sp = new StackPanel();
-            sp.Children.Add(new TextBlock { Text = (isNew ? "🆕 " : "") + EffTitle(story.Id, story.Title), FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap,
-                Foreground = _titlePending.ContainsKey(story.Id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black });
+            var storyTitleTb = new TextBlock { Text = (isNew ? "🆕 " : "") + EffTitle(story.Id, story.Title), FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap,
+                Foreground = storyToDelete ? new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)) : _titlePending.ContainsKey(story.Id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black };
+            if (storyToDelete) storyTitleTb.TextDecorations = TextDecorations.Strikethrough;
+            sp.Children.Add(storyTitleTb);
             if (story.Id > 0)
             {
                 sp.Children.Add(new TextBlock { Text = $"#{story.Id}  ·  {EffStoryState(story)}", FontSize = 10, Foreground = Brushes.Gray });
@@ -1852,6 +1889,20 @@ namespace NXProject.Views
                     Margin = new Thickness(0, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
                 openStory.Click += (_, _) => OpenInDevOps(story.Id);
                 actions.Children.Add(openStory);
+                // Excluir Story: só quando está em New e SEM Tasks (ou todas as Tasks em New).
+                var tasksAllNew = story.Tasks.Count == 0 || story.Tasks.All(t => SameState(EffState(t), "New"));
+                if (string.Equals(EffStoryState(story), "New", StringComparison.OrdinalIgnoreCase) && tasksAllNew)
+                {
+                    var delSt = new Button { Content = storyToDelete ? "↩" : "🗑", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                        Margin = new Thickness(0, 0, 4, 0), Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)),
+                        ToolTip = AppStrings.Get(storyToDelete ? "Sprint_UndoDelete" : "Sprint_DeleteTask") };
+                    delSt.Click += (_, _) =>
+                    {
+                        if (!_deletePending.Remove(story.Id)) _deletePending.Add(story.Id);
+                        UpdatePendingButton(); Render();
+                    };
+                    actions.Children.Add(delSt);
+                }
                 sp.Children.Add(actions);
             }
             else
