@@ -1076,6 +1076,41 @@ namespace NXProject.Views
                      "O último zoom selecionado é salvo no arquivo .nxp e restaurado ao reabrir o projeto.")
                 },
                 "O calendário é o coração do cálculo de prazos — configure os feriados do seu país e da empresa antes de começar o planejamento."
+            ),
+            // ── TaskBoard (quadro de cards da sprint) ─────────────────────────
+            (
+                "TaskBoard",
+                "O TaskBoard (aba 📋 DevOps → TaskBoard) é o quadro de cards da sprint no NXProject: mostra Stories e Tasks por estado, permite editar e gravar direto no Azure DevOps pelo botão Salvar TFS.",
+                new()
+                {
+                    ("Duas visões",
+                     "• Por Story: cada Story é um card, posicionada na coluna do seu estado, agrupada por Feature.\n" +
+                     "• Pessoa & Task: agrupa por Pessoa → Story, e as Tasks aparecem como cards por estado.\n" +
+                     "• A busca tem escopo (Story+Task / Só Task / Só Story) e filtra ao digitar."),
+                    ("Seleção de sprint (uma ou várias)",
+                     "• O seletor de sprint é como o de pessoa: checkboxes com a data início–fim de cada sprint.\n" +
+                     "• Nenhuma marcada = todas as sprints; várias marcadas = une os itens. Quando há mais de uma, os cards mostram 🗓 o nome da sprint.\n" +
+                     "• 📍 posiciona na sprint atual (pela data). A seleção é salva e restaurada."),
+                    ("Filtros salvos",
+                     "Os filtros ficam salvos e voltam ao reabrir: sprint(s), pessoa(s), visão, estados ocultos, dias do Closed, 'somente do cronograma' e busca. O filtro de estado (ex.: mostrar Closed) é mantido conforme você marcou."),
+                    ("Editar no card e no editor",
+                     "• ✎ abre o editor com: Nome, Responsável, Sprint, HH Estimado, HH Realizado (quando Closed), Descrição e Bloqueado.\n" +
+                     "• Na visão Pessoa & Task dá para arrastar a Story para outra pessoa (troca o Responsável) ou reordenar na mesma pessoa; quem só tem Task na Story (não é responsável) aparece como 'colaborador' em cor própria e não move a Story.\n" +
+                     "• Prioridade da Task é editável direto no card (picklist)."),
+                    ("Fechar exige HH Realizado",
+                     "Ao arrastar um card para Closed, aparece um campo HH Realizado direto no card, já sugerindo o HH Estimado como padrão (quando ainda não há realizado). O Salvar TFS não fecha a Task sem o HH Realizado preenchido."),
+                    ("Bloquear, criar e excluir",
+                     "• Bloquear/desbloquear (tag 'Blocked' do board): botão 🔒/🔓 no card de Task e opção no editor da Story — o card bloqueado fica com borda vermelha. Entra na fila do Salvar TFS.\n" +
+                     "• Criar Story/Task novas direto no card (com Sprint quando há várias selecionadas).\n" +
+                     "• Excluir Task no estado New: botão 🗑 marca para excluir (card tachado); a exclusão no DevOps ocorre no Salvar TFS."),
+                    ("Cores por estado",
+                     "O botão 🎨 abre o editor de cores por estado (clique no quadradinho para a paleta do Windows). Há também a cor 'Story Colaborador' e o botão 'Definir como padrão' para valer em todos os boards."),
+                    ("Salvar TFS",
+                     "O botão Salvar TFS grava todas as pendências no Azure DevOps (estado, tags, responsável, nome, HH, sprint, prioridade, rank, exclusões e novos itens), mostrando uma barra de progresso e a etapa atual. Reverter descarta as pendências; 🔄 recarrega do TFS."),
+                    ("Abrir ao iniciar / janela",
+                     "No ⚙ há a opção 'Abrir ao iniciar o NX' (ideal para o perfil desenvolvedor) e 'Somente do cronograma'. A janela do TaskBoard lembra tamanho/posição e se estava maximizada.")
+                },
+                "Marque só as sprints que interessam, ajuste os filtros (eles ficam salvos) e use Salvar TFS para gravar tudo de uma vez no Azure DevOps."
             )
         };
 
@@ -1928,6 +1963,41 @@ namespace NXProject.Views
                      "The last selected zoom is saved in the .nxp file and restored when reopening the project.")
                 },
                 "The calendar is the heart of deadline calculation — configure your country and company holidays before starting planning."
+            ),
+            // ── TaskBoard (sprint card board) ─────────────────────────────────
+            (
+                "TaskBoard",
+                "The TaskBoard (📋 DevOps tab → TaskBoard) is NXProject's sprint card board: it shows Stories and Tasks by state and lets you edit and save straight to Azure DevOps via the Save TFS button.",
+                new()
+                {
+                    ("Two views",
+                     "• By Story: each Story is a card, placed in its state column, grouped by Feature.\n" +
+                     "• Person & Task: groups by Person → Story, with Tasks as cards by state.\n" +
+                     "• Search has a scope (Story+Task / Task only / Story only) and filters as you type."),
+                    ("Sprint selection (one or many)",
+                     "• The sprint picker works like the person one: checkboxes with each sprint's start–end date.\n" +
+                     "• None checked = all sprints; several checked = combined. When more than one, cards show 🗓 the sprint name.\n" +
+                     "• 📍 jumps to the current sprint (by date). The selection is saved and restored."),
+                    ("Saved filters",
+                     "Filters are saved and restored on reopen: sprint(s), person(s), view, hidden states, Closed days, 'schedule only' and search. The state filter (e.g. showing Closed) stays as you set it."),
+                    ("Edit in the card and editor",
+                     "• ✎ opens the editor with: Name, Assignee, Sprint, Estimated hours, Completed hours (when Closed), Description and Blocked.\n" +
+                     "• In Person & Task you can drag a Story to another person (changes the Assignee) or reorder within the same person; someone who only has a Task in the Story (not the owner) shows as a 'collaborator' in its own color and cannot move the Story.\n" +
+                     "• Task priority is editable right on the card (picklist)."),
+                    ("Closing requires Completed hours",
+                     "When you drag a card to Closed, a Completed hours field appears on the card, pre-filled with the Estimated hours as default (when there are none yet). Save TFS won't close a Task without Completed hours."),
+                    ("Block, create and delete",
+                     "• Block/unblock (board 'Blocked' tag): 🔒/🔓 button on the Task card and an option in the Story editor — a blocked card gets a red border. It enters the Save TFS queue.\n" +
+                     "• Create new Story/Task right in the card (with Sprint when several are selected).\n" +
+                     "• Delete a New-state Task: 🗑 marks it for deletion (struck-through card); the DevOps deletion happens on Save TFS."),
+                    ("State colors",
+                     "The 🎨 button opens the per-state color editor (click the swatch for the Windows palette). There's also a 'Story Collaborator' color and a 'Set as default' button to apply across all boards."),
+                    ("Save TFS",
+                     "The Save TFS button writes all pending changes to Azure DevOps (state, tags, assignee, name, hours, sprint, priority, rank, deletions and new items), showing a progress bar and the current step. Revert discards pending changes; 🔄 reloads from TFS."),
+                    ("Open on startup / window",
+                     "The ⚙ menu has 'Open on NX startup' (ideal for the developer profile) and 'Schedule only'. The TaskBoard window remembers size/position and whether it was maximized.")
+                },
+                "Check only the sprints you care about, tune the filters (they're saved), and use Save TFS to write everything to Azure DevOps at once."
             )
         };
     }

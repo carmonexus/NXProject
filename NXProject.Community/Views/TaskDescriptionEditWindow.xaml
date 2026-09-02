@@ -30,6 +30,10 @@
                 <TextBlock Text="{DynamicResource Desc_Owner}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <ComboBox x:Name="OwnerCombo" Width="240" IsEditable="True" VerticalAlignment="Center"/>
             </StackPanel>
+            <StackPanel x:Name="StatePanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+                <TextBlock Text="{DynamicResource Desc_State}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+                <ComboBox x:Name="StateCombo" Width="200" VerticalAlignment="Center"/>
+            </StackPanel>
             <StackPanel x:Name="SprintPanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
                 <TextBlock Text="{DynamicResource Sprint_FldSprint}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <ComboBox x:Name="SprintCombo" Width="260" VerticalAlignment="Center"/>

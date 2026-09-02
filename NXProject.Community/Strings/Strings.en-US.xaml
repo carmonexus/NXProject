@@ -640,6 +640,7 @@
     <sys:String x:Key="Help_Topic_ActivityDiagram">🗂  Activity Diagram</sys:String>
     <sys:String x:Key="Help_Topic_ResourceCost">💰  Resource Cost</sys:String>
     <sys:String x:Key="Help_Topic_Settings">⚙  Settings</sys:String>
+    <sys:String x:Key="Help_Topic_TaskBoard">📋  TaskBoard</sys:String>
 
     <!-- Toolbar — hierarchy buttons -->
     <sys:String x:Key="Toolbar_ExpandSelected">Expand one level: expands all tasks at the same level as the selected</sys:String>
@@ -1001,8 +1002,8 @@
     <sys:String x:Key="Sprint_CurrentTip">Jumps to the current sprint (by start/end date).</sys:String>
     <sys:String x:Key="Sprint_Doing">Doing</sys:String>
     <sys:String x:Key="Sprint_Done">Done</sys:String>
-    <sys:String x:Key="Sprint_MarkDoing">Mark Doing</sys:String>
-    <sys:String x:Key="Sprint_RemoveDoing">Remove Doing</sys:String>
+    <sys:String x:Key="Sprint_MarkDoing">+Doing</sys:String>
+    <sys:String x:Key="Sprint_RemoveDoing">-Doing</sys:String>
     <sys:String x:Key="Sprint_ClosedDays">Closed last (days, 0=all):</sys:String>
     <sys:String x:Key="Sprint_ColPerson">Person</sys:String>
     <sys:String x:Key="Sprint_NoOwner">(unassigned)</sys:String>
@@ -1920,6 +1921,7 @@
     <sys:String x:Key="Desc_Subtitle">The description will be saved to DevOps on the next sync.</sys:String>
     <sys:String x:Key="Desc_Owner">Assignee:</sys:String>
     <sys:String x:Key="Desc_Name">Name:</sys:String>
+    <sys:String x:Key="Desc_State">State:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Description:</sys:String>
     <sys:String x:Key="Desc_EditStory">Edit Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edit Task</sys:String>

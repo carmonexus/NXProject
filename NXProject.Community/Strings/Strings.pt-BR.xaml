@@ -418,6 +418,7 @@
     <sys:String x:Key="Help_Topic_ActivityDiagram">🗂  Diagrama de Atividades</sys:String>
     <sys:String x:Key="Help_Topic_ResourceCost">💰  Custo por Recurso</sys:String>
     <sys:String x:Key="Help_Topic_Settings">⚙  Configurações</sys:String>
+    <sys:String x:Key="Help_Topic_TaskBoard">📋  TaskBoard</sys:String>
 
     <!-- Toolbar — botões de hierarquia -->
     <sys:String x:Key="Toolbar_ExpandSelected">Expandir um nível: expande todas as tarefas do mesmo nível da selecionada</sys:String>
@@ -1595,6 +1596,7 @@
     <sys:String x:Key="Desc_Subtitle">A descrição será gravada no DevOps na próxima sincronização.</sys:String>
     <sys:String x:Key="Desc_Owner">Responsável:</sys:String>
     <sys:String x:Key="Desc_Name">Nome:</sys:String>
+    <sys:String x:Key="Desc_State">Estado:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Descrição:</sys:String>
     <sys:String x:Key="Desc_EditStory">Edição de Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edição de Task</sys:String>
@@ -1840,8 +1842,8 @@
     <sys:String x:Key="Sprint_CurrentTip">Posiciona na sprint atual (pela data de início/fim).</sys:String>
     <sys:String x:Key="Sprint_Doing">Doing</sys:String>
     <sys:String x:Key="Sprint_Done">Done</sys:String>
-    <sys:String x:Key="Sprint_MarkDoing">Marcar Doing</sys:String>
-    <sys:String x:Key="Sprint_RemoveDoing">Tirar Doing</sys:String>
+    <sys:String x:Key="Sprint_MarkDoing">+Doing</sys:String>
+    <sys:String x:Key="Sprint_RemoveDoing">-Doing</sys:String>
     <sys:String x:Key="Sprint_ClosedDays">Closed últimos (dias, 0=todos):</sys:String>
     <sys:String x:Key="Sprint_ColPerson">Pessoa</sys:String>
     <sys:String x:Key="Sprint_NoOwner">(sem responsável)</sys:String>

@@ -8,6 +8,8 @@
     <sys:String x:Key="Setup_InstalledOpenWhenReady">✓ NXProject instalado. Faça o Passo 3 (IA) se quiser e clique em "Abrir NXProject" quando estiver pronto.</sys:String>
     <sys:String x:Key="Setup_Step1Title">Passo 1 — .NET 10 Desktop Runtime (aprox. 58 MB)</sys:String>
     <sys:String x:Key="Setup_Step1Button">Baixar e instalar .NET 10</sys:String>
+    <sys:String x:Key="Setup_Step1Manual">Baixar no navegador</sys:String>
+    <sys:String x:Key="Setup_Step1ManualTip">Abre o instalador do .NET 10 no navegador para baixar e instalar manualmente.</sys:String>
     <sys:String x:Key="Setup_Step2Title">Passo 2 — Instalar NXProject (aprox. 2 MB)</sys:String>
     <sys:String x:Key="Setup_Step2Status">Baixa a versão mais recente e instala no seu usuário.</sys:String>
     <sys:String x:Key="Setup_Step2Button">Instalar NXProject</sys:String>

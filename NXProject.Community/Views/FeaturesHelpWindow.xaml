@@ -74,6 +74,7 @@
                     <ListBoxItem Content="{DynamicResource Help_Topic_ActivityDiagram}"/>
                     <ListBoxItem Content="{DynamicResource Help_Topic_ResourceCost}"/>
                     <ListBoxItem Content="{DynamicResource Help_Topic_Settings}"/>
+                    <ListBoxItem Content="{DynamicResource Help_Topic_TaskBoard}"/>
                 </ListBox>
             </DockPanel>
         </Border>

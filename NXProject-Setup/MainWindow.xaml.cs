@@ -169,18 +169,25 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // Abre o instalador do .NET no navegador para o usuário baixar/instalar manualmente.
+    private void OnStep1ManualClick(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo(DotNetRuntimeInstallerUrl) { UseShellExecute = true }); }
+        catch (Exception ex)
+        {
+            Step1StatusText.Text = App.Str("Setup_Step1Fail",
+                ex.Message, NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl);
+        }
+    }
+
     private void RefreshStep1State()
     {
-        if (NXProject.Services.UpdateService.IsDesktopRuntimeInstalled())
-        {
-            Step1StatusText.Text = App.Str("Setup_Step1Installed");
-            Step1Button.IsEnabled = false;
-        }
-        else
-        {
-            Step1StatusText.Text = App.Str("Setup_Step1NotFound");
-            Step1Button.IsEnabled = true;
-        }
+        var installed = NXProject.Services.UpdateService.IsDesktopRuntimeInstalled();
+        Step1StatusText.Text = App.Str(installed ? "Setup_Step1Installed" : "Setup_Step1NotFound");
+        Step1Button.IsEnabled = !installed;
+        // O botão manual (baixar no navegador) é alternativa à instalação automática:
+        // só faz sentido quando o .NET ainda NÃO está instalado.
+        Step1ManualButton.IsEnabled = !installed;
     }
 
     private async void OnStep1Click(object sender, RoutedEventArgs e)
@@ -189,18 +196,30 @@ public partial class MainWindow : Window
         {
             Step1Button.IsEnabled = false;
             Step1StatusText.Text = App.Str("Setup_Step1Downloading");
+            Step1Progress.Value = 0;
+            Step1Progress.Visibility = Visibility.Visible;
 
             var tempExe = Path.Combine(Path.GetTempPath(), $"windowsdesktop-runtime-{Guid.NewGuid():N}.exe");
             using (var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) })
             using (var response = await client.GetAsync(DotNetRuntimeInstallerUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 response.EnsureSuccessStatusCode();
+                var total = response.Content.Headers.ContentLength ?? 0L;
                 await using var stream = await response.Content.ReadAsStreamAsync();
                 await using var file = File.Create(tempExe);
-                await stream.CopyToAsync(file);
+                var buffer = new byte[81920];
+                long read = 0; int n;
+                while ((n = await stream.ReadAsync(buffer)) > 0)
+                {
+                    await file.WriteAsync(buffer.AsMemory(0, n));
+                    read += n;
+                    Step1Progress.Value = total > 0 ? Math.Min(90, read * 90.0 / total) : 45;
+                }
             }
 
+            // Instalação silenciosa (UAC): não dá para medir; barra indeterminada.
             Step1StatusText.Text = App.Str("Setup_Step1Installing");
+            Step1Progress.IsIndeterminate = true;
             using var proc = Process.Start(new ProcessStartInfo(tempExe, "/install /quiet /norestart")
             {
                 UseShellExecute = true,
@@ -211,6 +230,8 @@ public partial class MainWindow : Window
 
             try { File.Delete(tempExe); } catch { /* limpeza best-effort */ }
 
+            Step1Progress.IsIndeterminate = false;
+            Step1Progress.Value = 100;
             RefreshStep1State();
             if (!Step1Button.IsEnabled)
                 Step1StatusText.Text = App.Str("Setup_Step1Success");
@@ -220,6 +241,11 @@ public partial class MainWindow : Window
             Step1StatusText.Text = App.Str("Setup_Step1Fail",
                 ex.Message, NXProject.Services.UpdateService.DotNetDesktopRuntimeDownloadUrl);
             Step1Button.IsEnabled = true;
+        }
+        finally
+        {
+            Step1Progress.IsIndeterminate = false;
+            Step1Progress.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -242,6 +268,8 @@ public partial class MainWindow : Window
         }
 
         Step3Button.IsEnabled = false;
+        Step3Progress.IsIndeterminate = true;
+        Step3Progress.Visibility = Visibility.Visible;
         var status = new Progress<string>(s => Step3StatusText.Text = s);
         try
         {
@@ -265,6 +293,8 @@ public partial class MainWindow : Window
         }
         finally
         {
+            Step3Progress.IsIndeterminate = false;
+            Step3Progress.Visibility = Visibility.Collapsed;
             Step3Button.IsEnabled = true;
             RefreshInstallStatus();   // atualiza o ✓ após instalar
         }

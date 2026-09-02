@@ -21,8 +21,32 @@
         </Grid>
         <TextBlock Text="{DynamicResource Setup_Subtitle}" FontSize="12" Foreground="#777" Margin="0,0,0,12"/>
 
-        <!-- Passo 2: Instalar NXProject (principal, fica em cima) -->
+        <!-- Passo 1: .NET 10 Desktop Runtime (pré-requisito, fica em cima) -->
         <Border BorderBrush="#DDE1E6" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="{DynamicResource Setup_Step1Title}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+                <TextBlock x:Name="Step1StatusText" FontSize="12" Foreground="#555" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="Step1Button" Content="{DynamicResource Setup_Step1Button}" Width="220" Height="30"
+                            HorizontalAlignment="Left" Click="OnStep1Click"/>
+                    <Button x:Name="Step1ManualButton" Content="{DynamicResource Setup_Step1Manual}" Height="30"
+                            Padding="10,0" Margin="8,0,0,0" Click="OnStep1ManualClick"
+                            ToolTip="{DynamicResource Setup_Step1ManualTip}"/>
+                </StackPanel>
+                <ProgressBar x:Name="Step1Progress" Height="18" Minimum="0" Maximum="100" Value="0"
+                             Margin="0,10,0,0" Visibility="Collapsed"/>
+                <TextBlock FontSize="11" Foreground="#777" Margin="0,10,0,0">
+                    <Run Text="{DynamicResource Setup_DotNetLink}"/>
+                    <Hyperlink NavigateUri="https://dotnet.microsoft.com/download/dotnet/10.0"
+                               RequestNavigate="OnHyperlinkRequestNavigate">
+                        dotnet.microsoft.com/download/dotnet/10.0
+                    </Hyperlink>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Passo 2: Instalar NXProject -->
+        <Border BorderBrush="#DDE1E6" BorderThickness="1" CornerRadius="6" Padding="14">
             <StackPanel>
                 <TextBlock Text="{DynamicResource Setup_Step2Title}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
                 <TextBlock x:Name="Step2StatusText" Text="{DynamicResource Setup_Step2Status}"
@@ -39,23 +63,6 @@
                     <Hyperlink NavigateUri="https://github.com/nexusxdata/NXProject/releases/latest"
                                RequestNavigate="OnHyperlinkRequestNavigate">
                         github.com/nexusxdata/NXProject
-                    </Hyperlink>
-                </TextBlock>
-            </StackPanel>
-        </Border>
-
-        <!-- Passo 1: .NET 10 Desktop Runtime (pré-requisito, fica abaixo) -->
-        <Border BorderBrush="#DDE1E6" BorderThickness="1" CornerRadius="6" Padding="14">
-            <StackPanel>
-                <TextBlock Text="{DynamicResource Setup_Step1Title}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
-                <TextBlock x:Name="Step1StatusText" FontSize="12" Foreground="#555" TextWrapping="Wrap" Margin="0,0,0,10"/>
-                <Button x:Name="Step1Button" Content="{DynamicResource Setup_Step1Button}" Width="220" Height="30"
-                        HorizontalAlignment="Left" Click="OnStep1Click"/>
-                <TextBlock FontSize="11" Foreground="#777" Margin="0,10,0,0">
-                    <Run Text="{DynamicResource Setup_DotNetLink}"/>
-                    <Hyperlink NavigateUri="https://dotnet.microsoft.com/download/dotnet/10.0"
-                               RequestNavigate="OnHyperlinkRequestNavigate">
-                        dotnet.microsoft.com/download/dotnet/10.0
                     </Hyperlink>
                 </TextBlock>
             </StackPanel>
@@ -84,6 +91,8 @@
                 <TextBlock Text="{DynamicResource Setup_Step3LlamaNote}" FontSize="10.5" Foreground="#888" TextWrapping="Wrap" Margin="0,0,0,8"/>
                 <Button x:Name="Step3Button" Content="{DynamicResource Setup_Step3Button}" Width="220" Height="30"
                         HorizontalAlignment="Left" Click="OnStep3Click"/>
+                <ProgressBar x:Name="Step3Progress" Height="18" Minimum="0" Maximum="100" Value="0"
+                             Margin="0,10,0,0" Visibility="Collapsed"/>
                 <TextBlock x:Name="Step3StatusText" FontSize="11" Foreground="#555" TextWrapping="Wrap" Margin="0,8,0,0"/>
                 <TextBlock FontSize="10.5" Foreground="#999" TextWrapping="Wrap" Margin="0,6,0,0">
                     <Run x:Name="CliPathRun"/>

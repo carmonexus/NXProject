@@ -36,6 +36,12 @@ namespace NXProject.Views
         public bool BlockedChanged { get; private set; }
         private readonly bool _initialBlocked;
 
+        // Edição do Estado (Story): habilitada quando 'states' é fornecido.
+        public bool StateEnabled { get; }
+        public string? SelectedState { get; private set; }
+        public bool StateWasChanged { get; private set; }
+        private readonly string _initialState = "";
+
         // Edição da Sprint (iteração): habilitada quando 'sprints' é fornecido.
         public bool SprintEnabled { get; }
         public string? SelectedIteration { get; private set; }
@@ -56,7 +62,8 @@ namespace NXProject.Views
             bool enableNameEdit = false, string? objectKind = null,
             bool enableHours = false, double? estimate = null, double? completed = null, string? state = null,
             System.Collections.Generic.IReadOnlyList<(string Name, string Path)>? sprints = null, string? currentIteration = null,
-            bool enableBlocked = false, bool currentBlocked = false)
+            bool enableBlocked = false, bool currentBlocked = false,
+            System.Collections.Generic.IReadOnlyList<string>? states = null, string? currentState = null)
         {
             InitializeComponent();
             _task = task;
@@ -109,6 +116,16 @@ namespace NXProject.Views
                 foreach (var s in sprints) SprintCombo.Items.Add(new ComboBoxItem { Content = s.Name, Tag = s.Path });
                 var sel = SprintCombo.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == _initialIteration);
                 if (sel != null) SprintCombo.SelectedItem = sel;
+            }
+
+            _initialState = currentState ?? string.Empty;
+            SelectedState = _initialState;
+            if (states != null && states.Count > 0)
+            {
+                StateEnabled = true;
+                StatePanel.Visibility = Visibility.Visible;
+                foreach (var s in states) StateCombo.Items.Add(s);
+                if (StateCombo.Items.Contains(_initialState)) StateCombo.SelectedItem = _initialState;
             }
 
             _initialBlocked = currentBlocked;
@@ -307,6 +324,11 @@ namespace NXProject.Views
             {
                 Blocked = BlockedCheck.IsChecked == true;
                 BlockedChanged = Blocked != _initialBlocked;
+            }
+            if (StateEnabled && StateCombo.SelectedItem is string ss)
+            {
+                SelectedState = ss;
+                StateWasChanged = !string.Equals(SelectedState, _initialState, StringComparison.OrdinalIgnoreCase);
             }
             if (HoursEnabled)
             {

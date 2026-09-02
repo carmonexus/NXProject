@@ -690,10 +690,19 @@ namespace NXProject.Views
                 ? (_cardById.TryGetValue(id, out var cc) ? cc.Tags : "")
                 : (StoryById(id)?.Tags ?? "");
             var curBlocked = id > 0 && EffBlocked(id, curTags);
+            // Estado editável para Story (na visão Pessoa & Task não há coluna de estado da Story).
+            System.Collections.Generic.IReadOnlyList<string>? storyStates = null;
+            var effStState = "";
+            if (kind == "Story" && id > 0 && StoryById(id) is { } srow)
+            {
+                storyStates = _board?.States?.ToList();
+                effStState = EffStoryState(srow);
+            }
             var dlg = new TaskDescriptionEditWindow(pt, people, owner, enableNameEdit: id > 0, objectKind: kind,
                 enableHours: id > 0, estimate: est, completed: done, state: hState,
                 sprints: sprints, currentIteration: effIter,
-                enableBlocked: id > 0, currentBlocked: curBlocked) { Owner = this };
+                enableBlocked: id > 0, currentBlocked: curBlocked,
+                states: storyStates, currentState: effStState) { Owner = this };
             if (dlg.ShowDialog() == true)
             {
                 _descPending[id] = pt.Description ?? string.Empty;
@@ -728,6 +737,13 @@ namespace NXProject.Views
                 {
                     var baseBlocked = HasTag(EffTags(id, curTags), BlockedTag);
                     if (dlg.Blocked == baseBlocked) _blockPending.Remove(id); else _blockPending[id] = dlg.Blocked;
+                }
+                if (dlg.StateWasChanged && StoryById(id) is { } srow2)
+                {
+                    var baseState = _storyStateApplied.TryGetValue(id, out var bs) ? bs : srow2.State;
+                    var chosen = dlg.SelectedState ?? string.Empty;
+                    if (SameState(chosen, baseState)) _storyStatePending.Remove(id);
+                    else _storyStatePending[id] = chosen;
                 }
                 if (dlg.OwnerChanged)
                 {
@@ -1498,6 +1514,11 @@ namespace NXProject.Views
                         Foreground = _titlePending.ContainsKey(storyId) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black });
                     if (storyId > 0)
                     {
+                        // Estado da Story (#id · estado). Laranja quando há mudança de estado pendente.
+                        var stRow = StoryById(storyId);
+                        var stState = stRow != null ? EffStoryState(stRow) : "";
+                        storySp.Children.Add(new TextBlock { Text = $"#{storyId}  ·  {stState}", FontSize = 10,
+                            Foreground = _storyStatePending.ContainsKey(storyId) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Gray });
                         storySp.Children.Add(new TextBlock {
                             Text = "👤 " + (string.IsNullOrWhiteSpace(sOwner) ? AppStrings.Get("Sprint_NoOwner") : sOwner),
                             FontSize = 10, TextWrapping = TextWrapping.Wrap,
@@ -2075,10 +2096,15 @@ namespace NXProject.Views
             // Botão Doing: só faz sentido nos abertos (não-Closed) para marcar; e para tirar em qualquer estado.
             if (!closed || isDoing)
             {
+                // Só o sinal (+/-) fica maior; o texto "Doing" mantém a fonte padrão.
+                var doingLabel = isDoing ? AppStrings.Get("Sprint_RemoveDoing") : AppStrings.Get("Sprint_MarkDoing");
+                var doingContent = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+                doingContent.Inlines.Add(new System.Windows.Documents.Run(doingLabel.Length > 0 ? doingLabel[..1] : "") { FontSize = 14, FontWeight = FontWeights.Bold });
+                doingContent.Inlines.Add(new System.Windows.Documents.Run(doingLabel.Length > 1 ? doingLabel[1..] : "") { FontSize = 10 });
                 var doingBtn = new Button
                 {
-                    Content = isDoing ? AppStrings.Get("Sprint_RemoveDoing") : AppStrings.Get("Sprint_MarkDoing"),
-                    FontSize = 10, Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0)
+                    Content = doingContent,
+                    Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0)
                 };
                 doingBtn.Click += (_, _) =>
                 {
