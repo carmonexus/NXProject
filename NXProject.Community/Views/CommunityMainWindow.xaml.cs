@@ -1953,9 +1953,10 @@ namespace NXProject.Views
             if (DataContext is not MainViewModel vm)
                 return;
 
-            // Cronograma "somente leitura": Export/Sincronizar bloqueado (libere na config do
-            // Projeto no Portfólio). Edição local e Task Plan continuam livres.
-            if (vm.Project.ReadOnly)
+            // Cronograma "somente leitura" (marca ANTIGA do Portfólio): só bloqueia quando NÃO dá
+            // para revalidar pelo grupo administrador. Com work item raiz do DevOps, quem manda é
+            // a checagem AO VIVO do Adm_NX logo abaixo — o flag gravado pode estar desatualizado.
+            if (vm.Project.ReadOnly && vm.Project.DevOpsRootWorkItemId <= 0)
             {
                 MessageBox.Show(this, AppStrings.Get("Main_ReadOnlyBlocked"),
                     AppStrings.Get("Tfs_ActionSync"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -2523,12 +2524,10 @@ namespace NXProject.Views
             // grupo e se VOCÊ está nele (escrita) ou não (leitura) — checagem ao vivo, cacheada.
             var vmBanner = DataContext as MainViewModel;
             var admGroup = vmBanner?.Project?.AdmGroupName;
-            // Só exibe o grupo Adm (Leitura/Escrita) para projeto RECÉM-importado do TFS nesta
-            // sessão — no cronograma aberto de arquivo o usuário atual pode ser outro, então não
-            // dá para afirmar leitura/escrita: não mostra nada.
+            // A checagem é sempre do usuário ATUAL, então vale também no cronograma aberto de
+            // arquivo: revalida ao abrir em vez de confiar no que foi gravado no .nxp.
             var admRootId = vmBanner?.Project?.DevOpsRootWorkItemId ?? 0;
-            if (isDevOps && !string.IsNullOrWhiteSpace(admGroup)
-                && admRootId > 0 && admRootId == _liveTfsImportRootId)
+            if (isDevOps && !string.IsNullOrWhiteSpace(admGroup) && admRootId > 0)
             {
                 if (_admStatusRootId != admRootId)
                 {
@@ -2592,6 +2591,10 @@ namespace NXProject.Views
             if (_admStatusRootId == rootId)
             {
                 _admStatusCanWrite = canWrite;
+                // Membro do grupo => a marca antiga "somente leitura" está obsoleta: derruba
+                // para o banner e o Sincronizar refletirem o acesso real.
+                if (canWrite && (DataContext as MainViewModel)?.Project is { ReadOnly: true } pr)
+                    pr.ReadOnly = false;
                 Dispatcher.Invoke(() =>
                     UpdateDevOpsProjectBanner(_lastBannerName, _lastBannerId, _lastBannerOwner));
             }
