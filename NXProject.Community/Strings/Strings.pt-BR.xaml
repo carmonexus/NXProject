@@ -1600,6 +1600,7 @@
     <sys:String x:Key="Desc_Feature">Feature:</sys:String>
     <sys:String x:Key="Desc_StartDate">Data de Início:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Descrição:</sys:String>
+    <sys:String x:Key="Desc_Acceptance">Critérios de Aceitação:</sys:String>
     <sys:String x:Key="Desc_EditStory">Edição de Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edição de Task</sys:String>
     <sys:String x:Key="Desc_EstHours">HH Estimado:</sys:String>

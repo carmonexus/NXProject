@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Text;
 using System.Windows;
@@ -60,6 +60,13 @@ namespace NXProject.Views
         public bool IterationChanged { get; private set; }
         private readonly string _initialIteration = "";
 
+        // Critérios de Aceitação (Microsoft.VSTS.Common.AcceptanceCriteria) — campo da Story
+        // no DevOps. Editado como texto simples; só é gravado quando o usuário altera.
+        public bool AcceptanceEnabled { get; }
+        public string AcceptanceHtml { get; private set; } = "";
+        public bool AcceptanceChanged { get; private set; }
+        private readonly string _initialAcceptanceText = "";
+
         // Edição de HH: estimado sempre; realizado só quando o estado é Closed.
         public bool HoursEnabled { get; }
         public double? EstimatedHours { get; private set; }
@@ -78,7 +85,8 @@ namespace NXProject.Views
             System.Collections.Generic.IReadOnlyList<string>? states = null, string? currentState = null,
             System.Collections.Generic.IReadOnlyList<(string Title, int Id)>? features = null, int currentFeatureId = 0,
             bool enableStartDate = false, DateTime? currentStartDate = null,
-            string? epicTitle = null, string? projectTitle = null)
+            string? epicTitle = null, string? projectTitle = null,
+            bool enableAcceptance = false, string? acceptanceHtml = null)
         {
             InitializeComponent();
             _task = task;
@@ -102,6 +110,15 @@ namespace NXProject.Views
                 ProjectText.Visibility = hasProj ? Visibility.Visible : Visibility.Collapsed;
                 EpicText.Text = hasEpic ? "🏔 " + epicTitle : string.Empty;
                 EpicText.Visibility = hasEpic ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            AcceptanceHtml = acceptanceHtml ?? string.Empty;
+            if (enableAcceptance)
+            {
+                AcceptanceEnabled = true;
+                AcceptancePanel.Visibility = Visibility.Visible;
+                _initialAcceptanceText = TfsImportService.ToPlainTextPublic(AcceptanceHtml);
+                AcceptanceBox.Text = _initialAcceptanceText;
             }
 
             _initialName = task.Name ?? string.Empty;
@@ -336,6 +353,19 @@ namespace NXProject.Views
             }
         }
 
+        // Texto simples -> HTML (o campo do DevOps é HTML). Cada linha vira um <div>.
+        private static string PlainTextToHtml(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+            var sb = new StringBuilder();
+            foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
+            {
+                var safe = System.Net.WebUtility.HtmlEncode(line);
+                sb.Append("<div>").Append(string.IsNullOrEmpty(safe) ? "<br>" : safe).Append("</div>");
+            }
+            return sb.ToString();
+        }
+
         private async void OnSaveClick(object sender, RoutedEventArgs e)
         {
             if (_editingInWebView && _webViewReady)
@@ -345,6 +375,14 @@ namespace NXProject.Views
             }
 
             _task.Description = _html.Trim();
+            if (AcceptanceEnabled)
+            {
+                // Só marca alteração se o texto mudou — assim um HTML rico já existente
+                // no DevOps não é sobrescrito quando o usuário nem tocou no campo.
+                var acText = (AcceptanceBox.Text ?? string.Empty).TrimEnd();
+                AcceptanceChanged = !string.Equals(acText, _initialAcceptanceText.TrimEnd(), StringComparison.Ordinal);
+                if (AcceptanceChanged) AcceptanceHtml = PlainTextToHtml(acText);
+            }
             if (NameEnabled)
             {
                 var name = (NameBox.Text ?? string.Empty).Trim();

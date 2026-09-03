@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -65,6 +65,8 @@ namespace NXProject.Views
         private readonly Dictionary<int, int> _featureApplied = new();
         // Data de Início (Data_Inicio) da Story alterada (pendente) e a já gravada.
         private readonly Dictionary<int, DateTime?> _startPending = new();
+        // Critérios de Aceitação (HTML) pendentes por Story — gravados no "Atualizar TFS".
+        private readonly Dictionary<int, string> _acPending = new();
         // Bloqueio (tag "Blocked") alterado (pendente: novo valor) e conjuntos de tags já gravados.
         private const string BlockedTag = "Blocked";
         private readonly Dictionary<int, bool> _blockPending = new();
@@ -420,6 +422,8 @@ namespace NXProject.Views
                 _featurePending.Clear();
                 _featureApplied.Clear();
                 _startPending.Clear();
+            _acPending.Clear();
+                _acPending.Clear();
                 _newCards.Clear();
                 _prioPending.Clear();
                 _prioApplied.Clear();
@@ -646,7 +650,8 @@ namespace NXProject.Views
             // ✎ marca "●" quando há descrição OU responsável/HH/sprint pendente.
             var descDirty = _descPending.ContainsKey(id) || _ownerPending.ContainsKey(id)
                 || _titlePending.ContainsKey(id) || _estPending.ContainsKey(id) || _donePending.ContainsKey(id)
-                || _iterPending.ContainsKey(id) || _featurePending.ContainsKey(id) || _startPending.ContainsKey(id);
+                || _iterPending.ContainsKey(id) || _featurePending.ContainsKey(id) || _startPending.ContainsKey(id)
+                || _acPending.ContainsKey(id);
             var desc = new Button { Content = descDirty ? "✎●" : "✎", FontSize = 11,
                 Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
                 Foreground = descDirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black,
@@ -727,6 +732,12 @@ namespace NXProject.Views
             if (enableStart)
                 curStart = _startPending.TryGetValue(id, out var sp) ? sp
                     : await TfsImportService.GetWorkItemStartDateAsync(_options, id);
+            // Critérios de Aceitação: campo da Story no DevOps (pendente > valor atual).
+            var enableAc = kind == "Story" && id > 0;
+            var curAc = "";
+            if (enableAc)
+                curAc = _acPending.TryGetValue(id, out var acp) ? acp
+                    : await TfsImportService.GetWorkItemAcceptanceCriteriaAsync(_options, id);
             var isFeat = kind == "Feature";
             // Feature: EPIC pai e Work Item "Project" (só leitura) — buscados numa Story sob a Feature.
             string epicTitle = "", projTitle = "";
@@ -743,7 +754,8 @@ namespace NXProject.Views
                 states: storyStates, currentState: effStState,
                 features: features, currentFeatureId: curFeatureId,
                 enableStartDate: enableStart, currentStartDate: curStart,
-                epicTitle: epicTitle, projectTitle: projTitle) { Owner = this };
+                epicTitle: epicTitle, projectTitle: projTitle,
+                enableAcceptance: enableAc, acceptanceHtml: curAc) { Owner = this };
             if (dlg.ShowDialog() == true)
             {
                 _descPending[id] = pt.Description ?? string.Empty;
@@ -793,6 +805,7 @@ namespace NXProject.Views
                     else _featurePending[id] = dlg.SelectedFeatureId;
                 }
                 if (dlg.StartDateChanged) _startPending[id] = dlg.SelectedStartDate;
+                if (dlg.AcceptanceChanged) _acPending[id] = dlg.AcceptanceHtml;
                 if (dlg.OwnerChanged)
                 {
                     var baseline = _ownerApplied.TryGetValue(id, out var b) ? b : currentOwner;
@@ -831,7 +844,7 @@ namespace NXProject.Views
         private int PendingCount()
         {
             var doingDiff = _doing.Except(_appliedDoing).Count() + _appliedDoing.Except(_doing).Count();
-            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count + _deletePending.Count + _iterPending.Count + _blockPending.Count + _featurePending.Count + _startPending.Count;
+            return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count + _deletePending.Count + _iterPending.Count + _blockPending.Count + _featurePending.Count + _startPending.Count + _acPending.Count;
         }
 
         private void UpdatePendingButton()
@@ -997,6 +1010,14 @@ namespace NXProject.Views
                 var (success, msg) = await TfsImportService.SetWorkItemStartDateAsync(_options, kv.Key, kv.Value);
                 if (success) { _startPending.Remove(kv.Key); ok++; }
                 else fails.Add($"#{kv.Key} (data início): {msg}");
+            }
+
+            // 3j) Critérios de Aceitação da Story. 403 = sem permissão.
+            foreach (var kv in _acPending.ToList())
+            {
+                var (success, msg) = await TfsImportService.SetWorkItemAcceptanceCriteriaAsync(_options, kv.Key, kv.Value);
+                if (success) { _acPending.Remove(kv.Key); ok++; }
+                else fails.Add($"#{kv.Key} (critérios de aceitação): {msg}");
             }
 
             // 3h) Feature (pai) da Story. 403 = sem permissão.
@@ -1432,7 +1453,7 @@ namespace NXProject.Views
                 sp.Children.Add(up);
 
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
-                var open = new Button { Content = "DevOps", FontSize = 10, Padding = new Thickness(5, 0, 5, 0) };
+                var open = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
                 open.Click += (_, _) => OpenInDevOps(t.Id);
                 actions.Children.Add(open);
                 if (inSched && _openInSchedule != null)
@@ -1535,35 +1556,55 @@ namespace NXProject.Views
                 .Select(s => s.FeatureProjectTitle).Where(p => !string.IsNullOrWhiteSpace(p))
                 .Distinct(StringComparer.CurrentCultureIgnoreCase).Count() > 1;
 
+        // Botão padrão "abrir no DevOps" usado nos cards de rótulo (EPIC/Projeto).
+        private Button OpenDevOpsButton(int id)
+        {
+            var b = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                Margin = new Thickness(0, 4, 0, 0), HorizontalAlignment = HorizontalAlignment.Left,
+                Cursor = System.Windows.Input.Cursors.Arrow, ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
+            b.Click += (_, _) => OpenInDevOps(id);
+            return b;
+        }
+
+        // Conteúdo do card do EPIC: título + (opcional) botão de abrir no DevOps.
+        private UIElement BuildLabelBody(string icon, string text, Color c, int id)
+        {
+            var sp = new StackPanel();
+            sp.Children.Add(new TextBlock
+            {
+                Text = icon + " " + text, TextWrapping = TextWrapping.Wrap, FontSize = 11,
+                FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(c)
+            });
+            if (id > 0) sp.Children.Add(OpenDevOpsButton(id));
+            return sp;
+        }
+
         // Card só de rótulo (colunas Work Item "Project" e EPIC da visão "Por Story").
         // `strong` deixa o texto maior/negrito (EPIC); senão fica discreto (Project).
-        private UIElement BuildLabelCard(string icon, string text, bool strong)
+        private UIElement BuildLabelCard(string icon, string text, bool strong, int id = 0)
         {
             if (string.IsNullOrWhiteSpace(text)) return new TextBlock();
             var c = (StateBrush(FeatureColorKey) as SolidColorBrush)?.Color ?? FactoryStateColor(FeatureColorKey);
             byte Mix(byte v, double f) => (byte)(v + (255 - v) * f);
             // Project fica sem borda (só o texto); EPIC mantém o card com borda.
             if (!strong)
-                return new TextBlock
+            {
+                var plain = new StackPanel { Margin = new Thickness(4, 6, 4, 2), VerticalAlignment = VerticalAlignment.Top };
+                plain.Children.Add(new TextBlock
                 {
                     Text = icon + " " + text, TextWrapping = TextWrapping.Wrap, FontSize = 10,
-                    Margin = new Thickness(4, 6, 4, 2), VerticalAlignment = VerticalAlignment.Top,
                     Foreground = new SolidColorBrush(Color.FromRgb(Mix(c.R, .45), Mix(c.G, .45), Mix(c.B, .45)))
-                };
+                });
+                if (id > 0) plain.Children.Add(OpenDevOpsButton(id));
+                return plain;
+            }
             return new Border
             {
                 BorderBrush = new SolidColorBrush(Color.FromRgb(Mix(c.R, .70), Mix(c.G, .70), Mix(c.B, .70))),
                 BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
                 Margin = new Thickness(3), Padding = new Thickness(6),
                 VerticalAlignment = VerticalAlignment.Top,
-                Child = new TextBlock
-                {
-                    Text = icon + " " + text, TextWrapping = TextWrapping.Wrap,
-                    FontSize = strong ? 11 : 10,
-                    FontWeight = strong ? FontWeights.SemiBold : FontWeights.Normal,
-                    Foreground = strong ? new SolidColorBrush(c)
-                        : new SolidColorBrush(Color.FromRgb(Mix(c.R, .45), Mix(c.G, .45), Mix(c.B, .45)))
-                }
+                Child = BuildLabelBody(icon, text, c, id)
             };
         }
 
@@ -1709,6 +1750,13 @@ namespace NXProject.Views
                                 Foreground = _iterPending.ContainsKey(storyId) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray });
                         var stActions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
                         AddEditButtons(stActions, storyId, sg.Key, sOwnerOrig, "Story", StoryById(storyId)?.IterationPath ?? "");
+                        // Abrir a Story no DevOps.
+                        var openSt = new Button { Content = "🔗", FontSize = 11,
+                            Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
+                            ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
+                        var openStId = storyId;
+                        openSt.Click += (_, _) => OpenInDevOps(openStId);
+                        stActions.Children.Add(openSt);
                         var addTask = new Button { Content = AppStrings.Get("Sprint_AddTask"), FontSize = 10, Padding = new Thickness(5, 0, 5, 0) };
                         var personKey = pg.Key;
                         addTask.Click += (_, _) => AddNewTask(storyId, personKey); // já nasce na faixa da pessoa
@@ -1724,6 +1772,16 @@ namespace NXProject.Views
                         BorderThickness = new Thickness(storyPend ? 2 : 1),
                         CornerRadius = new CornerRadius(3), Margin = new Thickness(3), Padding = new Thickness(6),
                         Child = storySp, Tag = storyId };
+                    // Hint com os Critérios de Aceitação da Story (efetivo: pendente > DevOps).
+                    var acHint = _acPending.TryGetValue(storyId, out var acp2) ? acp2
+                        : (StoryById(storyId)?.AcceptanceCriteria ?? "");
+                    var acText = TfsImportService.ToPlainTextPublic(acHint);
+                    if (!string.IsNullOrWhiteSpace(acText))
+                        storyBorder.ToolTip = new TextBlock
+                        {
+                            Text = AppStrings.Get("Desc_Acceptance") + "\n" + acText,
+                            TextWrapping = TextWrapping.Wrap, MaxWidth = 420
+                        };
                     // Modo edição: arrastar a Story p/ outra pessoa troca o Responsável — só quando esta
                     // pessoa É a responsável (ajudante não move a Story de outro).
                     if (EditModeCheck.IsChecked == true && storyId > 0 && !isHelper)
@@ -1751,9 +1809,9 @@ namespace NXProject.Views
                     {
                         var epicSp = new StackPanel();
                         if (multiProject && !string.IsNullOrWhiteSpace(featProj))
-                            epicSp.Children.Add(BuildLabelCard("🗂", featProj, strong: false));
+                            epicSp.Children.Add(BuildLabelCard("🗂", featProj, strong: false, id: StoryById(storyId)?.FeatureProjectId ?? 0));
                         if (!string.IsNullOrWhiteSpace(featEpic))
-                            epicSp.Children.Add(BuildLabelCard("🏔", featEpic, strong: true));
+                            epicSp.Children.Add(BuildLabelCard("🏔", featEpic, strong: true, id: StoryById(storyId)?.FeatureEpicId ?? 0));
                         AddCell(row, 1, epicSp);
                     }
                     // Card da Feature: com a coluna EPIC ligada ele não repete o EPIC; desligada,
@@ -1878,14 +1936,14 @@ namespace NXProject.Views
                 var isNewBlock = epicTitle != lastEpic || projTitle != lastProj;
                 if (showProjCol)
                     AddCell(row, 0, projTitle == lastProj ? new TextBlock()
-                        : BuildLabelCard("🗂", projTitle, strong: false));
+                        : BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0));
                 // Sem a coluna Projeto, ele aparece como linha discreta acima do EPIC.
                 var epicSp = new StackPanel();
                 if (isNewBlock)
                 {
                     if (!showProjCol && !string.IsNullOrWhiteSpace(projTitle))
-                        epicSp.Children.Add(BuildLabelCard("🗂", projTitle, strong: false));
-                    epicSp.Children.Add(BuildLabelCard("🏔", epicTitle, strong: true));
+                        epicSp.Children.Add(BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0));
+                    epicSp.Children.Add(BuildLabelCard("🏔", epicTitle, strong: true, id: featRow?.FeatureEpicId ?? 0));
                 }
                 AddCell(row, cEpic, epicSp);
                 lastProj = projTitle; lastEpic = epicTitle;
@@ -2380,7 +2438,7 @@ namespace NXProject.Views
             }
 
             var actions = new WrapPanel { Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
-            var open = new Button { Content = "DevOps", FontSize = 10, Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 2) };
+            var open = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 2), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
             open.Click += (_, _) => OpenInDevOps(t.Id);
             actions.Children.Add(open);
             // Botão Doing: só faz sentido nos abertos (não-Closed) para marcar; e para tirar em qualquer estado.

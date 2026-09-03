@@ -70,6 +70,10 @@ namespace NXProject.Models
         public string? TfsState { get; set; }
         // Descrição (System.Description) importada do DevOps, usada na sincronização.
         public string? Description { get; set; }
+
+        // Critérios de Aceitação (Microsoft.VSTS.Common.AcceptanceCriteria) da Story no
+        // DevOps, em HTML. Importado no sync e gravado de volta na exportação.
+        public string? AcceptanceCriteria { get; set; }
         // Tags do DevOps (System.Tags), separadas por "; " (ex.: "Block"). Lidas no
         // import e sincronizadas de volta se mudarem.
         public string? Tags { get; set; }

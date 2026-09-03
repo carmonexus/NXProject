@@ -1934,6 +1934,7 @@
     <sys:String x:Key="Desc_Feature">Feature:</sys:String>
     <sys:String x:Key="Desc_StartDate">Start date:</sys:String>
     <sys:String x:Key="Desc_DescriptionLabel">Description:</sys:String>
+    <sys:String x:Key="Desc_Acceptance">Acceptance Criteria:</sys:String>
     <sys:String x:Key="Desc_EditStory">Edit Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edit Task</sys:String>
     <sys:String x:Key="Desc_EstHours">Est. hours:</sys:String>

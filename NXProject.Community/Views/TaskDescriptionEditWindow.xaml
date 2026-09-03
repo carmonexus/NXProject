@@ -1,9 +1,9 @@
-<Window x:Class="NXProject.Views.TaskDescriptionEditWindow"
+﻿<Window x:Class="NXProject.Views.TaskDescriptionEditWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="{DynamicResource Desc_Title}"
-        Width="760" Height="560"
+        Width="880" Height="640"
         MinWidth="520" MinHeight="360"
         WindowStartupLocation="CenterOwner"
         Background="White">
@@ -13,6 +13,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -26,38 +27,40 @@
                 <TextBlock x:Name="ProjectText" FontSize="11" Foreground="#8E6CA8" TextWrapping="Wrap"/>
                 <TextBlock x:Name="EpicText" FontSize="12" FontWeight="SemiBold" Foreground="#6A1B9A" TextWrapping="Wrap"/>
             </StackPanel>
-            <StackPanel x:Name="NamePanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+            <StackPanel x:Name="NamePanel" Orientation="Horizontal" Margin="0,6,18,0" Visibility="Collapsed">
                 <TextBlock Text="{DynamicResource Desc_Name}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                <TextBox x:Name="NameBox" Width="420" VerticalAlignment="Center"/>
+                <TextBox x:Name="NameBox" Width="620" VerticalAlignment="Center"/>
             </StackPanel>
-            <StackPanel x:Name="OwnerPanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+            <WrapPanel Orientation="Horizontal">
+            <StackPanel x:Name="OwnerPanel" Orientation="Horizontal" Margin="0,6,18,0" Visibility="Collapsed">
                 <TextBlock Text="{DynamicResource Desc_Owner}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                <ComboBox x:Name="OwnerCombo" Width="240" IsEditable="True" VerticalAlignment="Center"/>
+                <ComboBox x:Name="OwnerCombo" Width="200" IsEditable="True" VerticalAlignment="Center"/>
             </StackPanel>
-            <StackPanel x:Name="FeaturePanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+            <StackPanel x:Name="FeaturePanel" Orientation="Horizontal" Margin="0,6,18,0" Visibility="Collapsed">
                 <TextBlock Text="{DynamicResource Desc_Feature}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                <ComboBox x:Name="FeatureCombo" Width="260" VerticalAlignment="Center"/>
+                <ComboBox x:Name="FeatureCombo" Width="200" VerticalAlignment="Center"/>
             </StackPanel>
-            <StackPanel x:Name="StatePanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+            <StackPanel x:Name="StatePanel" Orientation="Horizontal" Margin="0,6,18,0" Visibility="Collapsed">
                 <TextBlock Text="{DynamicResource Desc_State}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                <ComboBox x:Name="StateCombo" Width="200" VerticalAlignment="Center"/>
+                <ComboBox x:Name="StateCombo" Width="140" VerticalAlignment="Center"/>
             </StackPanel>
-            <StackPanel x:Name="StartDatePanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+            <StackPanel x:Name="StartDatePanel" Orientation="Horizontal" Margin="0,6,18,0" Visibility="Collapsed">
                 <TextBlock Text="{DynamicResource Desc_StartDate}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <DatePicker x:Name="StartDatePicker" Width="140" VerticalAlignment="Center"/>
             </StackPanel>
-            <StackPanel x:Name="SprintPanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+            <StackPanel x:Name="SprintPanel" Orientation="Horizontal" Margin="0,6,18,0" Visibility="Collapsed">
                 <TextBlock Text="{DynamicResource Sprint_FldSprint}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-                <ComboBox x:Name="SprintCombo" Width="260" VerticalAlignment="Center"/>
+                <ComboBox x:Name="SprintCombo" Width="200" VerticalAlignment="Center"/>
             </StackPanel>
-            <StackPanel x:Name="HoursPanel" Orientation="Horizontal" Margin="0,6,0,0" Visibility="Collapsed">
+            <StackPanel x:Name="HoursPanel" Orientation="Horizontal" Margin="0,6,18,0" Visibility="Collapsed">
                 <TextBlock Text="{DynamicResource Desc_EstHours}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
                 <TextBox x:Name="EstHoursBox" Width="70" VerticalAlignment="Center"/>
                 <TextBlock x:Name="DoneHoursLabel" Text="{DynamicResource Desc_DoneHours}" VerticalAlignment="Center" Margin="16,0,6,0" FontSize="12" Visibility="Collapsed"/>
                 <TextBox x:Name="DoneHoursBox" Width="70" VerticalAlignment="Center" Visibility="Collapsed"/>
             </StackPanel>
-            <CheckBox x:Name="BlockedCheck" Content="{DynamicResource Sprint_Block}" Margin="0,6,0,0"
-                      FontSize="12" Foreground="#C03030" Visibility="Collapsed"/>
+            <CheckBox x:Name="BlockedCheck" Content="{DynamicResource Sprint_Block}" Margin="0,6,18,0"
+                      FontSize="12" Foreground="#C03030" VerticalAlignment="Center" Visibility="Collapsed"/>
+            </WrapPanel>
             <TextBlock Text="{DynamicResource Desc_DescriptionLabel}" FontSize="12" FontWeight="SemiBold" Margin="0,8,0,0"/>
         </StackPanel>
 
@@ -75,8 +78,16 @@
         </Border>
 
 
-<!-- Barra inferior esquerda -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+<!-- Criterios de Aceitacao (Story) — abaixo da Descricao, como no DevOps -->
+        <StackPanel Grid.Row="3" x:Name="AcceptancePanel" Visibility="Collapsed" Margin="0,8,0,0">
+            <TextBlock Text="{DynamicResource Desc_Acceptance}" FontSize="12" FontWeight="SemiBold"/>
+            <TextBox x:Name="AcceptanceBox" Height="72" Margin="0,2,0,0"
+                     AcceptsReturn="True" TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"/>
+        </StackPanel>
+
+        <!-- Barra inferior esquerda -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,8,0,0">
             <Button x:Name="FetchBtn"
                     Content="{DynamicResource Desc_Fetch}"
                     Height="28" Padding="10,0"
@@ -89,7 +100,7 @@
         </StackPanel>
 
         <!-- Botões -->
-        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button Content="{DynamicResource Desc_Save}" Width="90" Height="30" IsDefault="True"
                     Click="OnSaveClick"/>
             <Button Content="{DynamicResource Desc_Cancel}" Width="90" Height="30" IsCancel="True" Margin="8,0,0,0"/>

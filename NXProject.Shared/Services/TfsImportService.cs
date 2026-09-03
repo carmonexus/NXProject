@@ -447,12 +447,18 @@ namespace NXProject.Services
             public string FeatureTitle { get; set; } = "";
             /// <summary>Id da Feature pai (para criar novas Stories sob ela).</summary>
             public int FeatureId { get; set; }
+            /// <summary>Critérios de Aceitação (HTML) da Story — exibido como hint no card.</summary>
+            public string AcceptanceCriteria { get; set; } = "";
             /// <summary>Responsável (demandante) da Feature pai — exibido no card da Feature.</summary>
             public string FeatureAssignedTo { get; set; } = "";
             /// <summary>Título do EPIC pai da Feature — exibido no card da Feature.</summary>
             public string FeatureEpicTitle { get; set; } = "";
+            /// <summary>Id do EPIC pai (para abrir no DevOps).</summary>
+            public int FeatureEpicId { get; set; }
             /// <summary>Título do Work Item "Project" (portfólio) acima do EPIC — exibido no card da Feature.</summary>
             public string FeatureProjectTitle { get; set; } = "";
+            /// <summary>Id do Work Item "Project" (para abrir no DevOps).</summary>
+            public int FeatureProjectId { get; set; }
             /// <summary>Ordem no backlog (StackRank/BacklogPriority) — para reordenar a Story.</summary>
             public double StackRank { get; set; }
             /// <summary>Iteração (sprint) atual da Story.</summary>
@@ -578,7 +584,7 @@ namespace NXProject.Services
                     }
                     else
                     {
-                        var row = new SprintStoryRow(id, S("System.Title"), state, who, new()) { StackRank = ReadRank(f), IterationPath = S("System.IterationPath"), Tags = S("System.Tags") };
+                        var row = new SprintStoryRow(id, S("System.Title"), state, who, new()) { StackRank = ReadRank(f), IterationPath = S("System.IterationPath"), Tags = S("System.Tags"), AcceptanceCriteria = S(AcceptanceCriteriaRef) };
                         stories.Add(row);
                         storyById[id] = row;
                         if (f.TryGetProperty("System.Parent", out var spp) && spp.ValueKind == JsonValueKind.Number)
@@ -667,28 +673,29 @@ namespace NXProject.Services
             }
 
             // Classifica um ancestral: EPIC (tipo Epic) e Work Item "Project" (tipo Project/topo).
-            (string Epic, string Project) ResolveAncestry(int featureId)
+            (string Epic, int EpicId, string Project, int ProjId) ResolveAncestry(int featureId)
             {
                 string epic = "", proj = "";
+                int epicId = 0, projId = 0;
                 var cur = featureId; var guard = 0;
                 while (nodeParent.TryGetValue(cur, out var par) && par > 0 && guard++ < 8)
                 {
                     var t = nodeType.TryGetValue(par, out var tt) ? tt : "";
                     var title = nodeTitle.TryGetValue(par, out var nt) ? nt : "";
                     if (string.Equals(t, "Epic", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(epic))
-                        epic = title;
+                        { epic = title; epicId = par; }
                     else if (string.Equals(t, "Project", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(proj))
-                        proj = title;
+                        { proj = title; projId = par; }
                     cur = par;
                 }
                 // Fallback: se não achou por tipo, usa o pai imediato como EPIC e o avô como Project.
                 if (string.IsNullOrEmpty(epic) && string.IsNullOrEmpty(proj)
                     && nodeParent.TryGetValue(featureId, out var p1) && nodeTitle.TryGetValue(p1, out var t1))
                 {
-                    epic = t1;
-                    if (nodeParent.TryGetValue(p1, out var p2) && nodeTitle.TryGetValue(p2, out var t2)) proj = t2;
+                    epic = t1; epicId = p1;
+                    if (nodeParent.TryGetValue(p1, out var p2) && nodeTitle.TryGetValue(p2, out var t2)) { proj = t2; projId = p2; }
                 }
-                return (epic, proj);
+                return (epic, epicId, proj, projId);
             }
 
             foreach (var kv in storyParent)
@@ -697,9 +704,9 @@ namespace NXProject.Services
                     st.FeatureId = kv.Value;
                     st.FeatureTitle = featureTitle.TryGetValue(kv.Value, out var ft) ? ft : "";
                     st.FeatureAssignedTo = featureOwner.TryGetValue(kv.Value, out var fo) ? fo : "";
-                    var (epicT, projT) = ResolveAncestry(kv.Value);
-                    st.FeatureEpicTitle = epicT;
-                    st.FeatureProjectTitle = projT;
+                    var (epicT, epicI, projT, projI) = ResolveAncestry(kv.Value);
+                    st.FeatureEpicTitle = epicT; st.FeatureEpicId = epicI;
+                    st.FeatureProjectTitle = projT; st.FeatureProjectId = projI;
                 }
 
             // 4) Colunas por estado, na ordem canônica.
@@ -727,6 +734,13 @@ namespace NXProject.Services
             { "Data_Inicio", "Data Inicio", "DataInicio" };
         private static readonly string[] FinishFieldNames =
             { "Data_Fim", "Data Fim", "DataFim" };
+        // Criterios de Aceitacao: campo padrao do DevOps (Agile/Scrum) em Feature/Epic/Story.
+        // O reference name padrao e Microsoft.VSTS.Common.AcceptanceCriteria; os nomes de
+        // exibicao variam com o idioma do processo.
+        public const string AcceptanceCriteriaRef = "Microsoft.VSTS.Common.AcceptanceCriteria";
+        private static readonly string[] AcceptanceFieldNames =
+            { "Critérios de Aceitação", "Critério de Aceitação",
+              "Criterios de Aceitacao", "Criterio de Aceitacao", "Acceptance Criteria" };
         private static readonly string[] PercAlocFieldNames =
             { "Perc_Alocacao", "Perc_Alocação", "Perc_Aloc", "PercAloc", "Perc Aloc", "Percentual Alocacao", "Percentual_Alocacao" };
         private static readonly string[] PercConclusaoFieldNames =
@@ -790,6 +804,7 @@ namespace NXProject.Services
             {
                 "System.Id", "System.Title", "System.WorkItemType", "System.State",
                 "System.AssignedTo", "System.IterationPath", "System.Description", "System.Tags",
+                AcceptanceCriteriaRef,
                 "Microsoft.VSTS.Common.StackRank",
                 "Microsoft.VSTS.Common.BacklogPriority"
             };
@@ -1632,6 +1647,18 @@ namespace NXProject.Services
                     // ── Campos exclusivos de Story / Feature / Epic (não Task) ──────────
                     if (!isTask)
                     {
+                        // Critérios de Aceitação — só a Story tem o campo. Grava apenas quando o
+                        // texto difere do TFS (comparação em texto puro, para não reescrever por HTML).
+                        if (IsStoryType(task.TfsType) && !string.IsNullOrWhiteSpace(task.AcceptanceCriteria))
+                        {
+                            var currentAc = ReadFieldText(wi, AcceptanceCriteriaRef);
+                            if (!string.Equals(ToPlainText(task.AcceptanceCriteria), ToPlainText(currentAc), StringComparison.Ordinal))
+                            {
+                                ops.Add(PatchAdd($"/fields/{AcceptanceCriteriaRef}", task.AcceptanceCriteria));
+                                changes.Add("critérios de aceitação");
+                            }
+                        }
+
                         // Tags (ex.: "Block") — sincroniza se o conjunto mudou.
                         if (!TagsEqual(task.Tags, wi.Tags))
                         {
@@ -3244,6 +3271,7 @@ namespace NXProject.Services
                 TfsType = ResolveImportType(item.WorkItemType, item.Tags),
                 TfsState = item.State,
                 Description = item.Description,
+                AcceptanceCriteria = ReadFieldText(item, AcceptanceCriteriaRef),
                 Tags = item.Tags,
                 BlockedByChild = summaryBlocked,
                 TfsStackRank = item.StackRank,
@@ -3422,6 +3450,7 @@ namespace NXProject.Services
                 TfsType = ResolveImportType(item.WorkItemType, item.Tags),
                 TfsState = effectiveState,
                 Description = item.Description,
+                AcceptanceCriteria = ReadFieldText(item, AcceptanceCriteriaRef),
                 Tags = item.Tags,
                 BlockedByChild = blockedByChild,
                 TfsStackRank = item.StackRank,
@@ -6027,6 +6056,76 @@ namespace NXProject.Services
                 return string.IsNullOrEmpty(r) ? null : r;
             }
             catch { return null; }
+        }
+
+        // Cache do reference name do campo de Criterios de Aceitacao por organizacao.
+        private static readonly Dictionary<string, string> _acRefCache = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Reference name do campo "Critérios de Aceitação" (padrão do DevOps ou por
+        /// nome de exibição, conforme o idioma do processo), ou null se o processo não tem o campo.</summary>
+        public static async Task<string?> ResolveAcceptanceFieldRefAsync(TfsConnectionOptions options, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "ler campos", requireTeamProject: false);
+            if (_acRefCache.TryGetValue(ctx.OrgBase, out var cached)) return string.IsNullOrEmpty(cached) ? null : cached;
+            try
+            {
+                var map = await LoadFieldMapAsync(ctx.OrgBase, ctx.Authorization, ct);
+                // 1) reference name padrao; 2) nomes de exibicao conhecidos (pt/en).
+                var r = map.Values.Contains(AcceptanceCriteriaRef, StringComparer.OrdinalIgnoreCase)
+                    ? AcceptanceCriteriaRef
+                    : ResolveField(map, null, AcceptanceFieldNames);
+                _acRefCache[ctx.OrgBase] = r ?? "";
+                return string.IsNullOrEmpty(r) ? null : r;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>Lê os Critérios de Aceitação (HTML) de um work item; vazio se não houver.</summary>
+        public static async Task<string> GetWorkItemAcceptanceCriteriaAsync(
+            TfsConnectionOptions options, int id, CancellationToken ct = default)
+        {
+            var acRef = await ResolveAcceptanceFieldRefAsync(options, ct);
+            if (string.IsNullOrEmpty(acRef)) return string.Empty;
+            var ctx = CreateTfsAuthContext(options, "ler Critérios de Aceitação", requireTeamProject: false);
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?fields={Uri.EscapeDataString(acRef)}&{QueryApiVersion}";
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var resp = await Http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode) return string.Empty;
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            if (doc.RootElement.TryGetProperty("fields", out var f) && f.TryGetProperty(acRef, out var v)
+                && v.ValueKind == JsonValueKind.String)
+                return v.GetString() ?? string.Empty;
+            return string.Empty;
+        }
+
+        /// <summary>Grava os Critérios de Aceitação (HTML) de um work item.
+        /// (Ok, Mensagem); 403 = sem permissão de escrita.</summary>
+        public static async Task<(bool Ok, string Message)> SetWorkItemAcceptanceCriteriaAsync(
+            TfsConnectionOptions options, int id, string html, CancellationToken ct = default)
+        {
+            var acRef = await ResolveAcceptanceFieldRefAsync(options, ct);
+            if (string.IsNullOrEmpty(acRef)) return (false, "campo de Critérios de Aceitação não encontrado no DevOps");
+            var ctx = CreateTfsAuthContext(options, "gravar Critérios de Aceitação", requireTeamProject: false);
+            var ops = new List<object> { PatchAdd($"/fields/{acRef}", html ?? string.Empty) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            try
+            {
+                using var resp = await Http.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode) return (true, string.Empty);
+                var body = await resp.Content.ReadAsStringAsync(ct);
+                var msg = $"HTTP {(int)resp.StatusCode}";
+                try { using var d = JsonDocument.Parse(body); if (d.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg; } catch { }
+                return (false, msg);
+            }
+            catch (Exception ex) { return (false, ex.Message); }
         }
 
         /// <summary>Lê a Data de Início (campo Data_Inicio) de um work item, ou null.</summary>

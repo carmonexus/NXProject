@@ -1112,9 +1112,15 @@ namespace NXProject.Views
         private void OnEditDescription(TaskViewModel task)
         {
             if (DataContext is not MainViewModel vm) return;
-            var win = new TaskDescriptionEditWindow(task.Model) { Owner = this };
+            // Critérios de Aceitação é campo só da Story (Feature, Epic e Task não têm).
+            var acOk = Services.TfsImportService.IsStoryTypePublic(task.Model.TfsType);
+            var win = new TaskDescriptionEditWindow(task.Model,
+                enableAcceptance: acOk, acceptanceHtml: task.Model.AcceptanceCriteria) { Owner = this };
             if (win.ShowDialog() == true)
+            {
+                if (win.AcceptanceChanged) task.Model.AcceptanceCriteria = win.AcceptanceHtml;
                 vm.Project.IsDirty = true;
+            }
         }
 
         private async void OnResolveManualConflict(TaskViewModel task)
