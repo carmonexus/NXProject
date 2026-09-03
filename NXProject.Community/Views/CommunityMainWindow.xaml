@@ -677,6 +677,119 @@
         </TabItem>
         </TabControl>
 
+        <Border DockPanel.Dock="Top"
+                Background="#F4F8FC"
+                BorderBrush="#C9D8EA"
+                BorderThickness="0,0,0,1"
+                Padding="10,5">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsProjectLoading}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ProjectLoadTitle}"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#2B579A"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ProjectLoadTitle}" Value="Erro baseline">
+                                    <Setter Property="Foreground" Value="#B42318"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <ProgressBar Grid.Column="1"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="{Binding ProjectLoadProgress}"
+                             Height="9"
+                             VerticalAlignment="Center">
+                    <ProgressBar.Style>
+                        <Style TargetType="ProgressBar">
+                            <Setter Property="Foreground" Value="#2EAD4F"/>
+                            <Setter Property="Background" Value="#D7E3EF"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ProgressBar">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="#C5D2DF"
+                                                BorderThickness="1"
+                                                CornerRadius="1"
+                                                ClipToBounds="True">
+                                            <Grid x:Name="PART_Track">
+                                                <Border x:Name="PART_Indicator"
+                                                        HorizontalAlignment="Left"
+                                                        Background="{TemplateBinding Foreground}"
+                                                        CornerRadius="1"/>
+                                            </Grid>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ProjectLoadTitle}" Value="Calculando baseline">
+                                    <Setter Property="Foreground" Value="#3F4A56"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ProjectLoadTitle}" Value="Erro baseline">
+                                    <Setter Property="Foreground" Value="#B42318"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ProgressBar.Style>
+                </ProgressBar>
+                <TextBlock Grid.Column="2"
+                           Text="{Binding ProjectLoadProgress, StringFormat={}{0:0}%}"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           Margin="8,0,12,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#425466"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ProjectLoadTitle}" Value="Erro baseline">
+                                    <Setter Property="Foreground" Value="#B42318"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Grid.Column="3"
+                           Text="{Binding ProjectLoadStatus}"
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#425466"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ProjectLoadTitle}" Value="Erro baseline">
+                                    <Setter Property="Foreground" Value="#B42318"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </Border>
+
         <!-- Indicador "IA em execução" (Task Plan rodando Incluir/Consultar via IA):
              faixa fina ABAIXO da toolbar, sempre visível quando ativa -->
         <StackPanel x:Name="AiRunningBadge" DockPanel.Dock="Top" Orientation="Horizontal"

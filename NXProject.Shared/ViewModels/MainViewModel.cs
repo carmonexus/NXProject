@@ -97,6 +97,11 @@ namespace NXProject.ViewModels
         [ObservableProperty] private string _hiddenColumns = "";
         [ObservableProperty] private string _hiddenColumnsExpanded = "";
         [ObservableProperty] private double _projectPercent = 0.0;
+        [ObservableProperty] private bool _isProjectLoading = false;
+        [ObservableProperty] private bool _isProjectLoadVisualReady = false;
+        [ObservableProperty] private double _projectLoadProgress = 0.0;
+        [ObservableProperty] private string _projectLoadTitle = "";
+        [ObservableProperty] private string _projectLoadStatus = "";
 
         /// <summary>
         /// Confirmação (UI) ao concluir (100%) uma atividade com a sprint fora da
@@ -988,7 +993,7 @@ namespace NXProject.ViewModels
         }
 
         [RelayCommand]
-        private void OpenProject()
+        private async System.Threading.Tasks.Task OpenProject()
         {
             SprintAlertLog.Clear();
             var dlg = new Microsoft.Win32.OpenFileDialog
@@ -998,9 +1003,10 @@ namespace NXProject.ViewModels
             };
             if (dlg.ShowDialog() == true)
             {
-                try { LoadProjectFromPath(dlg.FileName); }
+                try { await LoadProjectFromPathAsync(dlg.FileName); }
                 catch (Exception ex)
                 {
+                    EndProjectLoad();
                     MessageBox.Show($"Erro ao abrir projeto:\n{ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -1010,13 +1016,78 @@ namespace NXProject.ViewModels
         /// Público para o chat de IA abrir o cronograma sugerido numa janela nova.</summary>
         public void LoadProjectFromPath(string fileName)
         {
+            BeginProjectLoad("Lendo cronograma...", 5);
+            try
+            {
+                LoadProjectFromPathCore(fileName, showProgress: false, loadBaseline: true);
+            }
+            finally
+            {
+                EndProjectLoad();
+            }
+        }
+
+        public async System.Threading.Tasks.Task LoadProjectFromPathAsync(string fileName)
+        {
+            var baselineStarted = false;
+            BeginProjectLoad("Lendo arquivo...", 5);
+            try
+            {
+                SetProjectLoad("Carregando", "Interpretando XML...", 18);
+                var project = await System.Threading.Tasks.Task.Run(() =>
+                {
+                    var loaded = XmlProjectService.Load(fileName);
+                    foreach (var root in loaded.Tasks)
+                        root.RecalcSummary();
+                    SyncOriginalHoursWhenZeroPercent(loaded.Tasks);
+                    return loaded;
+                });
+
+                SetProjectLoad("Carregando", "Montando cronograma...", 42);
+                Project = project;
+
+                if (project.Calendar != null)
+                    ProjectCalendarService.SetCurrent(project.Calendar);
+                else
+                    ProjectCalendarService.Load(_sprintSettingsStorageKey);
+
+                ApplyProjectSprintSettingsToViewModel(project);
+                RecalcIdCounters();
+                RebuildFlatTasks();
+                ApplyVirtualPredecessorsToAll();
+                RecalculateProjectPercent();
+
+                IsProjectLoadVisualReady = true;
+                var hasBackgroundBaseline = IsBaselineAutoLoadEnabled(project, fileName);
+                if (!hasBackgroundBaseline)
+                    SetProjectLoad("Finalizando", "Cronograma liberado.", 100);
+                StatusMessage = $"Projeto aberto: {fileName}";
+
+                await System.Threading.Tasks.Task.Yield();
+                baselineStarted = StartBaselineLoadInBackground(fileName, project);
+            }
+            finally
+            {
+                if (!baselineStarted)
+                {
+                    await System.Threading.Tasks.Task.Delay(250);
+                    EndProjectLoad();
+                }
+            }
+        }
+
+        private void LoadProjectFromPathCore(string fileName, bool showProgress, bool loadBaseline)
+        {
+            if (showProgress) SetProjectLoad("Carregando", "Interpretando XML...", 18);
             var project = XmlProjectService.Load(fileName);
 
+            if (showProgress) SetProjectLoad("Carregando", "Aplicando calendario...", 35);
             if (project.Calendar != null)
                 ProjectCalendarService.SetCurrent(project.Calendar);
             else
                 ProjectCalendarService.Load(_sprintSettingsStorageKey);
 
+            if (showProgress) SetProjectLoad("Carregando", "Montando cronograma...", 55);
             foreach (var root in project.Tasks)
                 root.RecalcSummary();
             SyncOriginalHoursWhenZeroPercent(project.Tasks);
@@ -1026,10 +1097,101 @@ namespace NXProject.ViewModels
             RebuildFlatTasks();
             ApplyVirtualPredecessorsToAll();
             RecalculateProjectPercent();
+            IsProjectLoadVisualReady = true;
+            if (showProgress) SetProjectLoad("Finalizando", "Cronograma liberado. Finalizando...", 78);
             var opts = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
-            if (opts.AutoLoadBaseline && project.BaselineActive)
+            if (loadBaseline && opts.AutoLoadBaseline && project.BaselineActive)
                 BaselineService.Load(fileName, FlatTasks.Select(t => t.Model));
             StatusMessage = $"Projeto aberto: {fileName}";
+        }
+
+        private bool StartBaselineLoadInBackground(string fileName, Project project)
+        {
+            if (!IsBaselineAutoLoadEnabled(project, fileName))
+                return false;
+
+            var tasks = AllProjectTasks(project.Tasks).ToList();
+            var progress = new Progress<(int Completed, int Total)>(value =>
+            {
+                var percent = value.Total <= 0
+                    ? 100
+                    : value.Completed * 100.0 / value.Total;
+                SetProjectLoad(
+                    "Calculando baseline",
+                    $"Aplicando baseline em {value.Completed}/{value.Total} tarefas...",
+                    percent);
+            });
+
+            IsProjectLoading = true;
+            SetProjectLoad("Calculando baseline", "Preparando baseline...", 0);
+
+            _ = FinishBaselineLoadInBackgroundAsync(fileName, tasks, progress);
+
+            return true;
+        }
+
+        private async System.Threading.Tasks.Task FinishBaselineLoadInBackgroundAsync(
+            string fileName,
+            List<ProjectTask> tasks,
+            IProgress<(int Completed, int Total)> progress)
+        {
+            try
+            {
+                var loaded = await System.Threading.Tasks.Task.Run(() =>
+                    BaselineService.Load(fileName, tasks, progress));
+
+                if (loaded)
+                {
+                    EndProjectLoad();
+                    return;
+                }
+
+                EndProjectLoad();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Projeto aberto. Baseline nao carregado: {ex.Message}";
+                SetProjectLoad("Erro baseline", $"Baseline nao carregada: {ex.Message}", 100);
+            }
+        }
+
+        private static bool IsBaselineAutoLoadEnabled(Project project, string fileName)
+        {
+            var opts = NXProject.Services.TfsConnectionStore.Load("NXProject.Community");
+            return opts.AutoLoadBaseline && project.BaselineActive && BaselineService.HasBaseline(fileName);
+        }
+
+        private void BeginProjectLoad(string status, double progress)
+        {
+            IsProjectLoading = true;
+            IsProjectLoadVisualReady = false;
+            SetProjectLoad("Carregando", status, progress);
+        }
+
+        private void SetProjectLoad(string title, string status, double progress)
+        {
+            ProjectLoadTitle = title;
+            ProjectLoadStatus = status;
+            ProjectLoadProgress = Math.Clamp(progress, 0, 100);
+        }
+
+        private void EndProjectLoad()
+        {
+            ProjectLoadProgress = 0;
+            ProjectLoadTitle = "";
+            ProjectLoadStatus = "";
+            IsProjectLoadVisualReady = false;
+            IsProjectLoading = false;
+        }
+
+        private static IEnumerable<ProjectTask> AllProjectTasks(IEnumerable<ProjectTask> tasks)
+        {
+            foreach (var task in tasks)
+            {
+                yield return task;
+                foreach (var child in AllProjectTasks(task.Children))
+                    yield return child;
+            }
         }
 
         [RelayCommand]

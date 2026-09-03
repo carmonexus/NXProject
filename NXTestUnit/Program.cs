@@ -140,6 +140,8 @@ internal static class Program
                 args.Length > 1 ? args[1] : "",
                 args.Length > 2 ? args[2] : "",
                 args.Length > 3 ? args[3] : "").GetAwaiter().GetResult();
+        if (string.Equals(category, "xml-diagnose", StringComparison.OrdinalIgnoreCase))
+            return DiagnoseXml(args.Length > 1 ? args[1] : "");
         _solutionRoot = args.Length > 1 ? args[1] : Directory.GetCurrentDirectory();
 
         List<(string Name, Action Test)> tests = category.ToLowerInvariant() switch
@@ -218,6 +220,92 @@ internal static class Program
             Console.WriteLine($" - {failure}");
 
         return 1;
+    }
+
+    private static int DiagnoseXml(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            Console.WriteLine("Uso: dotnet run --project NXTestUnit -- xml-diagnose <arquivo.xml>");
+            Console.WriteLine($"Arquivo nao encontrado: {filePath}");
+            return 1;
+        }
+
+        Console.WriteLine($"Arquivo: {filePath}");
+        try
+        {
+            var doc = System.Xml.Linq.XDocument.Load(filePath);
+            var root = doc.Root;
+            Console.WriteLine($"Raiz: {root?.Name.LocalName}");
+            Console.WriteLine($"Namespace: {root?.Name.NamespaceName}");
+            Console.WriteLine($"Filhos raiz: {string.Join(", ", root?.Elements().Take(20).Select(e => e.Name.LocalName) ?? [])}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"XML invalido: {ex.GetType().Name}: {ex.Message}");
+            return 1;
+        }
+
+        TryImport("NXProject nativo", () => XmlProjectService.Load(filePath));
+        TryImport("Fluxo Abrir/MainViewModel", () =>
+        {
+            var vm = new MainViewModel("NXProject.Community");
+            vm.LoadProjectFromPath(filePath);
+            return vm.Project;
+        });
+        TryImport("MS Project MSPDI", () => MspdiImportService.Import(filePath));
+        TryImport("Excel XML 2003", () => ExcelXmlService.Import(filePath));
+        return 0;
+    }
+
+    private static void TryImport(string label, Func<Project> load)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"[{label}]");
+        try
+        {
+            var project = load();
+            var tasks = FlattenForDiagnostics(project.Tasks).ToList();
+            Console.WriteLine($"Projeto: {project.Name}");
+            Console.WriteLine($"HiddenColumns: '{project.HiddenColumns}'");
+            Console.WriteLine($"HiddenColumnsExpanded: '{project.HiddenColumnsExpanded}'");
+            Console.WriteLine($"Tarefas: {tasks.Count}");
+            Console.WriteLine($"Tarefas sem nome: {tasks.Count(t => string.IsNullOrWhiteSpace(t.Name))}");
+            Console.WriteLine($"Tarefas com tag Block: {tasks.Count(t => HasBlockTagForDiagnostics(t.Tags))}");
+            Console.WriteLine($"Tarefas bloqueadas por filha: {tasks.Count(t => t.BlockedByChild)}");
+            Console.WriteLine($"Tarefas sem datas validas: {tasks.Count(t => t.Start == default || t.Finish == default)}");
+            Console.WriteLine($"Recursos: {project.Resources.Count}");
+            foreach (var task in tasks.Take(8))
+            {
+                Console.WriteLine($" - ID={task.Id}; Nivel={task.Level}; Nome='{task.Name}'; Inicio={task.Start:yyyy-MM-dd}; Fim={task.Finish:yyyy-MM-dd}; Tipo='{task.TfsType}'; TfsId={task.TfsId}; Tags='{task.Tags}'; BlockedByChild={task.BlockedByChild}");
+            }
+            foreach (var task in tasks.Where(t => HasBlockTagForDiagnostics(t.Tags) || t.BlockedByChild).Take(8))
+                Console.WriteLine($" * BLOQUEIO ID={task.Id}; Nome='{task.Name}'; Tags='{task.Tags}'; BlockedByChild={task.BlockedByChild}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERRO: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private static bool HasBlockTagForDiagnostics(string? tags)
+    {
+        if (string.IsNullOrWhiteSpace(tags))
+            return false;
+
+        return tags.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(tag => string.Equals(tag, "Block", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(tag, "Blocked", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IEnumerable<ProjectTask> FlattenForDiagnostics(IEnumerable<ProjectTask> tasks)
+    {
+        foreach (var task in tasks)
+        {
+            yield return task;
+            foreach (var child in FlattenForDiagnostics(task.Children))
+                yield return child;
+        }
     }
 
     private static readonly List<(string Name, Action Test)> PackagingTests =

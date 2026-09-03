@@ -250,16 +250,26 @@
                             </TextBlock>
 
                             <!-- Nome (+ selo BLOCK quando bloqueado) -->
-                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Grid Grid.Column="3" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
                                 <!-- BLOCK de Story (⛔) tem prioridade; se só Task (🔴) mostra Task -->
-                                <Border Margin="0,0,5,0" Padding="4,0" CornerRadius="3"
-                                        VerticalAlignment="Center"
-                                        Visibility="{Binding IsBlockedByStory, Converter={StaticResource BoolToVis}}">
+                                <Border Grid.Column="0" Margin="0,0,5,0" Padding="4,0" CornerRadius="3"
+                                        VerticalAlignment="Center">
                                     <Border.Style>
                                         <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
                                             <Setter Property="Background" Value="#FDE7E9"/>
                                             <Setter Property="BorderBrush" Value="#D13438"/>
                                             <Setter Property="BorderThickness" Value="1"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBlockedByStory}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
                                         </Style>
                                     </Border.Style>
                                     <Border.ContextMenu>
@@ -273,7 +283,7 @@
                                                ToolTip="{DynamicResource Grid_BlockedStory}"/>
                                 </Border>
                                 <!-- BLOCK de Task filha — só mostra se Story NÃO tem Block -->
-                                <Border Margin="0,0,5,0" Padding="4,0" CornerRadius="3"
+                                <Border Grid.Column="1" Margin="0,0,5,0" Padding="4,0" CornerRadius="3"
                                         Background="#FFF4CE" BorderBrush="#C8A600" BorderThickness="1"
                                         VerticalAlignment="Center">
                                     <Border.Style>
@@ -294,9 +304,11 @@
                                                Foreground="#7A5200" VerticalAlignment="Center"
                                                ToolTip="{DynamicResource Grid_BlockedByChild}"/>
                                 </Border>
-                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Name}" VerticalAlignment="Center"
                                            FontSize="{Binding NameTextFontSize, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            ToolTip="{Binding Name}"
+                                           TextTrimming="CharacterEllipsis"
                                            ContextMenuOpening="OnNameContextMenuOpening">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
@@ -368,7 +380,7 @@
                                         </ContextMenu>
                                     </TextBlock.ContextMenu>
                                 </TextBlock>
-                            </StackPanel>
+                            </Grid>
                         </Grid>
                     </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>

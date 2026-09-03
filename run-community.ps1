@@ -65,6 +65,7 @@ else {
         Get-ExePath "Release"
         Get-ExePath "Debug"
     ) | Where-Object { $null -ne $_ } |
+        Sort-Object { (Get-Item $_).LastWriteTimeUtc } -Descending |
         Select-Object -First 1
 
     if ($null -eq $exe) {

@@ -1,8 +1,8 @@
-<Window x:Class="NXProject.Views.ResourceAbsenceWindow"
+﻿<Window x:Class="NXProject.Views.ResourceAbsenceWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource Abs_Title}"
-        Width="560" Height="480" MinWidth="460" MinHeight="360"
+        Width="680" Height="500" MinWidth="520" MinHeight="380"
         WindowStartupLocation="CenterOwner"
         Background="White">
     <Grid Margin="16">
@@ -21,17 +21,29 @@
         </StackPanel>
 
         <!-- Adicionar -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-            <TextBlock Text="{DynamicResource Abs_Date}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
-            <DatePicker x:Name="NewDate" Width="130" VerticalAlignment="Center"/>
-            <TextBlock Text="{DynamicResource Abs_To}" VerticalAlignment="Center" Margin="10,0,6,0" FontSize="12"/>
-            <DatePicker x:Name="NewDateEnd" Width="130" VerticalAlignment="Center"
+        <Grid Grid.Row="1" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="{DynamicResource Abs_Date}" VerticalAlignment="Center"
+                       Margin="0,0,6,0" FontSize="12"/>
+            <DatePicker Grid.Column="1" x:Name="NewDate" Width="120" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="2" Text="{DynamicResource Abs_To}" VerticalAlignment="Center"
+                       Margin="8,0,6,0" FontSize="12"/>
+            <DatePicker Grid.Column="3" x:Name="NewDateEnd" Width="120" VerticalAlignment="Center"
                         ToolTip="{DynamicResource Abs_ToHint}"/>
-            <TextBlock Text="{DynamicResource Abs_Reason}" VerticalAlignment="Center" Margin="10,0,6,0" FontSize="12"/>
-            <TextBox x:Name="NewReason" Width="120" VerticalAlignment="Center"/>
-            <Button Content="{DynamicResource Abs_Add}" Margin="10,0,0,0" Padding="10,2"
-                    Click="OnAddClick"/>
-        </StackPanel>
+            <TextBlock Grid.Column="4" Text="{DynamicResource Abs_Reason}" VerticalAlignment="Center"
+                       Margin="12,0,6,0" FontSize="12"/>
+            <TextBox Grid.Column="5" x:Name="NewReason" MinWidth="90" VerticalAlignment="Center"/>
+            <Button Grid.Column="6" Content="{DynamicResource Abs_Add}" Margin="10,0,0,0"
+                    Padding="12,3" MinWidth="92" VerticalAlignment="Center" Click="OnAddClick"/>
+        </Grid>
 
         <DataGrid x:Name="Grid" Grid.Row="2" Margin="0,12,0,0"
                   AutoGenerateColumns="False" CanUserAddRows="False"

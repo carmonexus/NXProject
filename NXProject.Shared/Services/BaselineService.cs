@@ -22,6 +22,14 @@ namespace NXProject.Services
             string  Finish,
             double? Hours);
 
+        private sealed record BaselineSnapshot(
+            int Id,
+            int? TfsId,
+            string Name,
+            DateTime? Start,
+            DateTime? Finish,
+            double? Hours);
+
         private static string GetBaselinePath(string projectFilePath) =>
             Path.ChangeExtension(projectFilePath, ".nxb");
 
@@ -48,7 +56,7 @@ namespace NXProject.Services
         /// Carrega o baseline e aplica nos campos Baseline* das tarefas em memória.
         /// Resolução: 1) TfsId  2) Id interno  3) Nome (fallback para tasks I: pós-sync)
         /// </summary>
-        public static bool Load(string projectFilePath, IEnumerable<ProjectTask> allTasks)
+        public static bool Load(string projectFilePath, IEnumerable<ProjectTask> allTasks, IProgress<(int Completed, int Total)>? progress = null)
         {
             var path = GetBaselinePath(projectFilePath);
             if (!File.Exists(path)) return false;
@@ -60,19 +68,30 @@ namespace NXProject.Services
                 if (entries == null) return false;
 
                 var tasks = allTasks.ToList();
+                var snapshots = entries.Select(e => new BaselineSnapshot(
+                    e.Id,
+                    e.TfsId,
+                    e.Name,
+                    DateTime.TryParse(e.Start, out var s) ? s : null,
+                    DateTime.TryParse(e.Finish, out var f) ? f : null,
+                    e.Hours)).ToList();
 
                 // Índices para resolução rápida
-                var byTfsId  = entries.Where(e => e.TfsId.HasValue)
+                var byTfsId  = snapshots.Where(e => e.TfsId.HasValue)
                                       .ToDictionary(e => e.TfsId!.Value);
-                var byId     = entries.ToDictionary(e => e.Id);
-                var byName   = entries
+                var byId     = snapshots.ToDictionary(e => e.Id);
+                var byName   = snapshots
                                 .GroupBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
                                 .Where(g => g.Count() == 1)          // só quando nome é único
                                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
+                var total = tasks.Count;
+                var completed = 0;
+                var reportEvery = Math.Max(1, total / 100);
+
                 foreach (var t in tasks)
                 {
-                    BaselineEntry? entry = null;
+                    BaselineSnapshot? entry = null;
 
                     // 1) TfsId
                     if (t.HasTfsLink && t.TfsId.HasValue)
@@ -86,11 +105,16 @@ namespace NXProject.Services
                     if (entry == null && !string.IsNullOrWhiteSpace(t.Name))
                         byName.TryGetValue(t.Name, out entry);
 
-                    if (entry == null) continue;
+                    if (entry != null)
+                    {
+                        t.BaselineStart  = entry.Start;
+                        t.BaselineFinish = entry.Finish;
+                        t.BaselineHours  = entry.Hours;
+                    }
 
-                    t.BaselineStart  = DateTime.TryParse(entry.Start,  out var s) ? s : null;
-                    t.BaselineFinish = DateTime.TryParse(entry.Finish, out var f) ? f : null;
-                    t.BaselineHours  = entry.Hours;
+                    completed++;
+                    if (completed == total || completed % reportEvery == 0)
+                        progress?.Report((completed, total));
                 }
                 return true;
             }
