@@ -43,7 +43,15 @@ namespace NXProject.Views
             var rootId = project.DevOpsRootWorkItemId;
             var entry = rootId > 0 ? _devOpsProjects.FirstOrDefault(p => p.RootWorkItemId == rootId) : null;
 
-            if (entry?.ReadOnly is { } defined)
+            // O "somente leitura" do Portfólio é LEGADO: só vale quando NÃO há grupo
+            // administrador. Com Adm_NX definido (no work item ou no cadastro), quem autoriza é
+            // a checagem ao vivo do grupo — carimbar o flag aqui gravaria "somente leitura" no
+            // XML e o cronograma nasceria bloqueado mesmo para quem tem escrita.
+            var hasAdmGroup = !string.IsNullOrWhiteSpace(project.AdmGroupName)
+                              || !string.IsNullOrWhiteSpace(entry?.AdmGroupName);
+            if (hasAdmGroup)
+                project.ReadOnly = false;
+            else if (entry?.ReadOnly is { } defined)
                 project.ReadOnly = defined;   // compat.: Portfólio antigo com "somente leitura"
 
             if (rootId > 0 && !string.IsNullOrWhiteSpace(_devOpsProjectListPath))
