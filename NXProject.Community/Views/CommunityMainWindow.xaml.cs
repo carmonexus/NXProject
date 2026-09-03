@@ -2042,21 +2042,30 @@ namespace NXProject.Views
 
             vm.ApplyMilestonePredecessors();
 
-            System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+            // Tela modal de andamento: a sincronização é longa e sem feedback o usuário
+            // fica sem saber em que etapa/item está. Abre sem bloquear (Show) para a
+            // sincronização rodar e a janela ir se atualizando.
             Services.TfsImportService.SyncReport? report = null;
+            var progressWin = new SyncProgressWindow { Owner = this };
+            var reporter = new Progress<Services.TfsImportService.SyncProgress>(progressWin.Report);
+            progressWin.Show();
+            IsEnabled = false;   // evita mexer no cronograma durante a sincronização
             try
             {
-                report = await Services.TfsImportService.SyncAsync(vm.Project, options);
+                report = await Services.TfsImportService.SyncAsync(
+                    vm.Project, options, progress: reporter);
             }
             catch (Exception ex)
             {
-                System.Windows.Input.Mouse.OverrideCursor = null;
+                IsEnabled = true;
+                progressWin.Done();
                 TfsErrorDialog.Show(this, AppStrings.Get("Tfs_ActionSync"), ex);
                 return;
             }
             finally
             {
-                System.Windows.Input.Mouse.OverrideCursor = null;
+                IsEnabled = true;
+                progressWin.Done();
             }
 
             vm.Project.IsDirty = true;

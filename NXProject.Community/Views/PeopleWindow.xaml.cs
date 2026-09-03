@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -527,6 +527,31 @@ namespace NXProject.Views
             MarkDirty(AppStrings.Get("People_PersonDeleted"));
         }
 
+        // Ausências da pessoa selecionada. Ao confirmar, grava também no registro LOCAL:
+        // o .nxp leva uma cópia (para quem receber o arquivo), mas nesta máquina o registro
+        // local é a fonte da verdade quando o arquivo for reaberto.
+        private void OnAbsencesClick(object sender, RoutedEventArgs e)
+        {
+            CommitPendingEdits();
+            if (PeopleGrid.SelectedItem is not PersonRow selected)
+            {
+                MessageBox.Show(this, AppStrings.Get("Abs_SelectPerson"), Title,
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dlg = new ResourceAbsenceWindow(selected.Resource) { Owner = this };
+            if (dlg.ShowDialog() != true) return;
+
+            ResourceAbsenceConfigService.Save(_vm.Project.Resources);
+            // Recalcula o fim das atividades: as ausências mudam as datas.
+            foreach (var t in ProjectTasks())
+                if (!t.IsSummary && !t.IsMilestone)
+                    TaskScheduleService.RecalculateFinishFromAssignments(t);
+            selected.RefreshAbsences();
+            MarkDirty(AppStrings.Get("Abs_Saved", selected.Resource.Absences.Count));
+        }
+
         private void OnSaveLocalClick(object sender, RoutedEventArgs e)
         {
             CommitPendingEdits();
@@ -726,6 +751,24 @@ namespace NXProject.Views
             {
                 get => _name;
                 set { _name = value; OnPropertyChanged(); }
+            }
+
+            /// <summary>Quantidade de dias de ausência (vazio quando não há).</summary>
+            public string AbsenceSummary =>
+                Resource.Absences is { Count: > 0 } a ? a.Count.ToString() : string.Empty;
+
+            /// <summary>Datas das ausências, para o tooltip da coluna.</summary>
+            public string AbsenceTooltip =>
+                Resource.Absences is { Count: > 0 } a
+                    ? string.Join(", ", a.OrderBy(x => x.Date).Select(x =>
+                        x.Date.ToString("dd/MM/yy") + (string.IsNullOrWhiteSpace(x.Reason) ? "" : " (" + x.Reason + ")")))
+                    : string.Empty;
+
+            /// <summary>Reavalia a coluna de ausências após edição.</summary>
+            public void RefreshAbsences()
+            {
+                OnPropertyChanged(nameof(AbsenceSummary));
+                OnPropertyChanged(nameof(AbsenceTooltip));
             }
 
             public string Email

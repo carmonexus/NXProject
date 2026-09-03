@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace NXProject.Models
 {
@@ -41,9 +42,23 @@ namespace NXProject.Models
         /// </summary>
         public double AvailabilityPercent { get; set; } = 100.0;
 
+        /// <summary>
+        /// Ausências da pessoa (férias, folga, feriado municipal de outra cidade etc.).
+        /// Nesses dias ela não produz: o cálculo de fim da atividade pula essas datas.
+        /// Diferente do feriado do calendário, que vale para o cronograma inteiro.
+        /// </summary>
+        public List<ResourceAbsence> Absences { get; set; } = new();
+
         public string DisplayName => IsImportedFromTfs ? Name : $"*{Name}";
 
         public override string ToString() => Name;
+    }
+
+    /// <summary>Um dia de ausência da pessoa. Motivo é opcional (só informativo).</summary>
+    public class ResourceAbsence
+    {
+        public DateTime Date { get; set; } = DateTime.Today;
+        public string Reason { get; set; } = string.Empty;
     }
 
     public enum ResourceType

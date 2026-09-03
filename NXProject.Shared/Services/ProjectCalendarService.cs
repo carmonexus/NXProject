@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -115,6 +116,16 @@ namespace NXProject.Services
         public static double WorkingHoursPerDay =>
             Current.WorkingHoursPerDay <= 0 ? 8.0 : Current.WorkingHoursPerDay;
 
+        /// <summary>Dia útil considerando também as ausências do(s) recurso(s):
+        /// um dia em que a pessoa está ausente não produz para ela.</summary>
+        public static bool IsWorkingDay(DateTime date, ProjectCalendar? calendar,
+            IReadOnlyCollection<DateTime>? absentDays)
+        {
+            if (absentDays != null && absentDays.Count > 0 && absentDays.Contains(date.Date))
+                return false;
+            return IsWorkingDay(date, calendar);
+        }
+
         public static bool IsWorkingDay(DateTime date, ProjectCalendar? calendar)
         {
             calendar ??= Current;
@@ -150,6 +161,33 @@ namespace NXProject.Services
         }
 
         public static DateTime AddWorkingHours(DateTime start, double hours) => AddWorkingHours(start, hours, Current);
+
+        /// <summary>Soma horas úteis pulando também os dias de ausência informados.</summary>
+        public static DateTime AddWorkingHours(DateTime start, double hours,
+            ProjectCalendar? calendar, IReadOnlyCollection<DateTime>? absentDays)
+        {
+            if (hours <= 0)
+                return start;
+
+            calendar ??= Current;
+            var current = start;
+            var remainingHours = hours;
+            while (remainingHours > 0)
+            {
+                if (!IsWorkingDay(current.Date, calendar, absentDays))
+                {
+                    current = current.Date.AddDays(1);
+                    continue;
+                }
+
+                var dayCapacity = WorkingHoursPerDay;
+                var hoursToAdd = Math.Min(remainingHours, dayCapacity);
+                current = current.AddDays(hoursToAdd / dayCapacity);
+                remainingHours -= hoursToAdd;
+            }
+
+            return current;
+        }
 
         public static DateTime AddWorkingHours(DateTime start, double hours, ProjectCalendar? calendar)
         {

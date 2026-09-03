@@ -1,0 +1,57 @@
+<Window x:Class="NXProject.Views.ResourceAbsenceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource Abs_Title}"
+        Width="560" Height="480" MinWidth="460" MinHeight="360"
+        WindowStartupLocation="CenterOwner"
+        Background="White">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock x:Name="PersonText" FontSize="14" FontWeight="SemiBold" Foreground="#2B579A"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="{DynamicResource Abs_Subtitle}" FontSize="11" Foreground="#777"
+                       TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Adicionar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+            <TextBlock Text="{DynamicResource Abs_Date}" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="12"/>
+            <DatePicker x:Name="NewDate" Width="130" VerticalAlignment="Center"/>
+            <TextBlock Text="{DynamicResource Abs_To}" VerticalAlignment="Center" Margin="10,0,6,0" FontSize="12"/>
+            <DatePicker x:Name="NewDateEnd" Width="130" VerticalAlignment="Center"
+                        ToolTip="{DynamicResource Abs_ToHint}"/>
+            <TextBlock Text="{DynamicResource Abs_Reason}" VerticalAlignment="Center" Margin="10,0,6,0" FontSize="12"/>
+            <TextBox x:Name="NewReason" Width="120" VerticalAlignment="Center"/>
+            <Button Content="{DynamicResource Abs_Add}" Margin="10,0,0,0" Padding="10,2"
+                    Click="OnAddClick"/>
+        </StackPanel>
+
+        <DataGrid x:Name="Grid" Grid.Row="2" Margin="0,12,0,0"
+                  AutoGenerateColumns="False" CanUserAddRows="False"
+                  HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="{DynamicResource Abs_ColDate}" Width="130"
+                                    Binding="{Binding Date, StringFormat=dd/MM/yyyy}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="{DynamicResource Abs_ColWeekday}" Width="110"
+                                    Binding="{Binding Date, StringFormat=dddd}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="{DynamicResource Abs_ColReason}" Width="*"
+                                    Binding="{Binding Reason}"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="{DynamicResource Abs_Remove}" Width="130" Height="30" Margin="0,0,8,0"
+                    Click="OnRemoveClick"/>
+            <Button Content="{DynamicResource Abs_Ok}" Width="90" Height="30" IsDefault="True"
+                    Click="OnOkClick"/>
+            <Button Content="{DynamicResource Abs_Cancel}" Width="90" Height="30" IsCancel="True" Margin="8,0,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>

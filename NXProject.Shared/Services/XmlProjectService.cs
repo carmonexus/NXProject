@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -80,6 +82,8 @@ namespace NXProject.Services
                     new XElement(EXT + "DevOpsProcess", project.DevOpsProcess ?? ""),
                     new XElement(EXT + "StorySupervisionPercent", project.StorySupervisionPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                     new XElement(EXT + "ReadOnly", project.ReadOnly),
+                    // Carimbo da máquina que salvou (hash) — usado para reconciliar ausências.
+                    new XElement(EXT + "SavedByMachineId", ResourceAbsenceConfigService.MachineId),
                     new XElement(EXT + "AdmGroupName", project.AdmGroupName ?? ""),
                     new XElement(EXT + "AdmGroupMembers",
                         project.AdmGroupMembers.Select(m => new XElement(EXT + "Member", m ?? ""))),
@@ -191,7 +195,12 @@ namespace NXProject.Services
                     new XElement(EXT + "IsImportedFromTfs", r.IsImportedFromTfs),
                     new XElement(EXT + "Kind", r.Kind.ToString()),
                     new XElement(EXT + "AvailabilityPercent", r.AvailabilityPercent),
-                    new XElement(EXT + "Team", r.Team ?? "")
+                    new XElement(EXT + "Team", r.Team ?? ""),
+                    // Ausências da pessoa (férias/folga/feriado local): dias em que ela não produz.
+                    new XElement(EXT + "Absences",
+                        r.Absences.Select(a => new XElement(EXT + "Absence",
+                            new XAttribute("Date", a.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                            a.Reason ?? "")))
                     // CostType, CostPerHour e MonthlyRate NÃO são gravados no .nxp (sigilosos)
                     // → usar "Salvar config de custo" na tela Pessoas para persistir separadamente
                 ));
@@ -380,6 +389,8 @@ namespace NXProject.Services
                 StorySupervisionPercent = ParseDouble(root.Element(EXT + "StorySupervisionPercent")?.Value) is { } sp && sp > 0
                     ? sp : 20,
                 ReadOnly = string.Equals(root.Element(EXT + "ReadOnly")?.Value?.Trim(), "true", StringComparison.OrdinalIgnoreCase),
+                SavedByMachineId = string.IsNullOrWhiteSpace(root.Element(EXT + "SavedByMachineId")?.Value)
+                    ? null : root.Element(EXT + "SavedByMachineId")!.Value.Trim(),
                 AdmGroupName = string.IsNullOrWhiteSpace(root.Element(EXT + "AdmGroupName")?.Value)
                     ? null : root.Element(EXT + "AdmGroupName")!.Value,
                 AdmGroupMembers = root.Element(EXT + "AdmGroupMembers")?.Elements(EXT + "Member")
@@ -440,6 +451,14 @@ namespace NXProject.Services
 
             ResolveResourceReferences(project.Tasks, project.Resources);
             NormalizeDuplicateTaskIds(project);
+
+            // Ausências: o arquivo carrega uma CÓPIA (para quem receber o .nxp calcular certo),
+            // mas na MÁQUINA que salvou o registro local é a fonte da verdade — assim uma férias
+            // cancelada aqui deixa de atrasar o cronograma ao reabrir.
+            if (!string.IsNullOrEmpty(project.SavedByMachineId)
+                && string.Equals(project.SavedByMachineId, ResourceAbsenceConfigService.MachineId, StringComparison.Ordinal))
+                ResourceAbsenceConfigService.ApplyTo(project.Resources);
+
             return project;
         }
 
@@ -509,7 +528,14 @@ namespace NXProject.Services
             IsImportedFromTfs = bool.TryParse(el.Element(EXT + "IsImportedFromTfs")?.Value, out var importedFromTfs) && importedFromTfs,
             Kind = Enum.TryParse<ResourceKind>(el.Element(EXT + "Kind")?.Value, out var rk) ? rk : ResourceKind.Project,
             AvailabilityPercent = ParseDouble(el.Element(EXT + "AvailabilityPercent")?.Value) ?? 100.0,
-            Team = string.IsNullOrWhiteSpace(el.Element(EXT + "Team")?.Value) ? null : el.Element(EXT + "Team")!.Value
+            Team = string.IsNullOrWhiteSpace(el.Element(EXT + "Team")?.Value) ? null : el.Element(EXT + "Team")!.Value,
+            Absences = el.Element(EXT + "Absences")?.Elements(EXT + "Absence")
+                .Select(a => new ResourceAbsence
+                {
+                    Date = DateTime.TryParse(a.Attribute("Date")?.Value, CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out var ad) ? ad.Date : DateTime.Today,
+                    Reason = a.Value ?? string.Empty
+                }).ToList() ?? new List<ResourceAbsence>()
             // CostType/CostPerHour/MonthlyRate carregados separadamente via ResourceCostConfigService
         };
 

@@ -1,0 +1,18 @@
+<Window x:Class="NXProject.Views.SyncProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource SyncProg_Title}"
+        Width="560" SizeToContent="Height"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="White">
+    <StackPanel Margin="18">
+        <TextBlock x:Name="PhaseText" FontSize="14" FontWeight="SemiBold" Foreground="#2B579A"
+                   TextWrapping="Wrap"/>
+        <TextBlock x:Name="ItemText" FontSize="12" Foreground="#444" Margin="0,6,0,0"
+                   TextWrapping="Wrap" MinHeight="32"/>
+        <ProgressBar x:Name="Bar" Height="18" Margin="0,10,0,0" Minimum="0" Maximum="100"/>
+        <TextBlock x:Name="CountText" FontSize="11" Foreground="#666" Margin="0,4,0,0"
+                   HorizontalAlignment="Right"/>
+    </StackPanel>
+</Window>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using NXProject.Models;
@@ -244,6 +244,31 @@ namespace NXProject.Services
             return workHours / Math.Max(0.01, combinedFactor);
         }
 
+        /// <summary>
+        /// Dias em que a atividade NÃO anda por ausência de pessoal. Com mais de um recurso,
+        /// só conta o dia em que TODOS estão ausentes — se alguém está disponível, o trabalho segue.
+        /// </summary>
+        public static IReadOnlyCollection<DateTime> GetAbsentDays(ProjectTask task)
+        {
+            var people = task.Resources
+                .Select(r => r.Resource)
+                .Where(r => r != null && r.Absences != null && r.Absences.Count > 0)
+                .ToList();
+            // Algum recurso sem ausência cadastrada => sempre há quem trabalhe.
+            if (people.Count == 0 || people.Count != task.Resources.Count)
+                return System.Array.Empty<DateTime>();
+
+            HashSet<DateTime>? common = null;
+            foreach (var r in people)
+            {
+                var days = r!.Absences.Select(a => a.Date.Date).ToHashSet();
+                if (common == null) common = days;
+                else common.IntersectWith(days);
+                if (common.Count == 0) break;
+            }
+            return (IReadOnlyCollection<DateTime>?)common ?? System.Array.Empty<DateTime>();
+        }
+
         public static DateTime CalculateFinishFromAssignments(ProjectTask task, DateTime start)
         {
             if (task.IsMilestone)
@@ -252,7 +277,7 @@ namespace NXProject.Services
             var durationHours = GetEffectiveTotalDurationHours(task);
             return durationHours <= 0
                 ? start
-                : ProjectCalendarService.AddWorkingHours(start, durationHours);
+                : ProjectCalendarService.AddWorkingHours(start, durationHours, null, GetAbsentDays(task));
         }
 
         public static void SyncTaskEstimatedHoursFromAssignments(ProjectTask task)

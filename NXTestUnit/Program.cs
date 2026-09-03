@@ -23,6 +23,11 @@ internal static class Program
         ("Cronograma: percentual de alocacao aumenta duracao calendario", ScheduleAllocationPercentChangesCalendarDuration),
         ("Cronograma: matriz de percentual de alocacao do recurso", ScheduleResourceAllocationPercentMatrix),
         ("Cronograma: disponibilidade do recurso aumenta duracao calendario", ScheduleResourceAvailabilityPercentChangesCalendarDuration),
+        ("Ausencia: dia de ausencia do recurso empurra o fim da atividade", AbsencePushesTaskFinish),
+        ("Ausencia: sem ausencia o fim NAO muda (nao quebra o motor)", AbsenceEmptyKeepsFinish),
+        ("Ausencia: com 2 recursos so conta o dia em que AMBOS faltam", AbsenceWithTwoResourcesNeedsBoth),
+        ("Ausencia: fim de semana ausente nao muda nada (ja nao era util)", AbsenceOnWeekendChangesNothing),
+        ("Arquivo: ausencias do recurso sobrevivem a salvar/abrir", AbsencesSurviveSaveLoad),
         ("Cronograma: tarefa 100% nao recalcula fim", ScheduleCompletedTaskKeepsFinish),
         ("Cronograma: rebuild preserva fim de tarefa 100%", RebuildKeepsCompletedTaskFinish),
         ("Cronograma: No DevOps aceita duracao zero como marco", ScheduleNoDevOpsZeroDurationCreatesMilestone),
@@ -41,6 +46,8 @@ internal static class Program
         ("Cronograma: NoDevOps aceita predecessor I de qualquer tipo", NoDevOpsPredecessorAcceptsAnyInternalType),
         ("Cronograma: arrasto permite mover Feature para outro Epic", DragDropMovesFeatureToAnotherEpic),
         ("Cronograma: arrasto permite mover Story para outra Feature", DragDropMovesStoryToAnotherFeature),
+        ("Cronograma: mover Story de pai recalcula a data fim das duas Features", DragDropRecalculatesBothFeatureFinishDates),
+        ("Cronograma: Feature que perde a ultima Story nao mantem data fim antiga", MovingLastStoryLeavesNoStaleFinishOnOldFeature),
         ("Cronograma: arrasto permite mover Task para outra Story", DragDropMovesTaskToAnotherStory),
         ("Cronograma: arrasto entre pais aceita soltar sobre irmao destino", DragDropMovesHierarchyItemsToSiblingInAnotherParent),
         ("Cronograma: arrasto bloqueia troca fora da hierarquia DevOps", DragDropBlocksInvalidHierarchyMoves),
@@ -759,6 +766,107 @@ internal static class Program
         AssertEqual(new DateTime(2026, 7, 8), finish, "Recurso disponivel 50% no projeto deve dobrar a duracao calendario.");
     }
 
+    // 16h POR pessoa: com 1 ou 2 recursos a duracao calendario e sempre 2 dias uteis
+    // (as horas dobram junto com a capacidade). Assim o cenario cobre o 2o dia, que e
+    // onde a ausencia precisa ser sentida.
+    private static ProjectTask BuildAbsenceTask(params Resource[] people)
+    {
+        var task = new ProjectTask { Name = "Task 16h/pessoa", Start = new DateTime(2026, 7, 6) }; // segunda
+        foreach (var r in people)
+            task.Resources.Add(new TaskResource
+            {
+                Resource = r,
+                ResourceId = r.Id,
+                AllocationPercent = 100,
+                EstimatedHours = 16
+            });
+        return task;
+    }
+
+    private static void AbsenceEmptyKeepsFinish()
+    {
+        var r = new Resource { Id = 1, Name = "Dev" };
+        var task = BuildAbsenceTask(r);
+
+        var finish = TaskScheduleService.CalculateFinishFromAssignments(task, task.Start);
+
+        AssertEqual(new DateTime(2026, 7, 8), finish,
+            "Sem ausencia cadastrada o fim deve continuar igual ao comportamento atual.");
+    }
+
+    private static void AbsencePushesTaskFinish()
+    {
+        var r = new Resource { Id = 1, Name = "Dev" };
+        r.Absences.Add(new ResourceAbsence { Date = new DateTime(2026, 7, 7), Reason = "Feriado municipal" });
+        var task = BuildAbsenceTask(r);
+
+        var finish = TaskScheduleService.CalculateFinishFromAssignments(task, task.Start);
+
+        AssertEqual(new DateTime(2026, 7, 9), finish,
+            "Um dia de ausencia no meio deve empurrar o fim em um dia util.");
+    }
+
+    private static void AbsenceWithTwoResourcesNeedsBoth()
+    {
+        // So um falta => a atividade continua andando (o outro trabalha).
+        var a = new Resource { Id = 1, Name = "Dev A" };
+        a.Absences.Add(new ResourceAbsence { Date = new DateTime(2026, 7, 7) });
+        var b = new Resource { Id = 2, Name = "Dev B" };
+        b.Absences.Add(new ResourceAbsence { Date = new DateTime(2026, 7, 10) });
+        var soloTask = BuildAbsenceTask(a, b);
+
+        var soloFinish = TaskScheduleService.CalculateFinishFromAssignments(soloTask, soloTask.Start);
+
+        // Ambos faltam no MESMO dia => ai sim o dia nao produz.
+        var c = new Resource { Id = 3, Name = "Dev C" };
+        c.Absences.Add(new ResourceAbsence { Date = new DateTime(2026, 7, 7) });
+        var d = new Resource { Id = 4, Name = "Dev D" };
+        d.Absences.Add(new ResourceAbsence { Date = new DateTime(2026, 7, 7) });
+        var bothTask = BuildAbsenceTask(c, d);
+
+        var bothFinish = TaskScheduleService.CalculateFinishFromAssignments(bothTask, bothTask.Start);
+
+        AssertTrue(bothFinish > soloFinish,
+            "Dia em que TODOS faltam deve atrasar; falta de so um recurso nao pode atrasar.");
+    }
+
+    private static void AbsenceOnWeekendChangesNothing()
+    {
+        var r = new Resource { Id = 1, Name = "Dev" };
+        r.Absences.Add(new ResourceAbsence { Date = new DateTime(2026, 7, 11) }); // sabado
+        var task = BuildAbsenceTask(r);
+
+        var finish = TaskScheduleService.CalculateFinishFromAssignments(task, task.Start);
+
+        AssertEqual(new DateTime(2026, 7, 8), finish,
+            "Ausencia em dia nao util nao pode alterar o fim.");
+    }
+
+    private static void AbsencesSurviveSaveLoad()
+    {
+        var project = new Project { Name = "Projeto ausencias" };
+        var r = new Resource { Id = 1, Name = "Dev" };
+        r.Absences.Add(new ResourceAbsence { Date = new DateTime(2026, 7, 7), Reason = "Ferias" });
+        r.Absences.Add(new ResourceAbsence { Date = new DateTime(2026, 7, 8) });
+        project.Resources.Add(r);
+
+        var path = Path.Combine(Path.GetTempPath(), $"nx_absence_{Guid.NewGuid():N}.xml");
+        try
+        {
+            XmlProjectService.Save(project, path);
+            var loaded = XmlProjectService.Load(path);
+            var lr = loaded.Resources.First(x => x.Id == 1);
+
+            AssertEqual(2, lr.Absences.Count, "As duas ausencias devem voltar do arquivo.");
+            AssertEqual(new DateTime(2026, 7, 7), lr.Absences[0].Date, "Data da ausencia deve sobreviver.");
+            AssertEqual("Ferias", lr.Absences[0].Reason, "Motivo da ausencia deve sobreviver.");
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { }
+        }
+    }
+
     private static void ScheduleCompletedTaskKeepsFinish()
     {
         var originalFinish = new DateTime(2026, 7, 7);
@@ -1302,6 +1410,99 @@ internal static class Program
         AssertEqual(1, story.Level, "Story movida deve manter nivel abaixo da Feature.");
         if (!project.IsDirty)
             throw new InvalidOperationException("Mover Story entre Features deve marcar o projeto como alterado.");
+    }
+
+    // Trocar a Story de Feature tem de deixar as DUAS Features com a data fim certa
+    // sem depender do botao "Recalcular" geral. Cobre o caso em que a fila por recurso
+    // reagenda a Story DEPOIS do move (o pai precisa acompanhar esse reagendamento).
+    private static void DragDropRecalculatesBothFeatureFinishDates()
+    {
+        var featureA = new ProjectTask { Id = 100, Name = "Feature A", TfsType = "Feature", Level = 0, IsSummary = true };
+        var featureB = new ProjectTask { Id = 200, Name = "Feature B", TfsType = "Feature", Level = 0, IsSummary = true };
+
+        // MESMO recurso nas duas: ao cair depois da curta, a fila por recurso reagenda a longa.
+        var dev = new Resource { Id = 1, Name = "Dev" };
+        var longStory = new ProjectTask
+        {
+            Id = 101, Name = "Story longa", TfsType = "Story", Parent = featureA, Level = 1,
+            Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 17), EstimatedHours = 80
+        };
+        longStory.Resources.Add(new TaskResource { Resource = dev, ResourceId = dev.Id, AllocationPercent = 100, EstimatedHours = 80 });
+        var keepInA = new ProjectTask
+        {
+            Id = 102, Name = "Story que fica em A", TfsType = "Story", Parent = featureA, Level = 1,
+            Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 8), EstimatedHours = 16
+        };
+        var shortStory = new ProjectTask
+        {
+            Id = 201, Name = "Story curta", TfsType = "Story", Parent = featureB, Level = 1,
+            Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 7), EstimatedHours = 8
+        };
+        shortStory.Resources.Add(new TaskResource { Resource = dev, ResourceId = dev.Id, AllocationPercent = 100, EstimatedHours = 8 });
+        featureA.Children.Add(longStory);
+        featureA.Children.Add(keepInA);
+        featureB.Children.Add(shortStory);
+
+        var project = new Project { Name = "Teste recalculo", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(featureA);
+        project.Tasks.Add(featureB);
+        project.Resources.Add(dev);
+        featureA.RecalcSummary();
+        featureB.RecalcSummary();
+
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+        var sourceVm = vm.FlatTasks.First(t => t.Id == longStory.Id);
+        var targetVm = vm.FlatTasks.First(t => t.Id == featureB.Id);
+
+        if (!vm.MoveTaskByDrop(sourceVm, targetVm, insertAfter: true))
+            throw new InvalidOperationException($"Arrasto deve aceitar Story para outra Feature. Status: {vm.StatusMessage}");
+
+        // Sem chamar nenhum "Recalcular" geral: as duas Features ja devem estar certas.
+        AssertEqual(longStory.Finish, featureB.Finish,
+            "Feature destino deve terminar junto com a Story recebida, sem recalculo manual.");
+        AssertEqual(keepInA.Finish, featureA.Finish,
+            "Feature origem deve encolher para a maior Story que sobrou, sem recalculo manual.");
+    }
+
+    // Feature que perde a ULTIMA Story nao pode continuar exibindo a data fim da Story que saiu.
+    private static void MovingLastStoryLeavesNoStaleFinishOnOldFeature()
+    {
+        var featureA = new ProjectTask { Id = 100, Name = "Feature A", TfsType = "Feature", Level = 0, IsSummary = true };
+        var featureB = new ProjectTask { Id = 200, Name = "Feature B", TfsType = "Feature", Level = 0, IsSummary = true };
+        var only = new ProjectTask
+        {
+            Id = 101, Name = "Unica Story", TfsType = "Story", Parent = featureA, Level = 1,
+            Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 17), EstimatedHours = 80
+        };
+        var other = new ProjectTask
+        {
+            Id = 201, Name = "Story em B", TfsType = "Story", Parent = featureB, Level = 1,
+            Start = new DateTime(2026, 7, 6), Finish = new DateTime(2026, 7, 7), EstimatedHours = 8
+        };
+        featureA.Children.Add(only);
+        featureB.Children.Add(other);
+
+        var project = new Project { Name = "Teste feature vazia", StartDate = new DateTime(2026, 7, 6) };
+        project.Tasks.Add(featureA);
+        project.Tasks.Add(featureB);
+        featureA.RecalcSummary();
+        featureB.RecalcSummary();
+        var staleFinish = featureA.Finish;
+
+        var vm = new MainViewModel("NXTestUnit") { Project = project };
+        vm.RebuildFlatTasks();
+        var sourceVm = vm.FlatTasks.First(t => t.Id == only.Id);
+        var targetVm = vm.FlatTasks.First(t => t.Id == featureB.Id);
+
+        if (!vm.MoveTaskByDrop(sourceVm, targetVm, insertAfter: true))
+            throw new InvalidOperationException($"Arrasto deve aceitar Story para outra Feature. Status: {vm.StatusMessage}");
+
+        AssertEqual(0, featureA.Children.Count, "Feature origem deve ficar sem filhos.");
+        if (featureA.Finish >= staleFinish)
+            throw new InvalidOperationException(
+                $"Feature sem filhos manteve o periodo da Story que saiu (fim {featureA.Finish:dd/MM/yyyy}, "
+                + $"esperado colapsar antes de {staleFinish:dd/MM/yyyy}).");
     }
 
     private static void DragDropMovesTaskToAnotherStory()
@@ -3402,6 +3603,12 @@ internal static class Program
     {
         if (!string.Equals(expected, actual, StringComparison.Ordinal))
             throw new InvalidOperationException($"{message} Esperado: '{expected}'; Atual: '{actual}'.");
+    }
+
+    private static void AssertTrue(bool condition, string message)
+    {
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 
     private static void AssertEqual(int expected, int actual, string message)

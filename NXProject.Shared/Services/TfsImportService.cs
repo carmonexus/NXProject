@@ -1189,9 +1189,13 @@ namespace NXProject.Services
                     ". Renomeie ou remova as duplicadas antes de sincronizar.");
         }
 
+        /// <summary>Andamento da sincronização, para a tela de progresso.
+        /// Total = 0 quando a etapa não tem contagem (indeterminado).</summary>
+        public sealed record SyncProgress(string Phase, int Current, int Total, string Item);
+
         public static async Task<SyncReport> SyncAsync(
             Project project, TfsConnectionOptions options, CancellationToken cancellationToken = default,
-            HashSet<int>? forceOverwriteIds = null)
+            HashSet<int>? forceOverwriteIds = null, IProgress<SyncProgress>? progress = null)
         {
             if (project == null) throw new ArgumentNullException(nameof(project));
             if (options == null) throw new ArgumentNullException(nameof(options));
@@ -1264,6 +1268,7 @@ namespace NXProject.Services
                 .ToDictionary(g => g.Key, g => g.First());
 
             var report = new SyncReport();
+            progress?.Report(new SyncProgress("Preparando a sincronização...", 0, 0, ""));
 
             // Recalcula a ordem (StackRank) conforme a árvore do NXProject e AVISA quando
             // isso vai reordenar o backlog do DevOps (a ordem do cronograma sobrescreve o TFS).
@@ -1315,6 +1320,7 @@ namespace NXProject.Services
 
             var preCreatedIds = new List<int>();
 
+            progress?.Report(new SyncProgress("Criando itens novos...", 0, 0, ""));
             // Pré-etapa: qualquer atividade interna (I:) que já tenha tipo DevOps precisa
             // virar TfsId antes de sincronizarmos links de predecessora de outras atividades.
             foreach (var task in tasks)
@@ -1417,8 +1423,14 @@ namespace NXProject.Services
                     current[item.Key] = item.Value;
             }
 
+            var syncTotal = tasks.Count;
+            var syncDone = 0;
             foreach (var task in tasks)
             {
+                // Andamento por item (Epic/Feature/Story/Task) para a tela de progresso.
+                syncDone++;
+                progress?.Report(new SyncProgress("Sincronizando itens", syncDone, syncTotal,
+                    $"{TaskSyncLabel(task)} — {task.Name}"));
                 // Declarados antes do try para ficarem acessíveis no catch (retry sem predecessoras).
                 var ops              = new List<object>();
                 var changes          = new List<string>();
@@ -2126,6 +2138,7 @@ namespace NXProject.Services
                 }
             }
 
+            progress?.Report(new SyncProgress("Finalizando...", syncTotal, syncTotal, ""));
             // Aviso final: Features/Stories que ficaram sem sprint associada.
             foreach (var task in tasks)
                 if (IsFeatureOrStory(task) && string.IsNullOrWhiteSpace(task.TfsIterationPath))

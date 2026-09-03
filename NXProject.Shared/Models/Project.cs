@@ -70,6 +70,13 @@ namespace NXProject.Models
         // Plan continuam livres). Liberação só na configuração do Projeto no Portfólio.
         public bool ReadOnly { get; set; }
 
+        /// <summary>
+        /// Hash da máquina+usuário que salvou o arquivo. Serve só para saber, ao abrir, se
+        /// estamos na MESMA máquina — aí o registro local de ausências reconcilia o arquivo.
+        /// Não guarda nome de máquina nem de usuário em claro.
+        /// </summary>
+        public string? SavedByMachineId { get; set; }
+
         // Grupo administrador do NX (campo Adm_NX do work item Project no DevOps): nome do grupo
         // cujos membros podem sincronizar. Vazio/ausente = liberado para todos. Lido na importação.
         public string? AdmGroupName { get; set; }

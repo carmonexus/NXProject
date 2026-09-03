@@ -2458,6 +2458,7 @@ namespace NXProject.ViewModels
             oldParent.Children.Remove(task);
             if (oldParent.Children.Count == 0)
                 oldParent.IsSummary = false;
+            CollapseIfChildless(oldParent);
 
             var grandParent = oldParent.Parent;
             task.Parent = grandParent;
@@ -2549,6 +2550,8 @@ namespace NXProject.ViewModels
             MoveTask(sourceCollection, currentIndex, targetIndex);
             RescheduleAfterDrop(sourceVm);
             if (sourceVm.Model.IsMilestone) sourceVm.Model.PredecessorIds.Clear();
+            // Reordenar irmãos também muda datas (fila por recurso) → o pai precisa acompanhar.
+            RecalcSummaryChainAndNotify(sourceVm.Model.Parent);
             StatusMessage = AppStrings.Get("Status_TaskReordered");
             return true;
         }
@@ -2590,6 +2593,7 @@ namespace NXProject.ViewModels
 
             if (oldParent != null && oldParent.Children.Count == 0)
                 oldParent.IsSummary = false;
+            CollapseIfChildless(oldParent);
 
             source.Parent = newParent;
             UpdateTaskLevelRecursive(source, newParent.Level + 1);
@@ -2648,6 +2652,7 @@ namespace NXProject.ViewModels
 
             if (oldParent != null && oldParent.Children.Count == 0)
                 oldParent.IsSummary = false;
+            CollapseIfChildless(oldParent);
 
             source.Parent = newParent;
             UpdateTaskLevelRecursive(source, newParent.Level + 1);
@@ -2661,13 +2666,16 @@ namespace NXProject.ViewModels
                 insertIndex++;
 
             newCollection.Insert(insertIndex, source);
-            RecalcSummaryChain(oldParent);
-            RecalcSummaryChain(newParent);
             Project.IsDirty = true;
             RebuildFlatTasks();
             var movedVm = FlatTasks.FirstOrDefault(t => ReferenceEquals(t.Model, source));
             if (movedVm != null)
                 RescheduleAfterDrop(movedVm);
+            // Os resumos têm de ser recalculados DEPOIS do reagendamento: RescheduleAfterDrop
+            // (e a cascata de sucessores) muda as datas dos filhos, e o pai ficaria com a data
+            // anterior — era o que obrigava a usar o "Recalcular" geral.
+            RecalcSummaryChainAndNotify(oldParent);
+            RecalcSummaryChainAndNotify(newParent);
             StatusMessage = AppStrings.Get("Status_TaskReordered");
             return true;
         }
@@ -2716,6 +2724,7 @@ namespace NXProject.ViewModels
 
             if (oldParent != null && oldParent.Children.Count == 0)
                 oldParent.IsSummary = false;
+            CollapseIfChildless(oldParent);
 
             source.Parent = newParent;
             UpdateTaskLevelRecursive(source, newParent.Level + 1);
@@ -2729,13 +2738,16 @@ namespace NXProject.ViewModels
                 insertIndex++;
 
             newCollection.Insert(insertIndex, source);
-            RecalcSummaryChain(oldParent);
-            RecalcSummaryChain(newParent);
             Project.IsDirty = true;
             RebuildFlatTasks();
             var movedVm = FlatTasks.FirstOrDefault(t => ReferenceEquals(t.Model, source));
             if (movedVm != null)
                 RescheduleAfterDrop(movedVm);
+            // Os resumos têm de ser recalculados DEPOIS do reagendamento: RescheduleAfterDrop
+            // (e a cascata de sucessores) muda as datas dos filhos, e o pai ficaria com a data
+            // anterior — era o que obrigava a usar o "Recalcular" geral.
+            RecalcSummaryChainAndNotify(oldParent);
+            RecalcSummaryChainAndNotify(newParent);
             StatusMessage = AppStrings.Get("Status_TaskReordered");
             return true;
         }
@@ -3278,6 +3290,35 @@ namespace NXProject.ViewModels
             {
                 child.Parent = task;
                 UpdateTaskLevelRecursive(child, level + 1);
+            }
+        }
+
+        /// <summary>
+        /// Pai que perdeu o ÚLTIMO filho deixa de ser resumo e vira folha — mas ficava com as
+        /// datas do filho que saiu, até alguém rodar o "Recalcular" geral (que o trata como
+        /// folha e colapsa). Aqui isso é feito na hora, para o Gantt não mostrar um período que
+        /// não corresponde mais a nenhum trabalho.
+        /// </summary>
+        private static void CollapseIfChildless(ProjectTask? parent)
+        {
+            if (parent == null || parent.IsSummary || parent.Children.Count > 0) return;
+            // Sem filhos não há trabalho: o período colapsa (as HH que restaram no pai eram
+            // apenas o rollup dos filhos que saíram).
+            parent.Finish = parent.Start;
+        }
+
+        /// <summary>
+        /// Recalcula a cadeia de resumos E avisa a grid/Gantt. Sem o aviso, o modelo fica
+        /// certo mas a linha do pai continua exibindo a data anterior — era o que obrigava a
+        /// rodar o "Recalcular" geral depois de mover uma Story de Feature.
+        /// </summary>
+        private void RecalcSummaryChainAndNotify(ProjectTask? task)
+        {
+            RecalcSummaryChain(task);
+            for (var current = task; current != null; current = current.Parent)
+            {
+                var vm = FlatTasks.FirstOrDefault(t => ReferenceEquals(t.Model, current));
+                vm?.NotifyDatesChanged();
             }
         }
 
