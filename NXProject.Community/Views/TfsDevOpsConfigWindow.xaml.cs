@@ -75,6 +75,7 @@ namespace NXProject.Views
             SyncVersionFieldBox.Text = saved.SyncVersionFieldName;
             SyncNameFieldBox.Text = saved.SyncNameFieldName;
             FixedStartTagBox.Text = saved.FixedStartTagName;
+            UnplannedTagBox.Text = saved.UnplannedTagName;
             SyncPredecessorLinksCheck.IsChecked = saved.SyncPredecessorLinks;
             EnforceStoryCompletionWithTasksCheck.IsChecked = saved.EnforceStoryCompletionWithTasks;
             EnableOrgDiscoveryCheck.IsChecked = saved.EnableOrgPeopleDiscovery;
@@ -286,6 +287,7 @@ namespace NXProject.Views
             SyncVersionFieldName = string.IsNullOrWhiteSpace(SyncVersionFieldBox.Text) ? "Sync_version" : SyncVersionFieldBox.Text.Trim(),
             SyncNameFieldName   = string.IsNullOrWhiteSpace(SyncNameFieldBox.Text)   ? "Sync_Name"    : SyncNameFieldBox.Text.Trim(),
             FixedStartTagName   = string.IsNullOrWhiteSpace(FixedStartTagBox.Text)  ? "DT-INI-NEG"   : FixedStartTagBox.Text.Trim(),
+            UnplannedTagName    = string.IsNullOrWhiteSpace(UnplannedTagBox.Text)   ? "NP"           : UnplannedTagBox.Text.Trim(),
             SyncPredecessorLinks = SyncPredecessorLinksCheck.IsChecked == true,
             EnforceStoryCompletionWithTasks = EnforceStoryCompletionWithTasksCheck.IsChecked == true,
             EnableOrgPeopleDiscovery = EnableOrgDiscoveryCheck.IsChecked == true,

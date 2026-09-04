@@ -289,6 +289,11 @@
                         <TextBox x:Name="FixedStartTagBox" Height="26" Padding="6,3" Width="220" HorizontalAlignment="Left"/>
                     </StackPanel>
                     <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="{DynamicResource Cfg_UnplannedTag}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                        <TextBox x:Name="UnplannedTagBox" Height="26" Padding="6,3" Width="220" HorizontalAlignment="Left"
+                                 ToolTip="{DynamicResource Cfg_UnplannedTagTip}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,8,0,0">
                         <TextBlock Text="{DynamicResource Cfg_TaskPlanFile}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
                         <Grid>
                             <Grid.ColumnDefinitions>

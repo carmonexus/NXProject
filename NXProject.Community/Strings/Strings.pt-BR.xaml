@@ -724,6 +724,8 @@
     <sys:String x:Key="Cfg_SyncVersionField">Campo controle de versão (Sync_version)</sys:String>
     <sys:String x:Key="Cfg_SyncNameField">Campo usuário da sync (Sync_Name)</sys:String>
     <sys:String x:Key="Cfg_FixedStartTag">Tag de data negociada (início fixado)</sys:String>
+    <sys:String x:Key="Cfg_UnplannedTag">Tag de Task Não Planejada</sys:String>
+    <sys:String x:Key="Cfg_UnplannedTagTip">Task com esta tag no DevOps aparece com o selo em destaque no card do TaskBoard. Padrão: NP.</sys:String>
     <sys:String x:Key="Cfg_SyncPredLinks">Sincronizar links de predecessora no DevOps</sys:String>
     <sys:String x:Key="Cfg_EnforceStoryCompletionWithTasks">Encerrar Story somente com Task</sys:String>
     <sys:String x:Key="Cfg_FutureSprints">Sprints futuras no dropdown (dias a partir de hoje)</sys:String>
@@ -1785,6 +1787,7 @@
     <sys:String x:Key="Sprint_ColProject">Projeto</sys:String>
     <sys:String x:Key="Sprint_ShowEpicHint">Marcado: EPIC em coluna própria. Desmarcado: EPIC dentro do card da Feature.</sys:String>
     <sys:String x:Key="Sprint_ShowProjHint">Marcado: Projeto em coluna própria. Desmarcado: Projeto junto do EPIC.</sys:String>
+    <sys:String x:Key="Sprint_UnplannedTip">Task não planejada (tag no DevOps)</sys:String>
     <sys:String x:Key="Sprint_OnlyScheduleStory">Somente Story do cronograma</sys:String>
     <sys:String x:Key="Sprint_OnlyScheduleStoryTip">Mostra apenas as Stories que estão no cronograma aberto. As Tasks continuam vindo do TFS normalmente, para você conferir se os filtros atendem.</sys:String>
     <sys:String x:Key="Sprint_FSOnlyScheduleStory">Somente Story do cronograma</sys:String>

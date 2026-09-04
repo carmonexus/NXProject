@@ -2444,6 +2444,23 @@ namespace NXProject.Views
             var titleLine = new StackPanel { Orientation = Orientation.Horizontal };
             if (isNew)
                 titleLine.Children.Add(new TextBlock { Text = "🆕 ", VerticalAlignment = VerticalAlignment.Center });
+            // Task NÃO PLANEJADA: tag configurável no DevOps (padrão "NP"). Selo em destaque.
+            var npTag = string.IsNullOrWhiteSpace(_options.UnplannedTagName) ? "NP" : _options.UnplannedTagName.Trim();
+            if (HasTag(EffTags(t.Id, t.Tags), npTag))
+                titleLine.Children.Add(new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xE1, 0x8A)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(0xB8, 0x7A, 0x00)),
+                    BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
+                    Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 5, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = AppStrings.Get("Sprint_UnplannedTip"),
+                    Child = new TextBlock
+                    {
+                        Text = npTag, FontSize = 10, FontWeight = FontWeights.Bold,
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x52, 0x00))
+                    }
+                });
             // Prioridade EDITÁVEL via ComboBox (picklist P{min}..P{max}, igual ao TFS). A mudança
             // entra na fila do Salvar TFS. (Só para Task existente.)
             if (!isNew)

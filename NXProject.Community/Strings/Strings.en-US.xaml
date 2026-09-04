@@ -920,6 +920,7 @@
     <sys:String x:Key="Sprint_ColProject">Project</sys:String>
     <sys:String x:Key="Sprint_ShowEpicHint">Checked: EPIC in its own column. Unchecked: EPIC inside the Feature card.</sys:String>
     <sys:String x:Key="Sprint_ShowProjHint">Checked: Project in its own column. Unchecked: Project shown next to the EPIC.</sys:String>
+    <sys:String x:Key="Sprint_UnplannedTip">Unplanned task (DevOps tag)</sys:String>
     <sys:String x:Key="Sprint_OnlyScheduleStory">Schedule stories only</sys:String>
     <sys:String x:Key="Sprint_OnlyScheduleStoryTip">Shows only the Stories present in the open schedule. Tasks still come from TFS as usual, so you can check whether the filters cover them.</sys:String>
     <sys:String x:Key="Sprint_FSOnlyScheduleStory">Schedule stories only</sys:String>
@@ -1118,6 +1119,8 @@
     <sys:String x:Key="Cfg_SyncVersionField">Version control field (Sync_version)</sys:String>
     <sys:String x:Key="Cfg_SyncNameField">Sync user field (Sync_Name)</sys:String>
     <sys:String x:Key="Cfg_FixedStartTag">Negotiated date tag (fixed start)</sys:String>
+    <sys:String x:Key="Cfg_UnplannedTag">Unplanned Task tag</sys:String>
+    <sys:String x:Key="Cfg_UnplannedTagTip">A Task with this tag in DevOps shows a highlighted badge on the TaskBoard card. Default: NP.</sys:String>
     <sys:String x:Key="Cfg_SyncPredLinks">Sync predecessor links in DevOps</sys:String>
     <sys:String x:Key="Cfg_EnforceStoryCompletionWithTasks">Close Story only with Task</sys:String>
     <sys:String x:Key="Cfg_FutureSprints">Future sprints in the dropdown (days from today)</sys:String>

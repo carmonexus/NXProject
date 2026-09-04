@@ -142,6 +142,10 @@ namespace NXProject.Services
         /// <summary>Tag DevOps que marca data de início fixada/negociada (ex.: "DT-INI-NEG").</summary>
         public string FixedStartTagName { get; set; } = "DT-INI-NEG";
 
+        /// <summary>Tag que marca a Task como NÃO PLANEJADA no DevOps. Aparece em destaque
+        /// no card do TaskBoard quando a Task tem essa tag.</summary>
+        public string UnplannedTagName { get; set; } = "NP";
+
         /// <summary>Sincroniza links de predecessora no DevOps durante Export → Sincronizar.</summary>
         public bool SyncPredecessorLinks { get; set; } = true;
 
@@ -284,6 +288,10 @@ namespace NXProject.Services
             public string SyncVersionFieldName { get; set; } = "Sync_version";
             public string SyncNameFieldName { get; set; } = "Sync_Name";
             public string FixedStartTagName { get; set; } = "DT-INI-NEG";
+
+        /// <summary>Tag que marca a Task como NÃO PLANEJADA no DevOps. Aparece em destaque
+        /// no card do TaskBoard quando a Task tem essa tag.</summary>
+        public string UnplannedTagName { get; set; } = "NP";
             public bool   ApprovedFieldEnabled { get; set; } = true;
             public string ApprovedFieldName { get; set; } = "Approved";
             public bool   EpicTypeFieldEnabled { get; set; } = true;
@@ -356,6 +364,8 @@ namespace NXProject.Services
                     ? options.SyncNameFieldName : stored.SyncNameFieldName.Trim();
                 options.FixedStartTagName = string.IsNullOrWhiteSpace(stored.FixedStartTagName)
                     ? options.FixedStartTagName : stored.FixedStartTagName.Trim();
+                options.UnplannedTagName = string.IsNullOrWhiteSpace(stored.UnplannedTagName)
+                    ? options.UnplannedTagName : stored.UnplannedTagName.Trim();
                 options.ApprovedFieldEnabled = stored.ApprovedFieldEnabled;
                 options.ApprovedFieldName = string.IsNullOrWhiteSpace(stored.ApprovedFieldName)
                     ? options.ApprovedFieldName : stored.ApprovedFieldName.Trim();
@@ -415,6 +425,7 @@ namespace NXProject.Services
                 SyncVersionFieldName = string.IsNullOrWhiteSpace(options.SyncVersionFieldName) ? "Sync_version" : options.SyncVersionFieldName.Trim(),
                 SyncNameFieldName = string.IsNullOrWhiteSpace(options.SyncNameFieldName) ? "Sync_Name" : options.SyncNameFieldName.Trim(),
                 FixedStartTagName = string.IsNullOrWhiteSpace(options.FixedStartTagName) ? "DT-INI-NEG" : options.FixedStartTagName.Trim(),
+                UnplannedTagName = string.IsNullOrWhiteSpace(options.UnplannedTagName) ? "NP" : options.UnplannedTagName.Trim(),
                 ApprovedFieldEnabled = options.ApprovedFieldEnabled,
                 ApprovedFieldName = string.IsNullOrWhiteSpace(options.ApprovedFieldName) ? "Approved" : options.ApprovedFieldName.Trim(),
                 EpicTypeFieldEnabled = options.EpicTypeFieldEnabled,
