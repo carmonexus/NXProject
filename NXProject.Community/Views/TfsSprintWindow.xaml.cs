@@ -108,6 +108,8 @@ namespace NXProject.Views
             public List<string>? Persons { get; set; }   // vazio/null = todas
             public int? View { get; set; }              // 0 = Por Story, 1 = Pessoa & Task
             public bool? OnlySchedule { get; set; }
+            public bool? OnlyBlocked { get; set; }    // só Tasks com a tag de bloqueio
+            public bool? OnlyUnplanned { get; set; }  // só Tasks com a tag de não planejada
             public bool? EditMode { get; set; }
             public List<string>? HiddenStates { get; set; }
             public List<string>? SprintPaths { get; set; }   // >1 = multi-seleção de sprints
@@ -169,6 +171,8 @@ namespace NXProject.Views
                 _prefs.Persons = _selectedPeople.Count > 0 ? _selectedPeople.ToList() : null;
                 _prefs.View = ViewCombo.SelectedIndex;
                 _prefs.OnlySchedule = OnlyScheduleCheck.IsChecked == true;
+                _prefs.OnlyBlocked = OnlyBlockedCheck.IsChecked == true;
+                _prefs.OnlyUnplanned = OnlyUnplannedCheck.IsChecked == true;
                 _prefs.EditMode = EditModeCheck.IsChecked == true;
                 _prefs.HiddenStates = _hiddenStates.ToList();
                 var p = SprintSettingsPath;
@@ -395,6 +399,8 @@ namespace NXProject.Views
                         PopulatePersonFilter(people);
                         if (_prefs.View is int vw && vw >= 0 && vw < ViewCombo.Items.Count) ViewCombo.SelectedIndex = vw;
                         if (_prefs.OnlySchedule is bool os) OnlyScheduleCheck.IsChecked = os;
+                        if (_prefs.OnlyBlocked is bool ob) OnlyBlockedCheck.IsChecked = ob;
+                        if (_prefs.OnlyUnplanned is bool ou) OnlyUnplannedCheck.IsChecked = ou;
                         if (_prefs.EditMode is bool em) EditModeCheck.IsChecked = em;
                         _hiddenStates.Clear();
                         if (_prefs.HiddenStates is { } hs)
@@ -1171,6 +1177,10 @@ namespace NXProject.Views
             // então filtrar pelo id da própria Task esvaziava o board).
             if (OnlyScheduleCheck.IsChecked == true
                 && !(t.ParentId is int sp0 && _scheduleIds.Contains(sp0))) return false;
+            // Recortes por tag da Task (bloqueada / não planejada). Usam o valor EFETIVO das
+            // tags, então respeitam alterações ainda na fila do "Atualizar TFS".
+            if (OnlyBlockedCheck.IsChecked == true && !EffBlocked(t.Id, t.Tags)) return false;
+            if (OnlyUnplannedCheck.IsChecked == true && !HasTag(EffTags(t.Id, t.Tags), UnplannedTag())) return false;
             if (_selectedPeople.Count > 0 && !_selectedPeople.Contains(t.AssignedTo ?? "")) return false;
             if (_selectedStoryIds.Count > 0 && !(t.ParentId is int p && _selectedStoryIds.Contains(p))) return false;
             // Busca ao vivo com escopo (Ambos / Task / Story).
@@ -1399,6 +1409,10 @@ namespace NXProject.Views
                 : AppStrings.Get("Sprint_FSClosedAll"));
             if (OnlyScheduleCheck.IsChecked == true)
                 parts.Add(AppStrings.Get("Sprint_FSOnlyScheduleStory"));
+            if (OnlyBlockedCheck.IsChecked == true)
+                parts.Add(AppStrings.Get("Sprint_FSOnlyBlocked"));
+            if (OnlyUnplannedCheck.IsChecked == true)
+                parts.Add(AppStrings.Get("Sprint_FSOnlyUnplanned"));
             if (!string.IsNullOrWhiteSpace(SearchBox.Text))
                 parts.Add(AppStrings.Get("Sprint_FSSearch", SearchBox.Text.Trim()));
             return AppStrings.Get("Sprint_FSPrefix", string.Join(" · ", parts));
@@ -2412,6 +2426,10 @@ namespace NXProject.Views
             };
         }
 
+        /// <summary>Nome da tag de "não planejada" (configurável; padrão "NP").</summary>
+        private string UnplannedTag() =>
+            string.IsNullOrWhiteSpace(_options.UnplannedTagName) ? "NP" : _options.UnplannedTagName.Trim();
+
         private Border BuildCard(TfsImportService.SprintTaskCard t, string? storyTitle = null)
         {
             if (t.Id < 0 && _newCards.FirstOrDefault(n => n.TempId == t.Id) is { } nct)
@@ -2445,7 +2463,7 @@ namespace NXProject.Views
             if (isNew)
                 titleLine.Children.Add(new TextBlock { Text = "🆕 ", VerticalAlignment = VerticalAlignment.Center });
             // Task NÃO PLANEJADA: tag configurável no DevOps (padrão "NP"). Selo em destaque.
-            var npTag = string.IsNullOrWhiteSpace(_options.UnplannedTagName) ? "NP" : _options.UnplannedTagName.Trim();
+            var npTag = UnplannedTag();
             if (HasTag(EffTags(t.Id, t.Tags), npTag))
                 titleLine.Children.Add(new Border
                 {

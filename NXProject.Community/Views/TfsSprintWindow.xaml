@@ -122,6 +122,12 @@
                         <CheckBox x:Name="OnlyScheduleCheck" Click="OnFilterChanged" Margin="0,2,0,2"
                                   Content="{DynamicResource Sprint_OnlyScheduleStory}"
                                   ToolTip="{DynamicResource Sprint_OnlyScheduleStoryTip}"/>
+                        <CheckBox x:Name="OnlyBlockedCheck" Click="OnFilterChanged" Margin="0,2,0,2"
+                                  Content="{DynamicResource Sprint_OnlyBlocked}"
+                                  ToolTip="{DynamicResource Sprint_OnlyBlockedTip}"/>
+                        <CheckBox x:Name="OnlyUnplannedCheck" Click="OnFilterChanged" Margin="0,2,0,2"
+                                  Content="{DynamicResource Sprint_OnlyUnplanned}"
+                                  ToolTip="{DynamicResource Sprint_OnlyUnplannedTip}"/>
                         <CheckBox x:Name="AutoOpenCheck" Click="OnAutoOpenChanged" Margin="0,2,0,2"
                                   Content="{DynamicResource Sprint_AutoOpen}"
                                   ToolTip="{DynamicResource Sprint_AutoOpenTip}"/>

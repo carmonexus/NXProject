@@ -1787,6 +1787,12 @@
     <sys:String x:Key="Sprint_ColProject">Projeto</sys:String>
     <sys:String x:Key="Sprint_ShowEpicHint">Marcado: EPIC em coluna própria. Desmarcado: EPIC dentro do card da Feature.</sys:String>
     <sys:String x:Key="Sprint_ShowProjHint">Marcado: Projeto em coluna própria. Desmarcado: Projeto junto do EPIC.</sys:String>
+    <sys:String x:Key="Sprint_OnlyBlocked">Somente Task bloqueada</sys:String>
+    <sys:String x:Key="Sprint_OnlyBlockedTip">Mostra apenas as Tasks com a tag de bloqueio (Blocked).</sys:String>
+    <sys:String x:Key="Sprint_OnlyUnplanned">Somente Task não planejada</sys:String>
+    <sys:String x:Key="Sprint_OnlyUnplannedTip">Mostra apenas as Tasks com a tag de não planejada (padrão NP, configurável na Configuração TFS).</sys:String>
+    <sys:String x:Key="Sprint_FSOnlyBlocked">Somente bloqueadas</sys:String>
+    <sys:String x:Key="Sprint_FSOnlyUnplanned">Somente não planejadas</sys:String>
     <sys:String x:Key="Sprint_UnplannedTip">Task não planejada (tag no DevOps)</sys:String>
     <sys:String x:Key="Sprint_OnlyScheduleStory">Somente Story do cronograma</sys:String>
     <sys:String x:Key="Sprint_OnlyScheduleStoryTip">Mostra apenas as Stories que estão no cronograma aberto. As Tasks continuam vindo do TFS normalmente, para você conferir se os filtros atendem.</sys:String>

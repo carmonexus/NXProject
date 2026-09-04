@@ -920,6 +920,12 @@
     <sys:String x:Key="Sprint_ColProject">Project</sys:String>
     <sys:String x:Key="Sprint_ShowEpicHint">Checked: EPIC in its own column. Unchecked: EPIC inside the Feature card.</sys:String>
     <sys:String x:Key="Sprint_ShowProjHint">Checked: Project in its own column. Unchecked: Project shown next to the EPIC.</sys:String>
+    <sys:String x:Key="Sprint_OnlyBlocked">Blocked tasks only</sys:String>
+    <sys:String x:Key="Sprint_OnlyBlockedTip">Shows only Tasks carrying the Blocked tag.</sys:String>
+    <sys:String x:Key="Sprint_OnlyUnplanned">Unplanned tasks only</sys:String>
+    <sys:String x:Key="Sprint_OnlyUnplannedTip">Shows only Tasks carrying the unplanned tag (default NP, set in the TFS configuration).</sys:String>
+    <sys:String x:Key="Sprint_FSOnlyBlocked">Blocked only</sys:String>
+    <sys:String x:Key="Sprint_FSOnlyUnplanned">Unplanned only</sys:String>
     <sys:String x:Key="Sprint_UnplannedTip">Unplanned task (DevOps tag)</sys:String>
     <sys:String x:Key="Sprint_OnlyScheduleStory">Schedule stories only</sys:String>
     <sys:String x:Key="Sprint_OnlyScheduleStoryTip">Shows only the Stories present in the open schedule. Tasks still come from TFS as usual, so you can check whether the filters cover them.</sys:String>
