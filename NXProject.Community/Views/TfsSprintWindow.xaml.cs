@@ -113,6 +113,8 @@ namespace NXProject.Views
             public bool AutoOpen { get; set; }   // abrir o TaskBoard ao iniciar o NX
             public bool? ShowEpic { get; set; }  // coluna EPIC na visão Pessoa & Task (null = mostra)
             public bool? ShowProjCol { get; set; } // coluna Projeto na visão Projeto & Story (null = mostra)
+            public bool? ShowFeatCol { get; set; } // coluna Feature na visão Pessoa & Task (null = mostra)
+            public bool? ShowEpicCol { get; set; } // coluna EPIC na visão Projeto & Story (null = mostra)
             public bool WinMaximized { get; set; }
             public double WinLeft { get; set; }
             public double WinTop { get; set; }
@@ -1656,16 +1658,34 @@ namespace NXProject.Views
                 Margin = new Thickness(3), Padding = new Thickness(6), Child = featSp };
         }
 
+        /// <summary>Checkbox que liga/desliga uma coluna opcional do board. Fica no cabeçalho
+        /// da coluna seguinte e a escolha é salva nas preferências.</summary>
+        private CheckBox MakeColToggle(string label, bool current, string hint, Action<bool> apply)
+        {
+            var chk = new CheckBox
+            {
+                Content = label, IsChecked = current, VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 10, Margin = new Thickness(6, 2, 0, 2), ToolTip = hint
+            };
+            chk.Click += (_, _) => { apply(chk.IsChecked == true); SavePrefs(); Render(); };
+            return chk;
+        }
+
         private void RenderPersonBoard(List<TfsImportService.SprintTaskCard> allVisible, List<string> states)
         {
-            // Coluna EPIC é opcional nesta visão (checkbox no cabeçalho da Feature).
+            // Colunas EPIC e Feature são opcionais: cada checkbox fica no cabeçalho da coluna
+            // SEGUINTE (EPIC no da Feature, Feature no da Story). Desligada, a informação volta
+            // para dentro do card seguinte, em vez de sumir.
             var showEpic = _prefs.ShowEpic ?? true;
-            // Colunas: Pessoa | [EPIC] | Feature | Story | estados.
+            var showFeat = _prefs.ShowFeatCol ?? true;
+            // Colunas: Pessoa | [EPIC] | [Feature] | Story | estados.
             var cols = new List<GridLength> { new(150) };
             if (showEpic) cols.Add(new(160));
-            cols.Add(new(160)); cols.Add(new(210));
-            var cFeat = showEpic ? 2 : 1;          // índice da coluna Feature
-            var cStory = cFeat + 1;                // Story
+            if (showFeat) cols.Add(new(160));
+            cols.Add(new(210));
+            var cEpic = 1;                                   // só usado quando showEpic
+            var cFeat = showEpic ? 2 : 1;                    // só usado quando showFeat
+            var cStory = (showEpic ? 1 : 0) + (showFeat ? 1 : 0) + 1;
             var cState0 = cStory + 1;              // 1ª coluna de estado
             foreach (var _ in states) cols.Add(new GridLength(210));
 
@@ -1675,20 +1695,27 @@ namespace NXProject.Views
             AddCardsBandRow(cols, cState0, AppStrings.Get("Sprint_CardsAreTasks"));
             var head = MakeRowGrid(cols);
             AddCell(head, 0, MakeHeader(AppStrings.Get("Sprint_ColPerson")));
-            if (showEpic) AddCell(head, 1, MakeHeader(AppStrings.Get("Sprint_ColEpic")));
+            if (showEpic) AddCell(head, cEpic, MakeHeader(AppStrings.Get("Sprint_ColEpic")));
             // Cabeçalho da Feature + checkbox que liga/desliga a coluna do EPIC.
-            var featHead = new StackPanel { Orientation = Orientation.Horizontal };
-            featHead.Children.Add(MakeHeader(AppStrings.Get("Sprint_ColFeature")));
-            var epicChk = new CheckBox
+            if (showFeat)
             {
-                Content = AppStrings.Get("Sprint_ColEpic"), IsChecked = showEpic,
-                VerticalAlignment = VerticalAlignment.Center, FontSize = 10, Margin = new Thickness(6, 2, 0, 2),
-                ToolTip = AppStrings.Get("Sprint_ShowEpicHint")
-            };
-            epicChk.Click += (_, _) => { _prefs.ShowEpic = epicChk.IsChecked == true; SavePrefs(); Render(); };
-            featHead.Children.Add(epicChk);
-            AddCell(head, cFeat, featHead);
-            AddCell(head, cStory, MakeHeader(AppStrings.Get("Sprint_ColStory")));
+                var featHead = new StackPanel { Orientation = Orientation.Horizontal };
+                featHead.Children.Add(MakeHeader(AppStrings.Get("Sprint_ColFeature")));
+                featHead.Children.Add(MakeColToggle(AppStrings.Get("Sprint_ColEpic"), showEpic,
+                    AppStrings.Get("Sprint_ShowEpicHint"), v => _prefs.ShowEpic = v));
+                AddCell(head, cFeat, featHead);
+            }
+            // Cabeçalho da Story + checkbox que liga/desliga a coluna da Feature.
+            var storyHead = new StackPanel { Orientation = Orientation.Horizontal };
+            storyHead.Children.Add(MakeHeader(AppStrings.Get("Sprint_ColStory")));
+            storyHead.Children.Add(MakeColToggle(AppStrings.Get("Sprint_ColFeature"), showFeat,
+                AppStrings.Get("Sprint_ShowFeatHint"), v => _prefs.ShowFeatCol = v));
+            // Com a coluna Feature desligada, o checkbox do EPIC migra para cá (não há
+            // cabeçalho de Feature para hospedá-lo).
+            if (!showFeat)
+                storyHead.Children.Add(MakeColToggle(AppStrings.Get("Sprint_ColEpic"), showEpic,
+                    AppStrings.Get("Sprint_ShowEpicHint"), v => _prefs.ShowEpic = v));
+            AddCell(head, cStory, storyHead);
             for (int i = 0; i < states.Count; i++) AddCell(head, i + cState0, MakeStateHeader(states[i]));
             BoardHost.Children.Add(head);
 
@@ -1804,6 +1831,28 @@ namespace NXProject.Views
                     var featOwner = storyId > 0 ? (StoryById(storyId)?.FeatureAssignedTo ?? "") : "";
                     var featEpic = storyId > 0 ? (StoryById(storyId)?.FeatureEpicTitle ?? "") : "";
                     var featProj = storyId > 0 ? (StoryById(storyId)?.FeatureProjectTitle ?? "") : "";
+                    // Coluna Feature desligada: a Feature (e o EPIC/Projeto, se também estiverem
+                    // desligados) entram como linhas no TOPO do card da Story.
+                    if (!showFeat)
+                    {
+                        var fBrush = new SolidColorBrush(
+                            (StateBrush(FeatureColorKey) as SolidColorBrush)?.Color ?? FactoryStateColor(FeatureColorKey));
+                        var inlinePos = 0;
+                        void InlineLine(string icon, string text, bool strong)
+                        {
+                            if (string.IsNullOrWhiteSpace(text)) return;
+                            storySp.Children.Insert(inlinePos++, new TextBlock
+                            {
+                                Text = icon + " " + text, FontSize = strong ? 10 : 9,
+                                FontWeight = strong ? FontWeights.SemiBold : FontWeights.Normal,
+                                Foreground = fBrush, Opacity = strong ? 1.0 : 0.75,
+                                TextWrapping = TextWrapping.Wrap
+                            });
+                        }
+                        if (!showEpic && multiProject) InlineLine("🗂", featProj, false);
+                        if (!showEpic) InlineLine("🏔", featEpic, false);
+                        InlineLine("📦", featTitle, true);
+                    }
                     // Coluna EPIC (opcional): card do EPIC com o Projeto (sem borda) acima quando há vários.
                     if (showEpic)
                     {
@@ -1812,14 +1861,17 @@ namespace NXProject.Views
                             epicSp.Children.Add(BuildLabelCard("🗂", featProj, strong: false, id: StoryById(storyId)?.FeatureProjectId ?? 0));
                         if (!string.IsNullOrWhiteSpace(featEpic))
                             epicSp.Children.Add(BuildLabelCard("🏔", featEpic, strong: true, id: StoryById(storyId)?.FeatureEpicId ?? 0));
-                        AddCell(row, 1, epicSp);
+                        AddCell(row, cEpic, epicSp);
                     }
-                    // Card da Feature: com a coluna EPIC ligada ele não repete o EPIC; desligada,
-                    // o EPIC/Project voltam para dentro do card (linha no nome da Feature).
-                    UIElement featCell = string.IsNullOrWhiteSpace(featTitle) ? new TextBlock()
-                        : showEpic ? BuildFeatureCard(featId, featTitle, featOwner, "", "", false)
-                        : BuildFeatureCard(featId, featTitle, featOwner, featEpic, featProj, multiProject);
-                    AddCell(row, cFeat, featCell);
+                    if (showFeat)
+                    {
+                        // Card da Feature: com a coluna EPIC ligada ele não repete o EPIC; desligada,
+                        // o EPIC/Project voltam para dentro do card (linha no nome da Feature).
+                        UIElement featCell = string.IsNullOrWhiteSpace(featTitle) ? new TextBlock()
+                            : showEpic ? BuildFeatureCard(featId, featTitle, featOwner, "", "", false)
+                            : BuildFeatureCard(featId, featTitle, featOwner, featEpic, featProj, multiProject);
+                        AddCell(row, cFeat, featCell);
+                    }
                     AddCell(row, cStory, storyBorder);
                     for (int i = 0; i < states.Count; i++)
                         AddCell(row, i + cState0, BuildStateCell(states[i], tks, showStory: false));
@@ -1874,14 +1926,18 @@ namespace NXProject.Views
             var storyStates = TfsImportService.OrderTaskboardStates(states.Concat(stories.Select(EffStoryState)));
             if (storyStates.Count == 0) storyStates = states;
 
-            // Coluna Projeto é opcional (checkbox no cabeçalho do EPIC).
+            // Colunas Projeto e EPIC são opcionais: cada checkbox fica no cabeçalho da coluna
+            // SEGUINTE (Projeto no do EPIC, EPIC no da Feature). Desligada, a informação volta
+            // para dentro do card seguinte.
             var showProjCol = _prefs.ShowProjCol ?? true;
-            // Colunas: [Projeto] | EPIC | Feature | estados.
+            var showEpicCol = _prefs.ShowEpicCol ?? true;
+            // Colunas: [Projeto] | [EPIC] | Feature | estados.
             var cols = new List<GridLength>();
             if (showProjCol) cols.Add(new(150));
-            cols.Add(new(170)); cols.Add(new(180));
-            var cEpic = showProjCol ? 1 : 0;
-            var cFeat = cEpic + 1;
+            if (showEpicCol) cols.Add(new(170));
+            cols.Add(new(180));
+            var cEpic = showProjCol ? 1 : 0;                  // só usado quando showEpicCol
+            var cFeat = (showProjCol ? 1 : 0) + (showEpicCol ? 1 : 0);
             var cState0 = cFeat + 1;
             foreach (var _ in storyStates) cols.Add(new GridLength(240));
 
@@ -1890,18 +1946,24 @@ namespace NXProject.Views
             var head = MakeRowGrid(cols);
             if (showProjCol) AddCell(head, 0, MakeHeader(AppStrings.Get("Sprint_ColProject")));
             // Cabeçalho do EPIC + checkbox que liga/desliga a coluna do Projeto.
-            var epicHead = new StackPanel { Orientation = Orientation.Horizontal };
-            epicHead.Children.Add(MakeHeader(AppStrings.Get("Sprint_ColEpic")));
-            var projChk = new CheckBox
+            if (showEpicCol)
             {
-                Content = AppStrings.Get("Sprint_ColProject"), IsChecked = showProjCol,
-                VerticalAlignment = VerticalAlignment.Center, FontSize = 10, Margin = new Thickness(6, 2, 0, 2),
-                ToolTip = AppStrings.Get("Sprint_ShowProjHint")
-            };
-            projChk.Click += (_, _) => { _prefs.ShowProjCol = projChk.IsChecked == true; SavePrefs(); Render(); };
-            epicHead.Children.Add(projChk);
-            AddCell(head, cEpic, epicHead);
-            AddCell(head, cFeat, MakeHeader(AppStrings.Get("Sprint_ColFeature")));
+                var epicHead = new StackPanel { Orientation = Orientation.Horizontal };
+                epicHead.Children.Add(MakeHeader(AppStrings.Get("Sprint_ColEpic")));
+                epicHead.Children.Add(MakeColToggle(AppStrings.Get("Sprint_ColProject"), showProjCol,
+                    AppStrings.Get("Sprint_ShowProjHint"), v => _prefs.ShowProjCol = v));
+                AddCell(head, cEpic, epicHead);
+            }
+            // Cabeçalho da Feature + checkbox que liga/desliga a coluna do EPIC.
+            var featHead2 = new StackPanel { Orientation = Orientation.Horizontal };
+            featHead2.Children.Add(MakeHeader(AppStrings.Get("Sprint_ColFeature")));
+            featHead2.Children.Add(MakeColToggle(AppStrings.Get("Sprint_ColEpic"), showEpicCol,
+                AppStrings.Get("Sprint_ShowEpicColHint"), v => _prefs.ShowEpicCol = v));
+            // Sem a coluna EPIC, o checkbox do Projeto migra para cá.
+            if (!showEpicCol)
+                featHead2.Children.Add(MakeColToggle(AppStrings.Get("Sprint_ColProject"), showProjCol,
+                    AppStrings.Get("Sprint_ShowProjHint"), v => _prefs.ShowProjCol = v));
+            AddCell(head, cFeat, featHead2);
             for (int i = 0; i < storyStates.Count; i++) AddCell(head, i + cState0, MakeStateHeader(storyStates[i]));
             BoardHost.Children.Add(head);
 
@@ -1938,18 +2000,24 @@ namespace NXProject.Views
                     AddCell(row, 0, projTitle == lastProj ? new TextBlock()
                         : BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0));
                 // Sem a coluna Projeto, ele aparece como linha discreta acima do EPIC.
-                var epicSp = new StackPanel();
-                if (isNewBlock)
+                if (showEpicCol)
                 {
-                    if (!showProjCol && !string.IsNullOrWhiteSpace(projTitle))
-                        epicSp.Children.Add(BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0));
-                    epicSp.Children.Add(BuildLabelCard("🏔", epicTitle, strong: true, id: featRow?.FeatureEpicId ?? 0));
+                    var epicSp = new StackPanel();
+                    if (isNewBlock)
+                    {
+                        if (!showProjCol && !string.IsNullOrWhiteSpace(projTitle))
+                            epicSp.Children.Add(BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0));
+                        epicSp.Children.Add(BuildLabelCard("🏔", epicTitle, strong: true, id: featRow?.FeatureEpicId ?? 0));
+                    }
+                    AddCell(row, cEpic, epicSp);
                 }
-                AddCell(row, cEpic, epicSp);
                 lastProj = projTitle; lastEpic = epicTitle;
-                // Card da Feature (sem EPIC/Project — já têm coluna própria aqui).
-                AddCell(row, cFeat, BuildFeatureCard(featureId, fg.Key,
-                    featRow?.FeatureAssignedTo ?? "", "", "", false, addStory));
+                // Card da Feature. Com a coluna EPIC desligada, o EPIC (e o Projeto, se a coluna
+                // dele também estiver desligada) voltam para dentro do card.
+                AddCell(row, cFeat, showEpicCol
+                    ? BuildFeatureCard(featureId, fg.Key, featRow?.FeatureAssignedTo ?? "", "", "", false, addStory)
+                    : BuildFeatureCard(featureId, fg.Key, featRow?.FeatureAssignedTo ?? "",
+                        epicTitle, projTitle, !showProjCol, addStory));
 
                 for (int i = 0; i < storyStates.Count; i++)
                 {

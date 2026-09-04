@@ -920,6 +920,8 @@
     <sys:String x:Key="Sprint_ColProject">Project</sys:String>
     <sys:String x:Key="Sprint_ShowEpicHint">Checked: EPIC in its own column. Unchecked: EPIC inside the Feature card.</sys:String>
     <sys:String x:Key="Sprint_ShowProjHint">Checked: Project in its own column. Unchecked: Project shown next to the EPIC.</sys:String>
+    <sys:String x:Key="Sprint_ShowFeatHint">Checked: Feature in its own column. Unchecked: Feature inside the Story card.</sys:String>
+    <sys:String x:Key="Sprint_ShowEpicColHint">Checked: EPIC in its own column. Unchecked: EPIC inside the Feature card.</sys:String>
     <sys:String x:Key="Sprint_CardsAreStories">↓ Cards by state: STORY</sys:String>
     <sys:String x:Key="Sprint_CardsAreTasks">↓ Cards by state: TASK</sys:String>
     <sys:String x:Key="Sprint_NoFeature">(no Feature)</sys:String>
