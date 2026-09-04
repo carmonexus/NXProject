@@ -181,6 +181,46 @@ function Invoke-DotnetCommandWithRetry {
     }
 }
 
+# Confere se o project.assets.json tem o alvo com RID exigido pelo publish self-contained.
+# O build do projeto temporario do WPF (*_wpftmp) refaz o restore SEM o RID no fim de cada
+# publish, deixando o assets.json sem "net10.0-windows*/win-x64". Se esse arquivo sobreviver
+# (obj/ nao pode ser apagado por lock, por exemplo), o publish morre com NETSDK1047 — e a
+# versao ja foi bumpada. Entao validamos e re-restauramos ANTES de publicar.
+function Test-RestoreHasRuntimeTarget {
+    $assets = Join-Path $SolutionDir "NXProject.Community\obj\project.assets.json"
+    if (-not (Test-Path $assets)) { return $false }
+    try {
+        $json = Get-Content -LiteralPath $assets -Raw | ConvertFrom-Json
+    } catch {
+        return $false
+    }
+    if (-not $json.targets) { return $false }
+    foreach ($name in $json.targets.PSObject.Properties.Name) {
+        if ($name -like "*/$Runtime") { return $true }
+    }
+    return $false
+}
+
+function Assert-RestoreHasRuntimeTarget {
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        if (Test-RestoreHasRuntimeTarget) { return }
+
+        Write-Host "  assets.json sem o alvo '$Runtime' (tentativa $attempt/3); refazendo o restore..." -ForegroundColor Yellow
+        dotnet build-server shutdown 2>&1 | Out-Null
+        $objDir = Join-Path $SolutionDir "NXProject.Community\obj"
+        if (Test-Path $objDir) {
+            Remove-Item $objDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        dotnet restore $ProjectFile -r $Runtime -p:SelfContained=true --nologo -v q --force | Out-Host
+    }
+
+    Write-Host ""
+    Write-Host "O restore nao produziu o alvo '$Runtime' no project.assets.json (NETSDK1047 certo no publish)." -ForegroundColor Red
+    Write-Host "Feche o app/IDE que esta segurando a pasta obj/ e rode o script de novo." -ForegroundColor Red
+    exit 1
+}
+
+
 Stop-NXProjectCommunityProcess
 
 # Remove arquivos _wpftmp.csproj gerados pelo C# Dev Kit do VS Code antes de compilar.
@@ -264,6 +304,8 @@ if (Test-Path $objDir) {
 Invoke-DotnetCommandWithRetry -ActionLabel "O restore" -Command {
     dotnet restore $ProjectFile -r $Runtime -p:SelfContained=true --nologo -v q --force
 }
+
+Assert-RestoreHasRuntimeTarget
 
 Write-Step "Publicando NXProject Community self-contained ($Runtime)..."
 if (Test-Path $PublishDir) {
