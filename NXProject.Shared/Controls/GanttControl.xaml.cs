@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -589,7 +589,7 @@ namespace NXProject.Controls
             {
                 _resetScrollOnNextRender = false;
                 GanttScroll.ScrollToTop();
-                GanttScroll.ScrollToLeftEnd();
+                ScrollToFirstActivity();
             }
 
             RenderHeader(GanttScroll.HorizontalOffset);
@@ -597,6 +597,32 @@ namespace NXProject.Controls
             RenderTodayLine();
             RenderBars();
             RenderDependencies();
+        }
+
+        // Posiciona a viewport na primeira atividade do cronograma (com uma pequena
+        // margem antes dela). O eixo tem origem em ProjectStart, que pode ser bem
+        // anterior a 1a barra (ex.: sprint longa ancorando o projeto) — nesse caso
+        // rolar ate o offset 0 deixaria a tela vazia.
+        private void ScrollToFirstActivity()
+        {
+            const int MarginDays = 3;
+
+            var firstStart = (Tasks ?? Enumerable.Empty<TaskViewModel>())
+                .Where(t => t.Start != default)
+                .Select(t => t.Start)
+                .DefaultIfEmpty(ProjectStart)
+                .Min();
+
+            var dayOffset = (firstStart.Date - ProjectStart.Date).TotalDays - MarginDays;
+            if (dayOffset <= 0)
+            {
+                GanttScroll.ScrollToLeftEnd();
+                return;
+            }
+
+            // O extent so e atualizado apos o layout; sem isso o offset seria limitado.
+            GanttScroll.UpdateLayout();
+            GanttScroll.ScrollToHorizontalOffset(dayOffset * DayWidth);
         }
 
         private void RenderHeader(double scrollOffset)
