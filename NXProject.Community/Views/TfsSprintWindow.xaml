@@ -117,18 +117,51 @@
             <Popup PlacementTarget="{Binding ElementName=ConfigToggle}" Placement="Bottom"
                    IsOpen="{Binding IsChecked, ElementName=ConfigToggle}" StaysOpen="False" AllowsTransparency="True">
                 <Border Background="White" BorderBrush="#C9D3CC" BorderThickness="1" Padding="10">
-                    <StackPanel MinWidth="220">
+                    <StackPanel MinWidth="250">
                         <TextBlock Text="{DynamicResource Sprint_Config}" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <CheckBox x:Name="OnlyScheduleCheck" Click="OnFilterChanged" Margin="0,2,0,2"
+
+                        <!-- Recorte do que aparece no board -->
+                        <TextBlock Text="{DynamicResource Sprint_GroupScope}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="#6B7A8A" Margin="0,0,0,2"/>
+                        <CheckBox x:Name="OnlyScheduleCheck" Click="OnFilterChanged" Margin="8,2,0,2"
                                   Content="{DynamicResource Sprint_OnlyScheduleStory}"
                                   ToolTip="{DynamicResource Sprint_OnlyScheduleStoryTip}"/>
-                        <CheckBox x:Name="OnlyBlockedCheck" Click="OnFilterChanged" Margin="0,2,0,2"
+
+                        <Separator Margin="0,8,0,6"/>
+                        <!-- Recortes por marcação (tag) da Task -->
+                        <TextBlock Text="{DynamicResource Sprint_GroupTaskTags}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="#6B7A8A" Margin="0,0,0,2"/>
+                        <CheckBox x:Name="OnlyBlockedCheck" Click="OnFilterChanged" Margin="8,2,0,2"
                                   Content="{DynamicResource Sprint_OnlyBlocked}"
                                   ToolTip="{DynamicResource Sprint_OnlyBlockedTip}"/>
-                        <CheckBox x:Name="OnlyUnplannedCheck" Click="OnFilterChanged" Margin="0,2,0,2"
+                        <CheckBox x:Name="OnlyUnplannedCheck" Click="OnFilterChanged" Margin="8,2,0,2"
                                   Content="{DynamicResource Sprint_OnlyUnplanned}"
                                   ToolTip="{DynamicResource Sprint_OnlyUnplannedTip}"/>
-                        <CheckBox x:Name="AutoOpenCheck" Click="OnAutoOpenChanged" Margin="0,2,0,2"
+                        <CheckBox x:Name="OnlyDoingCheck" Click="OnFilterChanged" Margin="8,2,0,2"
+                                  Content="{DynamicResource Sprint_OnlyDoing}"
+                                  ToolTip="{DynamicResource Sprint_OnlyDoingTip}"/>
+                        <CheckBox x:Name="OnlyDoneActiveCheck" Click="OnFilterChanged" Margin="8,2,0,2"
+                                  Content="{DynamicResource Sprint_OnlyDoneActive}"
+                                  ToolTip="{DynamicResource Sprint_OnlyDoneActiveTip}"/>
+
+                        <Separator Margin="0,8,0,6"/>
+                        <!-- Limite de WIP: quantas Tasks em andamento cada PESSOA pode ter.
+                             Só alerta (marca a tag WIP no card e no DevOps); não impede o arrasto. -->
+                        <TextBlock Text="{DynamicResource Sprint_GroupWip}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="#6B7A8A" Margin="0,0,0,2"/>
+                        <StackPanel Orientation="Horizontal" Margin="8,2,0,2">
+                            <TextBlock Text="{DynamicResource Sprint_WipLimit}" VerticalAlignment="Center"/>
+                            <TextBox x:Name="WipLimitBox" Width="42" Margin="6,0,0,0"
+                                     VerticalAlignment="Center" TextAlignment="Center"
+                                     LostFocus="OnWipLimitChanged" KeyDown="OnWipLimitKeyDown"
+                                     ToolTip="{DynamicResource Sprint_WipLimitTip}"/>
+                        </StackPanel>
+
+                        <Separator Margin="0,8,0,6"/>
+                        <!-- Preferência da tela (não filtra nada) -->
+                        <TextBlock Text="{DynamicResource Sprint_GroupPrefs}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="#6B7A8A" Margin="0,0,0,2"/>
+                        <CheckBox x:Name="AutoOpenCheck" Click="OnAutoOpenChanged" Margin="8,2,0,2"
                                   Content="{DynamicResource Sprint_AutoOpen}"
                                   ToolTip="{DynamicResource Sprint_AutoOpenTip}"/>
                     </StackPanel>

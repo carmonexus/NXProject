@@ -294,6 +294,16 @@
                                  ToolTip="{DynamicResource Cfg_UnplannedTagTip}"/>
                     </StackPanel>
                     <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="{DynamicResource Cfg_WipTag}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                        <TextBox x:Name="WipTagBox" Height="26" Padding="6,3" Width="220" HorizontalAlignment="Left"
+                                 ToolTip="{DynamicResource Cfg_WipTagTip}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="{DynamicResource Cfg_BlockedTag}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                        <TextBox x:Name="BlockedTagBox" Height="26" Padding="6,3" Width="220" HorizontalAlignment="Left"
+                                 ToolTip="{DynamicResource Cfg_BlockedTagTip}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,8,0,0">
                         <TextBlock Text="{DynamicResource Cfg_TaskPlanFile}" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
                         <Grid>
                             <Grid.ColumnDefinitions>

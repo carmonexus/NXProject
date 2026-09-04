@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
@@ -380,7 +380,10 @@ namespace NXProject.ViewModels
         private static bool HasBlockTag(string? tags) =>
             (tags ?? string.Empty)
                 .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Any(t => string.Equals(t, "Block", StringComparison.OrdinalIgnoreCase));
+                .Any(t => string.Equals(t, BlockTag, StringComparison.OrdinalIgnoreCase));
+
+        // Nome da tag de bloqueio, configurável em "Configurar DevOps" (padrão "BLOCK").
+        private static string BlockTag => Services.TfsImportService.BlockTagName;
 
         // Block próprio da Story (tag na própria atividade)
         public bool IsBlockedByStory => HasBlockTag(_task.Tags);
@@ -403,9 +406,9 @@ namespace NXProject.ViewModels
                 .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToList();
             if (HasBlockTag(_task.Tags))
-                tags.RemoveAll(t => string.Equals(t, "Block", StringComparison.OrdinalIgnoreCase));
+                tags.RemoveAll(t => string.Equals(t, BlockTag, StringComparison.OrdinalIgnoreCase));
             else
-                tags.Add("Block");
+                tags.Add(BlockTag);
             _task.Tags = string.Join("; ", tags);
             OnPropertyChanged(nameof(Tags));
             OnPropertyChanged(nameof(IsBlocked));
@@ -420,9 +423,9 @@ namespace NXProject.ViewModels
                 .ToList();
 
             if (IsBlockedByStory)
-                tags.RemoveAll(t => string.Equals(t, "Block", StringComparison.OrdinalIgnoreCase));
+                tags.RemoveAll(t => string.Equals(t, BlockTag, StringComparison.OrdinalIgnoreCase));
             else
-                tags.Add("Block");
+                tags.Add(BlockTag);
 
             _task.Tags = string.Join("; ", tags);
             OnPropertyChanged(nameof(Tags));

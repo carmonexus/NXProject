@@ -44,7 +44,15 @@ namespace NXProject.Views
         private readonly Dictionary<int, double> _order = new();
         // Cards marcados "Doing" (localmente) e os que já têm a tag no TFS.
         private readonly HashSet<int> _doing = new();
+        // WIP: Tasks que estão ACIMA do limite configurado (por pessoa) e a contagem de cada pessoa.
+        // Recalculado a cada Render(); não bloqueia nada, só marca.
+        private readonly HashSet<int> _wipOver = new();
+        private readonly Dictionary<string, int> _wipCount = new(StringComparer.CurrentCultureIgnoreCase);
         private readonly HashSet<int> _appliedDoing = new();
+        // "Done" marcado explicitamente no card: permite concluir o andamento SEM fechar a Task
+        // (antes o Done só saía quando o estado virava Closed).
+        private readonly HashSet<int> _done = new();
+        private readonly HashSet<int> _appliedDone = new();
         // Descrição/trâmite editados (HTML), pendentes de gravar no TFS pelo botão Salvar TFS.
         private readonly Dictionary<int, string> _descPending = new();
         private readonly Dictionary<int, string> _tramitePending = new();
@@ -69,8 +77,8 @@ namespace NXProject.Views
         private readonly Dictionary<int, DateTime?> _startPending = new();
         // Critérios de Aceitação (HTML) pendentes por Story — gravados no "Atualizar TFS".
         private readonly Dictionary<int, string> _acPending = new();
-        // Bloqueio (tag "Blocked") alterado (pendente: novo valor) e conjuntos de tags já gravados.
-        private const string BlockedTag = "Blocked";
+        // Bloqueio alterado (pendente: novo valor) e conjuntos de tags já gravados.
+        // O nome da tag é configurável em "Configurar DevOps" (padrão "BLOCK").
         private readonly Dictionary<int, bool> _blockPending = new();
         private readonly Dictionary<int, string> _tagsApplied = new(); // tags após gravar (baseline)
         // Prioridade da Task alterada (pendente) e a já gravada (baseline após Salvar TFS).
@@ -110,11 +118,14 @@ namespace NXProject.Views
             public bool? OnlySchedule { get; set; }
             public bool? OnlyBlocked { get; set; }    // só Tasks com a tag de bloqueio
             public bool? OnlyUnplanned { get; set; }  // só Tasks com a tag de não planejada
+            public bool? OnlyDoneActive { get; set; } // só Tasks Done que ainda não foram encerradas
+            public bool? OnlyDoing { get; set; }      // só Tasks em andamento (Doing, não encerradas)
             public bool? EditMode { get; set; }
             public List<string>? HiddenStates { get; set; }
             public List<string>? SprintPaths { get; set; }   // >1 = multi-seleção de sprints
             public Dictionary<string, string>? StateColors { get; set; } // estado(lower) -> #RRGGBB
             public bool AutoOpen { get; set; }   // abrir o TaskBoard ao iniciar o NX
+            public int? WipLimit { get; set; }   // limite de Tasks em andamento POR PESSOA (0 = sem limite; null = 3)
             public bool? ShowEpic { get; set; }  // coluna EPIC na visão Pessoa & Task (null = mostra)
             public bool? ShowProjCol { get; set; } // coluna Projeto na visão Projeto & Story (null = mostra)
             public bool? ShowFeatCol { get; set; } // coluna Feature na visão Pessoa & Task (null = mostra)
@@ -173,6 +184,8 @@ namespace NXProject.Views
                 _prefs.OnlySchedule = OnlyScheduleCheck.IsChecked == true;
                 _prefs.OnlyBlocked = OnlyBlockedCheck.IsChecked == true;
                 _prefs.OnlyUnplanned = OnlyUnplannedCheck.IsChecked == true;
+                _prefs.OnlyDoneActive = OnlyDoneActiveCheck.IsChecked == true;
+                _prefs.OnlyDoing = OnlyDoingCheck.IsChecked == true;
                 _prefs.EditMode = EditModeCheck.IsChecked == true;
                 _prefs.HiddenStates = _hiddenStates.ToList();
                 var p = SprintSettingsPath;
@@ -210,6 +223,7 @@ namespace NXProject.Views
             // Carrega os últimos filtros salvos (aplicados na 1ª carga do board).
             _prefs = LoadPrefs();
             AutoOpenCheck.IsChecked = _prefs.AutoOpen;
+            WipLimitBox.Text = WipLimit().ToString();
             // Restaura geometria/estado da janela do TaskBoard.
             if (_prefs.WinWidth > 200 && _prefs.WinHeight > 200)
             {
@@ -401,6 +415,8 @@ namespace NXProject.Views
                         if (_prefs.OnlySchedule is bool os) OnlyScheduleCheck.IsChecked = os;
                         if (_prefs.OnlyBlocked is bool ob) OnlyBlockedCheck.IsChecked = ob;
                         if (_prefs.OnlyUnplanned is bool ou) OnlyUnplannedCheck.IsChecked = ou;
+                        if (_prefs.OnlyDoneActive is bool oda) OnlyDoneActiveCheck.IsChecked = oda;
+                        if (_prefs.OnlyDoing is bool odg) OnlyDoingCheck.IsChecked = odg;
                         if (_prefs.EditMode is bool em) EditModeCheck.IsChecked = em;
                         _hiddenStates.Clear();
                         if (_prefs.HiddenStates is { } hs)
@@ -421,6 +437,8 @@ namespace NXProject.Views
                 _order.Clear();
                 _doing.Clear();
                 _appliedDoing.Clear();
+                _done.Clear();
+                _appliedDone.Clear();
                 _descPending.Clear();
                 _tramitePending.Clear();
                 _ownerPending.Clear();
@@ -457,6 +475,7 @@ namespace NXProject.Views
                     _order[t.Id] = k++;
                     _taskRank[t.Id] = double.IsNaN(t.StackRank) ? (1e6 + k) : t.StackRank;
                     if (HasTag(t.Tags, "Doing") || HasTag(t.Tags, "Done")) { _doing.Add(t.Id); _appliedDoing.Add(t.Id); }
+                    if (HasTag(t.Tags, "Done")) { _done.Add(t.Id); _appliedDone.Add(t.Id); }
                 }
                 UpdatePendingButton();
                 PopulateStoryFilter();
@@ -611,6 +630,27 @@ namespace NXProject.Views
             SavePrefs();
         }
 
+        // Limite de WIP: aceita 0..99 (0 = sem limite). Valor inválido volta para o que estava.
+        private void OnWipLimitChanged(object sender, RoutedEventArgs e)
+        {
+            if (_restoringPrefs) return;
+            if (int.TryParse(WipLimitBox.Text?.Trim(), out var n) && n >= 0 && n <= 99)
+            {
+                if (n == WipLimit()) return;
+                _prefs.WipLimit = n;
+                SavePrefs();
+                Render();
+            }
+            else WipLimitBox.Text = WipLimit().ToString();
+        }
+
+        private void OnWipLimitKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key != System.Windows.Input.Key.Enter) return;
+            OnWipLimitChanged(sender, e);
+            e.Handled = true;
+        }
+
         // Casa o usuário autenticado (connectionData) com uma pessoa da sprint.
         private string? MatchCurrentUser()
         {
@@ -668,13 +708,13 @@ namespace NXProject.Views
                 || _iterPending.ContainsKey(id) || _featurePending.ContainsKey(id) || _startPending.ContainsKey(id)
                 || _acPending.ContainsKey(id);
             var desc = new Button { Content = descDirty ? "✎●" : "✎", FontSize = 11,
-                Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
+                Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 4, 2),
                 Foreground = descDirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black,
                 ToolTip = AppStrings.Get("Sprint_EditDesc") };
             desc.Click += async (_, _) => await EditDescriptionAsync(id, title, currentOwner, kind, currentIteration);
             panel.Children.Add(desc);
             var tram = new Button { Content = _tramitePending.ContainsKey(id) ? "💬●" : "💬", FontSize = 11,
-                Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
+                Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 4, 2),
                 Foreground = _tramitePending.ContainsKey(id) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Black,
                 ToolTip = AppStrings.Get("Sprint_EditTramite") };
             tram.Click += (_, _) => EditTramite(id, title);
@@ -803,7 +843,7 @@ namespace NXProject.Views
                 }
                 if (dlg.BlockedChanged)
                 {
-                    var baseBlocked = HasTag(EffTags(id, curTags), BlockedTag);
+                    var baseBlocked = HasTag(EffTags(id, curTags), BlockedTag());
                     if (dlg.Blocked == baseBlocked) _blockPending.Remove(id); else _blockPending[id] = dlg.Blocked;
                 }
                 if (dlg.StateWasChanged && StoryById(id) is { } srow2)
@@ -859,6 +899,7 @@ namespace NXProject.Views
         private int PendingCount()
         {
             var doingDiff = _doing.Except(_appliedDoing).Count() + _appliedDoing.Except(_doing).Count();
+            doingDiff += _done.Except(_appliedDone).Count() + _appliedDone.Except(_done).Count();
             return _pending.Count + doingDiff + _descPending.Count + _tramitePending.Count + _newCards.Count + _prioPending.Count + _storyRankPending.Count + _taskRankPending.Count + _storyStatePending.Count + _ownerPending.Count + _titlePending.Count + _estPending.Count + _donePending.Count + _deletePending.Count + _iterPending.Count + _blockPending.Count + _featurePending.Count + _startPending.Count + _acPending.Count;
         }
 
@@ -906,6 +947,8 @@ namespace NXProject.Views
             }
             _doing.Clear();
             foreach (var id in _appliedDoing) _doing.Add(id);
+            _done.Clear();
+            foreach (var id in _appliedDone) _done.Add(id);
             UpdatePendingButton();
             Render();
         }
@@ -965,15 +1008,24 @@ namespace NXProject.Views
             foreach (var id in _doing.ToList())
             {
                 var isNew = !_appliedDoing.Contains(id);
-                if (!isNew && !stateChanged.Contains(id)) continue; // já gravado e sem mudança de estado
-                var tag = EffCard(id) is { } st && IsClosedState(st) ? "Done" : "Doing";
+                var doneChanged = _done.Contains(id) != _appliedDone.Contains(id);
+                if (!isNew && !doneChanged && !stateChanged.Contains(id)) continue; // nada a gravar
+                // Done quando marcado no card OU quando a Task foi encerrada.
+                var tag = _done.Contains(id) || (EffCard(id) is { } st && IsClosedState(st)) ? "Done" : "Doing";
                 var (success, msg) = await TfsImportService.SetDoingTagAsync(_options, id, tag);
-                if (success) { _appliedDoing.Add(id); if (isNew) ok++; } else fails.Add($"#{id} (tag): {msg}");
+                if (success)
+                {
+                    _appliedDoing.Add(id);
+                    if (_done.Contains(id)) _appliedDone.Add(id); else _appliedDone.Remove(id);
+                    if (isNew || doneChanged) ok++;
+                }
+                else fails.Add($"#{id} (tag): {msg}");
             }
             foreach (var id in _appliedDoing.Except(_doing).ToList())
             {
                 var (success, msg) = await TfsImportService.SetDoingTagAsync(_options, id, null);
-                if (success) { _appliedDoing.Remove(id); ok++; } else fails.Add($"#{id} (tag): {msg}");
+                if (success) { _appliedDoing.Remove(id); _appliedDone.Remove(id); _done.Remove(id); ok++; }
+                else fails.Add($"#{id} (tag): {msg}");
             }
 
             // 3) Descrição (grava direto no TFS; 403 = sem permissão).
@@ -1047,10 +1099,26 @@ namespace NXProject.Views
             foreach (var kv in _blockPending.ToList())
             {
                 var cur = _cardById.TryGetValue(kv.Key, out var cc2) ? cc2.Tags : (StoryById(kv.Key)?.Tags ?? "");
-                var newTags = TfsImportService.ToggleTag(EffTags(kv.Key, cur), BlockedTag, kv.Value);
+                var newTags = TfsImportService.ToggleTag(EffTags(kv.Key, cur), BlockedTag(), kv.Value);
                 var (success, msg) = await TfsImportService.SetWorkItemTagsAsync(_options, kv.Key, newTags);
                 if (success) { _tagsApplied[kv.Key] = newTags; _blockPending.Remove(kv.Key); ok++; }
                 else fails.Add($"#{kv.Key} (bloqueio): {msg}");
+            }
+
+            // 3i) Tag de WIP: marca no DevOps as Tasks que estão acima do limite da pessoa e
+            //     tira das que voltaram para dentro. Só grava o que realmente mudou.
+            var wipTag = WipTag();
+            foreach (var card in _cardById.Values.Where(c => c.Id > 0).ToList())
+            {
+                var want = _wipOver.Contains(card.Id);
+                if (HasTag(EffTags(card.Id, card.Tags), wipTag) == want) continue;
+                var (success, msg) = await TfsImportService.SetSingleTagAsync(_options, card.Id, wipTag, want);
+                if (success)
+                {
+                    _tagsApplied[card.Id] = TfsImportService.ToggleTag(EffTags(card.Id, card.Tags), wipTag, want);
+                    ok++;
+                }
+                else fails.Add($"#{card.Id} (WIP): {msg}");
             }
 
             // 3e) Exclusão de Tasks marcadas (só New). Move para a lixeira do DevOps.
@@ -1179,8 +1247,20 @@ namespace NXProject.Views
                 && !(t.ParentId is int sp0 && _scheduleIds.Contains(sp0))) return false;
             // Recortes por tag da Task (bloqueada / não planejada). Usam o valor EFETIVO das
             // tags, então respeitam alterações ainda na fila do "Atualizar TFS".
-            if (OnlyBlockedCheck.IsChecked == true && !EffBlocked(t.Id, t.Tags)) return false;
+            // Story bloqueada bloqueia as filhas na prática (é como o cronograma trata: o BLOCK
+            // da Story tem prioridade sobre o da Task), então as Tasks dela entram no filtro.
+            if (OnlyBlockedCheck.IsChecked == true
+                && !EffBlocked(t.Id, t.Tags)
+                && !(t.ParentId is int bp && StoryById(bp) is { } bs && EffBlocked(bs.Id, bs.Tags)))
+                return false;
             if (OnlyUnplannedCheck.IsChecked == true && !HasTag(EffTags(t.Id, t.Tags), UnplannedTag())) return false;
+            // Em andamento: Doing e ainda não encerrada. Marcada Done já saiu do "fazendo",
+            // e encerrada vira Done por definição — os dois casos ficam de fora.
+            if (OnlyDoingCheck.IsChecked == true
+                && !(_doing.Contains(t.Id) && !_done.Contains(t.Id) && !IsClosedState(EffState(t)))) return false;
+            // Done com o estado ainda aberto: trabalho concluído que falta encerrar no DevOps.
+            if (OnlyDoneActiveCheck.IsChecked == true
+                && !(_done.Contains(t.Id) && !IsClosedState(EffState(t)))) return false;
             if (_selectedPeople.Count > 0 && !_selectedPeople.Contains(t.AssignedTo ?? "")) return false;
             if (_selectedStoryIds.Count > 0 && !(t.ParentId is int p && _selectedStoryIds.Contains(p))) return false;
             // Busca ao vivo com escopo (Ambos / Task / Story).
@@ -1342,6 +1422,9 @@ namespace NXProject.Views
             var eff = EffectiveStories();
             _cardById.Clear();
             foreach (var c in eff.SelectMany(x => x.Tasks)) _cardById[c.Id] = c;
+            // WIP é calculado sobre TUDO que está carregado (não sobre o que passou nos filtros):
+            // esconder cards não pode fazer o limite de uma pessoa parecer menor do que é.
+            RecomputeWip(eff.SelectMany(x => x.Tasks));
             var visibleByStory = eff
                 .Select(x => (Story: x.Story, Tasks: x.Tasks.Where(PassesFilters).ToList()))
                 .ToList();
@@ -1413,6 +1496,10 @@ namespace NXProject.Views
                 parts.Add(AppStrings.Get("Sprint_FSOnlyBlocked"));
             if (OnlyUnplannedCheck.IsChecked == true)
                 parts.Add(AppStrings.Get("Sprint_FSOnlyUnplanned"));
+            if (OnlyDoneActiveCheck.IsChecked == true)
+                parts.Add(AppStrings.Get("Sprint_FSOnlyDoneActive"));
+            if (OnlyDoingCheck.IsChecked == true)
+                parts.Add(AppStrings.Get("Sprint_FSOnlyDoing"));
             if (!string.IsNullOrWhiteSpace(SearchBox.Text))
                 parts.Add(AppStrings.Get("Sprint_FSSearch", SearchBox.Text.Trim()));
             return AppStrings.Get("Sprint_FSPrefix", string.Join(" · ", parts));
@@ -1476,7 +1563,7 @@ namespace NXProject.Views
                     up.Children.Add(link);
                     if (_scheduleIds.Contains(pid) && _openInSchedule != null)
                     {
-                        var s = new Button { Content = "📅", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                        var s = new Button { Content = "📅", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                             Margin = new Thickness(6, 0, 0, 0), ToolTip = AppStrings.Get("Query_OpenInSchedule") };
                         s.Click += (_, _) => _openInSchedule!(pid);
                         up.Children.Add(s);
@@ -1489,12 +1576,12 @@ namespace NXProject.Views
                 sp.Children.Add(up);
 
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
-                var open = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
+                var open = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(4, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
                 open.Click += (_, _) => OpenInDevOps(t.Id);
                 actions.Children.Add(open);
                 if (inSched && _openInSchedule != null)
                 {
-                    var sc = new Button { Content = "📅", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                    var sc = new Button { Content = "📅", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                         Margin = new Thickness(4, 0, 0, 0), ToolTip = AppStrings.Get("Query_OpenInSchedule") };
                     sc.Click += (_, _) => _openInSchedule!(t.Id);
                     actions.Children.Add(sc);
@@ -1595,7 +1682,7 @@ namespace NXProject.Views
         // Botão padrão "abrir no DevOps" usado nos cards de rótulo (EPIC/Projeto).
         private Button OpenDevOpsButton(int id)
         {
-            var b = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+            var b = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                 Margin = new Thickness(0, 4, 0, 0), HorizontalAlignment = HorizontalAlignment.Left,
                 Cursor = System.Windows.Input.Cursors.Arrow, ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
             b.Click += (_, _) => OpenInDevOps(id);
@@ -1673,11 +1760,11 @@ namespace NXProject.Views
                 var fid = featId; var ftit = featTitle;
                 var featBtns = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0),
                     Cursor = System.Windows.Input.Cursors.Arrow };
-                var featDesc = new Button { Content = "📄", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                var featDesc = new Button { Content = "📄", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                     Margin = new Thickness(0, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_FeatureDesc") };
                 featDesc.Click += async (_, _) => await EditDescriptionAsync(fid, ftit, "", "Feature");
                 featBtns.Children.Add(featDesc);
-                var featOpen = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                var featOpen = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                     ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
                 featOpen.Click += (_, _) => OpenInDevOps(fid);
                 featBtns.Children.Add(featOpen);
@@ -1778,7 +1865,22 @@ namespace NXProject.Views
                             personCell.Drop += (s, ev) => OnStoryOwnerDrop(ev, personKey0);
                             personCell.DragOver += (s, ev) => { ev.Effects = DragDropEffects.Move; ev.Handled = true; };
                         }
-                        AddCell(row, 0, personCell);
+                        var personPanel = new StackPanel();
+                        personPanel.Children.Add(personCell);
+                        // Selo "em andamento / limite" da pessoa — o WIP é dela, não do projeto.
+                        var wipN = WipCountOf(pg.Key);
+                        var wipMax = WipLimit();
+                        if (wipMax > 0 && wipN > 0)
+                            personPanel.Children.Add(new TextBlock
+                            {
+                                Text = AppStrings.Get("Sprint_WipCount", wipN.ToString(), wipMax.ToString()),
+                                FontSize = 10, FontWeight = FontWeights.SemiBold,
+                                Margin = new Thickness(4, 0, 4, 2),
+                                ToolTip = AppStrings.Get("Sprint_WipCountTip", wipMax.ToString()),
+                                Foreground = new SolidColorBrush(wipN > wipMax
+                                    ? Color.FromRgb(0xC0, 0x30, 0x30) : Color.FromRgb(0x5A, 0x7A, 0x5A))
+                            });
+                        AddCell(row, 0, personPanel);
                     }
                     var tks = sg.ToList();
                     var storySp = new StackPanel();
@@ -1813,7 +1915,7 @@ namespace NXProject.Views
                         AddEditButtons(stActions, storyId, sg.Key, sOwnerOrig, "Story", StoryById(storyId)?.IterationPath ?? "");
                         // Abrir a Story no DevOps.
                         var openSt = new Button { Content = "🔗", FontSize = 11,
-                            Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0),
+                            Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 4, 2),
                             ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
                         var openStId = storyId;
                         openSt.Click += (_, _) => OpenInDevOps(openStId);
@@ -1822,10 +1924,13 @@ namespace NXProject.Views
                         var personKey = pg.Key;
                         addTask.Click += (_, _) => AddNewTask(storyId, personKey); // já nasce na faixa da pessoa
                         stActions.Children.Add(addTask);
+                        // Bloquear/desbloquear a Story — último botão, igual à visão Projeto & Story.
+                        stActions.Children.Add(BuildBlockButton(storyId, StoryById(storyId)?.Tags ?? "", isStory: true));
                         storySp.Children.Add(stActions);
                     }
                     // Destaque laranja quando a Story tem alteração pendente (rank/responsável/nome).
-                    var storyPend = storyId > 0 && (_storyRankPending.Contains(storyId) || _ownerPending.ContainsKey(storyId) || _titlePending.ContainsKey(storyId));
+                    var storyPend = storyId > 0 && (_storyRankPending.Contains(storyId) || _ownerPending.ContainsKey(storyId)
+                        || _titlePending.ContainsKey(storyId) || _blockPending.ContainsKey(storyId));
                     // Colaborador: cor customizável (paleta "Story Colaborador"); dono: azul-claro normal.
                     var storyBorder = new Border {
                         Background = isHelper ? StateBrush(HelperColorKey) : new SolidColorBrush(Color.FromRgb(0xEE, 0xF2, 0xF7)),
@@ -1833,6 +1938,12 @@ namespace NXProject.Views
                         BorderThickness = new Thickness(storyPend ? 2 : 1),
                         CornerRadius = new CornerRadius(3), Margin = new Thickness(3), Padding = new Thickness(6),
                         Child = storySp, Tag = storyId };
+                    // Story bloqueada: borda vermelha, igual à visão Projeto & Story.
+                    if (storyId > 0 && !storyPend && EffBlocked(storyId, StoryById(storyId)?.Tags ?? ""))
+                    {
+                        storyBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30));
+                        storyBorder.BorderThickness = new Thickness(2);
+                    }
                     // Hint com os Critérios de Aceitação da Story (efetivo: pendente > DevOps).
                     var acHint = _acPending.TryGetValue(storyId, out var acp2) ? acp2
                         : (StoryById(storyId)?.AcceptanceCriteria ?? "");
@@ -2092,11 +2203,11 @@ namespace NXProject.Views
         private string EffTags(int id, string original) =>
             _tagsApplied.TryGetValue(id, out var a) ? a : (original ?? "");
         private bool EffBlocked(int id, string originalTags) =>
-            _blockPending.TryGetValue(id, out var b) ? b : HasTag(EffTags(id, originalTags), BlockedTag);
+            _blockPending.TryGetValue(id, out var b) ? b : HasTag(EffTags(id, originalTags), BlockedTag());
         // Alterna o bloqueio (pendente) comparando com a baseline (tags gravadas/originais).
         private void ToggleBlockPending(int id, string originalTags)
         {
-            var baseBlocked = HasTag(EffTags(id, originalTags), BlockedTag);
+            var baseBlocked = HasTag(EffTags(id, originalTags), BlockedTag());
             var target = !EffBlocked(id, originalTags);
             if (target == baseBlocked) _blockPending.Remove(id); else _blockPending[id] = target;
             UpdatePendingButton(); Render();
@@ -2227,6 +2338,38 @@ namespace NXProject.Views
             return border;
         }
 
+        /// <summary>
+        /// Botão de bloquear/desbloquear (tag "Blocked"), com o selo padrão do NX: ⛔ para Story
+        /// e 🔴 para Task. Livre mostra só o ícone; bloqueado mostra o selo completo com "BLOCK".
+        /// Entra na fila do "Atualizar TFS".
+        /// </summary>
+        private Button BuildBlockButton(int id, string tags, bool isStory)
+        {
+            var blocked = EffBlocked(id, tags);
+            var label = AppStrings.Get(isStory ? "Grid_BlockedStoryLabel" : "Grid_BlockedByChildLabel");
+            // O rótulo do NX é "<ícone> BLOCK": sem marcação mostra só o ícone.
+            var icon = label.Split(' ')[0];
+            var bg = isStory ? Color.FromRgb(0xFD, 0xE7, 0xE9) : Color.FromRgb(0xFF, 0xF4, 0xCE);
+            var bd = isStory ? Color.FromRgb(0xD1, 0x34, 0x38) : Color.FromRgb(0xC8, 0xA6, 0x00);
+            var fg = isStory ? Color.FromRgb(0xC0, 0x30, 0x30) : Color.FromRgb(0x7A, 0x52, 0x00);
+            var btn = new Button
+            {
+                Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 4, 2),
+                ToolTip = AppStrings.Get(blocked ? "Sprint_Unblock" : "Sprint_Block"),
+                Background = new SolidColorBrush(blocked ? bg : Color.FromRgb(0xF2, 0xF2, 0xF2)),
+                BorderBrush = new SolidColorBrush(blocked ? bd : Color.FromRgb(0xC8, 0xC8, 0xC8)),
+                Content = new TextBlock
+                {
+                    Text = blocked ? label : icon,
+                    FontSize = blocked ? 9 : 11, FontWeight = FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(blocked ? fg : Color.FromRgb(0x8A, 0x8A, 0x8A)),
+                    Opacity = blocked ? 1.0 : 0.6
+                }
+            };
+            btn.Click += (_, _) => ToggleBlockPending(id, tags);
+            return btn;
+        }
+
         private Border BuildStoryCard(TfsImportService.SprintStoryRow story, List<int> realIds)
         {
             if (story.Id < 0 && _newCards.FirstOrDefault(n => n.TempId == story.Id) is { } ncs)
@@ -2272,7 +2415,7 @@ namespace NXProject.Views
                 // StoryBoard = nível Story: aqui NÃO cria Task (isso é na visão Pessoa & Task).
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
                 AddEditButtons(actions, story.Id, story.Title, story.AssignedTo, "Story", story.IterationPath);
-                var openStory = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                var openStory = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                     Margin = new Thickness(0, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
                 openStory.Click += (_, _) => OpenInDevOps(story.Id);
                 actions.Children.Add(openStory);
@@ -2280,7 +2423,7 @@ namespace NXProject.Views
                 var tasksAllNew = story.Tasks.Count == 0 || story.Tasks.All(t => SameState(EffState(t), "New"));
                 if (string.Equals(EffStoryState(story), "New", StringComparison.OrdinalIgnoreCase) && tasksAllNew)
                 {
-                    var delSt = new Button { Content = storyToDelete ? "↩" : "🗑", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                    var delSt = new Button { Content = storyToDelete ? "↩" : "🗑", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                         Margin = new Thickness(0, 0, 4, 0), Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)),
                         ToolTip = AppStrings.Get(storyToDelete ? "Sprint_UndoDelete" : "Sprint_DeleteTask") };
                     delSt.Click += (_, _) =>
@@ -2290,6 +2433,8 @@ namespace NXProject.Views
                     };
                     actions.Children.Add(delSt);
                 }
+                // Bloquear/desbloquear a Story (tag "Blocked") — último botão, como na Task.
+                actions.Children.Add(BuildBlockButton(story.Id, story.Tags, isStory: true));
                 sp.Children.Add(actions);
             }
             else
@@ -2430,6 +2575,50 @@ namespace NXProject.Views
         private string UnplannedTag() =>
             string.IsNullOrWhiteSpace(_options.UnplannedTagName) ? "NP" : _options.UnplannedTagName.Trim();
 
+        /// <summary>Nome da tag de "acima do WIP" (configurável; padrão "WIP").</summary>
+        private string WipTag() =>
+            string.IsNullOrWhiteSpace(_options.WipTagName) ? "WIP" : _options.WipTagName.Trim();
+
+        /// <summary>Nome da tag de bloqueio no DevOps (configurável; padrão "BLOCK").</summary>
+        private string BlockedTag() =>
+            string.IsNullOrWhiteSpace(_options.BlockedTagName) ? "BLOCK" : _options.BlockedTagName.Trim();
+
+        /// <summary>Limite de Tasks em andamento por pessoa. 0 = sem limite; padrão 3.</summary>
+        private int WipLimit() => _prefs.WipLimit is int n && n >= 0 ? n : 3;
+
+        /// <summary>Estado que conta como "em andamento" para o WIP: tudo que já saiu de New e
+        /// ainda não foi encerrado (Active e quaisquer estados intermediários do processo).</summary>
+        private static bool IsWipState(string s) =>
+            !IsClosedState(s) && !SameState(s, "New") && !SameState(s, "Removed");
+
+        /// <summary>Recalcula o WIP por PESSOA (não por projeto: o limite protege a capacidade de
+        /// quem executa, e uma pessoa costuma atender vários projetos). Marca como "acima do WIP"
+        /// as Tasks que passam do limite, olhando da menor para a maior prioridade — as últimas a
+        /// entrar na fila da pessoa são as que estouram.</summary>
+        private void RecomputeWip(IEnumerable<TfsImportService.SprintTaskCard> allTasks)
+        {
+            _wipOver.Clear();
+            _wipCount.Clear();
+            var limit = WipLimit();
+            foreach (var g in allTasks
+                         .Where(t => IsWipState(EffState(t)))
+                         .GroupBy(t => (EffOwner(t.Id, t.AssignedTo) ?? "").Trim(),
+                                  StringComparer.CurrentCultureIgnoreCase))
+            {
+                if (g.Key.Length == 0) continue;   // sem responsável não há WIP de pessoa
+                _wipCount[g.Key] = g.Count();
+                if (limit <= 0) continue;
+                foreach (var t in g.OrderBy(t => EffPrio(t) > 0 ? EffPrio(t) : 99)
+                                   .ThenBy(EffTaskRank)
+                                   .Skip(limit))
+                    _wipOver.Add(t.Id);
+            }
+        }
+
+        /// <summary>Quantidade de Tasks em andamento da pessoa (para o selo "n/limite").</summary>
+        private int WipCountOf(string person) =>
+            _wipCount.TryGetValue((person ?? "").Trim(), out var n) ? n : 0;
+
         private Border BuildCard(TfsImportService.SprintTaskCard t, string? storyTitle = null)
         {
             if (t.Id < 0 && _newCards.FirstOrDefault(n => n.TempId == t.Id) is { } nct)
@@ -2477,6 +2666,23 @@ namespace NXProject.Views
                     {
                         Text = npTag, FontSize = 10, FontWeight = FontWeights.Bold,
                         Foreground = new SolidColorBrush(Color.FromRgb(0x7A, 0x52, 0x00))
+                    }
+                });
+            // Acima do limite de WIP da pessoa: só alerta (o arrasto para Active continua livre).
+            // A tag vai para o DevOps na gravação.
+            if (!isNew && _wipOver.Contains(t.Id))
+                titleLine.Children.Add(new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0xD5)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)),
+                    BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
+                    Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 5, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = AppStrings.Get("Sprint_WipOverTip", WipLimit().ToString()),
+                    Child = new TextBlock
+                    {
+                        Text = "⚠ " + WipTag(), FontSize = 10, FontWeight = FontWeights.Bold,
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x8C, 0x1C, 0x1C))
                     }
                 });
             // Prioridade EDITÁVEL via ComboBox (picklist P{min}..P{max}, igual ao TFS). A mudança
@@ -2570,37 +2776,48 @@ namespace NXProject.Views
             // Marca "Doing" (o que está atuando agora): chip azul; se o card estiver Closed vira "Done".
             var isDoing = _doing.Contains(t.Id);
             var closed = IsClosedState(EffState(t));
+            // "Done" vale quando marcado no card OU quando a Task está encerrada.
+            var isDone = _done.Contains(t.Id) || closed;
             if (isDoing)
             {
-                border.BorderBrush = new SolidColorBrush(closed ? Color.FromRgb(0x10, 0x7C, 0x10) : Color.FromRgb(0x00, 0x78, 0xD4));
+                border.BorderBrush = new SolidColorBrush(isDone ? Color.FromRgb(0x10, 0x7C, 0x10) : Color.FromRgb(0x00, 0x78, 0xD4));
                 border.BorderThickness = new Thickness(2);
                 var chip = new Border
                 {
-                    Background = new SolidColorBrush(closed ? Color.FromRgb(0x10, 0x7C, 0x10) : Color.FromRgb(0x00, 0x78, 0xD4)),
+                    Background = new SolidColorBrush(isDone ? Color.FromRgb(0x10, 0x7C, 0x10) : Color.FromRgb(0x00, 0x78, 0xD4)),
                     CornerRadius = new CornerRadius(3), Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(0, 2, 0, 0),
                     HorizontalAlignment = HorizontalAlignment.Left,
-                    Child = new TextBlock { Text = "🔵 " + AppStrings.Get(closed ? "Sprint_Done" : "Sprint_Doing"),
+                    Child = new TextBlock { Text = "🔵 " + AppStrings.Get(isDone ? "Sprint_Done" : "Sprint_Doing"),
                         Foreground = Brushes.White, FontSize = 10, FontWeight = FontWeights.SemiBold }
                 };
                 sp.Children.Add(chip);
             }
 
             var actions = new WrapPanel { Margin = new Thickness(0, 4, 0, 0), Cursor = System.Windows.Input.Cursors.Arrow };
-            var open = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 2), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
+            var open = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 0, 4, 2), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
             open.Click += (_, _) => OpenInDevOps(t.Id);
             actions.Children.Add(open);
-            // Botão Doing: só faz sentido nos abertos (não-Closed) para marcar; e para tirar em qualquer estado.
-            if (!closed || isDoing)
+            // Botão Doing: marcar só faz sentido no que já começou — em New não há andamento,
+            // e em Closed o trabalho terminou. Tirar continua liberado em qualquer estado.
+            var isNewState = SameState(EffState(t), "New");
+            if (isDoing || (!closed && !isNewState))
             {
                 // Só o sinal (+/-) fica maior; o texto "Doing" mantém a fonte padrão.
-                var doingLabel = isDoing ? AppStrings.Get("Sprint_RemoveDoing") : AppStrings.Get("Sprint_MarkDoing");
-                var doingContent = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+                // Remover a marcação: o rótulo acompanha o que o card exibe — encerrada mostra
+                // "Done", então o botão precisa dizer "-Done" e não "-Doing".
+                var doingLabel = !isDoing ? AppStrings.Get("Sprint_MarkDoing")
+                    : isDone ? AppStrings.Get("Sprint_RemoveDone")
+                    : AppStrings.Get("Sprint_RemoveDoing");
+                // O "+"/"-" maior (14pt) esticava a caixa de linha e deixava o botão mais alto que
+                // os vizinhos. LineHeight fixo mantém o sinal grande sem crescer o botão.
+                var doingContent = new TextBlock { VerticalAlignment = VerticalAlignment.Center,
+                    LineHeight = 13, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
                 doingContent.Inlines.Add(new System.Windows.Documents.Run(doingLabel.Length > 0 ? doingLabel[..1] : "") { FontSize = 14, FontWeight = FontWeights.Bold });
                 doingContent.Inlines.Add(new System.Windows.Documents.Run(doingLabel.Length > 1 ? doingLabel[1..] : "") { FontSize = 10 });
                 var doingBtn = new Button
                 {
-                    Content = doingContent,
-                    Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 0)
+                    Content = doingContent, VerticalContentAlignment = VerticalAlignment.Center,
+                    Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 2)
                 };
                 doingBtn.Click += (_, _) =>
                 {
@@ -2610,26 +2827,48 @@ namespace NXProject.Views
                 };
                 actions.Children.Add(doingBtn);
             }
+            // Concluir o andamento SEM fechar a Task: card marcado Doing e ainda aberto.
+            // Encerrada já vira Done sozinha, então o botão não aparece nesse caso.
+            if (isDoing && !closed)
+            {
+                var markedDone = _done.Contains(t.Id);
+                // Alterna entre Doing e Done (o "-Done" de remover fica no botão ao lado).
+                var doneLabel = markedDone ? AppStrings.Get("Sprint_BackToDoing") : AppStrings.Get("Sprint_MarkDone");
+                var doneContent = new TextBlock { VerticalAlignment = VerticalAlignment.Center,
+                    LineHeight = 13, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+                doneContent.Inlines.Add(new System.Windows.Documents.Run(doneLabel.Length > 0 ? doneLabel[..1] : "") { FontSize = 14, FontWeight = FontWeights.Bold });
+                doneContent.Inlines.Add(new System.Windows.Documents.Run(doneLabel.Length > 1 ? doneLabel[1..] : "") { FontSize = 10 });
+                var doneBtn = new Button
+                {
+                    Content = doneContent, VerticalContentAlignment = VerticalAlignment.Center,
+                    Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 2),
+                    ToolTip = AppStrings.Get(markedDone ? "Sprint_BackToDoingTip" : "Sprint_MarkDoneTip")
+                };
+                doneBtn.Click += (_, _) =>
+                {
+                    if (!_done.Remove(t.Id)) _done.Add(t.Id);
+                    UpdatePendingButton();
+                    Render();
+                };
+                actions.Children.Add(doneBtn);
+            }
             if (inSched && _openInSchedule != null)
             {
-                var sched = new Button { Content = "📅", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                var sched = new Button { Content = "📅", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                     ToolTip = AppStrings.Get("Query_OpenInSchedule") };
                 sched.Click += (_, _) => _openInSchedule!(t.Id);
                 actions.Children.Add(sched);
             }
             // Bloquear/desbloquear (tag "Blocked"): entra na fila do Salvar TFS.
-            var blk = new Button { Content = EffBlocked(t.Id, t.Tags) ? "🔒" : "🔓", FontSize = 11,
-                Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 4, 2),
-                ToolTip = AppStrings.Get(EffBlocked(t.Id, t.Tags) ? "Sprint_Unblock" : "Sprint_Block") };
-            blk.Click += (_, _) => ToggleBlockPending(t.Id, t.Tags);
-            actions.Children.Add(blk);
             AddEditButtons(actions, t.Id, t.Title, t.AssignedTo, "Task"); // ✎ descrição e 💬 trâmite da Task
+            // Bloquear/desbloquear é o ÚLTIMO botão do card (tag "Blocked").
+            actions.Children.Add(BuildBlockButton(t.Id, t.Tags, isStory: false));
             // Excluir: só Tasks reais no estado New (evita apagar itens já em andamento/encerrados).
             // Marca para excluir (pendente); a exclusão no DevOps ocorre no Salvar TFS.
             if (t.Id > 0 && string.Equals(EffState(t), "New", StringComparison.OrdinalIgnoreCase))
             {
                 var marked = _deletePending.Contains(t.Id);
-                var del = new Button { Content = marked ? "↩" : "🗑", FontSize = 11, Padding = new Thickness(5, 0, 5, 0),
+                var del = new Button { Content = marked ? "↩" : "🗑", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
                     Margin = new Thickness(4, 0, 0, 0), Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30)),
                     ToolTip = AppStrings.Get(marked ? "Sprint_UndoDelete" : "Sprint_DeleteTask") };
                 del.Click += (_, _) =>

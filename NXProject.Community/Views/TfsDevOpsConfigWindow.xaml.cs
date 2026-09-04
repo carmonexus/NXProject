@@ -76,6 +76,8 @@ namespace NXProject.Views
             SyncNameFieldBox.Text = saved.SyncNameFieldName;
             FixedStartTagBox.Text = saved.FixedStartTagName;
             UnplannedTagBox.Text = saved.UnplannedTagName;
+            WipTagBox.Text = saved.WipTagName;
+            BlockedTagBox.Text = saved.BlockedTagName;
             SyncPredecessorLinksCheck.IsChecked = saved.SyncPredecessorLinks;
             EnforceStoryCompletionWithTasksCheck.IsChecked = saved.EnforceStoryCompletionWithTasks;
             EnableOrgDiscoveryCheck.IsChecked = saved.EnableOrgPeopleDiscovery;
@@ -288,6 +290,8 @@ namespace NXProject.Views
             SyncNameFieldName   = string.IsNullOrWhiteSpace(SyncNameFieldBox.Text)   ? "Sync_Name"    : SyncNameFieldBox.Text.Trim(),
             FixedStartTagName   = string.IsNullOrWhiteSpace(FixedStartTagBox.Text)  ? "DT-INI-NEG"   : FixedStartTagBox.Text.Trim(),
             UnplannedTagName    = string.IsNullOrWhiteSpace(UnplannedTagBox.Text)   ? "NP"           : UnplannedTagBox.Text.Trim(),
+            WipTagName          = string.IsNullOrWhiteSpace(WipTagBox.Text)         ? "WIP"          : WipTagBox.Text.Trim(),
+            BlockedTagName      = string.IsNullOrWhiteSpace(BlockedTagBox.Text)     ? "BLOCK"        : BlockedTagBox.Text.Trim(),
             SyncPredecessorLinks = SyncPredecessorLinksCheck.IsChecked == true,
             EnforceStoryCompletionWithTasks = EnforceStoryCompletionWithTasksCheck.IsChecked == true,
             EnableOrgPeopleDiscovery = EnableOrgDiscoveryCheck.IsChecked == true,

@@ -1,4 +1,4 @@
-<Window x:Class="NXProject.Views.CommunityMainWindow"
+﻿<Window x:Class="NXProject.Views.CommunityMainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:NXProject.Controls"
@@ -153,11 +153,31 @@
                     BorderThickness="0,0,0,1" BorderBrush="#D0D7E0" Padding="0" Margin="0">
         <TabItem>
             <TabItem.Header>
-                <TextBlock Text="&#x1F6E0;" FontSize="14" ToolTip="{DynamicResource Ribbon_Main}"/>
+                <StackPanel Orientation="Horizontal" ToolTip="{DynamicResource Ribbon_Main}">
+                    <TextBlock Text="&#x1F6E0;" FontSize="14" VerticalAlignment="Center"/>
+                    <TextBlock Text="{DynamicResource Ribbon_TabMain}" FontSize="12" Margin="5,0,0,0"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </TabItem.Header>
         <ToolBar Background="{StaticResource SurfaceBrush}" Padding="4,2"
                  FocusManager.IsFocusScope="False"
                  Button.Click="OnToolbarButtonClick">
+            <!-- Sprint / Taskboard (cards por estado) -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTfsSprintClick"
+                    ToolTip="{DynamicResource Sprint_BoardTitle}">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="17" Height="17" Stretch="Uniform">
+                        <Canvas Width="24" Height="24">
+                            <Rectangle Canvas.Left="2" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#6B7A8A"/>
+                            <Rectangle Canvas.Left="9" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#2B579A"/>
+                            <Rectangle Canvas.Left="16" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#107C10"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="TaskBoard" Foreground="#5A6B7B" FontSize="12" FontWeight="Bold"
+                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <Separator/>
             <Button Style="{StaticResource ToolbarButtonStyle}" Command="{Binding NewProjectCommand}" ToolTip="{DynamicResource Toolbar_NewProject}">
                 <TextBlock Text="&#x1F4C4;" FontSize="14"/>
             </Button>
@@ -358,7 +378,11 @@
 
         <TabItem>
             <TabItem.Header>
-                <TextBlock Text="&#x1F4CA;" FontSize="14" ToolTip="{DynamicResource Ribbon_Schedule}"/>
+                <StackPanel Orientation="Horizontal" ToolTip="{DynamicResource Ribbon_Schedule}">
+                    <TextBlock Text="&#x1F4CA;" FontSize="14" VerticalAlignment="Center"/>
+                    <TextBlock Text="{DynamicResource Ribbon_TabSchedule}" FontSize="12" Margin="5,0,0,0"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </TabItem.Header>
         <ToolBar Background="{StaticResource SurfaceBrush}" Padding="4,2"
                  FocusManager.IsFocusScope="False"
@@ -549,7 +573,11 @@
         <!-- Aba DevOps (por último): importar / sincronizar / abrir / consultar / backlog / taskboard -->
         <TabItem>
             <TabItem.Header>
-                <TextBlock Text="&#x1F4CB;" FontSize="15" ToolTip="{DynamicResource Ribbon_Tfs}"/>
+                <StackPanel Orientation="Horizontal" ToolTip="{DynamicResource Ribbon_Tfs}">
+                    <TextBlock Text="&#x1F4CB;" FontSize="15" VerticalAlignment="Center"/>
+                    <TextBlock Text="{DynamicResource Ribbon_TabTfs}" FontSize="12" Margin="5,0,0,0"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </TabItem.Header>
         <ToolBar Background="{StaticResource SurfaceBrush}" Padding="4,2"
                  FocusManager.IsFocusScope="False"
@@ -601,6 +629,22 @@
             </Button>
 
             <Rectangle Width="1" Fill="#C9D3CC" Margin="6,4,6,4"/>
+
+            <!-- Sprint / Taskboard (cards por estado) -->
+            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTfsSprintClick"
+                    ToolTip="{DynamicResource Sprint_BoardTitle}">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="17" Height="17" Stretch="Uniform">
+                        <Canvas Width="24" Height="24">
+                            <Rectangle Canvas.Left="2" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#6B7A8A"/>
+                            <Rectangle Canvas.Left="9" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#2B579A"/>
+                            <Rectangle Canvas.Left="16" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#107C10"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="TaskBoard" Foreground="#5A6B7B" FontSize="12" FontWeight="Bold"
+                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
 
             <!-- Consultas (Shared Queries do DevOps): cilindro de banco (SQL) + "SQL" -->
             <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTfsQueryClick"
@@ -658,21 +702,6 @@
                 </StackPanel>
             </Button>
 
-            <!-- Sprint / Taskboard (cards por estado) -->
-            <Button Style="{StaticResource ToolbarButtonStyle}" Click="OnTfsSprintClick"
-                    ToolTip="{DynamicResource Sprint_BoardTitle}">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Viewbox Width="17" Height="17" Stretch="Uniform">
-                        <Canvas Width="24" Height="24">
-                            <Rectangle Canvas.Left="2" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#6B7A8A"/>
-                            <Rectangle Canvas.Left="9" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#2B579A"/>
-                            <Rectangle Canvas.Left="16" Canvas.Top="4" Width="6" Height="16" RadiusX="1" RadiusY="1" Fill="#107C10"/>
-                        </Canvas>
-                    </Viewbox>
-                    <TextBlock Text="TaskBoard" Foreground="#5A6B7B" FontSize="12" FontWeight="Bold"
-                               FontFamily="Segoe UI" Margin="3,0,0,0" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
         </ToolBar>
         </TabItem>
         </TabControl>

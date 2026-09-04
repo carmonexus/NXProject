@@ -6387,6 +6387,48 @@ namespace NXProject.Services
         /// <summary>Ajusta a tag de andamento (Doing/Done) de um work item: remove Doing e Done
         /// e adiciona <paramref name="targetTag"/> (null = só remove). Preserva as demais tags.
         /// Devolve (Ok, Mensagem) — 403 = sem permissão de escrita.</summary>
+        /// <summary>Liga/desliga UMA tag no work item preservando todas as outras. Lê as tags
+        /// atuais do servidor antes de gravar (não confia em cache local), para não apagar tags
+        /// que outra gravação da mesma sessão acabou de incluir. (Ok, Mensagem).</summary>
+        public static async Task<(bool Ok, string Message)> SetSingleTagAsync(
+            TfsConnectionOptions options, int id, string tag, bool on, CancellationToken ct = default)
+        {
+            var ctx = CreateTfsAuthContext(options, "gravar tag", requireTeamProject: false);
+            string current = "";
+            try
+            {
+                var getUrl = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?fields=System.Tags&{QueryApiVersion}";
+                using var greq = new HttpRequestMessage(HttpMethod.Get, getUrl);
+                greq.Headers.Authorization = ctx.Authorization;
+                using var gresp = await Http.SendAsync(greq, ct);
+                if (gresp.IsSuccessStatusCode)
+                {
+                    using var gdoc = JsonDocument.Parse(await gresp.Content.ReadAsStringAsync(ct));
+                    if (gdoc.RootElement.TryGetProperty("fields", out var gf)
+                        && gf.TryGetProperty("System.Tags", out var tg) && tg.ValueKind == JsonValueKind.String)
+                        current = tg.GetString() ?? "";
+                }
+            }
+            catch { }
+
+            if (HasTagIn(current, tag) == on) return (true, "");   // já está como queremos
+
+            var ops = new List<object> { PatchAdd("/fields/System.Tags", ToggleTag(current, tag, on)) };
+            var url = $"{ctx.OrgBase}/_apis/wit/workitems/{id}?{QueryApiVersion}";
+            using var req = new HttpRequestMessage(new HttpMethod("PATCH"), url)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(ops), Encoding.UTF8, "application/json-patch+json")
+            };
+            req.Headers.Authorization = ctx.Authorization;
+            using var resp = await Http.SendAsync(req, ct);
+            if (resp.IsSuccessStatusCode) return (true, "");
+            return (false, $"HTTP {(int)resp.StatusCode} {await resp.Content.ReadAsStringAsync(ct)}");
+        }
+
+        private static bool HasTagIn(string? tags, string tag) =>
+            !string.IsNullOrEmpty(tags)
+            && tags.Split(';').Any(x => x.Trim().Equals(tag, StringComparison.OrdinalIgnoreCase));
+
         public static async Task<(bool Ok, string Message)> SetDoingTagAsync(
             TfsConnectionOptions options, int id, string? targetTag, CancellationToken ct = default)
         {
@@ -7256,7 +7298,12 @@ namespace NXProject.Services
             public JsonElement? Relations;
         }
 
-        private static bool HasBlockTag(string? tags) => HasTag(tags, "Block");
+        /// <summary>Nome da tag de bloqueio configurada em "Configurar DevOps" (padrão "BLOCK").
+        /// Fica estático porque o cronograma consulta o bloqueio em pontos sem acesso às opções
+        /// (ViewModels); é preenchido quando a configuração é carregada.</summary>
+        public static string BlockTagName { get; set; } = "BLOCK";
+
+        private static bool HasBlockTag(string? tags) => HasTag(tags, BlockTagName);
 
         private static bool HasTag(string? tags, string tag) =>
             !string.IsNullOrWhiteSpace(tags) &&

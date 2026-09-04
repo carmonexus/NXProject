@@ -146,6 +146,12 @@ namespace NXProject.Services
         /// no card do TaskBoard quando a Task tem essa tag.</summary>
         public string UnplannedTagName { get; set; } = "NP";
 
+        /// <summary>Tag que marca a Task como acima do limite de WIP configurado no TaskBoard.</summary>
+        public string WipTagName { get; set; } = "WIP";
+
+        /// <summary>Tag que marca a Story/Task como BLOQUEADA no DevOps.</summary>
+        public string BlockedTagName { get; set; } = "BLOCK";
+
         /// <summary>Sincroniza links de predecessora no DevOps durante Export → Sincronizar.</summary>
         public bool SyncPredecessorLinks { get; set; } = true;
 
@@ -292,6 +298,12 @@ namespace NXProject.Services
         /// <summary>Tag que marca a Task como NÃO PLANEJADA no DevOps. Aparece em destaque
         /// no card do TaskBoard quando a Task tem essa tag.</summary>
         public string UnplannedTagName { get; set; } = "NP";
+        /// <summary>Tag que marca a Task como acima do limite de WIP configurado no TaskBoard.</summary>
+        public string WipTagName { get; set; } = "WIP";
+
+        /// <summary>Tag que marca a Story/Task como BLOQUEADA no DevOps.</summary>
+        public string BlockedTagName { get; set; } = "BLOCK";
+
             public bool   ApprovedFieldEnabled { get; set; } = true;
             public string ApprovedFieldName { get; set; } = "Approved";
             public bool   EpicTypeFieldEnabled { get; set; } = true;
@@ -366,6 +378,13 @@ namespace NXProject.Services
                     ? options.FixedStartTagName : stored.FixedStartTagName.Trim();
                 options.UnplannedTagName = string.IsNullOrWhiteSpace(stored.UnplannedTagName)
                     ? options.UnplannedTagName : stored.UnplannedTagName.Trim();
+                options.WipTagName = string.IsNullOrWhiteSpace(stored.WipTagName)
+                    ? options.WipTagName : stored.WipTagName.Trim();
+                options.BlockedTagName = string.IsNullOrWhiteSpace(stored.BlockedTagName)
+                    ? options.BlockedTagName : stored.BlockedTagName.Trim();
+                // O cronograma lê a tag de bloqueio por um ponto estático (ViewModels não têm
+                // as opções em mãos) — mantém os dois lados com o mesmo nome.
+                TfsImportService.BlockTagName = options.BlockedTagName;
                 options.ApprovedFieldEnabled = stored.ApprovedFieldEnabled;
                 options.ApprovedFieldName = string.IsNullOrWhiteSpace(stored.ApprovedFieldName)
                     ? options.ApprovedFieldName : stored.ApprovedFieldName.Trim();
@@ -426,6 +445,8 @@ namespace NXProject.Services
                 SyncNameFieldName = string.IsNullOrWhiteSpace(options.SyncNameFieldName) ? "Sync_Name" : options.SyncNameFieldName.Trim(),
                 FixedStartTagName = string.IsNullOrWhiteSpace(options.FixedStartTagName) ? "DT-INI-NEG" : options.FixedStartTagName.Trim(),
                 UnplannedTagName = string.IsNullOrWhiteSpace(options.UnplannedTagName) ? "NP" : options.UnplannedTagName.Trim(),
+                WipTagName = string.IsNullOrWhiteSpace(options.WipTagName) ? "WIP" : options.WipTagName.Trim(),
+                BlockedTagName = string.IsNullOrWhiteSpace(options.BlockedTagName) ? "BLOCK" : options.BlockedTagName.Trim(),
                 ApprovedFieldEnabled = options.ApprovedFieldEnabled,
                 ApprovedFieldName = string.IsNullOrWhiteSpace(options.ApprovedFieldName) ? "Approved" : options.ApprovedFieldName.Trim(),
                 EpicTypeFieldEnabled = options.EpicTypeFieldEnabled,
