@@ -1003,8 +1003,6 @@
     <sys:String x:Key="Sprint_ScopeTask">Task only</sys:String>
     <sys:String x:Key="Sprint_ScopeStory">Story only</sys:String>
     <sys:String x:Key="Sprint_SearchScopeTip">Where search looks: Story, Task or both.</sys:String>
-    <sys:String x:Key="Colors_SetDefault">Set as default</sys:String>
-    <sys:String x:Key="Colors_DefaultSaved">Colors saved as default.</sys:String>
     <sys:String x:Key="Sprint_AutoOpen">Open on NX startup</sys:String>
     <sys:String x:Key="Sprint_AutoOpenTip">Automatically opens the TaskBoard when NX starts (ideal for the developer profile).</sys:String>
     <sys:String x:Key="Sprint_MultiTip">Select one or more sprints</sys:String>

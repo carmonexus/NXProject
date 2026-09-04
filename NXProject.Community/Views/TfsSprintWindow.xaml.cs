@@ -3027,13 +3027,8 @@ namespace NXProject.Views
             return new SolidColorBrush(DefaultStateColor(state));
         }
 
-        // Cor padrão do estado: primeiro as cores que o usuário salvou como padrão; senão a de fábrica.
-        private static Color DefaultStateColor(string state)
-        {
-            if (SavedDefaultColors.TryGetValue(state.ToLowerInvariant(), out var hex) && TryParseColor(hex, out var c))
-                return c;
-            return FactoryStateColor(state);
-        }
+        // Cor padrão do estado (de fábrica). A customização do usuário fica nas prefs do board.
+        private static Color DefaultStateColor(string state) => FactoryStateColor(state);
 
         // Chave da cor do "Story Colaborador" (pessoa ajuda na task, mas não é responsável da Story).
         private const string HelperColorKey = "story-colaborador";
@@ -3052,37 +3047,6 @@ namespace NXProject.Views
             "done" or "closed" or "completed" => Color.FromRgb(0x8A, 0xA5, 0x95),
             _ => Color.FromRgb(0x8A, 0x8A, 0x8A)
         };
-
-        // Cores salvas como padrão (compartilhadas por todos os boards). Arquivo em LocalAppData.
-        private static string DefaultColorsFile => System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "NXProject.Community", "statecolors-default.json");
-        private static Dictionary<string, string>? _savedDefaultColors;
-        private static Dictionary<string, string> SavedDefaultColors
-        {
-            get
-            {
-                if (_savedDefaultColors != null) return _savedDefaultColors;
-                try
-                {
-                    if (System.IO.File.Exists(DefaultColorsFile))
-                        _savedDefaultColors = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
-                            System.IO.File.ReadAllText(DefaultColorsFile));
-                }
-                catch { }
-                return _savedDefaultColors ??= new();
-            }
-        }
-        private static void SaveDefaultColors(IReadOnlyDictionary<string, string> map)
-        {
-            try
-            {
-                _savedDefaultColors = new Dictionary<string, string>(map.ToDictionary(k => k.Key.ToLowerInvariant(), v => v.Value));
-                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(DefaultColorsFile)!);
-                System.IO.File.WriteAllText(DefaultColorsFile, System.Text.Json.JsonSerializer.Serialize(_savedDefaultColors));
-            }
-            catch { }
-        }
 
         // Fundo claro do card tingido pela cor do estado (mistura com branco).
         private Brush StateTintBrush(string state)
@@ -3106,14 +3070,6 @@ namespace NXProject.Views
             var states = _board?.States?.ToList() ?? new List<string>();
             if (states.Count == 0) return;
             var dlg = new StateColorsWindow(states, _prefs.StateColors, DefaultStateColor,
-                onSaveDefault: all =>
-                {
-                    // "Definir como padrão": vira o padrão de todos os boards e limpa o override local.
-                    SaveDefaultColors(all);
-                    _prefs.StateColors = null;
-                    SavePrefs();
-                    Render();
-                },
                 extraRows: new[] { (AppStrings.Get("Colors_StoryHelp"), HelperColorKey),
                                    (AppStrings.Get("Colors_Feature"), FeatureColorKey) }) { Owner = this };
             if (dlg.ShowDialog() == true)

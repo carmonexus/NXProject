@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -14,7 +14,6 @@ namespace NXProject.Views
     public partial class StateColorsWindow : Window
     {
         private readonly Func<string, Color> _defaultColor;
-        private readonly Action<Dictionary<string, string>>? _onSaveDefault;
         private readonly List<(string Key, string Label, TextBox Box, Border Preview)> _rows = new();
 
         /// <summary>Mapa chave(lower) -> hex das cores CUSTOMIZADAS (só as diferentes do padrão).</summary>
@@ -22,13 +21,10 @@ namespace NXProject.Views
 
         public StateColorsWindow(IEnumerable<string> states,
             IReadOnlyDictionary<string, string>? current, Func<string, Color> defaultColor,
-            Action<Dictionary<string, string>>? onSaveDefault = null,
             IEnumerable<(string Label, string Key)>? extraRows = null)
         {
             InitializeComponent();
             _defaultColor = defaultColor;
-            _onSaveDefault = onSaveDefault;
-            if (onSaveDefault == null) SetDefaultBtn.Visibility = Visibility.Collapsed;
 
             // Entradas: estados do board (chave = nome minúsculo) + extras (chave própria).
             var entries = states.Distinct().Select(s => (Label: s, Key: s.ToLowerInvariant())).ToList();
@@ -42,6 +38,7 @@ namespace NXProject.Views
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
 
                 var lbl = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center };
                 Grid.SetColumn(lbl, 0);
@@ -54,10 +51,22 @@ namespace NXProject.Views
                     Cursor = System.Windows.Input.Cursors.Hand, ToolTip = AppStrings.Get("Colors_SwatchTip") };
                 Grid.SetColumn(prev, 2);
 
+                // Botão explícito da paleta: o quadrado de cor sozinho não parece clicável
+                // (a dica só aparece parando o mouse em cima).
+                var pick = new Button
+                {
+                    Content = "🎨", FontSize = 12, Width = 26, Height = 22,
+                    Margin = new Thickness(4, 0, 0, 0),
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    ToolTip = AppStrings.Get("Colors_SwatchTip")
+                };
+                Grid.SetColumn(pick, 3);
+
                 box.TextChanged += (_, _) => prev.Background = BrushFrom(box.Text, key);
                 prev.MouseLeftButtonUp += (_, _) => ColorPickerHelper.PickInto(box);
+                pick.Click += (_, _) => ColorPickerHelper.PickInto(box);
 
-                row.Children.Add(lbl); row.Children.Add(box); row.Children.Add(prev);
+                row.Children.Add(lbl); row.Children.Add(box); row.Children.Add(prev); row.Children.Add(pick);
                 RowsHost.Children.Add(row);
                 _rows.Add((key, label, box, prev));
             }
@@ -67,19 +76,6 @@ namespace NXProject.Views
             => ColorPickerHelper.BrushFrom(hex, _defaultColor(key));
 
         private static string ToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
-
-        // Salva TODAS as cores atuais como padrão (compartilhado) e as aplica como base.
-        private void OnSetDefault(object sender, RoutedEventArgs e)
-        {
-            var all = new Dictionary<string, string>();
-            foreach (var (key, label, box, _) in _rows)
-            {
-                try { var c = (Color)ColorConverter.ConvertFromString((box.Text ?? "").Trim()); all[key] = ToHex(c); }
-                catch { MessageBox.Show(this, AppStrings.Get("Colors_Invalid", label), "NXProject", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
-            }
-            _onSaveDefault?.Invoke(all);
-            MessageBox.Show(this, AppStrings.Get("Colors_DefaultSaved"), "NXProject", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
 
         private void OnResetAll(object sender, RoutedEventArgs e)
         {

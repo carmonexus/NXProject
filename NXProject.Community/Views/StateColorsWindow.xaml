@@ -1,18 +1,30 @@
-<Window x:Class="NXProject.Views.StateColorsWindow"
+﻿<Window x:Class="NXProject.Views.StateColorsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource Sprint_Colors}"
-        Width="380" Height="460"
+        Width="480"
+        MinWidth="360" MaxHeight="620"
+        SizeToContent="Height"
+        ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterOwner" Background="White">
     <DockPanel Margin="12">
         <TextBlock DockPanel.Dock="Top" Text="{DynamicResource Colors_Hint}" TextWrapping="Wrap"
                    Foreground="#666" FontSize="11" Margin="0,0,0,8"/>
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button x:Name="SetDefaultBtn" Content="{DynamicResource Colors_SetDefault}" Padding="10,4" Margin="0,0,8,0" Click="OnSetDefault"/>
-            <Button Content="{DynamicResource Colors_Reset}" Padding="10,4" Margin="0,0,8,0" Click="OnResetAll"/>
-            <Button Content="{DynamicResource Desc_Save}" Width="90" Height="30" IsDefault="True" Click="OnSave"/>
-            <Button Content="{DynamicResource Desc_Cancel}" Width="90" Height="30" IsCancel="True" Margin="8,0,0,0"/>
-        </StackPanel>
+        <!-- WrapPanel (e nao StackPanel): com a janela estreita os botoes quebram para a
+             linha de baixo em vez de o primeiro sair pela borda esquerda. -->
+        <WrapPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <WrapPanel.Resources>
+                <Style TargetType="Button">
+                    <Setter Property="Height" Value="30"/>
+                    <Setter Property="MinWidth" Value="90"/>
+                    <Setter Property="Padding" Value="12,4"/>
+                    <Setter Property="Margin" Value="0,4,8,0"/>
+                </Style>
+            </WrapPanel.Resources>
+            <Button Content="{DynamicResource Colors_Reset}" Click="OnResetAll"/>
+            <Button Content="{DynamicResource Desc_Save}" IsDefault="True" Click="OnSave"/>
+            <Button Content="{DynamicResource Desc_Cancel}" IsCancel="True" Margin="0,4,0,0"/>
+        </WrapPanel>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="RowsHost"/>
         </ScrollViewer>
