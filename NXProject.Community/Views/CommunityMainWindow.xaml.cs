@@ -1038,10 +1038,13 @@ namespace NXProject.Views
                 return;
             }
             var vm = DataContext as MainViewModel;
-            var scheduleIds = vm?.FlatTasks
+            // FlatTasks já está na ordem da árvore do cronograma: leva a LISTA (ordem) além do
+            // conjunto, para o filtro do TaskBoard seguir a mesma ordem que o usuário vê aqui.
+            var scheduleOrder = vm?.FlatTasks
                 .Where(t => t.Model.TfsId is > 0)
                 .Select(t => t.Model.TfsId!.Value)
-                .ToHashSet() ?? new System.Collections.Generic.HashSet<int>();
+                .ToList() ?? new System.Collections.Generic.List<int>();
+            var scheduleIds = scheduleOrder.ToHashSet();
             // Sprint sugerida: a mais frequente entre as atividades do cronograma aberto.
             var preferred = vm?.FlatTasks
                 .Where(t => !string.IsNullOrWhiteSpace(t.Model.TfsIterationPath))
@@ -1050,7 +1053,8 @@ namespace NXProject.Views
                 .Select(g => g.Key)
                 .FirstOrDefault();
 
-            new NXProject.Views.TfsSprintWindow(scheduleIds, FocusScheduleTaskByTfsId, preferred) { Owner = this }.Show();
+            new NXProject.Views.TfsSprintWindow(scheduleIds, FocusScheduleTaskByTfsId, preferred, scheduleOrder)
+                { Owner = this }.Show();
         }
 
         // Foca (seleciona + rola até) a atividade do cronograma com o TfsId dado.

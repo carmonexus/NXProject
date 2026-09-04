@@ -439,6 +439,10 @@ namespace NXProject.Services
         {
             /// <summary>Iteração (sprint) da Task.</summary>
             public string IterationPath { get; init; } = "";
+            /// <summary>HH Estimado (OriginalEstimate) — exibido no card.</summary>
+            public double? EstimateHours { get; init; }
+            /// <summary>HH Realizado (CompletedWork) — exibido no card quando encerrada.</summary>
+            public double? CompletedHours { get; init; }
         }
         public sealed record SprintStoryRow(int Id, string Title, string State, string AssignedTo,
             System.Collections.Generic.List<SprintTaskCard> Tasks)
@@ -465,6 +469,10 @@ namespace NXProject.Services
             public string IterationPath { get; set; } = "";
             /// <summary>Tags (ex.: "Blocked").</summary>
             public string Tags { get; set; } = "";
+            /// <summary>HH Estimado (OriginalEstimate) da Story — exibido no card.</summary>
+            public double? EstimateHours { get; set; }
+            /// <summary>HH Realizado (CompletedWork) da Story — exibido no card quando encerrada.</summary>
+            public double? CompletedHours { get; set; }
         }
         public sealed record SprintBoard(
             System.Collections.Generic.List<string> States,
@@ -579,12 +587,27 @@ namespace NXProject.Services
                             ? cdd.ToLocalTime() : (DateTime?)null;
                         var prio = f.TryGetProperty("Microsoft.VSTS.Common.Priority", out var pv) && pv.ValueKind == JsonValueKind.Number
                             ? pv.GetInt32() : 0;
-                        tasks.Add(new SprintTaskCard(id, S("System.Title"), state, who, eff, parentId, S("System.Tags"), closedDate, prio, ReadRank(f)) { IterationPath = S("System.IterationPath") });
+                        var compN = f.TryGetProperty("Microsoft.VSTS.Scheduling.CompletedWork", out var cwv)
+                            && cwv.ValueKind == JsonValueKind.Number && cwv.TryGetDouble(out var cwd) ? cwd : (double?)null;
+                        tasks.Add(new SprintTaskCard(id, S("System.Title"), state, who, eff, parentId, S("System.Tags"), closedDate, prio, ReadRank(f))
+                        {
+                            IterationPath = S("System.IterationPath"),
+                            EstimateHours = double.IsNaN(effN) ? (double?)null : effN,
+                            CompletedHours = compN
+                        });
                         statesSeen.Add(state);
                     }
                     else
                     {
-                        var row = new SprintStoryRow(id, S("System.Title"), state, who, new()) { StackRank = ReadRank(f), IterationPath = S("System.IterationPath"), Tags = S("System.Tags"), AcceptanceCriteria = S(AcceptanceCriteriaRef) };
+                        double? NumF(string k) => f.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number
+                            && v.TryGetDouble(out var d2) ? d2 : (double?)null;
+                        var row = new SprintStoryRow(id, S("System.Title"), state, who, new())
+                        {
+                            StackRank = ReadRank(f), IterationPath = S("System.IterationPath"),
+                            Tags = S("System.Tags"), AcceptanceCriteria = S(AcceptanceCriteriaRef),
+                            EstimateHours = NumF("Microsoft.VSTS.Scheduling.OriginalEstimate"),
+                            CompletedHours = NumF("Microsoft.VSTS.Scheduling.CompletedWork")
+                        };
                         stories.Add(row);
                         storyById[id] = row;
                         if (f.TryGetProperty("System.Parent", out var spp) && spp.ValueKind == JsonValueKind.Number)

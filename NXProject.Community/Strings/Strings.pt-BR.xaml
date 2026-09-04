@@ -1785,6 +1785,11 @@
     <sys:String x:Key="Sprint_ColProject">Projeto</sys:String>
     <sys:String x:Key="Sprint_ShowEpicHint">Marcado: EPIC em coluna própria. Desmarcado: EPIC dentro do card da Feature.</sys:String>
     <sys:String x:Key="Sprint_ShowProjHint">Marcado: Projeto em coluna própria. Desmarcado: Projeto junto do EPIC.</sys:String>
+    <sys:String x:Key="Sprint_OnlyScheduleStory">Somente Story do cronograma</sys:String>
+    <sys:String x:Key="Sprint_OnlyScheduleStoryTip">Mostra apenas as Stories que estão no cronograma aberto. As Tasks continuam vindo do TFS normalmente, para você conferir se os filtros atendem.</sys:String>
+    <sys:String x:Key="Sprint_FSOnlyScheduleStory">Somente Story do cronograma</sys:String>
+    <sys:String x:Key="Sprint_HHEst">⏱ HH Est.: {0}h</sys:String>
+    <sys:String x:Key="Sprint_HHDone">✔ HH Real.: {0}h</sys:String>
     <sys:String x:Key="Sprint_ShowFeatHint">Marcado: Feature em coluna própria. Desmarcado: Feature dentro do card da Story.</sys:String>
     <sys:String x:Key="Sprint_ShowEpicColHint">Marcado: EPIC em coluna própria. Desmarcado: EPIC dentro do card da Feature.</sys:String>
     <sys:String x:Key="Sprint_CardsAreStories">↓ Cards por estado: STORY</sys:String>

@@ -920,6 +920,11 @@
     <sys:String x:Key="Sprint_ColProject">Project</sys:String>
     <sys:String x:Key="Sprint_ShowEpicHint">Checked: EPIC in its own column. Unchecked: EPIC inside the Feature card.</sys:String>
     <sys:String x:Key="Sprint_ShowProjHint">Checked: Project in its own column. Unchecked: Project shown next to the EPIC.</sys:String>
+    <sys:String x:Key="Sprint_OnlyScheduleStory">Schedule stories only</sys:String>
+    <sys:String x:Key="Sprint_OnlyScheduleStoryTip">Shows only the Stories present in the open schedule. Tasks still come from TFS as usual, so you can check whether the filters cover them.</sys:String>
+    <sys:String x:Key="Sprint_FSOnlyScheduleStory">Schedule stories only</sys:String>
+    <sys:String x:Key="Sprint_HHEst">⏱ Est. hrs: {0}h</sys:String>
+    <sys:String x:Key="Sprint_HHDone">✔ Done hrs: {0}h</sys:String>
     <sys:String x:Key="Sprint_ShowFeatHint">Checked: Feature in its own column. Unchecked: Feature inside the Story card.</sys:String>
     <sys:String x:Key="Sprint_ShowEpicColHint">Checked: EPIC in its own column. Unchecked: EPIC inside the Feature card.</sys:String>
     <sys:String x:Key="Sprint_CardsAreStories">↓ Cards by state: STORY</sys:String>

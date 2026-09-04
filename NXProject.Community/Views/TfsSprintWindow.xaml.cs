@@ -20,6 +20,8 @@ namespace NXProject.Views
     {
         private readonly TfsConnectionOptions _options;
         private readonly IReadOnlySet<int> _scheduleIds;
+        // Id do work item → posição no cronograma aberto (vazio quando aberto sem cronograma).
+        private readonly Dictionary<int, int> _scheduleRank = new();
         private readonly Action<int>? _openInSchedule;
         private readonly string? _preferredSprint;
         private List<TfsImportService.SprintInfo> _sprints = new();
@@ -182,11 +184,16 @@ namespace NXProject.Views
             || s.Equals("Completed", StringComparison.OrdinalIgnoreCase);
 
         public TfsSprintWindow(IReadOnlySet<int>? scheduleIds = null, Action<int>? openInSchedule = null,
-            string? preferredSprint = null)
+            string? preferredSprint = null, IReadOnlyList<int>? scheduleOrder = null)
         {
             InitializeComponent();
             _options = TfsConnectionStore.Load("NXProject.Community");
             _scheduleIds = scheduleIds ?? new HashSet<int>();
+            // Posição de cada item na ÁRVORE do cronograma aberto — usada para ordenar o filtro
+            // na mesma ordem que o usuário vê no cronograma.
+            if (scheduleOrder != null)
+                for (int i = 0; i < scheduleOrder.Count; i++)
+                    _scheduleRank.TryAdd(scheduleOrder[i], i);
             _openInSchedule = openInSchedule;
             _preferredSprint = preferredSprint;
             ViewCombo.Items.Add(AppStrings.Get("Sprint_ViewBoard"));   // 0 = StoryBoard
@@ -1159,7 +1166,11 @@ namespace NXProject.Views
         // Filtros de recorte (pessoa, cronograma, story) — não mexem nas colunas.
         private bool PassesBaseFilters(TfsImportService.SprintTaskCard t)
         {
-            if (OnlyScheduleCheck.IsChecked == true && !_scheduleIds.Contains(t.Id)) return false;
+            // "Somente Story do cronograma": o recorte é pela STORY pai estar no cronograma
+            // aberto. As Tasks continuam vindo do TFS (o cronograma normalmente para na Story,
+            // então filtrar pelo id da própria Task esvaziava o board).
+            if (OnlyScheduleCheck.IsChecked == true
+                && !(t.ParentId is int sp0 && _scheduleIds.Contains(sp0))) return false;
             if (_selectedPeople.Count > 0 && !_selectedPeople.Contains(t.AssignedTo ?? "")) return false;
             if (_selectedStoryIds.Count > 0 && !(t.ParentId is int p && _selectedStoryIds.Contains(p))) return false;
             // Busca ao vivo com escopo (Ambos / Task / Story).
@@ -1215,6 +1226,11 @@ namespace NXProject.Views
             AddFilterRoot(AppStrings.Get("Sprint_FilterAllPortfolio"), others);
         }
 
+        /// <summary>Chave de ordenação do filtro: posição no cronograma aberto quando o item está
+        /// lá; senão o rank do backlog do TFS. Assim a lista segue a ordem que o usuário conhece.</summary>
+        private double FilterOrderOf(TfsImportService.SprintStoryRow s) =>
+            _scheduleRank.TryGetValue(s.Id, out var pos) ? pos : double.MaxValue / 2 + s.StackRank;
+
         private void AddFilterRoot(string label, List<TfsImportService.SprintStoryRow> stories)
         {
             var rootPanel = new StackPanel { Margin = new Thickness(16, 0, 0, 0) };
@@ -1224,15 +1240,19 @@ namespace NXProject.Views
             StoryFilterList.Children.Add(root);
             StoryFilterList.Children.Add(rootPanel);
 
-            // Features (sem-Feature por último).
+            // Ordem: a MESMA do cronograma aberto quando o item está lá; senão o rank do backlog
+            // do TFS (StackRank). Antes era alfabético, que não casava com nenhuma das duas.
+            // Features (sem-Feature por último), pela posição da 1ª Story de cada uma.
             foreach (var fg in stories
                          .GroupBy(s => string.IsNullOrWhiteSpace(s.FeatureTitle) ? "" : s.FeatureTitle)
-                         .OrderBy(g => g.Key == "" ? 1 : 0).ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
+                         .OrderBy(g => g.Key == "" ? 1 : 0)
+                         .ThenBy(g => g.Min(FilterOrderOf))
+                         .ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
             {
                 var featTitle = fg.Key == "" ? AppStrings.Get("Sprint_NoFeature") : fg.Key;
                 var container = new StackPanel { Margin = new Thickness(0, 2, 0, 2) };
                 var childPanel = new StackPanel { Margin = new Thickness(16, 0, 0, 0) };
-                foreach (var s in fg.OrderBy(s => s.Title, StringComparer.CurrentCultureIgnoreCase))
+                foreach (var s in fg.OrderBy(FilterOrderOf).ThenBy(s => s.Title, StringComparer.CurrentCultureIgnoreCase))
                     childPanel.Children.Add(new CheckBox
                     {
                         Content = s.Title, Tag = s.Id, Margin = new Thickness(2),
@@ -1378,7 +1398,7 @@ namespace NXProject.Views
                 ? AppStrings.Get("Sprint_FSClosedDays", _closedDays.ToString())
                 : AppStrings.Get("Sprint_FSClosedAll"));
             if (OnlyScheduleCheck.IsChecked == true)
-                parts.Add(AppStrings.Get("Sprint_FSOnlySchedule"));
+                parts.Add(AppStrings.Get("Sprint_FSOnlyScheduleStory"));
             if (!string.IsNullOrWhiteSpace(SearchBox.Text))
                 parts.Add(AppStrings.Get("Sprint_FSSearch", SearchBox.Text.Trim()));
             return AppStrings.Get("Sprint_FSPrefix", string.Join(" · ", parts));
@@ -2086,6 +2106,7 @@ namespace NXProject.Views
         private bool StoryPasses(TfsImportService.SprintStoryRow s)
         {
             if (s.Id < 0) return true; // Story nova sempre visível
+            if (OnlyScheduleCheck.IsChecked == true && !_scheduleIds.Contains(s.Id)) return false;
             if (_selectedStoryIds.Count > 0 && !_selectedStoryIds.Contains(s.Id)) return false;
             // Filtro de pessoa também na visão Por Story: mostra a Story se o responsável dela
             // ou alguma task sua for de uma das pessoas selecionadas.
@@ -2226,6 +2247,9 @@ namespace NXProject.Views
                     Text = "👤 " + (string.IsNullOrWhiteSpace(owner) ? AppStrings.Get("Sprint_NoOwner") : owner),
                     FontSize = 10, TextWrapping = TextWrapping.Wrap,
                     Foreground = ownerDirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray });
+                // HH Estimado (e Realizado quando encerrada).
+                if (BuildHoursLine(story.Id, story.EstimateHours, story.CompletedHours, EffStoryState(story)) is { } hhStory)
+                    sp.Children.Add(hhStory);
                 // Sprint da Story (🗓). Laranja quando há troca pendente.
                 var iterLeaf = IterLeaf(EffIter(story.Id, story.IterationPath));
                 if (!string.IsNullOrEmpty(iterLeaf))
@@ -2369,6 +2393,25 @@ namespace NXProject.Views
             BoardHost.Children.Add(band);
         }
 
+        /// <summary>Linha de HH do card: Estimado sempre; Realizado só quando o item está
+        /// encerrado. Considera as edições pendentes (fila do "Atualizar TFS").</summary>
+        private TextBlock? BuildHoursLine(int id, double? estimate, double? completed, string effState)
+        {
+            var est = _estPending.TryGetValue(id, out var ep) ? ep : estimate;
+            var done = _donePending.TryGetValue(id, out var dp) ? dp : completed;
+            var dirty = _estPending.ContainsKey(id) || _donePending.ContainsKey(id);
+            var closed = IsClosedState(effState);
+            var txt = est.HasValue ? AppStrings.Get("Sprint_HHEst", est.Value.ToString("0.##")) : "";
+            if (closed && done.HasValue)
+                txt += (txt.Length > 0 ? "  ·  " : "") + AppStrings.Get("Sprint_HHDone", done.Value.ToString("0.##"));
+            if (txt.Length == 0) return null;
+            return new TextBlock
+            {
+                Text = txt, FontSize = 10,
+                Foreground = dirty ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.DimGray
+            };
+        }
+
         private Border BuildCard(TfsImportService.SprintTaskCard t, string? storyTitle = null)
         {
             if (t.Id < 0 && _newCards.FirstOrDefault(n => n.TempId == t.Id) is { } nct)
@@ -2443,9 +2486,11 @@ namespace NXProject.Views
             sp.Children.Add(titleLine);
             var line = new TextBlock { FontSize = 10, Foreground = Brushes.Gray };
             line.Text = (isNew ? AppStrings.Get("Sprint_New") : $"#{t.Id}")
-                + (string.IsNullOrWhiteSpace(t.AssignedTo) ? "" : $"  ·  {t.AssignedTo}")
-                + (string.IsNullOrWhiteSpace(t.Effort) ? "" : $"  ·  {t.Effort}h");
+                + (string.IsNullOrWhiteSpace(t.AssignedTo) ? "" : $"  ·  {t.AssignedTo}");
             sp.Children.Add(line);
+            // HH Estimado (e Realizado quando encerrada).
+            if (!isNew && BuildHoursLine(t.Id, t.EstimateHours, t.CompletedHours, EffState(t)) is { } hhTask)
+                sp.Children.Add(hhTask);
             // Sprint da Task: mostra quando há mais de uma sprint no board (várias/"Todas").
             var tIter = IterLeaf(EffIter(t.Id, t.IterationPath));
             if (_sprintPaths.Count != 1 && !string.IsNullOrEmpty(tIter))
