@@ -126,14 +126,17 @@ This creates a supplemental WDAC policy that allows executables from the NXProje
 
 ## Screenshots
 
+![TaskBoard, Person & Task view](ScreenShot/Tela06-TaskBoard-Person-Task-EN.svg)
+![Azure DevOps Backlog concept](ScreenShot/Tela05-Azure-DevOps-Backlog-EN.svg)
+
+> The two images above are conceptual illustrations with fictional data, not screenshots.
+
 ![AI assistant: free-text request](ScreenShot/Tela01.png)
 ![AI assistant: suggested activities in tabular form](ScreenShot/Tela02.png)
 ![Schedule grid and Gantt chart](ScreenShot/Tela03.png)
 ![TFS / Azure DevOps import](ScreenShot/Tela04.png)
-![Azure DevOps Backlog concept](ScreenShot/Tela05-Azure-DevOps-Backlog-EN.svg)
-![TaskBoard, Person & Task view](ScreenShot/Tela06-TaskBoard-Person-Task-EN.svg)
 
-> The last two images are conceptual illustrations with fictional data, not screenshots. The application screenshots above were captured with the Portuguese UI; the product itself is bilingual and switches to English automatically.
+> These application screenshots were captured with the Portuguese UI; the product itself is bilingual and switches to English automatically.
 
 ---
 
