@@ -124,14 +124,16 @@ pilares = [
     ("🔗", "Integração\nbidirecional",
      "Importa e sincroniza com Azure DevOps: work items, sprints, responsáveis, estimativas."),
     ("📊", "Gantt\ninterativo",
-     "Visualização de barras, dependências, marcos e linha do tempo com zoom ajustável."),
+     "Barras, dependências, marcos, caminho crítico e linha de base, com zoom ajustável."),
+    ("🗂️", "TaskBoard\nda execução",
+     "Tasks da sprint por pessoa e estado; o time conduz o dia a dia e o board grava no DevOps."),
     ("👥", "Gestão de\nrecursos",
-     "Visão de alocação por pessoa, identificação de sobrecargas e conflitos de agenda."),
-    ("🤖", "Assistente\nIA",
-     "Sugere estrutura de tarefas e decomposição de histórias a partir de texto livre."),
+     "Alocação por pessoa, sobrecarga, mapa de alocação e custo por recurso."),
+    ("🤖", "IA local\nou nuvem",
+     "Sugere estrutura de tarefas; o modelo local roda na própria máquina, sem enviar dados."),
 ]
 for i, (emoji, titulo, corpo) in enumerate(pilares):
-    l = Inches(0.3 + i * 2.56); t = Inches(3.25); w = Inches(2.4); h = Inches(3.8)
+    l = Inches(0.2 + i * 2.17); t = Inches(3.25); w = Inches(2.05); h = Inches(3.8)
     add_rect(slide, l, t, w, h, BRANCO)
     add_textbox(slide, l, t+Inches(0.2), w, Inches(0.5), emoji, 26, align=PP_ALIGN.CENTER)
     add_textbox(slide, l+Inches(0.1), t+Inches(0.75), w-Inches(0.2), Inches(0.75),
@@ -139,26 +141,60 @@ for i, (emoji, titulo, corpo) in enumerate(pilares):
     add_textbox(slide, l+Inches(0.15), t+Inches(1.6), w-Inches(0.3), Inches(1.9),
                 corpo, 10.5, color=CINZA_MEDIO, align=PP_ALIGN.CENTER)
 
-# ── Slide 4 — Funcionalidades ─────────────────────────────────────────────────
+# ── Slide 4 — Filosofia: grau de liberdade ───────────────────────
+slide = prs.slides.add_slide(BLANK)
+header(slide, "Filosofia de planejamento: grau de liberdade")
+add_rect(slide, Inches(0.5), Inches(1.5), Inches(12.3), Inches(1.35), AZUL_MEDIO)
+add_textbox(slide, Inches(0.8), Inches(1.62), Inches(11.7), Inches(1.1),
+            "O NXProject planeja até o nível de Story. As Tasks podem ser trazidas para o cronograma, "
+            "mas o objetivo é que o time detalhe e crie as tarefas durante a execução, apoiado pelo TaskBoard "
+            "— o que traz mais agilidade para o projeto.",
+            14, color=BRANCO, align=PP_ALIGN.CENTER)
+add_textbox(slide, Inches(0.5), Inches(3.05), Inches(12.3), Inches(0.6),
+            "Inspirado no conceito matemático de grau de liberdade: definir os limites do sistema sem "
+            "engessar o movimento dentro deles.",
+            12, italic=True, color=CINZA_MEDIO, align=PP_ALIGN.CENTER)
+camadas = [
+    ("A gestão define os limites",
+     "Datas, recursos, dependências e prioridade — no nível de Epic, Feature e Story.\nÉ o que sustenta prazo, capacidade e risco."),
+    ("O time navega dentro deles",
+     "A Task nasce na execução, com quem faz: decomposição, sequência e ajuste fino\nacontecem no TaskBoard, sem esperar replanejamento."),
+    ("Os dois lados enxergam o mesmo",
+     "A Task criada pelo time volta para a Story do cronograma; o gestor vê progresso\ne bloqueio sem cobrar status manualmente."),
+]
+for i, (titulo, corpo) in enumerate(camadas):
+    l = Inches(0.5 + i * 4.2); t = Inches(3.95); w = Inches(3.9); h = Inches(2.6)
+    add_rect(slide, l, t, w, h, BRANCO)
+    add_rect(slide, l, t, w, Inches(0.06), LARANJA)
+    add_textbox(slide, l+Inches(0.2), t+Inches(0.25), w-Inches(0.4), Inches(0.5),
+                titulo, 13, bold=True, color=AZUL_ESCURO, align=PP_ALIGN.CENTER)
+    add_textbox(slide, l+Inches(0.2), t+Inches(1.0), w-Inches(0.4), Inches(1.5),
+                corpo, 11, color=CINZA_MEDIO, align=PP_ALIGN.CENTER)
+
+# ── Slide 5 — Funcionalidades ─────────────────────────────────────────────────
 slide = prs.slides.add_slide(BLANK)
 header(slide, "Principais funcionalidades")
 funcs = [
     ("Importação Azure DevOps",
-     "• Hierarquia Project → Epic → Feature → Story\n• Estimativas, datas, sprints e responsáveis\n• Predecessoras e bloqueios (tag Block)"),
+     "• Hierarquia Project → Epic → Feature → Story\n• Task opcional (Load Task ToDo)\n• Estimativas, datas, sprints e responsáveis\n• Predecessoras e bloqueios (tag Block)"),
     ("Cronograma inteligente",
      "• Cascata automática por predecessoras\n• Predecessora virtual por recurso\n• Calendário com feriados e horas úteis\n• Coluna %Daily: ritmo esperado até hoje"),
     ("Gráfico Gantt",
-     "• Barras, marcos (milestones), setas de dependência\n• Zoom: Dia, Semana, Sprint, Mês, Trimestre\n• Arrastar para replanejar visualmente"),
-    ("Gestão de recursos",
-     "• Alocação por pessoa e sprint\n• Descoberta e importação de pessoas do DevOps\n• Custo por recurso (importa e calcula)\n• Alerta de sobrecarga (>100%)"),
+     "• Barras, marcos e setas de dependência\n• Caminho crítico (CPM) e linha de base\n• Zoom: Dia, Semana, Sprint, Mês, Trimestre\n• Arrastar para replanejar visualmente"),
+    ("TaskBoard",
+     "• Visões Projeto & Story e Pessoa & Task\n• Arrastar muda o estado; grava em lote\n• Doing/Done e limite de WIP por pessoa\n• Alerta de Story fora de sincronia"),
+    ("Task Plan (Excel)",
+     "• Decompõe a Story em Tasks na planilha\n• Sugestão por IA e revisão do Tech Lead\n• Aplica no cronograma e sincroniza\n• Backup automático a cada gravação"),
+    ("Recursos e custos",
+     "• Alocação por pessoa e sprint\n• Mapa de alocação por projeto e mês\n• Custo por recurso (hora ou mensal)\n• Alerta de sobrecarga (>100%)"),
     ("Sincronização bidirecional",
-     "• Datas, horas, estado, sprint, tags e predecessoras\n• Cria work items novos no DevOps\n• Revisão Tech Lead: cria/edita tasks online\n• Relatório detalhado de sincronização"),
+     "• Datas, horas, estado, sprint, tags e predecessoras\n• Cria work items novos no DevOps\n• Controle de concorrência entre usuários\n• Grupo administrador (Adm_NX) do projeto"),
     ("Health Check",
      "• Atividades em atraso (Fim < hoje e % < 100)\n• Desvio %Daily vs % informado\n• Itens sem responsável e dependências circulares"),
 ]
 for i, (titulo, corpo) in enumerate(funcs):
-    col = i % 3; row = i // 3
-    l = Inches(0.4 + col * 4.3); t = Inches(1.55 + row * 2.85); w = Inches(4.0); h = Inches(2.6)
+    col = i % 4; row = i // 4
+    l = Inches(0.35 + col * 3.25); t = Inches(1.55 + row * 2.85); w = Inches(3.05); h = Inches(2.6)
     add_rect(slide, l, t, w, h, BRANCO)
     add_rect(slide, l, t, w, Inches(0.45), AZUL_MEDIO)
     add_textbox(slide, l+Inches(0.15), t+Inches(0.05), w-Inches(0.2), Inches(0.38),
@@ -166,7 +202,7 @@ for i, (titulo, corpo) in enumerate(funcs):
     add_textbox(slide, l+Inches(0.15), t+Inches(0.52), w-Inches(0.25), h-Inches(0.6),
                 corpo, 10.5, color=CINZA_MEDIO)
 
-# ── Slide 5 — Vantagens para a Gestão ────────────────────────────────────────
+# ── Slide 6 — Vantagens para a Gestão ────────────────────────────────────────
 slide = prs.slides.add_slide(BLANK)
 header(slide, "Vantagens estratégicas para a Gestão")
 vantagens = [
@@ -179,9 +215,9 @@ vantagens = [
     ("📈  Decisão baseada em dados",
      "Health Check automático, alocação de recursos e alertas proativos de atraso dão à gestão informação precisa para tomar decisões rápidas."),
     ("🔒  Segurança e controle",
-     "Credenciais Azure DevOps protegidas por DPAPI (criptografia Windows por usuário). Dados do projeto em arquivo local — sem cloud obrigatório."),
+     "Credenciais Azure DevOps protegidas por DPAPI (criptografia Windows por usuário). Dados do projeto em arquivo local — sem cloud obrigatório. A IA Local roda o modelo na própria máquina, sem enviar dados do projeto para fora."),
     ("📦  Implantação simples",
-     "Instalação standalone (zero dependências externas), pronto para uso em minutos. Sem infraestrutura adicional de servidor."),
+     "Aplicativo desktop com instalador próprio: sem servidor, sem banco de dados e sem infraestrutura adicional. Pronto para uso em minutos."),
 ]
 for i, (titulo, corpo) in enumerate(vantagens):
     col = i % 2; row = i // 2
@@ -194,25 +230,26 @@ for i, (titulo, corpo) in enumerate(vantagens):
     run.font.size = Pt(12); run.font.bold = True; run.font.color.rgb = AZUL_ESCURO
     add_para(tf, corpo, 10.5, color=CINZA_MEDIO, space_before=5)
 
-# ── Slide 6 — Fluxo ───────────────────────────────────────────────────────────
+# ── Slide 7 — Fluxo ───────────────────────────────────────────────────────────
 slide = prs.slides.add_slide(BLANK)
 header(slide, "Como funciona — fluxo de trabalho")
 etapas = [
     ("1", "Importar",    "Conecte ao Azure DevOps\ne importe a hierarquia\nde work items"),
     ("2", "Planejar",    "Ajuste datas, duração,\nrecursos e dependências\nno cronograma"),
     ("3", "Visualizar",  "Acompanhe no Gantt\ndatas, marcos e\nalocação de recursos"),
-    ("4", "Sincronizar", "Envie de volta ao DevOps\ndatas, horas, estados\ne novos work items"),
-    ("5", "Monitorar",   "Health Check automático\nalerta atrasos,\nbloqueios e sobrecarga"),
+    ("4", "Executar",    "O time detalha as Tasks\ne conduz o dia a dia\nno TaskBoard"),
+    ("5", "Sincronizar", "Envie de volta ao DevOps\ndatas, horas, estados\ne novos work items"),
+    ("6", "Monitorar",   "Health Check automático\nalerta atrasos,\nbloqueios e sobrecarga"),
 ]
-step_w = Inches(2.2); arrow_w = Inches(0.4)
+step_w = Inches(1.9); arrow_w = Inches(0.3)
 total_w = len(etapas) * step_w + (len(etapas) - 1) * arrow_w
 start_l = (W - total_w) / 2
 t_box = Inches(2.2); h_box = Inches(3.8)
 for i, (num, titulo, corpo) in enumerate(etapas):
     l = start_l + i * (step_w + arrow_w)
     add_rect(slide, l, t_box, step_w, h_box, AZUL_MEDIO)
-    add_rect(slide, l+Inches(0.75), t_box+Inches(0.18), Inches(0.7), Inches(0.7), LARANJA)
-    add_textbox(slide, l+Inches(0.75), t_box+Inches(0.18), Inches(0.7), Inches(0.7),
+    add_rect(slide, l+Inches(0.6), t_box+Inches(0.18), Inches(0.7), Inches(0.7), LARANJA)
+    add_textbox(slide, l+Inches(0.6), t_box+Inches(0.18), Inches(0.7), Inches(0.7),
                 num, 20, bold=True, color=BRANCO, align=PP_ALIGN.CENTER)
     add_textbox(slide, l+Inches(0.1), t_box+Inches(1.1), step_w-Inches(0.2), Inches(0.6),
                 titulo, 14, bold=True, color=BRANCO, align=PP_ALIGN.CENTER)
@@ -223,7 +260,7 @@ for i, (num, titulo, corpo) in enumerate(etapas):
         add_textbox(slide, ax, ay, arrow_w-Inches(0.1), Inches(0.3),
                     "→", 22, bold=True, color=AZUL_ESCURO, align=PP_ALIGN.CENTER)
 
-# ── Slide 7 — Para quem é ─────────────────────────────────────────────────────
+# ── Slide 8 — Para quem é ─────────────────────────────────────────────────────
 slide = prs.slides.add_slide(BLANK)
 header(slide, "Para quem é o NXProject")
 perfis = [
@@ -246,7 +283,7 @@ for i, (emoji, titulo, corpo) in enumerate(perfis):
     add_textbox(slide, l+Inches(0.15), t+Inches(1.9), w-Inches(0.3), Inches(3.0),
                 corpo, 11, color=CINZA_MEDIO, align=PP_ALIGN.CENTER)
 
-# ── Slide 8 — Encerramento ────────────────────────────────────────────────────
+# ── Slide 9 — Encerramento ────────────────────────────────────────────────────
 slide = prs.slides.add_slide(BLANK)
 add_rect(slide, 0, 0, W, H, AZUL_ESCURO)
 add_rect(slide, 0, Inches(3.5), W, Inches(0.07), LARANJA)

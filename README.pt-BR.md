@@ -126,9 +126,9 @@ Isso cria uma política WDAC suplementar que permite executáveis da pasta do NX
 
 ## Capturas de tela
 
-![Tela principal do NXProject Community](ScreenShot/Tela01.png)
-![Tela com hierarquia e Gantt](ScreenShot/Tela02.png)
-![Tela de configuração e acompanhamento](ScreenShot/Tela03.png)
+![Assistente IA: pedido em texto livre](ScreenShot/Tela01.png)
+![Assistente IA: atividades sugeridas em formato tabular](ScreenShot/Tela02.png)
+![Cronograma com grade de atividades e Gantt](ScreenShot/Tela03.png)
 ![Tela de importação do TFS / Azure DevOps](ScreenShot/Tela04.png)
 ![Tela conceitual Azure DevOps Backlog](ScreenShot/Tela05-Azure-DevOps-Backlog.svg)
 ![TaskBoard na visão Pessoa & Task](ScreenShot/Tela06-TaskBoard-Pessoa-Task.svg)
@@ -165,6 +165,24 @@ Cada Story vira uma linha do cronograma com data de início, duração calculada
 O NXProject planeja até o nível de Story por padrão. As Tasks também podem entrar no cronograma, pelo botão que as carrega do DevOps (**Load Task ToDo**), mas o objetivo é outro: que o Desenvolvedor tenha liberdade para detalhar e criar as tarefas durante a execução, com o apoio do **TaskBoard** — o que traz mais agilidade para o projeto.
 
 Inspirado no conceito matemático de **grau de liberdade** — usado para modelar sistemas complexos — o NXProject aplica o mesmo princípio ao planejamento: estrutura a complexidade da tecnologia sem engessar o processo de desenvolvimento. Assim como em um sistema físico os graus de liberdade definem o espaço de movimento possível, o NXProject define os limites (datas, recursos, dependências) e preserva o espaço para o time técnico navegar com autonomia dentro deles.
+
+### TaskBoard: onde a execução acontece
+
+O cronograma responde "quando"; o **TaskBoard** mostra "quem está fazendo o quê, agora". Ele lê as Tasks da sprint direto do Azure DevOps e as organiza em colunas por estado (New, Active, Resolved, Closed), em duas visões:
+
+- **Projeto & Story** — as Stories nas colunas de estado, agrupadas por Projeto, EPIC e Feature. É a visão de acompanhamento do gestor.
+- **Pessoa & Task** — uma faixa por pessoa e, dentro dela, uma linha por Story com as Tasks distribuídas nas colunas (a ilustração acima). É a visão do dia a dia do time.
+
+O que o board faz além de listar:
+
+- **Arrastar a Task entre colunas muda o estado**; nada vai para o DevOps na hora — as alterações entram numa fila e são gravadas em lote no botão **Atualizar TFS**, com relatório do que mudou.
+- **Doing / Done**: marcas do que a pessoa está fazendo agora e do que terminou mas ainda não foi encerrado no DevOps (viram tags no work item).
+- **Limite de WIP por pessoa** (não por projeto): o board conta as Tasks em andamento de cada um e sinaliza quem passou do limite.
+- **Alerta de estado incoerente**: a Story fica destacada quando o estado dela não acompanha o das Tasks — Story em New com Task já iniciada, ou Story em Active sem nenhuma Task em Active.
+- **Bloqueio (tag `BLOCK`)**, sprint, responsável, prioridade, HH estimado/realizado e descrição, todos editáveis a partir do card.
+- **Filtros** por pessoa, Story, estado, sprint (uma ou várias), além de recortes como "somente bloqueadas", "somente Task Active" e "somente Story do cronograma".
+
+É no TaskBoard que o grau de liberdade descrito acima se materializa: o planejamento entrega a Story, e o time cria e conduz as Tasks a partir dali.
 
 ### Lista de Projetos DevOps
 
@@ -242,7 +260,7 @@ A **Task** usa apenas campos **padrão** do Azure DevOps, que já existem no tip
 |---|---|---|
 | HH Estimado | `Microsoft.VSTS.Scheduling.OriginalEstimate` | Esforço estimado da Task |
 | HH Atual | `Microsoft.VSTS.Scheduling.CompletedWork` | Trabalho concluído |
-| Prioridade | `Microsoft.VSTS.Common.Priority` | O DevOps aceita 1–4 |
+| Prioridade | `Microsoft.VSTS.Common.Priority` | O formulário padrão do DevOps usa 1–4; no NXProject a faixa é configurável (padrão 1–9) |
 | Ordem do backlog | `Microsoft.VSTS.Common.StackRank` / `BacklogPriority` | Campo padrão do processo (não precisa criar) |
 | Responsável / Estado / Categoria | `System.AssignedTo` / `System.State` / `Microsoft.VSTS.Common.Activity` | — |
 
@@ -283,11 +301,17 @@ Em qualquer tarefa vinculada, o botão **"Abrir no DevOps ↗"** abre o work ite
 
 - **Gráfico de Gantt** interativo com zoom por dia, sprint ou período
 - **Dependências entre tarefas** (predecessoras), inclusive entre Stories de Epics diferentes
+- **TaskBoard** (visões Projeto & Story e Pessoa & Task): estado por arraste, Doing/Done, limite de WIP por pessoa e gravação em lote no DevOps
+- **Task Plan**: planilha Excel de decomposição da Story em Tasks, com aplicação no cronograma e sincronização de volta
 - **Alocação de recursos**: visão de carga por pessoa e período
+- **Mapa de Alocação do Projeto**: distribuição por pessoa, projeto e mês, com apontamento de horas
+- **Custo por recurso**: valor hora ou mensal, com totais por Feature, pessoa e mês
+- **Caminho crítico (CPM)** e **linha de base (baseline)** para comparar planejado × replanejado
 - **Health Check do Projeto**: lista tarefas atrasadas e sem responsável
 - **Calendário configurável**: feriados, dias úteis, horas por dia
 - **Exportação**: MS Project XML, OpenProj, Excel XML, CSV, **PDF (paisagem)**
-- **Assistente IA** para sugestão de estrutura de tarefas
+- **IA**: assistente para sugestão de estrutura de tarefas, com opção de **IA Local** (modelo executado na própria máquina, sem enviar dados para a nuvem)
+- **Portfólio de Projetos**: vários projetos DevOps num arquivo compartilhado, com OPEX/CAPEX e grupo administrador (`Adm_NX`)
 - **Janela Tech Lead**: busca, cria e edita Tasks DevOps por Story; seleção em cascata Epic → Feature → Story pela toolbar, ou abertura direta pelo menu de contexto da Story
 - **Coluna TKs** (modo expandido): exibe a contagem de Tasks filhas de cada Story no Azure DevOps — vermelho quando zero, para identificar Stories sem Tasks técnicas criadas
 - **Campos Custom DevOps**: campos de classificação configuráveis por tipo de work item (Epic, Feature, Story); valores lidos na importação e editáveis via menu de contexto
@@ -307,7 +331,7 @@ Pré-requisitos: [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotne
 # Compilar
 .\build-community.ps1 -Configuration Release
 
-# Ou gerar o zip de distribuição self-contained
+# Ou gerar o pacote de release (zip de atualizacao + Setup)
 .\release-community-new-version.ps1 -Configuration Release
 ```
 
@@ -323,7 +347,9 @@ O executável de desenvolvimento será gerado em `NXProject.Community\bin\Releas
 > ```
 >
 > …mesmo que `dotnet --list-runtimes` mostre o .NET instalado corretamente.
-> O pacote self-contained inclui o runtime do .NET dentro do ZIP e elimina esse problema.
+> A publicação self-contained resolve isso porque o runtime é copiado junto do `.exe` na pasta de publicação.
+>
+> Atenção: o `NXProject.Community-Release.zip` publicado nas releases é o **pacote de atualização** — ele contém só os arquivos que mudam a cada versão e depende de uma instalação feita pelo `NXProject-Setup.zip`. Para instalar em uma máquina nova, use sempre o Setup.
 
 ---
 

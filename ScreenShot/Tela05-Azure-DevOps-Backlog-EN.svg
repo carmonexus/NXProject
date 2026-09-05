@@ -1,0 +1,112 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Conceptual Azure DevOps Backlog screen integrated with NXProject</title>
+  <desc id="desc">Mockup of an Azure DevOps agile backlog with items imported into the NXProject schedule.</desc>
+  <rect width="1280" height="720" fill="#f4f6f9"/>
+
+  <rect x="0" y="0" width="1280" height="52" fill="#24292f"/>
+  <text x="28" y="33" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">NXProject Community on GitHub</text>
+  <text x="1070" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#c9d1d9">Schedule + Azure DevOps</text>
+
+  <rect x="32" y="82" width="1216" height="112" rx="6" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="58" y="119" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#0969da">Azure DevOps Backlog for agile projects</text>
+  <text x="58" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="15" fill="#57606a">Documentation view for GitHub: DevOps work items become schedule, Gantt, sprints and resource allocation in NXProject.</text>
+  <text x="58" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#57606a">Example based on the Databricks data pipeline project shown in the repository screenshots.</text>
+
+  <g transform="translate(32 220)">
+    <rect width="1216" height="432" rx="6" fill="#ffffff" stroke="#d0d7de"/>
+    <rect width="1216" height="50" rx="6" fill="#f6f8fa"/>
+    <text x="24" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#24292f">Boards / Backlogs / Sprint 1</text>
+
+    <rect x="922" y="12" width="86" height="26" rx="4" fill="#0969da"/>
+    <text x="942" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">Import</text>
+    <rect x="1018" y="12" width="104" height="26" rx="4" fill="#2da44e"/>
+    <text x="1039" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">Sync</text>
+    <rect x="1132" y="12" width="58" height="26" rx="4" fill="#ffffff" stroke="#d0d7de"/>
+    <text x="1148" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#24292f">PAT</text>
+
+    <rect x="24" y="74" width="1168" height="34" fill="#f6f8fa" stroke="#d8dee4"/>
+    <text x="42" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#57606a">ID</text>
+    <text x="108" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#57606a">Type</text>
+    <text x="214" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#57606a">Backlog item</text>
+    <text x="626" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#57606a">State</text>
+    <text x="744" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#57606a">Sprint</text>
+    <text x="860" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#57606a">HH</text>
+    <text x="936" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#57606a">Assigned to</text>
+    <text x="1084" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#57606a">NXProject</text>
+
+    <g font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#24292f">
+      <rect x="24" y="108" width="1168" height="42" fill="#ffffff" stroke="#eaeef2"/>
+      <text x="42" y="134" fill="#0969da" font-weight="700">1024</text>
+      <text x="108" y="134">Epic</text>
+      <text x="214" y="134" font-weight="700">Databricks data pipeline</text>
+      <text x="626" y="134">Active</text>
+      <text x="744" y="134">Release 1</text>
+      <text x="860" y="134">160</text>
+      <text x="936" y="134">Data team</text>
+      <rect x="1080" y="118" width="84" height="22" rx="11" fill="#ddf4ff" stroke="#54aeef"/>
+      <text x="1095" y="134" fill="#0969da" font-size="12" font-weight="700">Gantt</text>
+
+      <rect x="24" y="150" width="1168" height="42" fill="#fbfcfd" stroke="#eaeef2"/>
+      <text x="42" y="176" fill="#0969da" font-weight="700">1031</text>
+      <text x="108" y="176">Feature</text>
+      <text x="214" y="176">Planning and modeling</text>
+      <text x="626" y="176">Active</text>
+      <text x="744" y="176">Sprint 1</text>
+      <text x="860" y="176">24</text>
+      <text x="936" y="176">Architect</text>
+      <rect x="1080" y="160" width="84" height="22" rx="11" fill="#dafbe1" stroke="#4ac26b"/>
+      <text x="1092" y="176" fill="#1a7f37" font-size="12" font-weight="700">allocated</text>
+
+      <rect x="24" y="192" width="1168" height="42" fill="#ffffff" stroke="#eaeef2"/>
+      <text x="42" y="218" fill="#0969da" font-weight="700">1032</text>
+      <text x="108" y="218">Story</text>
+      <text x="214" y="218">Kick-off meeting and requirements gathering</text>
+      <text x="626" y="218">Closed</text>
+      <text x="744" y="218">Sprint 1</text>
+      <text x="860" y="218">8</text>
+      <text x="936" y="218">PO</text>
+      <rect x="1080" y="202" width="84" height="22" rx="11" fill="#dafbe1" stroke="#4ac26b"/>
+      <text x="1094" y="218" fill="#1a7f37" font-size="12" font-weight="700">100%</text>
+
+      <rect x="24" y="234" width="1168" height="42" fill="#fbfcfd" stroke="#eaeef2"/>
+      <text x="42" y="260" fill="#0969da" font-weight="700">1033</text>
+      <text x="108" y="260">Story</text>
+      <text x="214" y="260">Technical analysis and data modeling</text>
+      <text x="626" y="260">Active</text>
+      <text x="744" y="260">Sprint 1</text>
+      <text x="860" y="260">16</text>
+      <text x="936" y="260">Data eng.</text>
+      <rect x="1080" y="244" width="84" height="22" rx="11" fill="#fff8c5" stroke="#d4a72c"/>
+      <text x="1091" y="260" fill="#9a6700" font-size="12" font-weight="700">dep.</text>
+
+      <rect x="24" y="276" width="1168" height="42" fill="#ffffff" stroke="#eaeef2"/>
+      <text x="42" y="302" fill="#0969da" font-weight="700">1034</text>
+      <text x="108" y="302">Story</text>
+      <text x="214" y="302">Databricks environment setup</text>
+      <text x="626" y="302">New</text>
+      <text x="744" y="302">Sprint 1</text>
+      <text x="860" y="302">16</text>
+      <text x="936" y="302">DevOps</text>
+      <rect x="1080" y="286" width="84" height="22" rx="11" fill="#f6f8fa" stroke="#d0d7de"/>
+      <text x="1090" y="302" fill="#57606a" font-size="12" font-weight="700">ready</text>
+
+      <rect x="24" y="318" width="1168" height="42" fill="#fbfcfd" stroke="#eaeef2"/>
+      <text x="42" y="344" fill="#0969da" font-weight="700">1035</text>
+      <text x="108" y="344">Story</text>
+      <text x="214" y="344">Versioning and CI/CD setup</text>
+      <text x="626" y="344">Blocked</text>
+      <text x="744" y="344">Sprint 2</text>
+      <text x="860" y="344">8</text>
+      <text x="936" y="344">DevOps</text>
+      <rect x="1080" y="328" width="84" height="22" rx="11" fill="#ffebe9" stroke="#ff8182"/>
+      <text x="1094" y="344" fill="#cf222e" font-size="12" font-weight="700">Block</text>
+    </g>
+
+    <rect x="24" y="382" width="372" height="28" rx="4" fill="#f6f8fa" stroke="#d0d7de"/>
+    <text x="42" y="401" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#57606a">Backlog order preserved through StackRank.</text>
+    <rect x="420" y="382" width="360" height="28" rx="4" fill="#f6f8fa" stroke="#d0d7de"/>
+    <text x="438" y="401" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#57606a">IterationPath sets the sprint in the schedule.</text>
+    <rect x="804" y="382" width="388" height="28" rx="4" fill="#f6f8fa" stroke="#d0d7de"/>
+    <text x="822" y="401" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#57606a">Dates, hours, status and links flow back on sync.</text>
+  </g>
+</svg>
