@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1460" height="640" viewBox="0 0 1460 640" font-family="Segoe UI, system-ui, -apple-system, sans-serif">
+  <title>NXProject — TaskBoard, visão Pessoa &amp; Task</title>
+  <desc>Ilustração conceitual do TaskBoard do NXProject na visão Pessoa &amp; Task: uma faixa por pessoa, o card da Story e os cards de Task distribuidos nas colunas de estado do Azure DevOps. Dados ficticios.</desc>
+
+  <rect width="1460" height="640" fill="#FFFFFF"/>
+
+  <!-- Barra superior: identificacao da tela e filtros ativos -->
+  <rect x="0" y="0" width="1460" height="34" fill="#F3F6F4"/>
+  <rect x="0" y="33" width="1460" height="1" fill="#D5DDD7"/>
+  <text x="16" y="22" font-size="13" font-weight="600" fill="#1F2937">TaskBoard</text>
+  <text x="100" y="22" font-size="12" fill="#556677">Sprint: SUP2026_08 &#183; Visão: Pessoa &amp; Task &#183; Pessoa: todas &#183; Encerradas: 30 dias</text>
+  <rect x="1206" y="9" width="240" height="18" rx="9" fill="#E7EEF7"/>
+  <text x="1218" y="22" font-size="11" fill="#2B579A">Os cards das colunas são Tasks</text>
+
+  <!-- Cabecalho das colunas -->
+  <g font-size="11" font-weight="600" fill="#4B5563">
+    <text x="16" y="58">PESSOA</text>
+    <text x="166" y="58">EPIC</text>
+    <text x="326" y="58">FEATURE</text>
+    <text x="486" y="58">STORY</text>
+  </g>
+  <g font-size="11" font-weight="600" fill="#FFFFFF">
+    <rect x="700" y="44" width="172" height="20" rx="4" fill="#6B7A8A"/><text x="710" y="58">New</text>
+    <rect x="890" y="44" width="172" height="20" rx="4" fill="#0078D4"/><text x="900" y="58">Active</text>
+    <rect x="1080" y="44" width="172" height="20" rx="4" fill="#B26A00"/><text x="1090" y="58">Resolved</text>
+    <rect x="1270" y="44" width="172" height="20" rx="4" fill="#8AA595"/><text x="1280" y="58">Closed</text>
+  </g>
+  <rect x="10" y="72" width="1440" height="1" fill="#D5DDD7"/>
+
+  <!-- ============ Faixa 1: João ============ -->
+  <g transform="translate(0,84)">
+    <text x="16" y="16" font-size="13" font-weight="700" fill="#111827">João</text>
+    <text x="16" y="34" font-size="10" font-weight="600" fill="#5A7A5A">WIP 2/3</text>
+
+    <rect x="160" y="0" width="152" height="46" rx="3" fill="#F5F0FA" stroke="#D6C4E8"/>
+    <text x="170" y="19" font-size="11" fill="#6A1B9A">Plataforma de Dados</text>
+    <text x="170" y="35" font-size="10" fill="#7A6A8A">#900</text>
+    <rect x="320" y="0" width="152" height="46" rx="3" fill="#F5F0FA" stroke="#D6C4E8"/>
+    <text x="330" y="19" font-size="11" font-weight="600" fill="#6A1B9A">Pipeline Databricks</text>
+    <text x="330" y="35" font-size="10" fill="#7A6A8A">#1002 &#183; João</text>
+
+    <rect x="480" y="0" width="200" height="86" rx="3" fill="#EEF2F7" stroke="#D0D7E0"/>
+    <text x="490" y="19" font-size="12" font-weight="600" fill="#111827">Ingestão camada bronze</text>
+    <text x="490" y="36" font-size="10" fill="#808A96">#1042 &#183; Active</text>
+    <text x="490" y="52" font-size="10" fill="#69707A">Resp.: João</text>
+    <text x="490" y="68" font-size="10" fill="#69707A">24h estimadas</text>
+
+    <rect x="700" y="0" width="172" height="86" rx="3" fill="#F0F2F4" stroke="#C9D0D8"/>
+    <text x="710" y="19" font-size="12" fill="#111827">Configurar workspace</text>
+    <text x="710" y="36" font-size="10" fill="#808A96">#1103 &#183; João</text>
+    <text x="710" y="52" font-size="10" fill="#69707A">HH est.: 8h</text>
+    <text x="710" y="70" font-size="10" fill="#2B579A">Story: Ingestão camada bronze</text>
+
+    <rect x="890" y="0" width="172" height="86" rx="3" fill="#E6F1FB" stroke="#0078D4" stroke-width="2"/>
+    <text x="900" y="19" font-size="12" fill="#111827">Notebook de ingestão</text>
+    <text x="900" y="36" font-size="10" fill="#808A96">#1104 &#183; João</text>
+    <rect x="900" y="44" width="52" height="16" rx="3" fill="#0078D4"/>
+    <text x="908" y="56" font-size="10" font-weight="600" fill="#FFFFFF">Doing</text>
+    <text x="900" y="76" font-size="10" fill="#69707A">HH est.: 16h</text>
+
+    <rect x="1270" y="0" width="172" height="86" rx="3" fill="#F0F4F2" stroke="#C4D2CA"/>
+    <text x="1280" y="19" font-size="12" fill="#111827">Definir schema bronze</text>
+    <text x="1280" y="36" font-size="10" fill="#808A96">#1101 &#183; João</text>
+    <text x="1280" y="52" font-size="10" fill="#69707A">HH est.: 8h &#183; real.: 6h</text>
+  </g>
+  <rect x="10" y="182" width="1440" height="1" fill="#E3E9E5"/>
+
+  <!-- ============ Faixa 2: Maria ============ -->
+  <g transform="translate(0,196)">
+    <text x="16" y="16" font-size="13" font-weight="700" fill="#111827">Maria</text>
+    <text x="16" y="34" font-size="10" font-weight="600" fill="#5A7A5A">WIP 1/3</text>
+
+    <rect x="320" y="0" width="152" height="46" rx="3" fill="#F5F0FA" stroke="#D6C4E8"/>
+    <text x="330" y="19" font-size="11" font-weight="600" fill="#6A1B9A">Pipeline Databricks</text>
+    <text x="330" y="35" font-size="10" fill="#7A6A8A">#1002 &#183; João</text>
+
+    <rect x="480" y="0" width="200" height="86" rx="3" fill="#EEF2F7" stroke="#D0D7E0"/>
+    <text x="490" y="19" font-size="12" font-weight="600" fill="#111827">Transformações silver</text>
+    <text x="490" y="36" font-size="10" font-weight="700" fill="#C03030">#1050 &#183; &#9888; New</text>
+    <text x="490" y="52" font-size="10" fill="#69707A">Resp.: Maria</text>
+    <text x="490" y="70" font-size="9" fill="#C03030">Story em New com Task já iniciada</text>
+
+    <rect x="700" y="0" width="172" height="86" rx="3" fill="#F0F2F4" stroke="#C9D0D8"/>
+    <text x="710" y="19" font-size="12" fill="#111827">Revisar regras de negócio</text>
+    <text x="710" y="36" font-size="10" fill="#808A96">#1109 &#183; Maria</text>
+    <text x="710" y="52" font-size="10" fill="#69707A">HH est.: 4h</text>
+
+    <rect x="890" y="0" width="172" height="86" rx="3" fill="#E6F1FB" stroke="#0078D4" stroke-width="2"/>
+    <text x="900" y="19" font-size="12" fill="#111827">Implementar transformações</text>
+    <text x="900" y="36" font-size="10" fill="#808A96">#1108 &#183; Maria</text>
+    <rect x="900" y="44" width="52" height="16" rx="3" fill="#0078D4"/>
+    <text x="908" y="56" font-size="10" font-weight="600" fill="#FFFFFF">Doing</text>
+    <text x="900" y="76" font-size="10" fill="#69707A">HH est.: 20h</text>
+  </g>
+  <rect x="10" y="294" width="1440" height="1" fill="#E3E9E5"/>
+
+  <!-- ============ Faixa 3: Pedro (colabora numa Story de outra pessoa) ============ -->
+  <g transform="translate(0,308)">
+    <text x="16" y="16" font-size="13" font-weight="700" fill="#111827">Pedro</text>
+    <text x="16" y="34" font-size="10" font-weight="600" fill="#5A7A5A">WIP 1/3</text>
+
+    <rect x="320" y="0" width="152" height="46" rx="3" fill="#F5F0FA" stroke="#D6C4E8"/>
+    <text x="330" y="19" font-size="11" font-weight="600" fill="#6A1B9A">Pipeline Databricks</text>
+    <text x="330" y="35" font-size="10" fill="#7A6A8A">#1002 &#183; João</text>
+
+    <rect x="480" y="0" width="200" height="100" rx="3" fill="#FDF3E0" stroke="#E6C98A"/>
+    <text x="490" y="19" font-size="12" font-weight="600" fill="#111827">Data Quality checks</text>
+    <text x="490" y="36" font-size="10" fill="#808A96">#1061 &#183; Active</text>
+    <text x="490" y="52" font-size="10" fill="#69707A">Resp.: João</text>
+    <text x="490" y="70" font-size="10" font-style="italic" fill="#B26A00">ajudando nesta Story</text>
+    <text x="490" y="88" font-size="10" fill="#69707A">12h estimadas</text>
+
+    <rect x="700" y="0" width="172" height="86" rx="3" fill="#F0F2F4" stroke="#C03030" stroke-width="2"/>
+    <text x="710" y="19" font-size="12" fill="#111827">Homologar com o time</text>
+    <text x="710" y="36" font-size="10" fill="#808A96">#1118 &#183; Pedro</text>
+    <rect x="710" y="44" width="56" height="16" rx="3" fill="#C03030"/>
+    <text x="717" y="56" font-size="10" font-weight="600" fill="#FFFFFF">BLOCK</text>
+    <text x="710" y="76" font-size="10" fill="#69707A">HH est.: 8h</text>
+
+    <rect x="1080" y="0" width="172" height="86" rx="3" fill="#FAF2E6" stroke="#107C10" stroke-width="2"/>
+    <text x="1090" y="19" font-size="12" fill="#111827">Validações de qualidade</text>
+    <text x="1090" y="36" font-size="10" fill="#808A96">#1115 &#183; Pedro</text>
+    <rect x="1090" y="44" width="48" height="16" rx="3" fill="#107C10"/>
+    <text x="1098" y="56" font-size="10" font-weight="600" fill="#FFFFFF">Done</text>
+    <text x="1090" y="76" font-size="10" fill="#69707A">HH est.: 8h</text>
+
+    <rect x="1270" y="0" width="172" height="86" rx="3" fill="#F0F4F2" stroke="#C4D2CA"/>
+    <text x="1280" y="19" font-size="12" fill="#111827">Testes unitários</text>
+    <text x="1280" y="36" font-size="10" fill="#808A96">#1112 &#183; Pedro</text>
+    <text x="1280" y="52" font-size="10" fill="#69707A">HH est.: 4h &#183; real.: 5h</text>
+  </g>
+  <rect x="10" y="420" width="1440" height="1" fill="#E3E9E5"/>
+
+  <!-- Legenda -->
+  <g transform="translate(0,436)">
+    <text x="16" y="14" font-size="11" font-weight="600" fill="#4B5563">COMO LER</text>
+    <g font-size="11" fill="#4B5563">
+      <text x="16" y="36">Uma faixa por pessoa; dentro dela, uma linha por Story. As colunas são os estados do work item no Azure DevOps.</text>
+      <text x="16" y="56">Arrastar a Task entre colunas muda o estado; a gravação no DevOps acontece em lote, no botão "Atualizar TFS".</text>
+      <text x="16" y="76">O chip <tspan font-weight="600" fill="#0078D4">Doing</tspan> marca o que a pessoa está fazendo agora; <tspan font-weight="600" fill="#107C10">Done</tspan>, o que terminou mas ainda não foi encerrado no DevOps.</text>
+      <text x="16" y="96"><tspan font-weight="600" fill="#5A7A5A">WIP n/m</tspan> conta as Tasks em andamento da pessoa — o limite é por pessoa, não por projeto.</text>
+      <text x="16" y="116"><tspan font-weight="600" fill="#C03030">&#9888;</tspan> no estado da Story avisa que ele não acompanha o das Tasks: Story em New com Task iniciada, ou Story em Active sem nenhuma Task em Active.</text>
+      <text x="16" y="136">O card âmbar indica que a pessoa tem Task numa Story de outra pessoa: colabora, mas não é a responsável.</text>
+      <text x="16" y="156">A Story vem do cronograma; as Tasks são criadas e detalhadas pelo time durante a execução — o grau de liberdade do NXProject.</text>
+    </g>
+  </g>
+
+  <text x="16" y="626" font-size="10" fill="#9AA3AD">Ilustração conceitual do NXProject Community — dados fictícios.</text>
+</svg>

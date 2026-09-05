@@ -131,6 +131,9 @@ Isso cria uma política WDAC suplementar que permite executáveis da pasta do NX
 ![Tela de configuração e acompanhamento](ScreenShot/Tela03.png)
 ![Tela de importação do TFS / Azure DevOps](ScreenShot/Tela04.png)
 ![Tela conceitual Azure DevOps Backlog](ScreenShot/Tela05-Azure-DevOps-Backlog.svg)
+![TaskBoard na visão Pessoa & Task](ScreenShot/Tela06-TaskBoard-Pessoa-Task.svg)
+
+> As duas últimas imagens são ilustrações conceituais com dados fictícios, não capturas de tela.
 
 ---
 
@@ -156,6 +159,12 @@ Project → Epic → Feature → Story
 ```
 
 Cada Story vira uma linha do cronograma com data de início, duração calculada em dias úteis, responsável e sprint — tudo extraído dos campos que seu time já preenche no DevOps.
+
+### Filosofia de planejamento: grau de liberdade
+
+O NXProject planeja até o nível de Story por padrão. As Tasks também podem entrar no cronograma, pelo botão que as carrega do DevOps (**Load Task ToDo**), mas o objetivo é outro: que o Desenvolvedor tenha liberdade para detalhar e criar as tarefas durante a execução, com o apoio do **TaskBoard** — o que traz mais agilidade para o projeto.
+
+Inspirado no conceito matemático de **grau de liberdade** — usado para modelar sistemas complexos — o NXProject aplica o mesmo princípio ao planejamento: estrutura a complexidade da tecnologia sem engessar o processo de desenvolvimento. Assim como em um sistema físico os graus de liberdade definem o espaço de movimento possível, o NXProject define os limites (datas, recursos, dependências) e preserva o espaço para o time técnico navegar com autonomia dentro deles.
 
 ### Lista de Projetos DevOps
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -211,7 +211,7 @@ namespace NXProject.Views
                 new()
                 {
                     ("Filosofia de planejamento",
-                     "O NXProject planeja até o nível de Story, permitindo que o Desenvolvedor tenha liberdade para detalhar e criar as tarefas durante a execução.\n\n" +
+                     "O NXProject planeja até o nível de Story por padrão. As Tasks também podem entrar no cronograma, pelo botão que as carrega do DevOps (Load Task ToDo), mas o objetivo é outro: que o Desenvolvedor tenha liberdade para detalhar e criar as tarefas durante a execução, com o apoio do TaskBoard — o que traz mais agilidade para o projeto.\n\n" +
                      "Inspirado no conceito matemático de grau de liberdade — utilizado para modelar sistemas complexos — o NXProject aplica o mesmo princípio ao planejamento: estrutura a complexidade da tecnologia sem engessar o processo de desenvolvimento.\n\n" +
                      "Assim como em um sistema físico onde os graus de liberdade definem o espaço de movimento possível, o NXProject define os limites (datas, recursos, dependências) e preserva o espaço necessário para que o time técnico navegue com autonomia dentro deles."),
                     ("O que o NXProject faz",
@@ -1122,7 +1122,7 @@ namespace NXProject.Views
                 new()
                 {
                     ("Planning philosophy",
-                     "NXProject plans down to the Story level, allowing Developers to freely detail and create tasks during execution.\n\n" +
+                     "By default NXProject plans down to the Story level. Tasks can also be pulled into the schedule through the button that loads them from DevOps (Load Task ToDo), but the intent is different: Developers detail and create the tasks during execution, supported by the TaskBoard — which brings more agility to the project.\n\n" +
                      "Inspired by the mathematical concept of degrees of freedom — used to model complex systems — NXProject applies the same principle to planning: it structures the complexity of technology without constraining the development process.\n\n" +
                      "Just as in a physical system where degrees of freedom define the space of possible movement, NXProject defines the boundaries (dates, resources, dependencies) and preserves the space the technical team needs to navigate autonomously within them."),
                     ("What NXProject does",

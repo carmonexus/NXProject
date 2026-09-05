@@ -14,6 +14,13 @@ A mesma base de código pode ser licenciada por uma destas duas vias. Quem não
 puder ou não quiser cumprir as condições da Edição Community pode contratar a
 licença comercial.
 
+Escopo do planejamento (nota sobre o produto): o NXProject planeja até o nível de
+Story por padrão. As Tasks também podem entrar no cronograma, pelo botão que as
+carrega do DevOps (Load Task ToDo), mas o objetivo é que o Desenvolvedor tenha
+liberdade para detalhar e criar as tarefas durante a execução, com o apoio do
+TaskBoard, trazendo mais agilidade para o projeto. Esse grau de liberdade é uma
+característica de projeto do produto, não uma limitação da Edição Community.
+
 --------------------------------------------------------------------------------
 1. Definições
 --------------------------------------------------------------------------------
