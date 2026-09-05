@@ -2161,7 +2161,7 @@
     <sys:String x:Key="Lic_Contrib">Contributions: by submitting code, fixes or improvements to the project (for example in a pull request), you grant Nexus XData Tecnologia Ltda the right to use, modify and distribute the contribution in any NXProject edition, including the Commercial / Enterprise edition, with no consideration in return. Contributing grants no right to license, commercially distribute or otherwise exploit the Software. See clause 6 of the license.</sys:String>
     <sys:String x:Key="Lic_Distrib">Commercial distribution (selling, reselling, charging for, offering as a service or bundling into a paid product) requires a specific agreement. Contact Nexus XData: comercial.nexus.xdata@gmail.com. Using the Software, including inside companies, remains free of charge.</sys:String>
     <sys:String x:Key="Lic_P7">Anyone wishing to contract support, the commercial license or the Enterprise edition may get in touch by e-mail at comercial.nexus.xdata@gmail.com.</sys:String>
-    <sys:String x:Key="Lic_FullText">Full license text — English translation; the Portuguese version prevails:</sys:String>
+    <sys:String x:Key="Lic_FullText">Full license text (English version):</sys:String>
     <sys:String x:Key="Lic_FullTextUrl">https://github.com/nexusxdata/NXProject/blob/main/LICENSE.en.txt</sys:String>
     <sys:String x:Key="Lic_AcceptNote">By clicking "Accept and continue", you declare awareness of and agreement with the terms of this Community license.</sys:String>
     <sys:String x:Key="Lic_Exit">Exit</sys:String>

@@ -14,10 +14,11 @@ A mesma base de código pode ser licenciada por uma destas duas vias. Quem não
 puder ou não quiser cumprir as condições da Edição Community pode contratar a
 licença comercial.
 
-Idioma oficial: este texto em PORTUGUÊS é a versão oficial e vinculante da
-licença. Há uma tradução de cortesia para o inglês em LICENSE.en.txt, sem
-adições ou alterações de sentido, feita apenas para facilitar a leitura; em caso
-de divergência, dúvida ou omissão, prevalece este texto em português.
+Idioma: este texto em português é a licença oficial do NXProject. Há uma
+tradução completa para o inglês em LICENSE.en.txt, com todas as cláusulas e os
+mesmos termos, direitos e obrigações. Eventual diferença entre os dois textos
+decorre de tradução ou interpretação, e não de diferença de termos; nesse caso,
+prevalece este texto em português, por ser o original.
 
 Escopo do planejamento (nota sobre o produto): o NXProject planeja até o nível de
 Story por padrão. As Tasks também podem entrar no cronograma, pelo botão que as

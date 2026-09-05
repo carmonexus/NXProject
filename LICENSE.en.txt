@@ -1,25 +1,6 @@
 NXProject License 2.0 — Open Core / Dual Licensing
-UNOFFICIAL ENGLISH TRANSLATION
-
-================================================================================
-IMPORTANT — STATUS OF THIS DOCUMENT
-================================================================================
-
-This is a courtesy translation of the NXProject License 2.0, provided only to
-help English-speaking readers understand the terms. It is a faithful translation
-of the Portuguese text, with no additions, removals or changes of meaning.
-
-The OFFICIAL and legally binding version of this license is the Portuguese one,
-in the file LICENSE.txt of the official repository:
-
-    https://github.com/nexusxdata/NXProject/blob/main/LICENSE.txt
-
-In case of any divergence, doubt, omission or difference of interpretation
-between this translation and the Portuguese text, THE PORTUGUESE TEXT PREVAILS
-for all purposes. This translation grants no rights of its own and creates no
-obligations beyond those set out in the Portuguese version.
-
-================================================================================
+English version — a complete translation of the license, covering all of its
+clauses (see clause 13).
 
 Copyright (c) Nexus XData Tecnologia Ltda
 Commercial contact: comercial.nexus.xdata@gmail.com
@@ -313,6 +294,21 @@ agree with the terms of this license. If You do not agree, do not use the
 Software under the Community Edition; get in touch for the commercial license.
 
 --------------------------------------------------------------------------------
-Reminder: this is a courtesy translation. The Portuguese version (LICENSE.txt)
-is the official one and prevails in case of divergence.
+13. Governing language
 --------------------------------------------------------------------------------
+
+The official license of NXProject is the Portuguese one, available at:
+
+    https://github.com/nexusxdata/NXProject/blob/main/LICENSE.txt
+
+This English text is a complete translation of that license: it reproduces all
+of its clauses, with the same terms, rights and obligations, and it was written
+so that international users can read the license in full in English.
+
+Any difference between the two texts stems from translation or interpretation,
+not from a difference in terms. In such a case, the Portuguese text is the one
+that governs interpretation, because it is the original drafted by the Licensor.
+
+This clause concerns interpretation only. It does not restrict the rights
+granted here: the Community Edition may be used, worldwide and free of charge,
+under the terms of clause 2, in any country and in any language.
