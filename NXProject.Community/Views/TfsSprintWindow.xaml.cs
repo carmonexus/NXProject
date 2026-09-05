@@ -120,6 +120,7 @@ namespace NXProject.Views
             public bool? OnlyUnplanned { get; set; }  // só Tasks com a tag de não planejada
             public bool? OnlyDoneActive { get; set; } // só Tasks Done que ainda não foram encerradas
             public bool? OnlyDoing { get; set; }      // só Tasks em andamento (Doing, não encerradas)
+            public bool? OnlyTaskActive { get; set; } // só Tasks com o ESTADO Active no DevOps
             public bool? EditMode { get; set; }
             public List<string>? HiddenStates { get; set; }
             public List<string>? SprintPaths { get; set; }   // >1 = multi-seleção de sprints
@@ -186,6 +187,7 @@ namespace NXProject.Views
                 _prefs.OnlyUnplanned = OnlyUnplannedCheck.IsChecked == true;
                 _prefs.OnlyDoneActive = OnlyDoneActiveCheck.IsChecked == true;
                 _prefs.OnlyDoing = OnlyDoingCheck.IsChecked == true;
+                _prefs.OnlyTaskActive = OnlyTaskActiveCheck.IsChecked == true;
                 _prefs.EditMode = EditModeCheck.IsChecked == true;
                 _prefs.HiddenStates = _hiddenStates.ToList();
                 var p = SprintSettingsPath;
@@ -417,6 +419,7 @@ namespace NXProject.Views
                         if (_prefs.OnlyUnplanned is bool ou) OnlyUnplannedCheck.IsChecked = ou;
                         if (_prefs.OnlyDoneActive is bool oda) OnlyDoneActiveCheck.IsChecked = oda;
                         if (_prefs.OnlyDoing is bool odg) OnlyDoingCheck.IsChecked = odg;
+                        if (_prefs.OnlyTaskActive is bool ota) OnlyTaskActiveCheck.IsChecked = ota;
                         if (_prefs.EditMode is bool em) EditModeCheck.IsChecked = em;
                         _hiddenStates.Clear();
                         if (_prefs.HiddenStates is { } hs)
@@ -1261,6 +1264,9 @@ namespace NXProject.Views
             // Done com o estado ainda aberto: trabalho concluído que falta encerrar no DevOps.
             if (OnlyDoneActiveCheck.IsChecked == true
                 && !(_done.Contains(t.Id) && !IsClosedState(EffState(t)))) return false;
+            // Recorte pelo ESTADO da Task (o do DevOps, não a marcação Doing): só Active.
+            if (OnlyTaskActiveCheck.IsChecked == true
+                && TfsImportService.NormalizeTaskState(EffState(t)) != "Active") return false;
             if (_selectedPeople.Count > 0 && !_selectedPeople.Contains(t.AssignedTo ?? "")) return false;
             if (_selectedStoryIds.Count > 0 && !(t.ParentId is int p && _selectedStoryIds.Contains(p))) return false;
             // Busca ao vivo com escopo (Ambos / Task / Story).
@@ -1500,6 +1506,8 @@ namespace NXProject.Views
                 parts.Add(AppStrings.Get("Sprint_FSOnlyDoneActive"));
             if (OnlyDoingCheck.IsChecked == true)
                 parts.Add(AppStrings.Get("Sprint_FSOnlyDoing"));
+            if (OnlyTaskActiveCheck.IsChecked == true)
+                parts.Add(AppStrings.Get("Sprint_FSOnlyTaskActive"));
             if (!string.IsNullOrWhiteSpace(SearchBox.Text))
                 parts.Add(AppStrings.Get("Sprint_FSSearch", SearchBox.Text.Trim()));
             return AppStrings.Get("Sprint_FSPrefix", string.Join(" · ", parts));
@@ -1896,9 +1904,9 @@ namespace NXProject.Views
                     {
                         // Estado da Story (#id · estado). Laranja quando há mudança de estado pendente.
                         var stRow = StoryById(storyId);
-                        var stState = stRow != null ? EffStoryState(stRow) : "";
-                        storySp.Children.Add(new TextBlock { Text = $"#{storyId}  ·  {stState}", FontSize = 10,
-                            Foreground = _storyStatePending.ContainsKey(storyId) ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Gray });
+                        storySp.Children.Add(stRow != null
+                            ? BuildStoryStateLine(stRow)
+                            : new TextBlock { Text = $"#{storyId}", FontSize = 10, Foreground = Brushes.Gray });
                         storySp.Children.Add(new TextBlock {
                             Text = "👤 " + (string.IsNullOrWhiteSpace(sOwner) ? AppStrings.Get("Sprint_NoOwner") : sOwner),
                             FontSize = 10, TextWrapping = TextWrapping.Wrap,
@@ -1920,6 +1928,7 @@ namespace NXProject.Views
                         var openStId = storyId;
                         openSt.Click += (_, _) => OpenInDevOps(openStId);
                         stActions.Children.Add(openSt);
+                        stActions.Children.Add(BuildStoryTasksButton(openStId, EffTitle(openStId, sg.Key)));
                         var addTask = new Button { Content = AppStrings.Get("Sprint_AddTask"), FontSize = 10, Padding = new Thickness(5, 0, 5, 0) };
                         var personKey = pg.Key;
                         addTask.Click += (_, _) => AddNewTask(storyId, personKey); // já nasce na faixa da pessoa
@@ -2370,6 +2379,44 @@ namespace NXProject.Views
             return btn;
         }
 
+        // 📋 Abre a lista completa de atividades da Story, buscada no DevOps na hora. Diferente do
+        // 📅 (que leva a atividade ao cronograma aberto), aqui NAO ha cronograma envolvido: serve
+        // para ver todas as Tasks da Story — inclusive de outras pessoas e as que nao foram
+        // importadas — mesmo com a Story fora do cronograma.
+        private Button BuildStoryTasksButton(int storyId, string storyTitle)
+        {
+            var btn = new Button { Content = "📋", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
+                Margin = new Thickness(0, 0, 4, 2), ToolTip = AppStrings.Get("Sprint_StoryTasks") };
+            btn.Click += (_, _) =>
+            {
+                var win = TfsOnlineChildTasksWindow.FromTaskBoard(storyId, storyTitle);
+                win.Owner = this;
+                win.ShowDialog();
+            };
+            return btn;
+        }
+
+        // Linha "#id · estado" da Story. Quando o estado nao bate com o das Tasks (Story em New
+        // com Task ja iniciada, ou Story em Active sem nenhuma Task em Active), o estado aparece
+        // destacado com ⚠ e o motivo no ToolTip — e so um aviso, nao bloqueia nada.
+        private TextBlock BuildStoryStateLine(TfsImportService.SprintStoryRow story)
+        {
+            var state = EffStoryState(story);
+            var alert = TfsImportService.CheckStoryStateAlert(state, story.Tasks.Select(t => EffState(t)));
+            var tb = new TextBlock { Text = $"#{story.Id}  ·  {state}", FontSize = 10,
+                Foreground = _storyStatePending.ContainsKey(story.Id)
+                    ? new SolidColorBrush(Color.FromRgb(0xE0, 0x8A, 0x00)) : Brushes.Gray };
+            if (alert == TfsImportService.StoryStateAlert.None) return tb;
+
+            tb.Text = $"#{story.Id}  ·  ⚠ {state}";
+            tb.FontWeight = FontWeights.Bold;
+            tb.Foreground = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30));
+            tb.ToolTip = AppStrings.Get(alert == TfsImportService.StoryStateAlert.NewWithStartedTask
+                ? "Sprint_StoryAlertNewWithTask"
+                : "Sprint_StoryAlertActiveNoTask");
+            return tb;
+        }
+
         private Border BuildStoryCard(TfsImportService.SprintStoryRow story, List<int> realIds)
         {
             if (story.Id < 0 && _newCards.FirstOrDefault(n => n.TempId == story.Id) is { } ncs)
@@ -2396,7 +2443,7 @@ namespace NXProject.Views
             sp.Children.Add(storyTitleTb);
             if (story.Id > 0)
             {
-                sp.Children.Add(new TextBlock { Text = $"#{story.Id}  ·  {EffStoryState(story)}", FontSize = 10, Foreground = Brushes.Gray });
+                sp.Children.Add(BuildStoryStateLine(story));
                 // Responsável da Story (👤). Fica laranja quando há troca pendente.
                 var owner = EffOwner(story.Id, story.AssignedTo);
                 var ownerDirty = _ownerPending.ContainsKey(story.Id);
@@ -2419,6 +2466,7 @@ namespace NXProject.Views
                     Margin = new Thickness(0, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
                 openStory.Click += (_, _) => OpenInDevOps(story.Id);
                 actions.Children.Add(openStory);
+                actions.Children.Add(BuildStoryTasksButton(story.Id, EffTitle(story.Id, story.Title)));
                 // Excluir Story: só quando está em New e SEM Tasks (ou todas as Tasks em New).
                 var tasksAllNew = story.Tasks.Count == 0 || story.Tasks.All(t => SameState(EffState(t), "New"));
                 if (string.Equals(EffStoryState(story), "New", StringComparison.OrdinalIgnoreCase) && tasksAllNew)

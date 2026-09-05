@@ -938,6 +938,12 @@
     <sys:String x:Key="Sprint_OnlyDoneActive">Done awaiting closure only</sys:String>
     <sys:String x:Key="Sprint_OnlyDoneActiveTip">Shows only Tasks marked Done that are not closed yet (e.g. Active) — work finished, waiting on someone else before it can be closed.</sys:String>
     <sys:String x:Key="Sprint_FSOnlyDoneActive">Done awaiting closure</sys:String>
+    <sys:String x:Key="Sprint_GroupTaskState">TASK STATE</sys:String>
+    <sys:String x:Key="Sprint_OnlyTaskActive">Active tasks only</sys:String>
+    <sys:String x:Key="Sprint_OnlyTaskActiveTip">Shows only Tasks whose DevOps state is Active (the state itself, not the Doing tag).</sys:String>
+    <sys:String x:Key="Sprint_FSOnlyTaskActive">Active tasks only</sys:String>
+    <sys:String x:Key="Sprint_StoryAlertNewWithTask">Story is New but a Task already left New: work started and the Story was not moved.</sys:String>
+    <sys:String x:Key="Sprint_StoryAlertActiveNoTask">Story is Active with no Active Task: nothing in progress backing the open Story.</sys:String>
     <sys:String x:Key="Sprint_MarkDone">+Done</sys:String>
     <sys:String x:Key="Sprint_BackToDoing">↩Doing</sys:String>
     <sys:String x:Key="Sprint_BackToDoingTip">Sets the work back to Doing (removes the Done tag).</sys:String>
@@ -1011,6 +1017,7 @@
     <sys:String x:Key="Sprint_PersonAll">All people ▾</sys:String>
     <sys:String x:Key="Sprint_PersonN">{0} people ▾</sys:String>
     <sys:String x:Key="Sprint_OpenDevOps">Open in DevOps</sys:String>
+    <sys:String x:Key="Sprint_StoryTasks">Show every activity of this Story (fetched from DevOps): includes other people's tasks and the ones missing from the schedule. Does not open or expand the schedule.</sys:String>
     <sys:String x:Key="Sprint_Colors">State colors</sys:String>
     <sys:String x:Key="Sprint_DeleteTask">Delete Task (New)</sys:String>
     <sys:String x:Key="Sprint_DeleteTaskConfirm">Delete Task "{0}"? This moves the item to the DevOps recycle bin.</sys:String>

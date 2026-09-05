@@ -3162,6 +3162,49 @@ namespace NXProject.Services
                 _ => false
             };
 
+        /// <summary>Incoerência entre o estado da Story e o das suas Tasks, para o TaskBoard
+        /// destacar. Nenhuma delas impede nada — são avisos de que o DevOps ficou desalinhado
+        /// com o trabalho real.</summary>
+        public enum StoryStateAlert
+        {
+            /// <summary>Story e Tasks coerentes.</summary>
+            None,
+            /// <summary>Story ainda em New, mas ja existe Task que saiu de New (o trabalho comecou
+            /// e a Story nao foi movida).</summary>
+            NewWithStartedTask,
+            /// <summary>Story em Active sem nenhuma Task em Active (nada em andamento sustentando
+            /// a Story aberta — inclui a Story ativa sem Task alguma).</summary>
+            ActiveWithoutActiveTask
+        }
+
+        /// <summary>Confere a coerencia entre o estado da Story e o das suas Tasks.
+        /// Tasks em Removed sao ignoradas (nao representam trabalho).</summary>
+        public static StoryStateAlert CheckStoryStateAlert(string? storyState, IEnumerable<string?> taskStates)
+        {
+            var states = (taskStates ?? Enumerable.Empty<string?>())
+                .Where(st => !IsRemovedState(st))
+                .ToList();
+
+            if (IsNewState(storyState))
+                return states.Any(st => !IsNewState(st))
+                    ? StoryStateAlert.NewWithStartedTask
+                    : StoryStateAlert.None;
+
+            if (IsActiveState(storyState))
+                return states.Any(IsActiveState)
+                    ? StoryStateAlert.None
+                    : StoryStateAlert.ActiveWithoutActiveTask;
+
+            return StoryStateAlert.None;
+        }
+
+        private static bool IsRemovedState(string? state) =>
+            state?.Trim().ToLowerInvariant() switch
+            {
+                "removed" or "removida" or "removido" => true,
+                _ => false
+            };
+
         /// <summary>Normaliza o estado da task numa categoria estável para o resumo:
         /// "Closed", "Active", "New" ou "Other".</summary>
         public static string NormalizeTaskState(string? state) =>

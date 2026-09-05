@@ -41,6 +41,13 @@ namespace NXProject.Views
             _         => "Task"
         };
 
+        /// <summary>Abre a lista vinda do TaskBoard: a origem e o ID do DevOps, nao uma atividade
+        /// do cronograma. Sem cronograma por tras, a tela fica somente leitura (nao cria nem exclui
+        /// atividade local) e serve para ver TODAS as filhas da Story — inclusive as de outras
+        /// pessoas e as que nem estao no cronograma aberto.</summary>
+        public static TfsOnlineChildTasksWindow FromTaskBoard(int tfsId, string title, string tfsType = "Story") =>
+            new(new ProjectTask { TfsId = tfsId, Name = title ?? "", TfsType = tfsType }, mainVm: null);
+
         public TfsOnlineChildTasksWindow(ProjectTask parent, MainViewModel? mainVm = null)
         {
             InitializeComponent();

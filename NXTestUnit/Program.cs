@@ -38,6 +38,7 @@ internal static class Program
         ("Prioridade: faixa central (config/descoberta) clampa e cicla corretamente", TaskPriorityRangeResolvesAndClamps),
         ("TaskBoard: colunas de estado na ordem canonica (desconhecido ao fim)", TaskboardStatesAreOrderedCanonically),
         ("TaskBoard: tag Doing/Done troca preservando as demais (andamento)", DoingTagMergePreservesOtherTags),
+        ("TaskBoard: estado da Story incoerente com as Tasks vira alerta", StoryStateAlertCatchesMismatchWithTasks),
         ("Import TFS: task fechada nao dobra HH Original dentro do HH Atual", ClosedTaskDoesNotDoubleOriginalIntoCurrent),
         ("Import TFS: folha encerrada nao herda esforco como restante (import principal)", ImportClosedLeafHasNoRemainingHours),
         ("Cronograma: ID negativo NoDevOps aparece como interno", NoDevOpsNegativeTfsIdDisplaysAsInternal),
@@ -1077,6 +1078,34 @@ internal static class Program
         AssertEqual("A; B",
             TfsImportService.MergeDoingTag("A; Doing; B", null),
             "Remove Doing do meio, preserva ordem das demais.");
+    }
+
+    // Aviso do board: o estado da Story tem que acompanhar o das Tasks. Story parada em New
+    // com Task ja iniciada, e Story em Active sem nenhuma Task em Active, sao os dois desalinhos
+    // que o usuario precisa enxergar no card.
+    private static void StoryStateAlertCatchesMismatchWithTasks()
+    {
+        AssertEqual("NewWithStartedTask",
+            TfsImportService.CheckStoryStateAlert("New", new[] { "New", "Active" }).ToString(),
+            "Story em New com Task fora de New deve alertar.");
+        AssertEqual("None",
+            TfsImportService.CheckStoryStateAlert("New", new[] { "New", "New" }).ToString(),
+            "Story em New com todas as Tasks em New esta coerente.");
+        AssertEqual("None",
+            TfsImportService.CheckStoryStateAlert("New", new[] { "New", "Removed" }).ToString(),
+            "Task removida nao conta como trabalho iniciado.");
+        AssertEqual("ActiveWithoutActiveTask",
+            TfsImportService.CheckStoryStateAlert("Active", new[] { "New", "Closed" }).ToString(),
+            "Story em Active sem Task em Active deve alertar.");
+        AssertEqual("ActiveWithoutActiveTask",
+            TfsImportService.CheckStoryStateAlert("Active", System.Array.Empty<string>()).ToString(),
+            "Story em Active sem nenhuma Task tambem alerta.");
+        AssertEqual("None",
+            TfsImportService.CheckStoryStateAlert("Active", new[] { "Closed", "Active" }).ToString(),
+            "Story em Active com Task em Active esta coerente.");
+        AssertEqual("None",
+            TfsImportService.CheckStoryStateAlert("Closed", new[] { "New" }).ToString(),
+            "Story encerrada nao entra na checagem (o alerta e so de New/Active).");
     }
 
     private static void TaskPriorityRangeResolvesAndClamps()

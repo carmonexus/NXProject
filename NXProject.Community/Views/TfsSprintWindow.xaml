@@ -145,6 +145,14 @@
                                   ToolTip="{DynamicResource Sprint_OnlyDoneActiveTip}"/>
 
                         <Separator Margin="0,8,0,6"/>
+                        <!-- Recorte por ESTADO da Task (nao e tag: le o estado do DevOps) -->
+                        <TextBlock Text="{DynamicResource Sprint_GroupTaskState}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="#6B7A8A" Margin="0,0,0,2"/>
+                        <CheckBox x:Name="OnlyTaskActiveCheck" Click="OnFilterChanged" Margin="8,2,0,2"
+                                  Content="{DynamicResource Sprint_OnlyTaskActive}"
+                                  ToolTip="{DynamicResource Sprint_OnlyTaskActiveTip}"/>
+
+                        <Separator Margin="0,8,0,6"/>
                         <!-- Limite de WIP: quantas Tasks em andamento cada PESSOA pode ter.
                              Só alerta (marca a tag WIP no card e no DevOps); não impede o arrasto. -->
                         <TextBlock Text="{DynamicResource Sprint_GroupWip}" FontSize="10" FontWeight="SemiBold"

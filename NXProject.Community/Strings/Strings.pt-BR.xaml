@@ -1809,6 +1809,12 @@
     <sys:String x:Key="Sprint_OnlyDoneActive">Somente Done aguardando encerrar</sys:String>
     <sys:String x:Key="Sprint_OnlyDoneActiveTip">Mostra apenas as Tasks marcadas como Done que ainda NÃO foram encerradas (ex.: Active) — trabalho terminado, aguardando validação/pendência de outra pessoa para virar Closed.</sys:String>
     <sys:String x:Key="Sprint_FSOnlyDoneActive">Somente Done aguardando encerrar</sys:String>
+    <sys:String x:Key="Sprint_GroupTaskState">ESTADO DA TASK</sys:String>
+    <sys:String x:Key="Sprint_OnlyTaskActive">Somente Task Active</sys:String>
+    <sys:String x:Key="Sprint_OnlyTaskActiveTip">Mostra apenas as Tasks com o estado Active no DevOps (o estado em si, não a marcação Doing).</sys:String>
+    <sys:String x:Key="Sprint_FSOnlyTaskActive">Somente Task Active</sys:String>
+    <sys:String x:Key="Sprint_StoryAlertNewWithTask">Story em New, mas já existe Task fora de New: o trabalho começou e a Story não foi movida.</sys:String>
+    <sys:String x:Key="Sprint_StoryAlertActiveNoTask">Story em Active sem nenhuma Task em Active: nada em andamento sustentando a Story aberta.</sys:String>
     <sys:String x:Key="Sprint_MarkDone">+Done</sys:String>
     <sys:String x:Key="Sprint_BackToDoing">↩Doing</sys:String>
     <sys:String x:Key="Sprint_BackToDoingTip">Volta o andamento para Doing (tira a tag Done).</sys:String>
@@ -1882,6 +1888,7 @@
     <sys:String x:Key="Sprint_PersonAll">Todas as pessoas ▾</sys:String>
     <sys:String x:Key="Sprint_PersonN">{0} pessoas ▾</sys:String>
     <sys:String x:Key="Sprint_OpenDevOps">Abrir no DevOps</sys:String>
+    <sys:String x:Key="Sprint_StoryTasks">Ver todas as atividades da Story (busca no DevOps): inclui as de outras pessoas e as que não estão no cronograma. Não abre nem expande o cronograma.</sys:String>
     <sys:String x:Key="Sprint_Colors">Cores por estado</sys:String>
     <sys:String x:Key="Sprint_DeleteTask">Excluir Task (New)</sys:String>
     <sys:String x:Key="Sprint_DeleteTaskConfirm">Excluir a Task "{0}"? Esta ação move o item para a lixeira do DevOps.</sys:String>
