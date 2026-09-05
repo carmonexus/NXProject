@@ -14,6 +14,11 @@ A mesma base de código pode ser licenciada por uma destas duas vias. Quem não
 puder ou não quiser cumprir as condições da Edição Community pode contratar a
 licença comercial.
 
+Idioma oficial: este texto em PORTUGUÊS é a versão oficial e vinculante da
+licença. Há uma tradução de cortesia para o inglês em LICENSE.en.txt, sem
+adições ou alterações de sentido, feita apenas para facilitar a leitura; em caso
+de divergência, dúvida ou omissão, prevalece este texto em português.
+
 Escopo do planejamento (nota sobre o produto): o NXProject planeja até o nível de
 Story por padrão. As Tasks também podem entrar no cronograma, pelo botão que as
 carrega do DevOps (Load Task ToDo), mas o objetivo é que o Desenvolvedor tenha
@@ -261,7 +266,29 @@ aviso prévio. Direitos já concedidos sobre versões da Edição Community
 permanecem válidos nos termos desta licença.
 
 --------------------------------------------------------------------------------
-11. Aceitação
+11. Alteração desta licença (sem efeito retroativo)
+--------------------------------------------------------------------------------
+
+O Licenciante poderá alterar os termos desta licença a qualquer tempo, publicando
+uma nova versão no repositório oficial do projeto. A versão vigente é sempre a
+publicada em https://github.com/nexusxdata/NXProject e a que acompanha cada
+distribuição do Software.
+
+A alteração NÃO tem efeito retroativo:
+
+  a) cada versão do Software permanece regida pela licença que a acompanhava
+     quando Você a obteve, e os direitos já concedidos sobre ela são
+     irrevogáveis, ainda que a licença mude depois;
+  b) Você pode continuar usando, indefinidamente, a versão já obtida ou
+     instalada, nos termos que a acompanhavam, sem obrigação de migrar;
+  c) versões novas do Software, obtidas após a alteração, ficam sujeitas à
+     licença vigente na data em que forem obtidas — cabe a Você aceitá-la ou
+     permanecer na versão anterior;
+  d) alterações não criam obrigação de pagamento retroativo nem revogam a
+     gratuidade do uso já concedido.
+
+--------------------------------------------------------------------------------
+12. Aceitação
 --------------------------------------------------------------------------------
 
 Ao usar, copiar, modificar ou distribuir este software, Você declara estar de

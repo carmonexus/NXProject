@@ -1987,12 +1987,19 @@
     <sys:String x:Key="Lic_P3">Direitos reservados a Nexus XData: vender, alugar ou cobrar pelo Software, oferece-lo como servico pago (SaaS) ou prestar suporte pago sobre ele exige uma licenca comercial. A redistribuicao permitida e apenas gratuita.</sys:String>
     <sys:String x:Key="Lic_P4">Edicao Comercial / Enterprise (via paga): a Nexus XData oferece, mediante contratacao, licenca comercial sem essas restricoes, suporte oficial, SLA, garantias e modulos exclusivos (por exemplo impressao/PDF, calendario avancado e integracoes com IA como OpenAI e Claude).</sys:String>
     <sys:String x:Key="Lic_P5">Esta edicao e fornecida no estado em que se encontra, sem garantias, sem obrigacao de suporte e sem responsabilidade por defeitos, falhas ou prejuizos decorrentes do uso.</sys:String>
-    <sys:String x:Key="Lic_P6">A Nexus XData Tecnologia Ltda podera alterar, limitar, evoluir ou descontinuar a edicao Community e seus recursos a qualquer tempo.</sys:String>
+    <sys:String x:Key="Lic_P6">A Nexus XData Tecnologia Ltda podera alterar, limitar, evoluir ou descontinuar a edicao Community, seus recursos e esta licenca a qualquer tempo. As mudancas valem para versoes futuras: a versao que voce ja instalou continua regida pela licenca que veio com ela, e os direitos ja concedidos sobre ela nao sao retirados.</sys:String>
     <sys:String x:Key="Lic_Scope">Escopo do planejamento: o NXProject planeja ate o nivel de Story por padrao. As Tasks tambem podem entrar no cronograma, pelo botao que as carrega do DevOps (Load Task ToDo), mas o objetivo e que o Desenvolvedor tenha liberdade para detalhar e criar as tarefas durante a execucao, com o apoio do TaskBoard, trazendo mais agilidade para o projeto. Esse grau de liberdade e uma caracteristica de projeto do produto, nao uma limitacao desta edicao Community.</sys:String>
-    <sys:String x:Key="Lic_P7">Quem desejar contratar suporte, a licenca comercial ou a edicao Enterprise podera entrar em contato pelo e-mail comercial.nexus.xdata@gmail.com. O texto completo da licenca esta no arquivo LICENSE.txt.</sys:String>
+    <sys:String x:Key="Lic_Contrib">Contribuicoes: ao enviar codigo, correcoes ou melhorias para o projeto (por exemplo em um pull request), voce concede a Nexus XData Tecnologia Ltda o direito de usar, modificar e distribuir a contribuicao em qualquer edicao do NXProject, inclusive na edicao Comercial / Enterprise, sem contrapartida. Contribuir nao da direito de licenciar, distribuir comercialmente nem explorar o Software. Detalhes na clausula 6 da licenca.</sys:String>
+    <sys:String x:Key="Lic_Distrib">Distribuicao comercial (vender, revender, cobrar, oferecer como servico ou embutir em produto pago) so mediante contrato especifico. Fale com a Nexus XData: comercial.nexus.xdata@gmail.com. O uso do Software, inclusive dentro de empresas, continua livre e gratuito.</sys:String>
+    <sys:String x:Key="Lic_P7">Quem desejar contratar suporte, a licenca comercial ou a edicao Enterprise podera entrar em contato pelo e-mail comercial.nexus.xdata@gmail.com.</sys:String>
+    <sys:String x:Key="Lic_FullText">Texto completo da licenca (LICENSE.txt no GitHub):</sys:String>
+    <sys:String x:Key="Lic_FullTextUrl">https://github.com/nexusxdata/NXProject/blob/main/LICENSE.txt</sys:String>
     <sys:String x:Key="Lic_AcceptNote">Ao clicar em "Aceitar e continuar", voce declara ciencia e concordancia com os termos desta licenca Community.</sys:String>
     <sys:String x:Key="Lic_Exit">Sair</sys:String>
     <sys:String x:Key="Lic_AcceptBtn">Aceitar e continuar</sys:String>
+    <sys:String x:Key="Lic_Close">Fechar</sys:String>
+    <sys:String x:Key="Lic_Accepted">✔ Termo aceito nesta maquina</sys:String>
+    <sys:String x:Key="Lic_AcceptedOn">✔ Termo aceito em {0}</sys:String>
 
     <sys:String x:Key="SU_Title">Como usar o cronograma</sys:String>
     <sys:String x:Key="SU_Sub">Use a grade e o Gantt para planejar datas, duracao, progresso, recursos e sprints. O NXProject recalcula o fim das atividades a partir do calendario de trabalho.</sys:String>

@@ -349,6 +349,10 @@ Contato:
 - comercial.nexus.xdata@gmail.com
 "@ | Set-Content -Path $ReadmePath -Encoding UTF8
 
+$LicenseEnSrc = Join-Path $SolutionDir "LICENSE.en.txt"
+if (Test-Path $LicenseEnSrc) {
+    Copy-Item -Path $LicenseEnSrc -Destination (Join-Path $StageDir "LICENSE.en.txt") -Force
+}
 $LicenseSrc = Join-Path $SolutionDir "LICENSE.txt"
 if (Test-Path $LicenseSrc) {
     Copy-Item -Path $LicenseSrc -Destination (Join-Path $StageDir "LICENSE.txt") -Force

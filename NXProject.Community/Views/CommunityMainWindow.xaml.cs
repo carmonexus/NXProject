@@ -4050,13 +4050,16 @@ namespace NXProject.Views
 
         private static bool HasAcceptedLicense()
         {
-            return File.Exists(LicenseAcceptanceFile);
+            return Services.LicenseAcceptanceStore.HasAccepted();
         }
 
+        // Registra data e versao do app junto do aceite (o formato antigo, so com a
+        // palavra "accepted", nao deixava rastro de quando nem de qual versao).
         private static void PersistLicenseAcceptance()
         {
-            Directory.CreateDirectory(LicenseAcceptanceDirectory);
-            File.WriteAllText(LicenseAcceptanceFile, "accepted");
+            var version = System.Reflection.Assembly.GetExecutingAssembly()
+                .GetName().Version?.ToString();
+            Services.LicenseAcceptanceStore.Persist(version);
         }
 
         private void OnCommunityWindowClosing(object? sender, CancelEventArgs e)

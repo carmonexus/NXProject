@@ -1,0 +1,318 @@
+NXProject License 2.0 — Open Core / Dual Licensing
+UNOFFICIAL ENGLISH TRANSLATION
+
+================================================================================
+IMPORTANT — STATUS OF THIS DOCUMENT
+================================================================================
+
+This is a courtesy translation of the NXProject License 2.0, provided only to
+help English-speaking readers understand the terms. It is a faithful translation
+of the Portuguese text, with no additions, removals or changes of meaning.
+
+The OFFICIAL and legally binding version of this license is the Portuguese one,
+in the file LICENSE.txt of the official repository:
+
+    https://github.com/nexusxdata/NXProject/blob/main/LICENSE.txt
+
+In case of any divergence, doubt, omission or difference of interpretation
+between this translation and the Portuguese text, THE PORTUGUESE TEXT PREVAILS
+for all purposes. This translation grants no rights of its own and creates no
+obligations beyond those set out in the Portuguese version.
+
+================================================================================
+
+Copyright (c) Nexus XData Tecnologia Ltda
+Commercial contact: comercial.nexus.xdata@gmail.com
+
+NXProject is distributed under an "Open Core" model with dual licensing:
+
+  • Community Edition (this license): free of charge for any individual or
+    company, under the terms below.
+  • Commercial / Enterprise Edition: paid license, with official support and
+    additional features, offered separately by Nexus XData Tecnologia Ltda.
+
+The same codebase may be licensed through either of these two channels. Anyone
+who cannot or does not wish to comply with the conditions of the Community
+Edition may contract the commercial license.
+
+Planning scope (product note): by default NXProject plans down to the Story
+level. Tasks may also be brought into the schedule, through the button that
+loads them from DevOps (Load Task ToDo), but the intent is for Developers to
+have the freedom to detail and create the tasks during execution, supported by
+the TaskBoard, bringing more agility to the project. This degree of freedom is a
+product design choice, not a limitation of the Community Edition.
+
+--------------------------------------------------------------------------------
+1. Definitions
+--------------------------------------------------------------------------------
+
+"Licensor" is Nexus XData Tecnologia Ltda.
+"Software" is NXProject Community Edition, including its source code, binaries,
+resources and documentation distributed under this license.
+"You" is the individual or legal entity that uses the Software.
+"Internal use" is the use of the Software to operate Your own activities,
+including commercial activities (for example, managing your company's projects).
+
+--------------------------------------------------------------------------------
+2. Grant of the Community License (free of charge)
+--------------------------------------------------------------------------------
+
+The Licensor grants You a worldwide, perpetual, free and royalty-free license,
+subject to the conditions and restrictions of this license, to:
+
+  a) use and run the Software, for personal or commercial purposes (internal
+     use), whether You are an individual or a company, with no limit on the
+     number of users;
+  b) study and modify the Software for internal use;
+  c) copy and redistribute the Software, free of charge, keeping this license
+     and the required attribution.
+
+This grant applies equally to individuals and companies. The Community Edition
+requires no payment for use.
+
+It is expressly permitted to download the source code of the Community Edition,
+compile it and use the resulting product, including in a corporate environment,
+provided that the Software continues to be presented and used as NXProject
+Community, without mischaracterizing the product, without removing attribution
+and keeping Nexus XData Tecnologia Ltda as owner and original creator. This
+freedom is part of the Open Core model adopted by the Licensor.
+
+Educational and academic use. It is expressly permitted to use, study, teach and
+research the Software in schools, universities, courses, training, academic
+papers, articles, talks and teaching materials, including analyzing and quoting
+excerpts of the source code, provided that authorship is credited — naming Nexus
+XData Tecnologia Ltda as the creator of NXProject and, where applicable, the
+source (the project's official repository). This permission covers the use of
+the Software as a tool and as an object of study; it does NOT authorize selling,
+sublicensing or distributing the Software as a product, nor offering it as a
+paid service, acts which remain subject to clause 4.
+
+Important distinction — USE vs. COMMERCIAL DISTRIBUTION:
+
+  • USE: free of charge, including by companies and in for-profit activities.
+    Running the Software to operate your own activities ("internal use",
+    clause 2(a)) requires no agreement, payment or prior authorization,
+    whatever the number of users.
+  • COMMERCIAL DISTRIBUTION: requires a specific agreement with Nexus XData
+    Tecnologia Ltda. This covers selling, reselling, renting, sublicensing,
+    charging for the Software, distributing it as a product or as part of a paid
+    product, offering it as a service (SaaS/hosting) or selling support for it —
+    as set out in clause 4. Free redistribution, with attribution, remains
+    permitted by clause 2(c).
+
+--------------------------------------------------------------------------------
+3. Conditions (attribution)
+--------------------------------------------------------------------------------
+
+Every copy, redistribution, publication, fork or modified version of the
+Software must keep, in a visible and legible way:
+
+  • the name of the creating company: Nexus XData Tecnologia Ltda;
+  • the statement that the original software was created by Nexus XData
+    Tecnologia Ltda;
+  • this license notice, with no changes to the copyright and attribution
+    notices.
+
+--------------------------------------------------------------------------------
+4. Restrictions (rights reserved to the Licensor)
+--------------------------------------------------------------------------------
+
+The Community License does NOT authorize, and the Licensor reserves exclusively
+for itself, the following acts. Without a written commercial license from the
+Licensor, You may NOT:
+
+  a) sell, rent, sublicense, charge for, or in any other way commercialize the
+     Software or a derivative work as a product;
+  b) offer the Software (or a substantially similar derivative) to third parties
+     as a paid service, including hosting/SaaS, or as a paid service of support,
+     maintenance or consulting on the Software itself;
+  c) remove, hide or alter the attribution, the copyright notices, the trademark
+     or this license;
+  d) relicense the Software, in whole or in part, under other terms — create a
+     parallel license, replace this license with another (for example MIT,
+     Apache, BSD or GPL), publish the Software or a derivative under your own
+     license, or present it to third parties as if it were subject to terms
+     other than these. Only the Licensor, as the rights holder, may license the
+     Software under other terms.
+
+Any commercial exploitation of the Software depends on a SPECIFIC AGREEMENT,
+executed in writing with Nexus XData Tecnologia Ltda, with scope, term and
+conditions defined case by case. There is no tacit, implied or presumed
+commercial license, nor one acquired through continued use, through a
+contribution to the project, through an informal partnership or through any
+verbal authorization.
+
+The redistribution permitted in clause 2(c) is free of charge only: You may not
+charge for the Software nor bundle it into a paid product or service.
+
+The right to commercially exploit the Software — to sell it, offer it as a
+service and provide paid support for it — belongs exclusively to the Licensor.
+
+Using the Software's source code to create, offer, sell, sublicense, host or
+incorporate a derivative commercial product or service, your own or a third
+party's, is prohibited without an express commercial license from the Licensor.
+Exceptions may be granted, at the Licensor's sole discretion, to formally
+authorized partner companies or to non-profit entities, upon prior written
+authorization via comercial.nexus.xdata@gmail.com.
+
+--------------------------------------------------------------------------------
+5. Commercial Edition, Support and Commercial License (paid channel)
+--------------------------------------------------------------------------------
+
+The Licensor offers, upon separate contracting and payment:
+
+  • a commercial license of NXProject, without the restrictions of clause 4, for
+    companies that want their own terms;
+  • the Commercial / Enterprise Edition, which may include exclusive modules and
+    features (for example, official support, SLA, reports/printing/PDF, advanced
+    calendar, integrations with AI platforms such as OpenAI and Claude, among
+    others), subject to availability;
+  • technical support, maintenance, warranties and contractual indemnification.
+
+Contracting the commercial channel is optional for those who use the Community
+Edition in compliance with this license. Interested parties should contact:
+comercial.nexus.xdata@gmail.com.
+
+--------------------------------------------------------------------------------
+6. Contributions
+--------------------------------------------------------------------------------
+
+6.1. Acceptance. "Contribution" means any code, fix, improvement, documentation,
+translation, script, test or other material that You submit to the Licensor or
+to the project by any means — including pull request, patch, issue, e-mail or
+message. Submitting the Contribution, by itself, implies full acceptance of this
+clause 6, with no additional signature required.
+
+6.2. Copyright license. You grant the Licensor a perpetual, irrevocable,
+worldwide, non-exclusive, royalty-free and sublicensable (through multiple
+tiers) license to use, reproduce, modify, adapt, create derivative works of,
+publish, distribute and commercialize the Contribution, in whole or in part,
+alone or combined with the Software, in ANY edition, version or product of the
+Licensor — including, without limitation, the Commercial / Enterprise Edition,
+paid versions, cloud/SaaS offerings and future products — and under ANY
+licensing terms, including closed and non-free commercial licenses. This grant
+is what makes the dual licensing of the Software possible.
+
+6.3. Patent license. You grant the Licensor and the recipients of the Software a
+perpetual, irrevocable, worldwide, non-exclusive, royalty-free and sublicensable
+license over the patent claims You hold or may come to hold that are necessarily
+infringed by the Contribution or by its combination with the Software.
+
+6.4. No consideration. The Contribution is offered voluntarily and free of
+charge. You will have no right to remuneration, revenue share, royalties,
+co-authorship of the work, co-ownership of the Software, exclusivity or any
+other consideration by reason of the Contribution or of its commercial
+exploitation by the Licensor. The Licensor may credit contributors at its own
+discretion, without this changing the ownership of the Software.
+
+6.5. Contributor representations. When submitting a Contribution, You represent
+and warrant that:
+
+  a) You are the author of the Contribution or hold all rights necessary to
+     grant it under the terms of this clause;
+  b) if You contribute in the course of an employment, statutory or contractual
+     relationship, or using an employer's or contractor's resources, You have
+     obtained from that organization the authorization required to grant these
+     rights, or You are authorized to represent it for that purpose;
+  c) the Contribution contains no third-party code, documentation or material
+     under terms incompatible with this license, nor subject to obligations that
+     prevent its commercial exploitation by the Licensor (for example, strong
+     reciprocal copyleft licenses), unless clearly identified and expressly
+     accepted in writing by the Licensor;
+  d) the Contribution contains no trade secrets, personal data, credentials or
+     confidential information of third parties.
+
+6.6. Moral rights. To the maximum extent permitted by applicable law, You agree
+not to exercise moral rights over the Contribution in a way that prevents or
+restricts the use, modification, distribution or commercial exploitation set out
+in this clause. Where the law makes such rights non-waivable, You agree to
+exercise them only in a manner compatible with this license.
+
+6.7. No obligation to incorporate. The Licensor has no obligation to accept,
+incorporate, maintain, publish or support any Contribution, and may remove or
+replace it at any time. Contributions are provided "as is", without warranties,
+with clauses 8 and 9 applying to them.
+
+6.8. Ownership preserved. Nothing in this clause transfers to You any right over
+the Software, over the Licensor's trademarks or over works derived from it. You
+retain ownership of Your Contribution and remain free to use it in other
+contexts, subject to the rights granted here to the Licensor.
+
+6.9. No parallel license. Contributing does NOT give You the right to license
+the Software under other terms, nor to publish the project (or a derivative of
+it) under your own license, nor to exploit it commercially — not even the part
+corresponding to Your own Contribution, once incorporated into the Software. The
+Contribution also creates no right to use the Licensor's trademarks and no
+commercial authorization of any kind: commercial exploitation remains subject to
+clause 4 and to a specific agreement with Nexus XData Tecnologia Ltda.
+
+--------------------------------------------------------------------------------
+7. Trademarks
+--------------------------------------------------------------------------------
+
+"NXProject" and "Nexus XData" are trademarks of the Licensor. This license
+grants no right to use the trademarks, except for the attribution required in
+clause 3.
+
+--------------------------------------------------------------------------------
+8. No warranty
+--------------------------------------------------------------------------------
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING, WITHOUT LIMITATION, WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. The Community Edition includes no
+obligation of support, maintenance, correction or evolution.
+
+--------------------------------------------------------------------------------
+9. Limitation of liability
+--------------------------------------------------------------------------------
+
+IN NO EVENT SHALL NEXUS XDATA TECNOLOGIA LTDA BE LIABLE FOR ANY DAMAGES, LOSSES,
+LOST PROFITS, FAILURES, INTERRUPTIONS OR CONSEQUENCES ARISING FROM THE USE, THE
+INABILITY TO USE, THE MODIFICATION OR THE DISTRIBUTION OF THIS SOFTWARE.
+
+--------------------------------------------------------------------------------
+10. Discontinuation
+--------------------------------------------------------------------------------
+
+Nexus XData Tecnologia Ltda may, at any time and at its sole discretion, change
+the product strategy, halt its development, suspend its distribution or
+discontinue it, with no obligation of continuity, update or prior notice. Rights
+already granted over versions of the Community Edition remain valid under the
+terms of this license.
+
+--------------------------------------------------------------------------------
+11. Changes to this license (no retroactive effect)
+--------------------------------------------------------------------------------
+
+The Licensor may change the terms of this license at any time, by publishing a
+new version in the project's official repository. The version in force is always
+the one published at https://github.com/nexusxdata/NXProject and the one shipped
+with each distribution of the Software.
+
+Such a change has NO retroactive effect:
+
+  a) each version of the Software remains governed by the license that shipped
+     with it when You obtained it, and the rights already granted over that
+     version are irrevocable, even if the license changes later;
+  b) You may keep using, indefinitely, the version You already obtained or
+     installed, under the terms that shipped with it, with no obligation to
+     migrate;
+  c) new versions of the Software, obtained after the change, are subject to the
+     license in force on the date they are obtained — it is up to You to accept
+     it or to stay on the previous version;
+  d) changes create no obligation of retroactive payment and do not revoke the
+     free-of-charge use already granted.
+
+--------------------------------------------------------------------------------
+12. Acceptance
+--------------------------------------------------------------------------------
+
+By using, copying, modifying or distributing this software, You declare that You
+agree with the terms of this license. If You do not agree, do not use the
+Software under the Community Edition; get in touch for the commercial license.
+
+--------------------------------------------------------------------------------
+Reminder: this is a courtesy translation. The Portuguese version (LICENSE.txt)
+is the official one and prevails in case of divergence.
+--------------------------------------------------------------------------------

@@ -2156,12 +2156,19 @@
     <sys:String x:Key="Lic_P3">Rights reserved to Nexus XData: selling, renting or charging for the Software, offering it as a paid service (SaaS) or providing paid support requires a commercial license. Permitted redistribution is free of charge only.</sys:String>
     <sys:String x:Key="Lic_P4">Commercial / Enterprise edition (paid): Nexus XData offers, upon contracting, a commercial license without these restrictions, official support, SLA, warranties and exclusive modules (for example printing/PDF, advanced calendar and AI integrations such as OpenAI and Claude).</sys:String>
     <sys:String x:Key="Lic_P5">This edition is provided as is, without warranties, without support obligation and without liability for defects, failures or damages arising from its use.</sys:String>
-    <sys:String x:Key="Lic_P6">Nexus XData Tecnologia Ltda may change, limit, evolve or discontinue the Community edition and its features at any time.</sys:String>
+    <sys:String x:Key="Lic_P6">Nexus XData Tecnologia Ltda may change, limit, evolve or discontinue the Community edition, its features and this license at any time. Changes apply to future versions: the version you already installed stays governed by the license shipped with it, and the rights already granted over it are not taken away.</sys:String>
     <sys:String x:Key="Lic_Scope">Planning scope: by default NXProject plans down to the Story level. Tasks can also be pulled into the schedule through the button that loads them from DevOps (Load Task ToDo), but the intent is for Developers to detail and create the tasks during execution, supported by the TaskBoard, bringing more agility to the project. This degree of freedom is a product design choice, not a limitation of this Community edition.</sys:String>
-    <sys:String x:Key="Lic_P7">Anyone wishing to contract support, the commercial license or the Enterprise edition may get in touch by e-mail at comercial.nexus.xdata@gmail.com. The full license text is in the LICENSE.txt file.</sys:String>
+    <sys:String x:Key="Lic_Contrib">Contributions: by submitting code, fixes or improvements to the project (for example in a pull request), you grant Nexus XData Tecnologia Ltda the right to use, modify and distribute the contribution in any NXProject edition, including the Commercial / Enterprise edition, with no consideration in return. Contributing grants no right to license, commercially distribute or otherwise exploit the Software. See clause 6 of the license.</sys:String>
+    <sys:String x:Key="Lic_Distrib">Commercial distribution (selling, reselling, charging for, offering as a service or bundling into a paid product) requires a specific agreement. Contact Nexus XData: comercial.nexus.xdata@gmail.com. Using the Software, including inside companies, remains free of charge.</sys:String>
+    <sys:String x:Key="Lic_P7">Anyone wishing to contract support, the commercial license or the Enterprise edition may get in touch by e-mail at comercial.nexus.xdata@gmail.com.</sys:String>
+    <sys:String x:Key="Lic_FullText">Full license text — English translation; the Portuguese version prevails:</sys:String>
+    <sys:String x:Key="Lic_FullTextUrl">https://github.com/nexusxdata/NXProject/blob/main/LICENSE.en.txt</sys:String>
     <sys:String x:Key="Lic_AcceptNote">By clicking "Accept and continue", you declare awareness of and agreement with the terms of this Community license.</sys:String>
     <sys:String x:Key="Lic_Exit">Exit</sys:String>
     <sys:String x:Key="Lic_AcceptBtn">Accept and continue</sys:String>
+    <sys:String x:Key="Lic_Close">Close</sys:String>
+    <sys:String x:Key="Lic_Accepted">✔ Terms accepted on this machine</sys:String>
+    <sys:String x:Key="Lic_AcceptedOn">✔ Terms accepted on {0}</sys:String>
 
     <sys:String x:Key="SU_Title">How to use the schedule</sys:String>
     <sys:String x:Key="SU_Sub">Use the grid and the Gantt to plan dates, duration, progress, resources and sprints. NXProject recalculates activity finish dates from the work calendar.</sys:String>

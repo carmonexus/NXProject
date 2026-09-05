@@ -1,4 +1,4 @@
-<Window x:Class="NXProject.Views.CommunityLicenseWindow"
+﻿<Window x:Class="NXProject.Views.CommunityLicenseWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource Lic_Title}"
@@ -53,26 +53,57 @@
                     <TextBlock Text="{DynamicResource Lic_P5}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                     <TextBlock Text="{DynamicResource Lic_P6}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                     <TextBlock Text="{DynamicResource Lic_Scope}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_Contrib}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{DynamicResource Lic_Distrib}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                     <TextBlock Text="{DynamicResource Lic_P7}" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                    <TextBlock Text="{DynamicResource Lic_AcceptNote}" TextWrapping="Wrap" Margin="0,8,0,0" FontStyle="Italic" Foreground="#555"/>
+                    <!-- O resumo acima nao e o contrato: o texto que vale e o LICENSE.txt,
+                         aberto no GitHub pelo link (a URL vem das Strings, entao acompanha
+                         o idioma ativo). -->
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">
+                        <Run x:Name="FullTextLabel"/>
+                        <Hyperlink x:Name="FullTextLink" RequestNavigate="OnLicenseLinkNavigate">
+                            <Run x:Name="FullTextUrlRun"/>
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock x:Name="AcceptNote" Text="{DynamicResource Lic_AcceptNote}" TextWrapping="Wrap" Margin="0,8,0,0" FontStyle="Italic" Foreground="#555"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
 
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Margin="0,16,0,0">
-            <Button Content="{DynamicResource Lic_Exit}"
-                    Width="100"
-                    Height="32"
-                    Margin="0,0,8,0"
-                    Click="OnDeclineClick"/>
-            <Button Content="{DynamicResource Lic_AcceptBtn}"
-                    Width="160"
-                    Height="32"
-                    IsDefault="True"
-                    Click="OnAcceptClick"/>
-        </StackPanel>
+        <DockPanel Grid.Row="2" Margin="0,16,0,0">
+            <!-- Selo de aceite: aparece quando a tela e aberta so para consulta
+                 (Ajuda -> Licenca) e o termo ja foi aceito nesta maquina. -->
+            <TextBlock x:Name="AcceptedSeal"
+                       DockPanel.Dock="Left"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       Foreground="#107C10"
+                       Visibility="Collapsed"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <!-- Consulta: apenas fechar. -->
+                <Button x:Name="CloseButton"
+                        Content="{DynamicResource Lic_Close}"
+                        Width="100"
+                        Height="32"
+                        IsDefault="True"
+                        IsCancel="True"
+                        Visibility="Collapsed"
+                        Click="OnCloseClick"/>
+                <!-- Primeira execucao: recusar encerra o app; aceitar registra o termo. -->
+                <Button x:Name="DeclineButton"
+                        Content="{DynamicResource Lic_Exit}"
+                        Width="100"
+                        Height="32"
+                        Margin="0,0,8,0"
+                        Click="OnDeclineClick"/>
+                <Button x:Name="AcceptButton"
+                        Content="{DynamicResource Lic_AcceptBtn}"
+                        Width="160"
+                        Height="32"
+                        IsDefault="True"
+                        Click="OnAcceptClick"/>
+            </StackPanel>
+        </DockPanel>
     </Grid>
 </Window>
