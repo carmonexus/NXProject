@@ -312,7 +312,12 @@ if (Test-Path $PublishDir) {
     Remove-Item -LiteralPath $PublishDir -Recurse -Force
 }
 Invoke-DotnetCommandWithRetry -ActionLabel "A compilacao" -Command {
-    dotnet publish $ProjectFile -c $Configuration -r $Runtime --self-contained true -o $PublishDir --nologo --no-restore
+    # SEM --no-restore de proposito: o publish do WPF cria um projeto temporario
+    # (*_wpftmp) que refaz o restore SEM o RID no meio da execucao e sobrescreve o
+    # project.assets.json; com --no-restore o proprio publish falhava depois com
+    # NETSDK1047 lendo o arquivo que ele mesmo acabara de reescrever. Deixando o
+    # publish restaurar, ele resolve o RID na ordem certa.
+    dotnet publish $ProjectFile -c $Configuration -r $Runtime --self-contained true -o $PublishDir --nologo
 }
 
 Write-Step "Preparando pasta de distribuicao..."
