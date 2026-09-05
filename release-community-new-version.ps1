@@ -395,10 +395,77 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+$tag = "v$NewVersion"
+
+# ── Commit + push do bump de versao (ANTES de publicar a release) ─────────────
+# A tag precisa apontar para o commit que JA tem esta versao. Publicando a
+# release antes do commit, a tag congelava o estado anterior e o "Source code
+# (zip)" que o GitHub gera sozinho na release nao batia com os binarios
+# publicados ao lado dele.
+Write-Step "Commit e push da versao $NewVersion..."
+
+$ReleaseCommit = $null
+
+git rev-parse --is-inside-work-tree *> $null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  Nao e um repositorio git; commit/push ignorado." -ForegroundColor Yellow
+} else {
+    $branch = (git rev-parse --abbrev-ref HEAD).Trim()
+
+    # Apenas arquivos JA rastreados (nao adiciona untracked nem a pasta dist/).
+    git add -u
+
+    git diff --cached --quiet
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  Nada rastreado para commitar." -ForegroundColor Yellow
+    } else {
+        Write-Host "  Arquivos no commit:" -ForegroundColor Cyan
+        git diff --cached --name-only | ForEach-Object { Write-Host "     $_" }
+
+        $msg = "Release $tag"
+        $tmp = [System.IO.Path]::GetTempFileName()
+        Set-Content -Path $tmp -Value $msg -Encoding UTF8
+        try {
+            git commit -F $tmp
+        } finally {
+            Remove-Item -Path $tmp -ErrorAction SilentlyContinue
+        }
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  Aviso: falha no commit da versao." -ForegroundColor Yellow
+        }
+    }
+
+    git push origin $branch
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  Commit e push concluidos (branch $branch)." -ForegroundColor Green
+    } else {
+        Write-Host "  Aviso: o push falhou." -ForegroundColor Yellow
+    }
+
+    # A tag so pode apontar para um commit que ja esta no remoto. Se o push nao
+    # chegou la, publicar agora repetiria o problema (fonte da release defasado),
+    # entao paramos aqui: os zips ja estao em dist\ e a release pode ser criada
+    # a mao depois do push.
+    $localHead  = (git rev-parse HEAD).Trim()
+    $remoteHead = (git rev-parse "origin/$branch" 2>$null)
+    if ($remoteHead) { $remoteHead = $remoteHead.Trim() }
+
+    if ($localHead -eq $remoteHead) {
+        $ReleaseCommit = $localHead
+    } else {
+        Write-Host ""
+        Write-Host "O commit da versao $NewVersion nao esta no remoto; a release NAO sera publicada" -ForegroundColor Red
+        Write-Host "(a tag apontaria para o codigo-fonte anterior)." -ForegroundColor Red
+        Write-Host "  Rode 'git push origin $branch' e depois publique com:" -ForegroundColor Yellow
+        Write-Host "  gh release create $tag '$ZipPath' --target <sha> --title 'NXProject Community $tag' --repo nexusxdata/NXProject" -ForegroundColor DarkGray
+        exit 1
+    }
+}
+
 # ── GitHub Release ────────────────────────────────────────────────────────────
 Write-Step "Publicando GitHub Release v$NewVersion..."
 
-$tag = "v$NewVersion"
 $releaseNotes = "NXProject Community $tag"
 
 $ghAvailable = Get-Command gh -ErrorAction SilentlyContinue
@@ -406,10 +473,20 @@ if (-not $ghAvailable) {
     Write-Host "  gh CLI nao encontrado. Instale em https://cli.github.com e faca 'gh auth login'." -ForegroundColor Yellow
     Write-Host "  Para publicar manualmente: gh release create $tag '$ZipPath' --title '$tag' --notes '$releaseNotes'" -ForegroundColor DarkGray
 } else {
-    gh release create $tag $ZipPath `
-        --title "NXProject Community $tag" `
-        --notes $releaseNotes `
-        --repo nexusxdata/NXProject
+    # --target crava a tag no commit desta versao (e nao no HEAD do branch no
+    # momento da chamada), para o "Source code" da release casar com os binarios.
+    if ($ReleaseCommit) {
+        gh release create $tag $ZipPath `
+            --title "NXProject Community $tag" `
+            --notes $releaseNotes `
+            --target $ReleaseCommit `
+            --repo nexusxdata/NXProject
+    } else {
+        gh release create $tag $ZipPath `
+            --title "NXProject Community $tag" `
+            --notes $releaseNotes `
+            --repo nexusxdata/NXProject
+    }
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
@@ -447,43 +524,3 @@ if (-not $ghAvailable) {
     }
 }
 
-# ── Commit + push do bump de versao (e demais alteracoes rastreadas) ────────────
-Write-Step "Commit e push da versao $NewVersion..."
-
-git rev-parse --is-inside-work-tree *> $null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  Nao e um repositorio git; commit/push ignorado." -ForegroundColor Yellow
-} else {
-    $branch = (git rev-parse --abbrev-ref HEAD).Trim()
-
-    # Apenas arquivos JA rastreados (nao adiciona untracked nem a pasta dist/).
-    git add -u
-
-    git diff --cached --quiet
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  Nada rastreado para commitar." -ForegroundColor Yellow
-    } else {
-        Write-Host "  Arquivos no commit:" -ForegroundColor Cyan
-        git diff --cached --name-only | ForEach-Object { Write-Host "     $_" }
-
-        $msg = "Release $tag"
-        $tmp = [System.IO.Path]::GetTempFileName()
-        Set-Content -Path $tmp -Value $msg -Encoding UTF8
-        try {
-            git commit -F $tmp
-        } finally {
-            Remove-Item -Path $tmp -ErrorAction SilentlyContinue
-        }
-
-        if ($LASTEXITCODE -eq 0) {
-            git push origin $branch
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "  Commit e push concluidos (branch $branch)." -ForegroundColor Green
-            } else {
-                Write-Host "  Aviso: commit feito, mas o push falhou. Rode 'git push' manualmente." -ForegroundColor Yellow
-            }
-        } else {
-            Write-Host "  Aviso: falha no commit da versao." -ForegroundColor Yellow
-        }
-    }
-}

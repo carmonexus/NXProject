@@ -55,6 +55,29 @@ descaracterização do produto, sem remoção da atribuição e mantendo a Nexus
 Tecnologia Ltda como proprietária e criadora original. Essa liberdade faz parte
 do modelo Open Core adotado pelo Licenciante.
 
+Uso educacional e acadêmico. É expressamente permitido usar, estudar, ensinar e
+pesquisar o Software em escolas, universidades, cursos, treinamentos, trabalhos
+acadêmicos, artigos, palestras e materiais didáticos, inclusive analisando e
+citando trechos do código-fonte, desde que a autoria seja citada — indicando a
+Nexus XData Tecnologia Ltda como criadora do NXProject e, quando houver, a
+origem (repositório oficial do projeto). Esta permissão abrange o uso do
+Software como ferramenta e objeto de estudo; ela NÃO autoriza vender,
+sublicenciar ou distribuir o Software como produto, nem oferecê-lo como serviço
+pago, atos que continuam sujeitos à cláusula 4.
+
+Distinção importante — USO x DISTRIBUIÇÃO COMERCIAL:
+
+  • USO: livre e gratuito, inclusive por empresas e em atividades lucrativas.
+    Rodar o Software para operar as próprias atividades ("uso interno",
+    cláusula 2(a)) não exige contrato, pagamento nem autorização prévia,
+    qualquer que seja o número de usuários.
+  • DISTRIBUIÇÃO COMERCIAL: exige contrato específico com a Nexus XData
+    Tecnologia Ltda. Entram aqui vender, revender, alugar, sublicenciar, cobrar
+    pelo Software, distribuí-lo como produto ou parte de produto pago,
+    oferecê-lo como serviço (SaaS/hospedagem) ou vender suporte sobre ele —
+    conforme a cláusula 4. A redistribuição gratuita, com atribuição, continua
+    permitida pela cláusula 2(c).
+
 --------------------------------------------------------------------------------
 3. Condições (atribuição)
 --------------------------------------------------------------------------------
@@ -81,7 +104,19 @@ Licenciante, Você NÃO pode:
      serviço pago, incluindo hospedagem/SaaS, ou como serviço pago de suporte,
      manutenção ou consultoria sobre o próprio Software;
   c) remover, ocultar ou alterar a atribuição, os avisos de copyright, a marca
-     ou esta licença.
+     ou esta licença;
+  d) relicenciar o Software, no todo ou em parte, sob outros termos — criar
+     licença paralela, substituir esta licença por outra (por exemplo MIT,
+     Apache, BSD ou GPL), publicar o Software ou um derivado sob licença
+     própria, ou apresentá-lo a terceiros como se estivesse sujeito a termos
+     diferentes destes. Somente o Licenciante, como titular, pode licenciar o
+     Software sob outros termos.
+
+Qualquer exploração comercial do Software depende de CONTRATO ESPECÍFICO,
+celebrado por escrito com a Nexus XData Tecnologia Ltda, com escopo, prazo e
+condições definidos caso a caso. Não há licença comercial tácita, presumida ou
+adquirida por uso continuado, por contribuição ao projeto, por parceria
+informal ou por qualquer autorização verbal.
 
 A redistribuição permitida na cláusula 2(c) é apenas gratuita: Você não pode
 cobrar pelo Software nem embutí-lo em um produto ou serviço pago.
@@ -118,11 +153,77 @@ comercial.nexus.xdata@gmail.com.
 6. Contribuições
 --------------------------------------------------------------------------------
 
-Ao enviar contribuições (código, correções, melhorias) para o Software, Você
-concede ao Licenciante uma licença perpétua, mundial, isenta de royalties e
-sublicenciável para usar, modificar e distribuir a contribuição, inclusive na
-Edição Comercial, permitindo o licenciamento dual. Você declara ter os direitos
-necessários para conceder essa licença.
+6.1. Aceitação. Considera-se "Contribuição" qualquer código, correção, melhoria,
+documentação, tradução, script, teste ou outro material que Você envie ao
+Licenciante ou ao projeto por qualquer meio — inclusive pull request, patch,
+issue, e-mail ou mensagem. O envio da Contribuição, por si só, implica aceitação
+integral desta cláusula 6, dispensada assinatura adicional.
+
+6.2. Licença de direitos autorais. Você concede ao Licenciante licença perpétua,
+irrevogável, mundial, não exclusiva, isenta de royalties e sublicenciável (em
+múltiplos níveis) para usar, reproduzir, modificar, adaptar, criar obras
+derivadas, publicar, distribuir e comercializar a Contribuição, no todo ou em
+parte, isoladamente ou combinada ao Software, em QUALQUER edição, versão ou
+produto do Licenciante — incluindo, sem limitação, a Edição Comercial /
+Enterprise, versões pagas, ofertas em nuvem/SaaS e produtos futuros — e sob
+QUAISQUER termos de licenciamento, inclusive licenças comerciais fechadas e não
+gratuitas. Essa concessão é o que viabiliza o licenciamento dual do Software.
+
+6.3. Licença de patentes. Você concede ao Licenciante e aos destinatários do
+Software licença perpétua, irrevogável, mundial, não exclusiva, isenta de
+royalties e sublicenciável sobre as reivindicações de patente que Você detenha
+ou venha a deter e que sejam necessariamente infringidas pela Contribuição ou
+pela combinação dela com o Software.
+
+6.4. Ausência de contrapartida. A Contribuição é oferecida em caráter voluntário
+e gratuito. Você não terá direito a remuneração, participação em receitas,
+royalties, coautoria da obra, cotitularidade do Software, exclusividade ou
+qualquer outra contrapartida em razão da Contribuição ou de sua exploração
+comercial pelo Licenciante. O Licenciante poderá creditar contribuintes a seu
+critério, sem que isso altere a titularidade do Software.
+
+6.5. Declarações de quem contribui. Ao enviar uma Contribuição, Você declara e
+garante que:
+
+  a) é o autor da Contribuição ou detém todos os direitos necessários para
+     concedê-la nos termos desta cláusula;
+  b) se Você contribui no curso de vínculo empregatício, estatutário ou
+     contratual, ou usando recursos de um empregador ou contratante, obteve
+     dessa organização a autorização necessária para conceder estes direitos,
+     ou está autorizado a representá-la para tanto;
+  c) a Contribuição não contém código, documentação ou material de terceiros sob
+     termos incompatíveis com esta licença nem sujeito a obrigações que
+     impeçam sua exploração comercial pelo Licenciante (por exemplo, licenças
+     recíprocas fortes do tipo copyleft), salvo se identificado de forma clara
+     e expressamente aceito por escrito pelo Licenciante;
+  d) a Contribuição não contém segredos de negócio, dados pessoais, credenciais
+     ou informações confidenciais de terceiros.
+
+6.6. Direitos morais. Na máxima extensão permitida pela lei aplicável, Você
+concorda em não exercer direitos morais sobre a Contribuição de modo a impedir
+ou restringir o uso, a modificação, a distribuição ou a exploração comercial
+previstos nesta cláusula. Onde a lei tornar tais direitos irrenunciáveis, Você
+concorda em exercê-los apenas de forma compatível com esta licença.
+
+6.7. Sem obrigação de incorporar. O Licenciante não tem obrigação de aceitar,
+incorporar, manter, publicar ou dar suporte a qualquer Contribuição, e pode
+removê-la ou substituí-la a qualquer tempo. As Contribuições são fornecidas "no
+estado em que se encontram", sem garantias, aplicando-se a elas as cláusulas 8
+e 9.
+
+6.8. Titularidade preservada. Nada nesta cláusula transfere a Você qualquer
+direito sobre o Software, sobre as marcas do Licenciante ou sobre obras
+derivadas dele. Você mantém a titularidade da sua Contribuição e permanece livre
+para usá-la em outros contextos, respeitados os direitos aqui concedidos ao
+Licenciante.
+
+6.9. Sem licença paralela. Contribuir NÃO dá a Você direito de licenciar o
+Software sob outros termos, nem de publicar o projeto (ou um derivado dele) sob
+licença própria, nem de explorá-lo comercialmente — nem sequer a parte
+correspondente à sua própria Contribuição, uma vez incorporada ao Software. A
+Contribuição também não gera direito de uso das marcas do Licenciante nem
+autorização comercial de qualquer espécie: a exploração comercial permanece
+sujeita à cláusula 4 e a contrato específico com a Nexus XData Tecnologia Ltda.
 
 --------------------------------------------------------------------------------
 7. Marcas
