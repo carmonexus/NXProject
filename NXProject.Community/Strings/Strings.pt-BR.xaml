@@ -1634,6 +1634,13 @@
     <sys:String x:Key="SyncProg_Count">{0} de {1}</sys:String>
     <sys:String x:Key="Desc_EditStory">Edição de Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edição de Task</sys:String>
+    <sys:String x:Key="Desc_EditFeature">Edição de Feature</sys:String>
+    <sys:String x:Key="Desc_EditEpic">Edição de EPIC</sys:String>
+    <sys:String x:Key="Desc_TitleKindFormat">{0}: {1}</sys:String>
+    <sys:String x:Key="Desc_KindStory">📖 Story</sys:String>
+    <sys:String x:Key="Desc_KindTask">🧩 Task</sys:String>
+    <sys:String x:Key="Desc_KindFeature">📦 Feature</sys:String>
+    <sys:String x:Key="Desc_KindEpic">🏔 EPIC</sys:String>
     <sys:String x:Key="Desc_EstHours">HH Estimado:</sys:String>
     <sys:String x:Key="Desc_DoneHours">HH Realizado:</sys:String>
     <sys:String x:Key="Desc_HoursInvalid">HH inválido — informe um número (horas) maior ou igual a zero.</sys:String>
@@ -1843,6 +1850,13 @@
     <sys:String x:Key="Sprint_NewTask">Nova Task (nome)</sys:String>
     <sys:String x:Key="Sprint_AddStory">➕ Story</sys:String>
     <sys:String x:Key="Sprint_AddTask">➕ Task</sys:String>
+    <sys:String x:Key="Sprint_AddFeature">➕ Feature</sys:String>
+    <sys:String x:Key="Sprint_AddFeatureTip">Cria uma Feature nova sob este EPIC. O card fica no fim do board para preencher nome, responsavel e descricao; o work item so nasce no DevOps ao clicar em Atualizar TFS.</sys:String>
+    <sys:String x:Key="Sprint_AddEpic">➕ EPIC</sys:String>
+    <sys:String x:Key="Sprint_AddEpicTip">Cria um EPIC novo sob este Projeto. O card fica no fim do board para preencher nome, responsavel e descricao; o work item so nasce no DevOps ao clicar em Atualizar TFS.</sys:String>
+    <sys:String x:Key="Sprint_EditFeature">Editar a Feature (nome, responsavel, descricao)</sys:String>
+    <sys:String x:Key="Sprint_EditEpic">Editar o EPIC (nome, responsavel, descricao)</sys:String>
+    <sys:String x:Key="Sprint_NewNoParent">item pai nao encontrado (o pai precisa existir no DevOps ou ser criado nesta mesma gravacao)</sys:String>
     <sys:String x:Key="Sprint_DupName">Já existe um item com esse nome nesse nível.</sys:String>
     <sys:String x:Key="Sprint_FldName">Nome:</sys:String>
     <sys:String x:Key="Sprint_FldOwner">Responsável:</sys:String>

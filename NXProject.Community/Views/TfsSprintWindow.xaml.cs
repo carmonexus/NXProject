@@ -560,6 +560,66 @@ namespace NXProject.Views
             UpdatePendingButton(); Render();
         }
 
+        // "+Feature" no card do EPIC e "+EPIC" no card do Projeto: mesma fila dos demais
+        // cards novos — o work item so nasce no DevOps no "Atualizar TFS".
+        private void AddNewFeature(int epicId, string epicTitle)
+        {
+            _newCards.Add(new NewCard { TempId = _nextTempId--, Type = "Feature", ParentId = epicId,
+                FeatureTitle = epicTitle, IterationPath = DefaultNewIterationPath() });
+            UpdatePendingButton(); Render();
+        }
+
+        private void AddNewEpic(int projectId, string projectTitle)
+        {
+            _newCards.Add(new NewCard { TempId = _nextTempId--, Type = "Epic", ParentId = projectId,
+                FeatureTitle = projectTitle, IterationPath = DefaultNewIterationPath() });
+            UpdatePendingButton(); Render();
+        }
+
+        // Botao "+X" dos cards de Projeto/EPIC. So aparece com o pai ja existente no DevOps
+        // (id > 0) e no modo edicao, como os demais botoes de criacao do board.
+        private UIElement? BuildAddChildButton(int parentId, string parentTitle, string kind)
+        {
+            if (parentId <= 0 || EditModeCheck.IsChecked != true) return null;
+            var btn = new Button
+            {
+                Content = AppStrings.Get(kind == "Epic" ? "Sprint_AddEpic" : "Sprint_AddFeature"),
+                FontSize = 9, Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(0, 4, 0, 0),
+                Height = LevelButtonHeight, VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = AppStrings.Get(kind == "Epic" ? "Sprint_AddEpicTip" : "Sprint_AddFeatureTip")
+            };
+            if (kind == "Epic") btn.Click += (_, _) => AddNewEpic(parentId, parentTitle);
+            else                btn.Click += (_, _) => AddNewFeature(parentId, parentTitle);
+            return btn;
+        }
+
+        // ✎ dos cards de EPIC/Feature: abre o mesmo editor da Story (nome, responsavel,
+        // descricao). Segue a regra do "+": so com o item existente no DevOps e no modo edicao.
+        private UIElement? BuildEditLevelButton(int id, string title, string kind)
+        {
+            if (id <= 0 || EditModeCheck.IsChecked != true) return null;
+            var btn = new Button
+            {
+                Content = "✎", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
+                Height = LevelButtonHeight, VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 4, 3, 0),
+                ToolTip = AppStrings.Get(kind == "Epic" ? "Sprint_EditEpic" : "Sprint_EditFeature")
+            };
+            btn.Click += async (_, _) => await EditDescriptionAsync(id, title, "", kind);
+            return btn;
+        }
+
+        // Junta os botoes do card de Projeto/EPIC numa linha so (✎ editar + ➕ criar filho).
+        private UIElement? JoinButtons(params UIElement?[] buttons)
+        {
+            var list = buttons.Where(b => b != null).ToList();
+            if (list.Count == 0) return null;
+            if (list.Count == 1) return list[0];
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            foreach (var b in list) sp.Children.Add(b);
+            return sp;
+        }
+
         private void AddNewTask(int storyId, string? assignedTo = null)
         {
             // Já nasce na faixa da pessoa onde foi criado (fica no grupo da Story).
@@ -801,13 +861,20 @@ namespace NXProject.Views
             if (enableAc)
                 curAc = _acPending.TryGetValue(id, out var acp) ? acp
                     : await TfsImportService.GetWorkItemAcceptanceCriteriaAsync(_options, id);
-            var isFeat = kind == "Feature";
-            // Feature: EPIC pai e Work Item "Project" (só leitura) — buscados numa Story sob a Feature.
+            // EPIC e Feature nao tem HH proprio (vem do rollup) nem tag de bloqueio no board:
+            // o editor abre nos dois com os mesmos campos.
+            var isFeat = kind is "Feature" or "Epic";
+            // Contexto so leitura: para a Feature, o EPIC e o Project acima dela; para o EPIC,
+            // o Project. Ambos vem de uma Story que esteja abaixo do item.
             string epicTitle = "", projTitle = "";
-            if (isFeat && _board?.Stories.FirstOrDefault(s => s.FeatureId == id) is { } fsr)
+            if (kind == "Feature" && _board?.Stories.FirstOrDefault(s => s.FeatureId == id) is { } fsr)
             {
                 epicTitle = fsr.FeatureEpicTitle;
                 projTitle = fsr.FeatureProjectTitle;
+            }
+            else if (kind == "Epic" && _board?.Stories.FirstOrDefault(s => s.FeatureEpicId == id) is { } esr)
+            {
+                projTitle = esr.FeatureProjectTitle;
             }
             // Feature: responsável é demandante (não editável aqui) → não exibe o combo de responsável.
             var dlg = new TaskDescriptionEditWindow(pt, isFeat ? null : people, owner, enableNameEdit: id > 0, objectKind: kind,
@@ -1192,6 +1259,30 @@ namespace NXProject.Views
             var tempToReal = new Dictionary<int, int>();
             // Iteração-alvo de cada card: a escolhida no card, senão a sprint única aberta.
             string IterOf(NewCard n) => !string.IsNullOrWhiteSpace(n.IterationPath) ? n.IterationPath : _sprintPath;
+            // Ordem importa: EPIC -> Feature -> Story -> Task, para o filho encontrar o id real
+            // do pai criado na mesma gravacao (tempToReal).
+            foreach (var ne in _newCards.Where(n => n.Type is "Epic" or "Feature").ToList())
+            {
+                var kind = ne.Type == "Epic" ? "Epic" : "Feature";
+                if (string.IsNullOrWhiteSpace(ne.Title))
+                { fails.Add(AppStrings.Get("Sprint_NewIncomplete")); continue; }
+
+                var parentId = ne.ParentId < 0 ? (tempToReal.TryGetValue(ne.ParentId, out var pr) ? pr : 0) : ne.ParentId;
+                if (parentId <= 0) { fails.Add($"{kind} '{ne.Title}': {AppStrings.Get("Sprint_NewNoParent")}"); continue; }
+
+                bool dupEf = _newCards.Any(o => o != ne && o.Type == ne.Type && o.ParentId == ne.ParentId
+                    && o.Title.Trim().Equals(ne.Title.Trim(), StringComparison.CurrentCultureIgnoreCase));
+                if (dupEf) { fails.Add($"{kind} '{ne.Title}': {AppStrings.Get("Sprint_DupName")}"); continue; }
+
+                // Sem HH: o esforco de Feature/EPIC vem do rollup dos filhos no DevOps.
+                var (eid, emsg) = await TfsImportService.CreateChildWorkItemAsync(_options, kind, ne.Title.Trim(), parentId,
+                    string.IsNullOrWhiteSpace(IterOf(ne)) ? null : IterOf(ne),
+                    string.IsNullOrWhiteSpace(ne.Description) ? null : TfsImportService.PlainTextToSimpleHtml(ne.Description),
+                    string.IsNullOrWhiteSpace(ne.AssignedTo) ? null : ne.AssignedTo);
+                if (eid > 0) { tempToReal[ne.TempId] = eid; _newCards.Remove(ne); ok++; reload = true; }
+                else fails.Add($"{kind} '{ne.Title}': {emsg}");
+            }
+
             foreach (var ns in _newCards.Where(n => n.Type == "Story").ToList())
             {
                 if (string.IsNullOrWhiteSpace(ns.Title) || !(ns.Effort is > 0) || string.IsNullOrWhiteSpace(ns.AssignedTo))
@@ -1200,7 +1291,9 @@ namespace NXProject.Views
                 bool dup = (_board?.Stories.Any(s => s.FeatureId == ns.FeatureId && s.Title.Trim().Equals(ns.Title.Trim(), StringComparison.CurrentCultureIgnoreCase)) ?? false)
                     || _newCards.Any(o => o != ns && o.Type == "Story" && o.FeatureId == ns.FeatureId && o.Title.Trim().Equals(ns.Title.Trim(), StringComparison.CurrentCultureIgnoreCase));
                 if (dup) { fails.Add($"Story '{ns.Title}': {AppStrings.Get("Sprint_DupName")}"); continue; }
-                var (nid, msg) = await TfsImportService.CreateChildWorkItemAsync(_options, "User Story", ns.Title.Trim(), ns.ParentId, IterOf(ns),
+                var storyParent = ns.ParentId < 0 ? (tempToReal.TryGetValue(ns.ParentId, out var sp2) ? sp2 : 0) : ns.ParentId;
+                if (storyParent <= 0) { fails.Add($"Story '{ns.Title}': {AppStrings.Get("Sprint_NewNoParent")}"); continue; }
+                var (nid, msg) = await TfsImportService.CreateChildWorkItemAsync(_options, "User Story", ns.Title.Trim(), storyParent, IterOf(ns),
                     string.IsNullOrWhiteSpace(ns.Description) ? null : TfsImportService.PlainTextToSimpleHtml(ns.Description),
                     string.IsNullOrWhiteSpace(ns.AssignedTo) ? null : ns.AssignedTo, ns.Effort, ns.StartDate);
                 if (nid > 0) { tempToReal[ns.TempId] = nid; _newCards.Remove(ns); ok++; reload = true; }
@@ -1693,17 +1786,22 @@ namespace NXProject.Views
                 .Distinct(StringComparer.CurrentCultureIgnoreCase).Count() > 1;
 
         // Botão padrão "abrir no DevOps" usado nos cards de rótulo (EPIC/Projeto).
+        // Altura fixa dos botoes da fileira de acoes do card de Projeto/EPIC (🔗 ✎ ➕):
+        // sem isso cada um assume a altura do proprio conteudo e a linha fica desalinhada.
+        private const double LevelButtonHeight = 20;
+
         private Button OpenDevOpsButton(int id)
         {
             var b = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
-                Margin = new Thickness(0, 4, 0, 0), HorizontalAlignment = HorizontalAlignment.Left,
+                Height = LevelButtonHeight, VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 4, 3, 0), HorizontalAlignment = HorizontalAlignment.Left,
                 Cursor = System.Windows.Input.Cursors.Arrow, ToolTip = AppStrings.Get("Sprint_OpenDevOps") };
             b.Click += (_, _) => OpenInDevOps(id);
             return b;
         }
 
         // Conteúdo do card do EPIC: título + (opcional) botão de abrir no DevOps.
-        private UIElement BuildLabelBody(string icon, string text, Color c, int id)
+        private UIElement BuildLabelBody(string icon, string text, Color c, int id, UIElement? extra = null)
         {
             var sp = new StackPanel();
             sp.Children.Add(new TextBlock
@@ -1711,13 +1809,19 @@ namespace NXProject.Views
                 Text = icon + " " + text, TextWrapping = TextWrapping.Wrap, FontSize = 11,
                 FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(c)
             });
-            if (id > 0) sp.Children.Add(OpenDevOpsButton(id));
+            if (id > 0 || extra != null)
+            {
+                var actions = new StackPanel { Orientation = Orientation.Horizontal };
+                if (id > 0) actions.Children.Add(OpenDevOpsButton(id));
+                if (extra != null) actions.Children.Add(extra);
+                sp.Children.Add(actions);
+            }
             return sp;
         }
 
         // Card só de rótulo (colunas Work Item "Project" e EPIC da visão "Por Story").
         // `strong` deixa o texto maior/negrito (EPIC); senão fica discreto (Project).
-        private UIElement BuildLabelCard(string icon, string text, bool strong, int id = 0)
+        private UIElement BuildLabelCard(string icon, string text, bool strong, int id = 0, UIElement? extra = null)
         {
             if (string.IsNullOrWhiteSpace(text)) return new TextBlock();
             var c = (StateBrush(FeatureColorKey) as SolidColorBrush)?.Color ?? FactoryStateColor(FeatureColorKey);
@@ -1731,7 +1835,13 @@ namespace NXProject.Views
                     Text = icon + " " + text, TextWrapping = TextWrapping.Wrap, FontSize = 10,
                     Foreground = new SolidColorBrush(Color.FromRgb(Mix(c.R, .45), Mix(c.G, .45), Mix(c.B, .45)))
                 });
-                if (id > 0) plain.Children.Add(OpenDevOpsButton(id));
+                if (id > 0 || extra != null)
+                {
+                    var actions = new StackPanel { Orientation = Orientation.Horizontal };
+                    if (id > 0) actions.Children.Add(OpenDevOpsButton(id));
+                    if (extra != null) actions.Children.Add(extra);
+                    plain.Children.Add(actions);
+                }
                 return plain;
             }
             return new Border
@@ -1740,7 +1850,7 @@ namespace NXProject.Views
                 BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3),
                 Margin = new Thickness(3), Padding = new Thickness(6),
                 VerticalAlignment = VerticalAlignment.Top,
-                Child = BuildLabelBody(icon, text, c, id)
+                Child = BuildLabelBody(icon, text, c, id, extra)
             };
         }
 
@@ -1773,8 +1883,8 @@ namespace NXProject.Views
                 var fid = featId; var ftit = featTitle;
                 var featBtns = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0),
                     Cursor = System.Windows.Input.Cursors.Arrow };
-                var featDesc = new Button { Content = "📄", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
-                    Margin = new Thickness(0, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_FeatureDesc") };
+                var featDesc = new Button { Content = "✎", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
+                    Margin = new Thickness(0, 0, 4, 0), ToolTip = AppStrings.Get("Sprint_EditFeature") };
                 featDesc.Click += async (_, _) => await EditDescriptionAsync(fid, ftit, "", "Feature");
                 featBtns.Children.Add(featDesc);
                 var featOpen = new Button { Content = "🔗", FontSize = 11, Padding = new Thickness(4, 0, 4, 0),
@@ -2129,6 +2239,8 @@ namespace NXProject.Views
             // Cards de Project/EPIC aparecem só na 1ª Feature de cada um (não repetem).
             var lastProj = (string?)null;
             var lastEpic = (string?)null;
+            // Cards novos de EPIC/Feature ja renderizados (saem junto do bloco do pai).
+            var newShown = new HashSet<int>();
             foreach (var fg in stories
                          .GroupBy(s => string.IsNullOrWhiteSpace(s.FeatureTitle) ? AppStrings.Get("Sprint_NoFeature") : s.FeatureTitle)
                          .OrderBy(g => g.FirstOrDefault()?.FeatureProjectTitle ?? "", StringComparer.CurrentCultureIgnoreCase)
@@ -2157,7 +2269,8 @@ namespace NXProject.Views
                 var isNewBlock = epicTitle != lastEpic || projTitle != lastProj;
                 if (showProjCol)
                     AddCell(row, 0, projTitle == lastProj ? new TextBlock()
-                        : BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0));
+                        : BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0,
+                            extra: BuildAddChildButton(featRow?.FeatureProjectId ?? 0, projTitle, "Epic")));
                 // Sem a coluna Projeto, ele aparece como linha discreta acima do EPIC.
                 if (showEpicCol)
                 {
@@ -2165,8 +2278,12 @@ namespace NXProject.Views
                     if (isNewBlock)
                     {
                         if (!showProjCol && !string.IsNullOrWhiteSpace(projTitle))
-                            epicSp.Children.Add(BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0));
-                        epicSp.Children.Add(BuildLabelCard("🏔", epicTitle, strong: true, id: featRow?.FeatureEpicId ?? 0));
+                            epicSp.Children.Add(BuildLabelCard("🗂", projTitle, strong: false, id: featRow?.FeatureProjectId ?? 0,
+                                extra: BuildAddChildButton(featRow?.FeatureProjectId ?? 0, projTitle, "Epic")));
+                        epicSp.Children.Add(BuildLabelCard("🏔", epicTitle, strong: true, id: featRow?.FeatureEpicId ?? 0,
+                            extra: JoinButtons(
+                                BuildEditLevelButton(featRow?.FeatureEpicId ?? 0, epicTitle, "Epic"),
+                                BuildAddChildButton(featRow?.FeatureEpicId ?? 0, epicTitle, "Feature"))));
                     }
                     AddCell(row, cEpic, epicSp);
                 }
@@ -2199,6 +2316,60 @@ namespace NXProject.Views
                     }
                     else AddCell(row, i + cState0, cell);
                 }
+                BoardHost.Children.Add(row);
+                BoardHost.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(0xD5, 0xDD, 0xD7)), Margin = new Thickness(0, 2, 0, 4) });
+
+                // O card recem-criado sai logo abaixo do bloco do pai que o originou.
+                var here = new HashSet<int>();
+                if (featRow?.FeatureEpicId is int ei && ei > 0) here.Add(ei);
+                if (featRow?.FeatureProjectId is int pi && pi > 0) here.Add(pi);
+                if (here.Count > 0)
+                    RenderNewEpicAndFeatureRows(cols, showProjCol, showEpicCol, cEpic, cFeat, here, newShown);
+            }
+
+            // Sobra: card novo cujo pai nao apareceu em nenhum bloco (filtro escondeu o bloco).
+            RenderNewEpicAndFeatureRows(cols, showProjCol, showEpicCol, cEpic, cFeat, null, newShown);
+        }
+
+        // EPICs e Features criados pelo "+EPIC"/"+Feature" ainda nao existem no DevOps e nao
+        // tem Story para entrar na grade normal: ganham uma linha propria na coluna do seu
+        // nivel, logo abaixo do bloco do pai (como a Story nova aparece dentro do grupo dela),
+        // ate serem gravados no "Atualizar TFS". `parentIds` limita o que sai agora; null =
+        // o que sobrou (pai fora do recorte visivel), renderizado no fim.
+        private void RenderNewEpicAndFeatureRows(List<GridLength> cols, bool showProjCol, bool showEpicCol,
+            int cEpic, int cFeat, HashSet<int>? parentIds, HashSet<int> alreadyShown)
+        {
+            var pend = _newCards
+                .Where(n => (n.Type == "Epic" || n.Type == "Feature") && !alreadyShown.Contains(n.TempId))
+                .Where(n => parentIds == null || parentIds.Contains(n.ParentId))
+                .ToList();
+            if (pend.Count == 0) return;
+
+            foreach (var nc in pend)
+            {
+                alreadyShown.Add(nc.TempId);
+                var row = MakeRowGrid(cols);
+                // Onde o pai aparece, para o usuario saber sob quem o item vai nascer.
+                var parent = new TextBlock
+                {
+                    Text = (nc.Type == "Epic" ? "🗂 " : "🏔 ") + nc.FeatureTitle,
+                    FontSize = 10, TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DimGray,
+                    Margin = new Thickness(4, 6, 4, 2)
+                };
+
+                if (nc.Type == "Epic")
+                {
+                    // EPIC novo: pai (Projeto) na coluna do Projeto, card na coluna do EPIC.
+                    if (showProjCol) AddCell(row, 0, parent);
+                    AddCell(row, showEpicCol ? cEpic : cFeat, BuildNewCardBorder(nc));
+                }
+                else
+                {
+                    // Feature nova: pai (EPIC) na coluna do EPIC, card na coluna da Feature.
+                    if (showEpicCol) AddCell(row, cEpic, parent);
+                    AddCell(row, cFeat, BuildNewCardBorder(nc));
+                }
+
                 BoardHost.Children.Add(row);
                 BoardHost.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(0xD5, 0xDD, 0xD7)), Margin = new Thickness(0, 2, 0, 4) });
             }
@@ -2307,12 +2478,16 @@ namespace NXProject.Views
             person.LostFocus += (_, _) => { if (nc.AssignedTo != person.Text) { nc.AssignedTo = person.Text; RegroupDeferred(); } };
             sp.Children.Add(person);
 
-            var hhRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
-            hhRow.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_FldHH"), FontSize = 10, Foreground = Brushes.Gray, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
-            var hh = new TextBox { Width = 56, FontSize = 11, Text = nc.Effort?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "" };
-            hh.TextChanged += (_, _) => nc.Effort = double.TryParse(hh.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out var v) ? v : (double?)null;
-            hhRow.Children.Add(hh);
-            sp.Children.Add(hhRow);
+            // HH so faz sentido em Story/Task: o esforco de Feature e EPIC vem do rollup dos filhos.
+            if (nc.Type is "Story" or "Task")
+            {
+                var hhRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+                hhRow.Children.Add(new TextBlock { Text = AppStrings.Get("Sprint_FldHH"), FontSize = 10, Foreground = Brushes.Gray, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
+                var hh = new TextBox { Width = 56, FontSize = 11, Text = nc.Effort?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "" };
+                hh.TextChanged += (_, _) => nc.Effort = double.TryParse(hh.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out var v) ? v : (double?)null;
+                hhRow.Children.Add(hh);
+                sp.Children.Add(hhRow);
+            }
 
             // Sprint-alvo: só aparece quando há mais de uma opção (várias sprints/"Todas" selecionadas).
             var sprintOpts = NewCardSprintOptions();

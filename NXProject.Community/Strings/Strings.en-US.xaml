@@ -972,6 +972,13 @@
     <sys:String x:Key="Sprint_NewTask">New Task (name)</sys:String>
     <sys:String x:Key="Sprint_AddStory">➕ Story</sys:String>
     <sys:String x:Key="Sprint_AddTask">➕ Task</sys:String>
+    <sys:String x:Key="Sprint_AddFeature">➕ Feature</sys:String>
+    <sys:String x:Key="Sprint_AddFeatureTip">Creates a new Feature under this EPIC. The card stays at the bottom of the board for name, owner and description; the work item is only created in DevOps when you click Update TFS.</sys:String>
+    <sys:String x:Key="Sprint_AddEpic">➕ EPIC</sys:String>
+    <sys:String x:Key="Sprint_AddEpicTip">Creates a new EPIC under this Project. The card stays at the bottom of the board for name, owner and description; the work item is only created in DevOps when you click Update TFS.</sys:String>
+    <sys:String x:Key="Sprint_EditFeature">Edit the Feature (name, owner, description)</sys:String>
+    <sys:String x:Key="Sprint_EditEpic">Edit the EPIC (name, owner, description)</sys:String>
+    <sys:String x:Key="Sprint_NewNoParent">parent item not found (the parent must exist in DevOps or be created in this same save)</sys:String>
     <sys:String x:Key="Sprint_DupName">An item with this name already exists at this level.</sys:String>
     <sys:String x:Key="Sprint_FldName">Name:</sys:String>
     <sys:String x:Key="Sprint_FldOwner">Assigned to:</sys:String>
@@ -2007,6 +2014,13 @@
     <sys:String x:Key="SyncProg_Count">{0} of {1}</sys:String>
     <sys:String x:Key="Desc_EditStory">Edit Story</sys:String>
     <sys:String x:Key="Desc_EditTask">Edit Task</sys:String>
+    <sys:String x:Key="Desc_EditFeature">Edit Feature</sys:String>
+    <sys:String x:Key="Desc_EditEpic">Edit EPIC</sys:String>
+    <sys:String x:Key="Desc_TitleKindFormat">{0}: {1}</sys:String>
+    <sys:String x:Key="Desc_KindStory">📖 Story</sys:String>
+    <sys:String x:Key="Desc_KindTask">🧩 Task</sys:String>
+    <sys:String x:Key="Desc_KindFeature">📦 Feature</sys:String>
+    <sys:String x:Key="Desc_KindEpic">🏔 EPIC</sys:String>
     <sys:String x:Key="Desc_EstHours">Est. hours:</sys:String>
     <sys:String x:Key="Desc_DoneHours">Completed hours:</sys:String>
     <sys:String x:Key="Desc_HoursInvalid">Invalid hours — enter a number (hours) greater than or equal to zero.</sys:String>

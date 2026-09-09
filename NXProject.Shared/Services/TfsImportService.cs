@@ -643,6 +643,7 @@ namespace NXProject.Services
             var nodeTitle = new System.Collections.Generic.Dictionary<int, string>();
             var nodeParent = new System.Collections.Generic.Dictionary<int, int>();
             var nodeType = new System.Collections.Generic.Dictionary<int, string>();
+            var nodeOwner = new System.Collections.Generic.Dictionary<int, string>();
             foreach (var fid in storyById.Keys) { featureTitle[fid] = storyById[fid].Title; featureOwner[fid] = storyById[fid].AssignedTo; } // pai já no board
             // Semeia os ancestrais com o que o board já sabe: itens que vieram como linha não
             // entram no fetch abaixo, então sem isto ficariam sem pai (e sem EPIC/Project).
@@ -681,10 +682,11 @@ namespace NXProject.Services
                                         && r.TryGetProperty("url", out var ru)
                                         && int.TryParse((ru.GetString() ?? "").TrimEnd('/').Split('/').LastOrDefault(), out var pid2))
                                     { nodeParent[wid] = pid2; break; }
+                            nodeOwner[wid] = ReadIdentityDisplayName(f, "System.AssignedTo");
                             if (wantOwner)
                             {
                                 featureTitle[wid] = tt;
-                                featureOwner[wid] = ReadIdentityDisplayName(f, "System.AssignedTo");
+                                featureOwner[wid] = nodeOwner[wid];
                             }
                         }
                 }
@@ -700,39 +702,40 @@ namespace NXProject.Services
                 await FetchNodesAsync(nextIds, wantOwner: false);
             }
 
-            // Classifica um ancestral: EPIC (tipo Epic) e Work Item "Project" (tipo Project/topo).
-            (string Epic, int EpicId, string Project, int ProjId) ResolveAncestry(int featureId)
+            // Classifica os ancestrais PELO TIPO do work item, não pela posição na árvore:
+            // Feature vai para a coluna Feature, Epic para a coluna EPIC e Project para a do
+            // Projeto. Quando o backlog não tem aquele nível (ex.: Story pendurada direto no
+            // Epic), a coluna correspondente fica EM BRANCO — antes o board assumia
+            // "pai = Feature, avô = EPIC" e escorregava tudo uma coluna.
+            (string Feat, int FeatId, string FeatOwner, string Epic, int EpicId, string Project, int ProjId)
+                ResolveAncestry(int storyId)
             {
-                string epic = "", proj = "";
-                int epicId = 0, projId = 0;
-                var cur = featureId; var guard = 0;
+                string feat = "", featOwner = "", epic = "", proj = "";
+                int featId = 0, epicId = 0, projId = 0;
+                var cur = storyId; var guard = 0;
                 while (nodeParent.TryGetValue(cur, out var par) && par > 0 && guard++ < 8)
                 {
                     var t = nodeType.TryGetValue(par, out var tt) ? tt : "";
-                    var title = nodeTitle.TryGetValue(par, out var nt) ? nt : "";
-                    if (string.Equals(t, "Epic", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(epic))
-                        { epic = title; epicId = par; }
-                    else if (string.Equals(t, "Project", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(proj))
-                        { proj = title; projId = par; }
+                    var title = nodeTitle.TryGetValue(par, out var nt) ? nt
+                              : featureTitle.TryGetValue(par, out var ft2) ? ft2 : "";
+                    if (IsBoardFeatureType(t) && featId == 0)
+                    {
+                        feat = title; featId = par;
+                        featOwner = nodeOwner.TryGetValue(par, out var ow) ? ow
+                                  : featureOwner.TryGetValue(par, out var ow2) ? ow2 : "";
+                    }
+                    else if (IsBoardEpicType(t) && epicId == 0) { epic = title; epicId = par; }
+                    else if (IsBoardProjectType(t) && projId == 0) { proj = title; projId = par; }
                     cur = par;
                 }
-                // Fallback: se não achou por tipo, usa o pai imediato como EPIC e o avô como Project.
-                if (string.IsNullOrEmpty(epic) && string.IsNullOrEmpty(proj)
-                    && nodeParent.TryGetValue(featureId, out var p1) && nodeTitle.TryGetValue(p1, out var t1))
-                {
-                    epic = t1; epicId = p1;
-                    if (nodeParent.TryGetValue(p1, out var p2) && nodeTitle.TryGetValue(p2, out var t2)) { proj = t2; projId = p2; }
-                }
-                return (epic, epicId, proj, projId);
+                return (feat, featId, featOwner, epic, epicId, proj, projId);
             }
 
             foreach (var kv in storyParent)
                 if (storyById.TryGetValue(kv.Key, out var st))
                 {
-                    st.FeatureId = kv.Value;
-                    st.FeatureTitle = featureTitle.TryGetValue(kv.Value, out var ft) ? ft : "";
-                    st.FeatureAssignedTo = featureOwner.TryGetValue(kv.Value, out var fo) ? fo : "";
-                    var (epicT, epicI, projT, projI) = ResolveAncestry(kv.Value);
+                    var (featT, featI, featO, epicT, epicI, projT, projI) = ResolveAncestry(kv.Key);
+                    st.FeatureId = featI; st.FeatureTitle = featT; st.FeatureAssignedTo = featO;
                     st.FeatureEpicTitle = epicT; st.FeatureEpicId = epicI;
                     st.FeatureProjectTitle = projT; st.FeatureProjectId = projI;
                 }
@@ -4183,6 +4186,33 @@ namespace NXProject.Services
             IsStoryType(type);
 
         public static bool IsStoryTypePublic(string? type) => IsStoryType(type);
+
+        // Nome do tipo no board: normaliza para comparar sem acento, sem caixa e sem espaços
+        // (processos customizados usam "Épico", "Epico", "Projeto"...). Serve para decidir a
+        // COLUNA do item na visão Projeto & Story.
+        private static string NormalizeTypeName(string? type)
+        {
+            if (string.IsNullOrWhiteSpace(type)) return "";
+            var form = type.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new StringBuilder(form.Length);
+            foreach (var ch in form)
+                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch)
+                    != System.Globalization.UnicodeCategory.NonSpacingMark && !char.IsWhiteSpace(ch))
+                    sb.Append(ch);
+            return sb.ToString();
+        }
+
+        /// <summary>Tipo de nível Feature para a coluna Feature do board.</summary>
+        public static bool IsBoardFeatureType(string? type) =>
+            NormalizeTypeName(type) is "feature" or "funcionalidade";
+
+        /// <summary>Tipo de nível EPIC para a coluna EPIC do board.</summary>
+        public static bool IsBoardEpicType(string? type) =>
+            NormalizeTypeName(type) is "epic" or "epico";
+
+        /// <summary>Tipo do work item "Project" (container do portfólio) para a coluna Projeto.</summary>
+        public static bool IsBoardProjectType(string? type) =>
+            NormalizeTypeName(type) is "project" or "projeto";
 
         /// <summary>Tipo EPIC (o campo EPIC_TYPE só existe nesse nível).</summary>
         public static bool IsEpicType(string? type)

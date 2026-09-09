@@ -98,11 +98,25 @@ namespace NXProject.Views
             // Título da janela conforme o objeto (Story/Task) quando informado; senão o padrão.
             Title = objectKind switch
             {
-                "Story" => AppStrings.Get("Desc_EditStory"),
-                "Task" => AppStrings.Get("Desc_EditTask"),
+                "Story"   => AppStrings.Get("Desc_EditStory"),
+                "Task"    => AppStrings.Get("Desc_EditTask"),
+                "Feature" => AppStrings.Get("Desc_EditFeature"),
+                "Epic"    => AppStrings.Get("Desc_EditEpic"),
                 _ => AppStrings.Get("Desc_Title")
             };
-            TitleText.Text = AppStrings.Get("Desc_TitleFormat", task.Name);
+            // O cabecalho repete o TIPO junto do nome: a mesma janela edita Story, Task,
+            // Feature e EPIC, e so o nome nao deixa claro o que esta aberto.
+            var kindLabel = objectKind switch
+            {
+                "Story"   => AppStrings.Get("Desc_KindStory"),
+                "Task"    => AppStrings.Get("Desc_KindTask"),
+                "Feature" => AppStrings.Get("Desc_KindFeature"),
+                "Epic"    => AppStrings.Get("Desc_KindEpic"),
+                _ => ""
+            };
+            TitleText.Text = string.IsNullOrEmpty(kindLabel)
+                ? AppStrings.Get("Desc_TitleFormat", task.Name)
+                : AppStrings.Get("Desc_TitleKindFormat", kindLabel, task.Name);
             _html = task.Description ?? string.Empty;
 
             // Ancestralidade (Feature): EPIC pai e Work Item "Project", só leitura.
