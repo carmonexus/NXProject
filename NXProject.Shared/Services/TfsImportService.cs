@@ -452,6 +452,9 @@ namespace NXProject.Services
         public sealed record SprintStoryRow(int Id, string Title, string State, string AssignedTo,
             System.Collections.Generic.List<SprintTaskCard> Tasks)
         {
+            /// <summary>Linha sintética criada pelo board para um Feature/EPIC/Project da sprint
+            /// sem Story sua visível: serve só para ocupar a coluna do nível, nunca vira card.</summary>
+            public bool IsLevelPlaceholder { get; init; }
             /// <summary>Título da Feature pai (entrega) — para agrupar as Stories na visão por Story.</summary>
             public string FeatureTitle { get; set; } = "";
             /// <summary>Id da Feature pai (para criar novas Stories sob ela).</summary>
@@ -482,7 +485,25 @@ namespace NXProject.Services
         public sealed record SprintBoard(
             System.Collections.Generic.List<string> States,
             System.Collections.Generic.List<SprintStoryRow> Stories,
-            System.Collections.Generic.List<string> People);
+            System.Collections.Generic.List<string> People)
+        {
+            /// <summary>Work items de nível Feature/EPIC/Project que estão NA SPRINT (IterationPath).
+            /// Não são cards de estado — no board ocupam a coluna do seu tipo. Ficam separados das
+            /// Stories para não entrar em filtros, contagens e sincronização como se fossem Story.</summary>
+            public System.Collections.Generic.List<SprintLevelItem> LevelItems { get; init; } = new();
+        }
+
+        /// <summary>Feature, EPIC ou Project atribuído à sprint. <c>Kind</c> é o nível já
+        /// normalizado ("Feature", "Epic" ou "Project"); os ancestrais vêm classificados por tipo.</summary>
+        public sealed record SprintLevelItem(int Id, string Title, string Kind, string State, string AssignedTo)
+        {
+            public string IterationPath { get; set; } = "";
+            public string Tags { get; set; } = "";
+            public int EpicId { get; set; }
+            public string EpicTitle { get; set; } = "";
+            public int ProjectId { get; set; }
+            public string ProjectTitle { get; set; } = "";
+        }
 
         /// <summary>Lista as sprints (iterações com datas) do projeto.</summary>
         public static async Task<System.Collections.Generic.List<SprintInfo>> ListSprintsAsync(
@@ -551,6 +572,9 @@ namespace NXProject.Services
             var stories = new System.Collections.Generic.List<SprintStoryRow>();
             var storyById = new System.Collections.Generic.Dictionary<int, SprintStoryRow>();
             var storyParent = new System.Collections.Generic.Dictionary<int, int>(); // Story → Feature (pai)
+            // Feature/EPIC/Project que estão na sprint: guardados à parte para virar LevelItems.
+            var levelRaw = new System.Collections.Generic.List<(int Id, string Title, string Kind, string State,
+                string Who, string Iter, string Tags, int? ParentId)>();
             var tasks = new System.Collections.Generic.List<SprintTaskCard>();
             var people = new System.Collections.Generic.SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
             var statesSeen = new System.Collections.Generic.HashSet<string>();
@@ -604,6 +628,21 @@ namespace NXProject.Services
                     }
                     else
                     {
+                        // Feature/EPIC/Project atribuídos à sprint NÃO são Story: o item vai para a
+                        // coluna do seu tipo (LevelItems), não para as colunas de estado. Antes tudo
+                        // que não era Task virava linha de Story e a Feature aparecia como card.
+                        var levelKind = IsBoardFeatureType(type) ? "Feature"
+                                      : IsBoardEpicType(type)    ? "Epic"
+                                      : IsBoardProjectType(type) ? "Project" : null;
+                        if (levelKind != null)
+                        {
+                            int? lvParent = f.TryGetProperty("System.Parent", out var lpp) && lpp.ValueKind == JsonValueKind.Number
+                                ? lpp.GetInt32() : (int?)null;
+                            levelRaw.Add((id, S("System.Title"), levelKind, state, who,
+                                S("System.IterationPath"), S("System.Tags"), lvParent));
+                            continue;
+                        }
+
                         double? NumF(string k) => f.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number
                             && v.TryGetDouble(out var d2) ? d2 : (double?)null;
                         var row = new SprintStoryRow(id, S("System.Title"), state, who, new())
@@ -648,6 +687,12 @@ namespace NXProject.Services
             // Semeia os ancestrais com o que o board já sabe: itens que vieram como linha não
             // entram no fetch abaixo, então sem isto ficariam sem pai (e sem EPIC/Project).
             foreach (var kv in storyParent) nodeParent[kv.Key] = kv.Value;
+            foreach (var li in levelRaw)
+            {
+                nodeTitle[li.Id] = li.Title; nodeType[li.Id] = li.Kind; nodeOwner[li.Id] = li.Who;
+                if (li.ParentId is int lp && lp > 0) nodeParent[li.Id] = lp;
+                if (li.Kind == "Feature") { featureTitle[li.Id] = li.Title; featureOwner[li.Id] = li.Who; }
+            }
 
             // Busca em lote id -> (título, pai, tipo, responsável) para os ids informados.
             async System.Threading.Tasks.Task FetchNodesAsync(System.Collections.Generic.List<int> ids, bool wantOwner)
@@ -740,11 +785,23 @@ namespace NXProject.Services
                     st.FeatureProjectTitle = projT; st.FeatureProjectId = projI;
                 }
 
+            // 3c) Itens de nível (Feature/EPIC/Project na sprint) com EPIC/Project acima deles.
+            var levelItems = new System.Collections.Generic.List<SprintLevelItem>();
+            foreach (var li in levelRaw)
+            {
+                var (_, _, _, lEpic, lEpicId, lProj, lProjId) = ResolveAncestry(li.Id);
+                levelItems.Add(new SprintLevelItem(li.Id, li.Title, li.Kind, li.State, li.Who)
+                {
+                    IterationPath = li.Iter, Tags = li.Tags,
+                    EpicId = lEpicId, EpicTitle = lEpic, ProjectId = lProjId, ProjectTitle = lProj
+                });
+            }
+
             // 4) Colunas por estado, na ordem canônica.
             var states = OrderTaskboardStates(statesSeen);
             if (states.Count == 0) states.Add("New");
 
-            return new SprintBoard(states, stories, people.ToList());
+            return new SprintBoard(states, stories, people.ToList()) { LevelItems = levelItems };
         }
 
         // Nomes de exibicao dos campos customizados procurados, na ordem de

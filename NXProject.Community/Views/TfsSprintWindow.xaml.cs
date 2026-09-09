@@ -2194,6 +2194,9 @@ namespace NXProject.Views
             var stories = EffectiveStories().Select(x => x.Story).Where(StoryPasses).ToList();
             var storyStates = TfsImportService.OrderTaskboardStates(states.Concat(stories.Select(EffStoryState)));
             if (storyStates.Count == 0) storyStates = states;
+            // Feature/EPIC/Project que estao NA SPRINT sem Story sua visivel: ocupam a coluna do
+            // seu tipo como linha propria (placeholder), nunca como card de estado.
+            stories.AddRange(BuildLevelPlaceholders(stories));
 
             // Colunas Projeto e EPIC são opcionais: cada checkbox fica no cabeçalho da coluna
             // SEGUINTE (Projeto no do EPIC, EPIC no da Feature). Desligada, a informação volta
@@ -2241,26 +2244,31 @@ namespace NXProject.Views
             var lastEpic = (string?)null;
             // Cards novos de EPIC/Feature ja renderizados (saem junto do bloco do pai).
             var newShown = new HashSet<int>();
+            static string FirstText(IEnumerable<TfsImportService.SprintStoryRow> g, Func<TfsImportService.SprintStoryRow, string?> pick)
+                => g.Select(pick).FirstOrDefault(t => !string.IsNullOrWhiteSpace(t)) ?? "";
             foreach (var fg in stories
-                         .GroupBy(s => string.IsNullOrWhiteSpace(s.FeatureTitle) ? AppStrings.Get("Sprint_NoFeature") : s.FeatureTitle)
-                         .OrderBy(g => g.FirstOrDefault()?.FeatureProjectTitle ?? "", StringComparer.CurrentCultureIgnoreCase)
-                         .ThenBy(g => g.FirstOrDefault()?.FeatureEpicTitle ?? "", StringComparer.CurrentCultureIgnoreCase)
-                         .ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
+                         .GroupBy(s => s.FeatureId > 0 ? $"F{s.FeatureId}" : $"E{s.FeatureEpicId}|P{s.FeatureProjectId}")
+                         .OrderBy(g => FirstText(g, s => s.FeatureProjectTitle), StringComparer.CurrentCultureIgnoreCase)
+                         .ThenBy(g => FirstText(g, s => s.FeatureEpicTitle), StringComparer.CurrentCultureIgnoreCase)
+                         .ThenBy(g => FirstText(g, s => s.FeatureTitle), StringComparer.CurrentCultureIgnoreCase))
             {
                 var featureId = fg.Select(s => s.FeatureId).FirstOrDefault(id => id > 0);
+                var featName = FirstText(fg, s => s.FeatureTitle);
+                if (string.IsNullOrWhiteSpace(featName)) featName = AppStrings.Get("Sprint_NoFeature");
                 var groupStories = fg.OrderBy(s => StoryRankOf(s.Id))
                     .ThenBy(s => s.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
                 var realIds = groupStories.Where(s => s.Id > 0).Select(s => s.Id).ToList();
 
                 var row = MakeRowGrid(cols);
                 // Card da Feature igual ao da visão Pessoa & Task, com o "+Story" junto dos botões.
-                var featRow = fg.FirstOrDefault(s => s.FeatureId > 0);
+                var featRow = fg.FirstOrDefault(s => s.FeatureEpicId > 0 || s.FeatureProjectId > 0)
+                              ?? fg.FirstOrDefault(s => s.FeatureId > 0) ?? fg.First();
                 UIElement addStory = null!;
                 if (featureId > 0)
                 {
                     var btn = new Button { Content = AppStrings.Get("Sprint_AddStory"), FontSize = 10,
                         Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(4, 0, 0, 0) };
-                    btn.Click += (_, _) => AddNewStory(featureId, fg.Key);
+                    btn.Click += (_, _) => AddNewStory(featureId, featName);
                     addStory = btn;
                 }
                 // Colunas Project e EPIC (só na 1ª Feature de cada um, para não repetir).
@@ -2290,16 +2298,20 @@ namespace NXProject.Views
                 lastProj = projTitle; lastEpic = epicTitle;
                 // Card da Feature. Com a coluna EPIC desligada, o EPIC (e o Projeto, se a coluna
                 // dele também estiver desligada) voltam para dentro do card.
-                AddCell(row, cFeat, showEpicCol
-                    ? BuildFeatureCard(featureId, fg.Key, featRow?.FeatureAssignedTo ?? "", "", "", false, addStory)
-                    : BuildFeatureCard(featureId, fg.Key, featRow?.FeatureAssignedTo ?? "",
-                        epicTitle, projTitle, !showProjCol, addStory));
+                var onlyLevel = groupStories.All(s => s.IsLevelPlaceholder);
+                if (featureId <= 0 && onlyLevel)
+                    AddCell(row, cFeat, new TextBlock());   // EPIC/Projeto da sprint sem Feature: fica em branco
+                else
+                    AddCell(row, cFeat, showEpicCol
+                        ? BuildFeatureCard(featureId, featName, featRow?.FeatureAssignedTo ?? "", "", "", false, addStory)
+                        : BuildFeatureCard(featureId, featName, featRow?.FeatureAssignedTo ?? "",
+                            epicTitle, projTitle, !showProjCol, addStory));
 
                 for (int i = 0; i < storyStates.Count; i++)
                 {
                     var st = storyStates[i];
                     var cell = new StackPanel { Margin = new Thickness(2) };
-                    foreach (var s in groupStories.Where(s => SameState(EffStoryState(s), st)))
+                    foreach (var s in groupStories.Where(s => !s.IsLevelPlaceholder && SameState(EffStoryState(s), st)))
                         cell.Children.Add(BuildStoryCard(s, realIds));
                     if (EditModeCheck.IsChecked == true)
                     {
@@ -2329,6 +2341,63 @@ namespace NXProject.Views
 
             // Sobra: card novo cujo pai nao apareceu em nenhum bloco (filtro escondeu o bloco).
             RenderNewEpicAndFeatureRows(cols, showProjCol, showEpicCol, cEpic, cFeat, null, newShown);
+        }
+
+        // Feature/EPIC/Project atribuidos a sprint que NAO tem Story sua visivel no board viram
+        // uma linha sintetica na coluna do seu tipo — assim o item aparece onde pertence, sem
+        // virar card de estado. Quem ja aparece por causa de uma Story (ou de um item de nivel
+        // abaixo) nao e duplicado. Respeita pessoa, busca e "somente Story do cronograma"; com
+        // filtro de Story ativo nao entra (o recorte e de Stories).
+        private List<TfsImportService.SprintStoryRow> BuildLevelPlaceholders(List<TfsImportService.SprintStoryRow> visible)
+        {
+            var list = new List<TfsImportService.SprintStoryRow>();
+            if (_board == null || _board.LevelItems.Count == 0 || _selectedStoryIds.Count > 0) return list;
+
+            var q = SearchBox?.Text?.Trim();
+            bool PersonOk(string who) => _selectedPeople.Count == 0 || _selectedPeople.Contains(who ?? "");
+            bool SearchOk(string title) => string.IsNullOrEmpty(q) || title.IndexOf(q, StringComparison.CurrentCultureIgnoreCase) >= 0;
+            bool SchedOk(int id) => OnlyScheduleCheck.IsChecked != true || _scheduleIds.Contains(id);
+
+            var items = _board.LevelItems;
+            var featCovered = visible.Where(s => s.FeatureId > 0).Select(s => s.FeatureId).ToHashSet();
+            var epicCovered = visible.Where(s => s.FeatureEpicId > 0).Select(s => s.FeatureEpicId)
+                .Concat(items.Where(i => i.Kind == "Feature" && i.EpicId > 0).Select(i => i.EpicId)).ToHashSet();
+            var projCovered = visible.Where(s => s.FeatureProjectId > 0).Select(s => s.FeatureProjectId)
+                .Concat(items.Where(i => i.Kind != "Project" && i.ProjectId > 0).Select(i => i.ProjectId)).ToHashSet();
+
+            foreach (var it in items)
+            {
+                var covered = it.Kind switch
+                {
+                    "Feature" => featCovered.Contains(it.Id),
+                    "Epic"    => epicCovered.Contains(it.Id),
+                    _         => projCovered.Contains(it.Id)
+                };
+                if (covered || !PersonOk(it.AssignedTo) || !SearchOk(it.Title) || !SchedOk(it.Id)) continue;
+
+                // Id negativo e fora da faixa dos cards novos (que comecam em -1): nunca colide.
+                var row = new TfsImportService.SprintStoryRow(-(1_000_000 + it.Id), it.Title, it.State, it.AssignedTo, new())
+                {
+                    IsLevelPlaceholder = true, IterationPath = it.IterationPath, Tags = it.Tags
+                };
+                switch (it.Kind)
+                {
+                    case "Feature":
+                        row.FeatureId = it.Id; row.FeatureTitle = it.Title; row.FeatureAssignedTo = it.AssignedTo;
+                        row.FeatureEpicId = it.EpicId; row.FeatureEpicTitle = it.EpicTitle;
+                        row.FeatureProjectId = it.ProjectId; row.FeatureProjectTitle = it.ProjectTitle;
+                        break;
+                    case "Epic":
+                        row.FeatureEpicId = it.Id; row.FeatureEpicTitle = it.Title;
+                        row.FeatureProjectId = it.ProjectId; row.FeatureProjectTitle = it.ProjectTitle;
+                        break;
+                    default:
+                        row.FeatureProjectId = it.Id; row.FeatureProjectTitle = it.Title;
+                        break;
+                }
+                list.Add(row);
+            }
+            return list;
         }
 
         // EPICs e Features criados pelo "+EPIC"/"+Feature" ainda nao existem no DevOps e nao
